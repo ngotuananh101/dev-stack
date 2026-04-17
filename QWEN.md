@@ -1,0 +1,2 @@
+## Qwen Added Memories
+- Project: Ponta App (Windows desktop). Framework: Flutter. State Management: Riverpod (generator approach with @riverpod annotation). Database: Isar (NoSQL). Code gen: build_runner, riverpod_generator, isar_generator. UI uses ConsumerWidget. Architecture: lib/core/theme, lib/core/database, lib/shared/widgets, lib/shared/layouts, lib/features, lib/shared/providers. Key features: Dashboard (system monitoring), Hosts (Windows hosts file management). Commands: flutter pub get, dart run build_runner watch --delete-conflicting-outputs, flutter run.
