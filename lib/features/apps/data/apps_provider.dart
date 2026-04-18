@@ -25,11 +25,27 @@ class AppsNotifier extends _$AppsNotifier {
   }
 
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final repository = await ref.read(appsRepositoryProvider.future);
-      return await repository.getAll();
-    });
+    final repository = await ref.read(appsRepositoryProvider.future);
+    final list = await repository.getAll();
+    state = AsyncValue.data(list);
+  }
+
+  DateTime? _lastUpdate;
+
+  /// Updates the state without setting it to loading, used for progress updates
+  void notifyUpdate({bool force = false}) {
+    final now = DateTime.now();
+    if (!force &&
+        _lastUpdate != null &&
+        now.difference(_lastUpdate!).inMilliseconds < 100) {
+      return; // Throttle to 10fps for log/progress updates
+    }
+    _lastUpdate = now;
+
+    final currentData = state.valueOrNull;
+    if (currentData != null) {
+      state = AsyncValue.data([...currentData]);
+    }
   }
 
   Future<void> toggleInstallation(AppModel app) async {
@@ -44,15 +60,22 @@ class AppsNotifier extends _$AppsNotifier {
         app.status = 'installing';
         app.installProgress = 0.0;
         app.installStatus = 'Starting...';
-        await refresh(); // Notify UI
+        app.installLogs = []; // Clear old logs
+        notifyUpdate(force: true); // Notify UI of in-memory change
 
         final installPath = await installer.install(
           app, 
           version,
-          onProgress: (progress, status) {
+          onProgress: (progress, status, {downloadedBytes, totalBytes}) {
             app.installProgress = progress;
             app.installStatus = status;
-            refresh(); // Triggers UI update via Notifier
+            app.downloadedBytes = downloadedBytes;
+            app.totalBytes = totalBytes;
+            notifyUpdate(); 
+          },
+          onLog: (message) {
+            app.addLog(message);
+            notifyUpdate();
           },
         );
         
@@ -65,11 +88,13 @@ class AppsNotifier extends _$AppsNotifier {
         app.installStatus = null;
         
         await repository.save(app);
+        notifyUpdate(force: true);
       } catch (e) {
         print('Installation failed: $e');
         app.status = 'not_installed';
         app.installProgress = null;
         app.installStatus = null;
+        notifyUpdate(force: true);
       }
     } else {
       // Logic for uninstalling could go here
@@ -78,6 +103,6 @@ class AppsNotifier extends _$AppsNotifier {
       await repository.delete(app.appId);
     }
     
-    await refresh();
+    notifyUpdate(force: true);
   }
 }

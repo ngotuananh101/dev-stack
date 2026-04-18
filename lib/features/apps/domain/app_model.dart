@@ -26,6 +26,14 @@ class AppModel {
   // Real-time progress (non-persistent)
   double? installProgress;
   String? installStatus;
+  int? downloadedBytes;
+  int? totalBytes;
+  List<String> installLogs = [];
+
+  void addLog(String message) {
+    installLogs.add(message);
+    if (installLogs.length > 50) installLogs.removeAt(0);
+  }
 
   Map<String, String> get versionLinks {
     if (versionLinksJson == null) return {};

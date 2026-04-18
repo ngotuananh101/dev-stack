@@ -1,10 +1,11 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
-import '../../core/services/log_service.dart';
+import '../../../core/services/log_service.dart';
 
 part 'app_installer_service.g.dart';
 
@@ -14,7 +15,13 @@ AppInstallerService appInstallerService(AppInstallerServiceRef ref) {
   return AppInstallerService(logger);
 }
 
-typedef InstallationProgressCallback = void Function(double progress, String status);
+typedef InstallationProgressCallback = void Function(
+  double progress,
+  String status, {
+  int? downloadedBytes,
+  int? totalBytes,
+});
+typedef InstallationLogCallback = void Function(String message);
 
 class AppInstallerService {
   final LogService _logger;
@@ -27,9 +34,20 @@ class AppInstallerService {
     AppModel app, 
     String version, {
     InstallationProgressCallback? onProgress,
+    InstallationLogCallback? onLog,
   }) async {
+    void logInfo(String msg) {
+      _logger.info(msg);
+      onLog?.call(msg);
+    }
+
+    void logError(String msg) {
+      _logger.error(msg);
+      onLog?.call('ERROR: $msg');
+    }
+
     if (app.appId == 'pyenv') {
-      _logger.error('pyenv installation requested but not supported through this flow.');
+      logError('pyenv installation requested but not supported through this flow.');
       throw Exception('pyenv installation is not supported through this flow.');
     }
 
@@ -46,7 +64,7 @@ class AppInstallerService {
     }
 
     // 2. Download
-    _logger.info('Starting installation for ${app.name} ($version)');
+    logInfo('Starting installation for ${app.name} ($version)');
     onProgress?.call(0.1, 'Downloading...');
 
     final tempFile = File(p.join(Directory.systemTemp.path, '${app.appId}_$version.tmp'));
@@ -58,12 +76,17 @@ class AppInstallerService {
         onReceiveProgress: (received, total) {
           if (total != -1) {
             final progress = (received / total) * 0.7 + 0.1; // 10% to 80%
-            onProgress?.call(progress, 'Downloading... ${(progress * 100).toStringAsFixed(0)}%');
+            onProgress?.call(
+              progress,
+              'Downloading...',
+              downloadedBytes: received,
+              totalBytes: total,
+            );
           }
         },
       );
 
-      _logger.info('Download completed for ${app.name}');
+      logInfo('Download completed for ${app.name}');
       onProgress?.call(0.8, 'Extracting...');
 
       final bytes = await tempFile.readAsBytes();
@@ -71,36 +94,37 @@ class AppInstallerService {
 
       // 3. Extract or Save
       if (extension == '.zip') {
-        _logger.info('Extracting ZIP for ${app.name}');
-        await _extractZip(bytes, installPath);
+        logInfo('Extracting ZIP for ${app.name}');
+        await _extractZip(bytes, installPath, onLog);
       } else if (extension == '.gz' || url.contains('.tar.gz')) {
-        _logger.info('Extracting TAR.GZ for ${app.name}');
-        await _extractTarGz(bytes, installPath);
+        logInfo('Extracting TAR.GZ for ${app.name}');
+        await _extractTarGz(bytes, installPath, onLog);
       } else {
-        _logger.info('Saving direct binary for ${app.name}');
+        logInfo('Saving direct binary for ${app.name}');
         final filename = p.basename(url).split('?').first;
         final file = File(p.join(installPath, filename));
         await file.writeAsBytes(bytes);
       }
 
       onProgress?.call(1.0, 'Completed');
-      _logger.info('Successfully installed ${app.name} to $installPath');
+      logInfo('Successfully installed ${app.name} to $installPath');
       
       // Cleanup
       if (tempFile.existsSync()) await tempFile.delete();
       
       return installPath;
     } catch (e) {
-      _logger.error('Installation failed for ${app.name}: $e');
+      logError('Installation failed for ${app.name}: $e');
       if (tempFile.existsSync()) await tempFile.delete();
       rethrow;
     }
   }
 
-  Future<void> _extractZip(List<int> bytes, String targetPath) async {
+  Future<void> _extractZip(List<int> bytes, String targetPath, InstallationLogCallback? onLog) async {
     final archive = ZipDecoder().decodeBytes(bytes);
     for (final file in archive) {
       final filename = file.name;
+      if (onLog != null) onLog('Extracting: $filename');
       if (file.isFile) {
         final data = file.content as List<int>;
         final f = File(p.join(targetPath, filename));
@@ -112,11 +136,12 @@ class AppInstallerService {
     }
   }
 
-  Future<void> _extractTarGz(List<int> bytes, String targetPath) async {
+  Future<void> _extractTarGz(List<int> bytes, String targetPath, InstallationLogCallback? onLog) async {
     final tarBytes = GZipDecoder().decodeBytes(bytes);
     final archive = TarDecoder().decodeBytes(tarBytes);
     for (final file in archive) {
       final filename = file.name;
+      if (onLog != null) onLog('Extracting: $filename');
       if (file.isFile) {
         final data = file.content as List<int>;
         final f = File(p.join(targetPath, filename));

@@ -443,10 +443,12 @@ class CompactAppsTable extends StatelessWidget {
           child: AppVersionModal(
             app: app,
             onInstall: () {
-              Navigator.of(dialogContext).pop();
               onToggleInstall(app);
             },
-            onClose: () => Navigator.of(dialogContext).pop(),
+            onClose: () {
+              app.installLogs = [];
+              Navigator.of(dialogContext).pop();
+            },
           ),
         );
       },

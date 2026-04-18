@@ -1,9 +1,11 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_model.dart';
 import '../../data/app_version_provider.dart';
+import '../../data/apps_provider.dart';
 
 class AppVersionModal extends ConsumerStatefulWidget {
   final AppModel app;
@@ -76,35 +78,155 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
   @override
   Widget build(BuildContext context) {
     final versionsAsync = ref.watch(appVersionsProvider(widget.app.appId));
+    final appsAsync = ref.watch(appsNotifierProvider);
+
+    // Find current app state in notifier list
+    final appState = appsAsync.when(
+      data: (list) =>
+          list.firstWhere((a) => a.appId == widget.app.appId, orElse: () => widget.app),
+      loading: () => widget.app,
+      error: (_, __) => widget.app,
+    );
+
+    // Show progress if installing OR if just finished installing
+    final isInProgress = appState.status == 'installing' || 
+                        (appState.status == 'installed' && appState.installLogs.isNotEmpty);
 
     return Container(
-      width: 450,
+      width: 550, // Slightly wider for logs
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Header
-          _buildHeader(),
+          _buildHeader(isInProgress),
           const Divider(color: AppColors.border, height: 1),
-          // Version selection with loading state
-          versionsAsync.when(
-            data: (versionInfo) => _buildVersionSelection(versionInfo),
-            loading: () => _buildLoadingState(),
-            error: (error, stack) => _buildErrorState(error.toString()),
-          ),
+          // Content
+          if (isInProgress)
+            _buildProgressSection(appState)
+          else
+            versionsAsync.when(
+              data: (versionInfo) => _buildVersionSelection(versionInfo),
+              loading: () => _buildLoadingState(),
+              error: (error, stack) => _buildErrorState(error.toString()),
+            ),
           const Divider(color: AppColors.border, height: 1),
-          // Footer buttons
-          _buildFooter(),
+          // Footer
+          _buildFooter(isInProgress, appState),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = (log(bytes) / log(1024)).floor();
+    return ((bytes / pow(1024, i)).toStringAsFixed(2)) + ' ' + suffixes[i];
+  }
+
+  Widget _buildProgressSection(AppModel app) {
+    final isDone = app.status == 'installed';
+    final progress = isDone ? 1.0 : (app.installProgress ?? 0.0);
+    final status = isDone ? 'Installation Completed' : (app.installStatus ?? 'Installing...');
+
+    String progressText = status;
+    if (!isDone && app.downloadedBytes != null && app.totalBytes != null) {
+      progressText =
+          '$status (${_formatBytes(app.downloadedBytes!)} / ${_formatBytes(app.totalBytes!)})';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                progressText,
+                style: const TextStyle(
+                  fontSize: AppTextSize.sm,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+              Text(
+                '${(progress * 100).toStringAsFixed(0)}%',
+                style: const TextStyle(
+                  fontSize: AppTextSize.sm,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Installation Logs',
+            style: TextStyle(
+              fontSize: AppTextSize.xxs,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 200,
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1117), // GitHub Dark
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: ListView.builder(
+              reverse: false,
+              itemCount: app.installLogs.length,
+              itemBuilder: (context, index) {
+                final log = app.installLogs[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    log,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 10,
+                      color: Color(0xFFC9D1D9),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(bool isInProgress) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: Row(
@@ -135,7 +257,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                   ),
                 ),
                 Text(
-                  'Select version to install',
+                  isInProgress
+                      ? 'Installing ${widget.app.name}...'
+                      : 'Select version to install',
                   style: TextStyle(
                     fontSize: AppTextSize.xxs,
                     color: AppColors.textMuted,
@@ -316,46 +440,68 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(bool isInProgress, AppModel appState) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          OutlinedButton(
-            onPressed: widget.onClose,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              side: const BorderSide(color: AppColors.border, width: 0.5),
-            ),
-            child: const Text(
-              'Close',
-              style: TextStyle(
-                fontSize: AppTextSize.xs,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
+          if (!isInProgress) ...[
+            OutlinedButton(
+              onPressed: widget.onClose,
+              style: OutlinedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                side: const BorderSide(color: AppColors.border, width: 0.5),
+              ),
+              child: const Text(
+                'Close',
+                style: TextStyle(
+                  fontSize: AppTextSize.xs,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          ElevatedButton(
-            onPressed: () {
-              widget.app.selectedVersion = _selectedVersion;
-              widget.onInstall();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            ),
-            child: Text(
-              'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
-              style: const TextStyle(
-                fontSize: AppTextSize.xs,
-                fontWeight: FontWeight.w500,
+            const SizedBox(width: 12),
+            ElevatedButton(
+              onPressed: () {
+                widget.app.selectedVersion = _selectedVersion;
+                widget.onInstall();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              ),
+              child: Text(
+                'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
+                style: const TextStyle(
+                  fontSize: AppTextSize.xs,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-          ),
+          ] else
+            ElevatedButton(
+              onPressed: appState.status == 'installed' ? widget.onClose : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: appState.status == 'installed'
+                    ? AppColors.success
+                    : AppColors.textMuted,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              ),
+              child: Text(
+                appState.status == 'installed' ? 'Finish' : 'Installing...',
+                style: const TextStyle(
+                  fontSize: AppTextSize.xs,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
         ],
       ),
     );
