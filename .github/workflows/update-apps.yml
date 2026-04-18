@@ -25,10 +25,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GIST_PAT }} # Cần Personal Access Token có quyền 'gist'
           GIST_ID: ${{ secrets.GIST_ID }}   # ID của Gist bạn đã tạo
         run: |
-          if [ -z "$GIST_ID" ]; then
-            echo "GIST_ID is not set. Skipping gist update."
-            exit 0
+          if [ -n "$GIST_ID" ]; then
+            echo "Gist ID detected. Attempting to update..."
+            # Truyền trực tiếp đường dẫn file local vào tham số của lệnh gh
+            gh gist edit "$GIST_ID" -f "apps.json" assets/data/new-apps.json
+          else
+            echo "Error: GIST_ID is missing from Secrets."
+            exit 1
           fi
-          # Sử dụng GitHub CLI để cập nhật nội dung file apps.json trong Gist
-          # Nếu file apps.json chưa tồn tại trong Gist, nó sẽ tự động được thêm vào
-          gh gist edit "$GIST_ID" -f "apps.json" < assets/data/new-apps.json
