@@ -46,6 +46,10 @@ dependencies:
   flutter_code_editor: any
   flutter_highlight: any
   http: ^1.1.0
+  archive: ^4.0.9
+  path: ^1.9.1
+  intl: ^0.20.2
+  dio: ^5.9.2
 
 dev_dependencies:
   flutter_test:

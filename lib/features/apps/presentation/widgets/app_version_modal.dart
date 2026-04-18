@@ -42,7 +42,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
 
   String _getIconFileName() {
     final id = widget.app.appId.toLowerCase();
-    final group = widget.app.groupName.toLowerCase();
+    final group = widget.app.groupName?.toLowerCase() ?? '';
 
     if (id.contains('nodejs')) return 'nodejs';
     if (id.contains('php')) return 'php';

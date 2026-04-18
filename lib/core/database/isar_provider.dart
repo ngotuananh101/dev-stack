@@ -1,8 +1,9 @@
+import 'dart:io';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/dashboard/domain/environment_model.dart';
-import '../../features/apps/domain/app_model.dart';
+import '../../features/apps/domain/installed_app.dart';
 
 part 'isar_provider.g.dart';
 
@@ -15,13 +16,30 @@ class IsarInstance {
     }
 
     final dir = await getApplicationDocumentsDirectory();
-    _instance = await Isar.open(
-      [
-        EnvironmentModelSchema,
-        AppModelSchema,
-      ],
-      directory: dir.path,
-    );
+    
+    try {
+      _instance = await Isar.open(
+        [
+          EnvironmentModelSchema,
+          InstalledAppSchema,
+        ],
+        directory: dir.path,
+      );
+    } catch (e) {
+      // Xoá DB cũ nếu lỗi cấu trúc (Schema mismatch)
+      final isarFile = File('${dir.path}/default.isar');
+      final lockFile = File('${dir.path}/default.isar.lock');
+      if (isarFile.existsSync()) isarFile.deleteSync();
+      if (lockFile.existsSync()) lockFile.deleteSync();
+      
+      _instance = await Isar.open(
+        [
+          EnvironmentModelSchema,
+          InstalledAppSchema,
+        ],
+        directory: dir.path,
+      );
+    }
     return _instance!;
   }
 

@@ -22,7 +22,7 @@ final appsRepositoryProvider =
 );
 
 typedef AppsRepositoryRef = AutoDisposeFutureProviderRef<AppsRepository>;
-String _$appsNotifierHash() => r'88457e581c1624fb85a373817a0cecf980c3baa7';
+String _$appsNotifierHash() => r'be3f148d4feada24deab2973ceaae1de85a54b8e';
 
 /// See also [AppsNotifier].
 @ProviderFor(AppsNotifier)

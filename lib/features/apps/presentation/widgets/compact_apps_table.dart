@@ -28,7 +28,7 @@ class CompactAppsTable extends StatelessWidget {
 
   String _getIconFileName(AppModel app) {
     final id = app.appId.toLowerCase();
-    final group = app.groupName.toLowerCase();
+    final group = app.groupName?.toLowerCase() ?? '';
 
     if (id.contains('nodejs')) return 'nodejs';
     if (id.contains('php')) return 'php';
@@ -270,6 +270,44 @@ class CompactAppsTable extends StatelessWidget {
           ),
         ],
       );
+    } else if (app.status == 'installing') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              const SizedBox(
+                width: 10,
+                height: 10,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                app.installStatus ?? 'Installing...',
+                style: const TextStyle(
+                  fontSize: AppTextSize.xxs,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: app.installProgress,
+              minHeight: 3,
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      );
     } else {
       return const Text(
         'Not Installed',
@@ -363,7 +401,18 @@ class CompactAppsTable extends StatelessWidget {
               ),
             ),
           ],
-        ] else
+        ] else if (app.status == 'installing')
+          const OutlinedButton(
+            onPressed: null,
+            child: Text(
+              'INSTALLING...',
+              style: TextStyle(
+                fontSize: AppTextSize.xxxs,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          )
+        else
           OutlinedButton(
             onPressed: () => _showVersionModal(context, app),
             style: OutlinedButton.styleFrom(

@@ -27,10 +27,6 @@ class _AppsPageState extends ConsumerState<AppsPage> {
     // Filter by tab
     if (_selectedTab == 'installed') {
       filtered = filtered.where((app) => app.isInstalled).toList();
-    } else if (_selectedTab == 'professional') {
-      filtered = filtered
-          .where((app) => app.price != null && app.price! > 0)
-          .toList();
     } else if (_selectedTab == 'third-party') {
       filtered = filtered
           .where((app) => app.developer.toLowerCase() != 'official')

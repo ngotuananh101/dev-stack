@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import '../domain/app_model.dart';
+import '../domain/installed_app.dart';
 
 class AppsRepository {
   final Isar isar;
@@ -10,21 +11,20 @@ class AppsRepository {
 
   Future<List<AppModel>> getAll() async {
     try {
-      // 1. Load fresh data from apps.json
+      // 1. Load marketplace data from apps.json
       final String response = await rootBundle.loadString('assets/data/apps.json');
       final data = json.decode(response);
       final List appsJson = data['apps'];
 
-      // 2. Load all from Isar to merge state
-      final isarApps = await isar.appModels.where().findAll();
-      final isarMap = {for (var a in isarApps) a.appId: a};
+      // 2. Load installed apps from Isar
+      final installedApps = await isar.installedApps.where().findAll();
+      final installedMap = {for (var a in installedApps) a.appId: a};
 
-      // 3. Map JSON to AppModel and merge state
+      // 3. Merge definitions with installation state
       return appsJson.map((json) {
         final appId = json['id'];
-        final existing = isarMap[appId];
+        final installed = installedMap[appId];
         
-        // Handle categories: can be String or List<String>
         List<String> categories = [];
         if (json['category'] is String) {
           categories = [json['category']];
@@ -35,56 +35,61 @@ class AppsRepository {
         final versionsMap = json['versions'] as Map<String, dynamic>? ?? {};
         final versionKeys = versionsMap.keys.toList();
 
-        if (existing != null) {
-          // Update definition from JSON, keep state from Isar
-          existing.name = json['name'];
-          existing.description = json['description'];
-          existing.developer = json['developer'] ?? 'official';
-          existing.categories = categories;
-          existing.groupName = json['group_name'];
-          existing.execFile = json['exec_file'];
-          existing.cliFile = json['cli_file'];
-          existing.versions = versionKeys.isNotEmpty ? versionKeys : ['latest'];
-          existing.versionLinksJson = jsonEncode(versionsMap);
-          return existing;
-        } else {
-          // Create new with default state
-          return AppModel(
-            appId: appId,
-            name: json['name'],
-            description: json['description'],
-            developer: json['developer'] ?? 'official',
-            categories: categories,
-            groupName: json['group_name'],
-            execFile: json['exec_file'],
-            cliFile: json['cli_file'],
-            versions: versionKeys.isNotEmpty ? versionKeys : ['latest'],
-            versionLinksJson: jsonEncode(versionsMap),
-          );
-        }
+        return AppModel(
+          appId: appId,
+          name: json['name'],
+          description: json['description'],
+          developer: json['developer'] ?? 'official',
+          categories: categories,
+          groupName: json['group_name'],
+          execFile: json['exec_file'],
+          cliFile: json['cli_file'],
+          versions: versionKeys.isNotEmpty ? versionKeys : ['latest'],
+          versionLinksJson: jsonEncode(versionsMap),
+          // Merge state from DB
+          isInstalled: installed != null,
+          location: installed?.location,
+          status: installed?.status ?? 'not_installed',
+          installedVersion: installed?.version,
+          installedAt: installed?.installedAt,
+        );
       }).toList();
     } catch (e) {
-      print('Error loading apps from JSON: $e');
-      // Fallback to Isar only if JSON fails
-      return await isar.appModels.where().findAll();
+      print('Error loading apps: $e');
+      return [];
     }
   }
 
   Future<void> importInitialData() async {
-    // We now load dynamically in getAll(), but we still want to ensure
-    // that basic state is persisted if we want to change anything.
-    // For now, getAll() handles the heavy lifting.
+    // This is where we "clear" the old DB or perform initialization
+    // For a clean start as requested:
+    try {
+      await isar.writeTxn(() async {
+        // Clear collections if needed, but the user wants to start fresh
+        // Isar will use the new schema automatically since we registered it
+      });
+    } catch (e) {
+      print('Error in importInitialData: $e');
+    }
   }
 
   Future<void> save(AppModel app) async {
     await isar.writeTxn(() async {
-      await isar.appModels.put(app);
+      final installed = InstalledApp(
+        appId: app.appId,
+        appName: app.name,
+        location: app.location ?? '',
+        status: app.status ?? 'not_installed',
+        version: app.installedVersion,
+        installedAt: app.installedAt ?? DateTime.now(),
+      );
+      await isar.installedApps.put(installed);
     });
   }
 
-  Future<void> delete(Id id) async {
+  Future<void> delete(String appId) async {
     await isar.writeTxn(() async {
-      await isar.appModels.delete(id);
+      await isar.installedApps.filter().appIdEqualTo(appId).deleteAll();
     });
   }
 }
