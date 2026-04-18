@@ -1,0 +1,33 @@
+name: Update App Versions to Gist
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Chạy mỗi 1 tiếng
+  workflow_dispatch: # Cho phép chạy thủ công
+
+jobs:
+  update-gist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run update script
+        run: node assets/data/update.js
+
+      - name: Update Gist
+        env:
+          GH_TOKEN: ${{ secrets.GIST_PAT }} # Cần Personal Access Token có quyền 'gist'
+          GIST_ID: ${{ secrets.GIST_ID }}   # ID của Gist bạn đã tạo
+        run: |
+          if [ -z "$GIST_ID" ]; then
+            echo "GIST_ID is not set. Skipping gist update."
+            exit 0
+          fi
+          # Sử dụng GitHub CLI (sẵn có trên runner) để cập nhật Gist
+          gh gist edit "$GIST_ID" -f apps.json=assets/data/new-apps.json
