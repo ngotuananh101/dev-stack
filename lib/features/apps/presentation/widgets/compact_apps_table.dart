@@ -271,7 +271,7 @@ class CompactAppsTable extends StatelessWidget {
                   horizontal: 12,
                   vertical: 6,
                 ),
-                side: BorderSide(color: AppColors.border),
+                side: const BorderSide(color: AppColors.border, width: 0.5),
                 backgroundColor: AppColors.surfaceLight,
               ),
               child: const Text(
@@ -291,7 +291,7 @@ class CompactAppsTable extends StatelessWidget {
                   horizontal: 12,
                   vertical: 6,
                 ),
-                side: BorderSide(color: AppColors.border),
+                side: const BorderSide(color: AppColors.border, width: 0.5),
                 backgroundColor: AppColors.surfaceLight,
               ),
               child: const Text(
@@ -311,7 +311,7 @@ class CompactAppsTable extends StatelessWidget {
                   horizontal: 12,
                   vertical: 6,
                 ),
-                side: BorderSide(color: AppColors.border),
+                side: const BorderSide(color: AppColors.border, width: 0.5),
                 backgroundColor: AppColors.surfaceLight,
               ),
               child: const Text(
@@ -348,7 +348,7 @@ class CompactAppsTable extends StatelessWidget {
             onPressed: () => _showVersionModal(context, app),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              side: BorderSide(color: AppColors.primary),
+              side: const BorderSide(color: AppColors.primary, width: 0.5),
               backgroundColor: Colors.transparent,
             ),
             child: const Text(

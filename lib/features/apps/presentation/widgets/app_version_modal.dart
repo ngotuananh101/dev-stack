@@ -302,16 +302,17 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          TextButton(
+          OutlinedButton(
             onPressed: widget.onClose,
-            style: TextButton.styleFrom(
+            style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              side: const BorderSide(color: AppColors.border, width: 0.5),
             ),
             child: const Text(
               'Close',
               style: TextStyle(
-                fontSize: AppTextSize.sm,
-                fontWeight: FontWeight.w600,
+                fontSize: AppTextSize.xs,
+                fontWeight: FontWeight.w500,
                 color: AppColors.textSecondary,
               ),
             ),
@@ -330,8 +331,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             child: Text(
               'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
               style: const TextStyle(
-                fontSize: AppTextSize.sm,
-                fontWeight: FontWeight.w600,
+                fontSize: AppTextSize.xs,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
