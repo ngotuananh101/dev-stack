@@ -1,77 +1,7 @@
 {
   "version": "1.1.0",
-  "lastUpdated": "2026-04-13T00:00:00.000Z",
+  "lastUpdated": "2026-04-18T11:07:14.436Z",
   "apps": [
-    {
-      "id": "aacloud",
-      "name": "aaCloud",
-      "description": "Sync servers to aaCloud for unified management.",
-      "category": "tools",
-      "group_name": "cloud",
-      "exec_file": "aacloud.exe",
-      "cli_file": "aacloud.exe",
-      "price": null,
-      "expireDate": null,
-      "location": null,
-      "status": null,
-      "displayOnDashboard": false
-    },
-    {
-      "id": "aapanel-ai",
-      "name": "aaPanel AI Assistant",
-      "description": "Integrates multiple AI agents to provide all-around assistance such as chat, writing, and analysis.",
-      "category": "tools",
-      "group_name": "ai",
-      "exec_file": "aapanel-ai.exe",
-      "cli_file": "aapanel-ai.exe",
-      "price": null,
-      "expireDate": null,
-      "location": null,
-      "status": null,
-      "displayOnDashboard": false
-    },
-    {
-      "id": "openclaw",
-      "name": "openclaw(Docker)",
-      "description": "OpenClaw (formerly known as Moltbot and Clawdbot) is a self-hosted AI assistant that lets you use it anytime, anywhere.",
-      "category": "tools",
-      "group_name": "ai",
-      "exec_file": "openclaw.exe",
-      "cli_file": "openclaw.exe",
-      "price": null,
-      "expireDate": null,
-      "location": null,
-      "status": null,
-      "displayOnDashboard": false
-    },
-    {
-      "id": "website-stats",
-      "name": "Website statistics-v2",
-      "description": "Real-time analysis of website operating users and access status, accurate statistics of website traffic, IP, UV, PV, requests, spiders and other data.",
-      "category": "monitoring",
-      "group_name": "analytics",
-      "exec_file": "website-stats.exe",
-      "cli_file": "website-stats.exe",
-      "price": 34.80,
-      "expireDate": "Perpetual",
-      "location": null,
-      "status": null,
-      "displayOnDashboard": false
-    },
-    {
-      "id": "nginx-waf",
-      "name": "Nginx WAF",
-      "description": "Mitigating DDOS attacks, easily creating custom rules, protecting your website and reducing the risk of malicious attacks and data leakage.",
-      "category": "security",
-      "group_name": "firewall",
-      "exec_file": "nginx-waf.exe",
-      "cli_file": "nginx-waf.exe",
-      "price": 34.80,
-      "expireDate": "Perpetual",
-      "location": null,
-      "status": null,
-      "displayOnDashboard": false
-    },
     {
       "id": "pyenv",
       "name": "pyenv",
@@ -80,12 +10,7 @@
       "group_name": "python",
       "exec_file": "pyenv.exe",
       "cli_file": "pyenv.exe",
-      "versions": ["latest", "3.12.0", "3.11.6", "3.10.13", "3.9.18"],
-      "price": null,
-      "expireDate": null,
-      "location": null,
-      "status": null,
-      "displayOnDashboard": false
+      "auto_update": false
     },
     {
       "id": "nodejs",
@@ -95,12 +20,20 @@
       "group_name": "nodejs",
       "exec_file": "node.exe",
       "cli_file": "node.exe",
-      "versions": ["latest", "20.10.0", "18.19.0", "16.20.2"],
-      "price": null,
-      "expireDate": null,
-      "location": null,
-      "status": null,
-      "displayOnDashboard": false
+      "auto_update": true,
+      "versions": [
+        "latest",
+        "25.9.0",
+        "25.8.2",
+        "25.8.1",
+        "25.8.0",
+        "25.7.0",
+        "25.6.1",
+        "25.6.0",
+        "25.5.0",
+        "25.4.0",
+        "25.3.0"
+      ]
     },
     {
       "id": "php82",
@@ -110,41 +43,27 @@
       "group_name": "php",
       "exec_file": "php.exe",
       "cli_file": "php.exe",
-      "price": null,
-      "expireDate": null,
-      "location": "folder",
-      "status": "running",
-      "displayOnDashboard": true,
-      "isInstalled": true
+      "auto_update": true
     },
     {
-      "id": "mysql8",
-      "name": "MySQL 8.0",
+      "id": "mysql",
+      "name": "MySQL",
       "description": "MySQL Community Server",
       "category": "database",
       "group_name": "database",
       "exec_file": "mysqld.exe",
       "cli_file": "mysql.exe",
-      "price": null,
-      "expireDate": null,
-      "location": null,
-      "status": null,
-      "displayOnDashboard": false
+      "auto_update": true
     },
     {
       "id": "nginx",
-      "name": "Nginx 1.29.4",
+      "name": "Nginx",
       "description": "Lightweight, less memory, concurrent ability",
       "category": "webserver",
       "group_name": "webserver",
       "exec_file": "nginx.exe",
       "cli_file": "nginx.exe",
-      "price": null,
-      "expireDate": null,
-      "location": "folder",
-      "status": "running",
-      "displayOnDashboard": true,
-      "isInstalled": true
+      "auto_update": true
     },
     {
       "id": "apache",
@@ -154,11 +73,7 @@
       "group_name": "webserver",
       "exec_file": "httpd.exe",
       "cli_file": "httpd.exe",
-      "price": null,
-      "expireDate": null,
-      "location": null,
-      "status": null,
-      "displayOnDashboard": false
+      "auto_update": true
     }
   ]
 }
