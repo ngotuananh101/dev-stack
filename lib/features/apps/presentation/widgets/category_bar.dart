@@ -35,7 +35,9 @@ class CategoryBar extends StatelessWidget {
             final index = entry.key;
             final cat = entry.value;
             return Padding(
-              padding: EdgeInsets.only(right: index == _categories.length - 1 ? 0 : 12),
+              padding: EdgeInsets.only(
+                right: index == _categories.length - 1 ? 0 : 12,
+              ),
               child: _buildCategoryItem(cat['label']!, cat['value']),
             );
           }).toList(),
@@ -56,13 +58,13 @@ class CategoryBar extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected 
-                ? AppColors.primary.withOpacity(0.1) 
+            color: isSelected
+                ? AppColors.primary.withOpacity(0.1)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected 
-                  ? AppColors.primary.withOpacity(0.5) 
+              color: isSelected
+                  ? AppColors.primary.withOpacity(0.5)
                   : AppColors.surfaceLight,
               width: 1,
             ),
@@ -73,16 +75,20 @@ class CategoryBar extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: AppTextSize.small,
+                  fontSize: AppTextSize.xxs,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
                 ),
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : AppColors.surfaceLight,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(

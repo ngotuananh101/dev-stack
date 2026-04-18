@@ -25,7 +25,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
   String _selectedVersion = 'latest';
 
   IconData _getAppIcon() {
-    if (widget.app.appId.contains('python') || widget.app.appId.contains('pyenv')) {
+    if (widget.app.appId.contains('python') ||
+        widget.app.appId.contains('pyenv')) {
       return Icons.code;
     } else if (widget.app.appId.contains('node')) {
       return Icons.javascript;
@@ -40,7 +41,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
   }
 
   Color _getIconColor() {
-    if (widget.app.appId.contains('python') || widget.app.appId.contains('pyenv')) {
+    if (widget.app.appId.contains('python') ||
+        widget.app.appId.contains('pyenv')) {
       return const Color(0xFF3776AB);
     } else if (widget.app.appId.contains('node')) {
       return const Color(0xFF68A063);
@@ -97,11 +99,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
               color: _getIconColor().withOpacity(0.15),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Icon(
-              _getAppIcon(),
-              size: 18,
-              color: _getIconColor(),
-            ),
+            child: Icon(_getAppIcon(), size: 18, color: _getIconColor()),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -111,7 +109,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                 Text(
                   'Install ${widget.app.name}',
                   style: const TextStyle(
-                    fontSize: AppTextSize.body,
+                    fontSize: AppTextSize.sm,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
@@ -119,7 +117,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                 Text(
                   'Select version to install',
                   style: TextStyle(
-                    fontSize: AppTextSize.small,
+                    fontSize: AppTextSize.xxs,
                     color: AppColors.textMuted,
                   ),
                 ),
@@ -140,7 +138,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           const Text(
             'Select Version:',
             style: TextStyle(
-              fontSize: AppTextSize.body,
+              fontSize: AppTextSize.sm,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
@@ -148,7 +146,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           const SizedBox(height: 16),
           // Scrollable version list with max height
           ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 240), // ~80vh equivalent (3-4 items visible)
+            constraints: const BoxConstraints(
+              maxHeight: 240,
+            ), // ~80vh equivalent (3-4 items visible)
             child: SingleChildScrollView(
               child: Column(
                 children: versionInfo.versions
@@ -179,7 +179,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           Text(
             'Loading available versions...',
             style: TextStyle(
-              fontSize: AppTextSize.body,
+              fontSize: AppTextSize.sm,
               color: AppColors.textMuted,
             ),
           ),
@@ -202,7 +202,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           Text(
             'Failed to load versions',
             style: TextStyle(
-              fontSize: AppTextSize.body,
+              fontSize: AppTextSize.sm,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
@@ -212,7 +212,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             error,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: AppTextSize.small,
+              fontSize: AppTextSize.xxs,
               color: AppColors.textMuted,
             ),
           ),
@@ -221,14 +221,14 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             onPressed: () {
               // Delay to avoid modifying provider during build
               Future(() {
-                ref.read(appVersionsProvider(widget.app.appId).notifier).refresh();
+                ref
+                    .read(appVersionsProvider(widget.app.appId).notifier)
+                    .refresh();
               });
             },
             icon: const Icon(Icons.refresh, size: 16),
             label: const Text('Retry'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primary,
-            ),
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
           ),
         ],
       ),
@@ -283,9 +283,11 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             Text(
               version,
               style: TextStyle(
-                fontSize: AppTextSize.body,
+                fontSize: AppTextSize.sm,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                color: isSelected
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
               ),
             ),
           ],
@@ -308,7 +310,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             child: const Text(
               'Close',
               style: TextStyle(
-                fontSize: AppTextSize.body,
+                fontSize: AppTextSize.sm,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
               ),
@@ -328,7 +330,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             child: Text(
               'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
               style: const TextStyle(
-                fontSize: AppTextSize.body,
+                fontSize: AppTextSize.sm,
                 fontWeight: FontWeight.w600,
               ),
             ),

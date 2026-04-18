@@ -37,7 +37,7 @@ class StatCard extends ConsumerWidget {
                   Text(
                     title.toUpperCase(),
                     style: const TextStyle(
-                      fontSize: AppTextSize.cardTitle,
+                      fontSize: AppTextSize.xxs,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textSecondary,
                     ),
@@ -46,7 +46,7 @@ class StatCard extends ConsumerWidget {
                   Text(
                     label,
                     style: const TextStyle(
-                      fontSize: AppTextSize.h4,
+                      fontSize: AppTextSize.lg,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
@@ -59,7 +59,7 @@ class StatCard extends ConsumerWidget {
                   Text(
                     '${metrics.cpuUsage.toStringAsFixed(1)}%',
                     style: const TextStyle(
-                      fontSize: AppTextSize.cardValue,
+                      fontSize: AppTextSize.xxl,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
@@ -67,7 +67,7 @@ class StatCard extends ConsumerWidget {
                   Text(
                     subValue,
                     style: const TextStyle(
-                      fontSize: AppTextSize.small,
+                      fontSize: AppTextSize.xxs,
                       color: AppColors.textSecondary,
                     ),
                   ),
@@ -92,7 +92,9 @@ class StatCard extends ConsumerWidget {
                     barRods: [
                       BarChartRodData(
                         toY: entry.value,
-                        color: entry.value > 80 ? AppColors.error : AppColors.accent,
+                        color: entry.value > 80
+                            ? AppColors.error
+                            : AppColors.accent,
                         width: 10,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(2),

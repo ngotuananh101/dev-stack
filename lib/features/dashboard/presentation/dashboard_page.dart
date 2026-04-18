@@ -103,7 +103,7 @@ class DashboardPage extends ConsumerWidget {
         Text(
           title,
           style: TextStyle(
-            fontSize: isMain ? AppTextSize.h3 : AppTextSize.caption,
+            fontSize: isMain ? AppTextSize.xl : AppTextSize.xs,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
             letterSpacing: isMain ? 0 : 1,
@@ -161,7 +161,7 @@ class DashboardPage extends ConsumerWidget {
             const Text(
               'LIVE CONSOLE OUTPUT',
               style: TextStyle(
-                fontSize: AppTextSize.small,
+                fontSize: AppTextSize.xxs,
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.bold,
               ),

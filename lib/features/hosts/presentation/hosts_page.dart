@@ -71,7 +71,7 @@ class _HostsPageState extends ConsumerState<HostsPage> {
         child: Scaffold(
           backgroundColor: AppColors.background,
           body: Padding(
-            padding: const EdgeInsets.all(AppTextSize.h1),
+            padding: const EdgeInsets.all(AppTextSize.xxxl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -106,7 +106,7 @@ class _HostsPageState extends ConsumerState<HostsPage> {
             Text(
               'Hosts Editor',
               style: TextStyle(
-                fontSize: AppTextSize.h3,
+                fontSize: AppTextSize.xl,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
@@ -114,7 +114,7 @@ class _HostsPageState extends ConsumerState<HostsPage> {
             Text(
               'Edit C:\\Windows\\System32\\drivers\\etc\\hosts directly',
               style: TextStyle(
-                fontSize: AppTextSize.label,
+                fontSize: AppTextSize.xs,
                 color: AppColors.textSecondary,
               ),
             ),

@@ -30,12 +30,8 @@ class AppTheme {
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
-          bodyLarge: TextStyle(
-            color: AppColors.textPrimary,
-          ),
-          bodyMedium: TextStyle(
-            color: AppColors.textSecondary,
-          ),
+          bodyLarge: TextStyle(color: AppColors.textPrimary),
+          bodyMedium: TextStyle(color: AppColors.textSecondary),
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -44,7 +40,7 @@ class AppTheme {
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: AppColors.textPrimary,
-          fontSize: AppTextSize.h4,
+          fontSize: AppTextSize.lg,
           fontWeight: FontWeight.bold,
         ),
       ),

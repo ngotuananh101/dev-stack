@@ -28,7 +28,7 @@ class FeaturedBanner extends StatelessWidget {
                       const Text(
                         'aaCloud Premium',
                         style: TextStyle(
-                          fontSize: AppTextSize.h4,
+                          fontSize: AppTextSize.lg,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
@@ -37,7 +37,7 @@ class FeaturedBanner extends StatelessWidget {
                       Text(
                         'Advanced cloud synchronization and high-performance caching for global development environments.',
                         style: const TextStyle(
-                          fontSize: AppTextSize.small,
+                          fontSize: AppTextSize.xxs,
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -55,7 +55,7 @@ class FeaturedBanner extends StatelessWidget {
                         child: const Text(
                           'FEATURED DEPLOYMENT',
                           style: TextStyle(
-                            fontSize: AppTextSize.small,
+                            fontSize: AppTextSize.xxs,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -89,7 +89,7 @@ class FeaturedBanner extends StatelessWidget {
                 Text(
                   '142+',
                   style: TextStyle(
-                    fontSize: AppTextSize.h2,
+                    fontSize: AppTextSize.xxl,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
                   ),
@@ -98,7 +98,7 @@ class FeaturedBanner extends StatelessWidget {
                 const Text(
                   'AVAILABLE MODULES',
                   style: TextStyle(
-                    fontSize: AppTextSize.caption,
+                    fontSize: AppTextSize.xs,
                     color: AppColors.textSecondary,
                     letterSpacing: 1,
                   ),
@@ -113,14 +113,20 @@ class FeaturedBanner extends StatelessWidget {
                     _buildStatBadge('NGX', const Color(0xFF4169E1)),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceLight,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
                         '+',
-                        style: TextStyle(fontSize: AppTextSize.small, color: AppColors.textSecondary),
+                        style: TextStyle(
+                          fontSize: AppTextSize.xxs,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -143,7 +149,7 @@ class FeaturedBanner extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontSize: AppTextSize.tiny,
+          fontSize: AppTextSize.xxxs,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),

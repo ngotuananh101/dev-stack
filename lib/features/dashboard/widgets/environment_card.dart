@@ -33,9 +33,9 @@ class EnvironmentCard extends StatelessWidget {
               StatusChip(type: status),
               Row(
                 children: [
-                   _buildIconButton(LucideIcons.play),
-                   const SizedBox(width: 4),
-                   _buildIconButton(LucideIcons.maximize2),
+                  _buildIconButton(LucideIcons.play),
+                  const SizedBox(width: 4),
+                  _buildIconButton(LucideIcons.maximize2),
                 ],
               ),
             ],
@@ -44,7 +44,7 @@ class EnvironmentCard extends StatelessWidget {
           Text(
             name,
             style: const TextStyle(
-              fontSize: AppTextSize.h5,
+              fontSize: AppTextSize.base,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
@@ -53,7 +53,7 @@ class EnvironmentCard extends StatelessWidget {
           Text(
             '$host • $runtime',
             style: const TextStyle(
-              fontSize: AppTextSize.caption,
+              fontSize: AppTextSize.xs,
               color: AppColors.textSecondary,
             ),
           ),
@@ -83,7 +83,7 @@ class EnvironmentCard extends StatelessWidget {
       child: Text(
         tag,
         style: const TextStyle(
-          fontSize: AppTextSize.tiny,
+          fontSize: AppTextSize.xxxs,
           fontWeight: FontWeight.bold,
           color: AppColors.textSecondary,
         ),

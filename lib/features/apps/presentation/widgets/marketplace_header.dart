@@ -23,7 +23,7 @@ class MarketplaceHeader extends StatelessWidget {
             Text(
               'REGISTRY EXPLORER',
               style: TextStyle(
-                fontSize: AppTextSize.caption,
+                fontSize: AppTextSize.xs,
                 color: AppColors.textSecondary,
                 letterSpacing: 1.5,
                 fontWeight: FontWeight.w600,
@@ -33,7 +33,7 @@ class MarketplaceHeader extends StatelessWidget {
             Text(
               'Marketplace',
               style: TextStyle(
-                fontSize: AppTextSize.h2,
+                fontSize: AppTextSize.xxl,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
@@ -74,7 +74,7 @@ class MarketplaceHeader extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: AppTextSize.small,
+            fontSize: AppTextSize.xxs,
             fontWeight: FontWeight.w500,
             color: isSelected ? Colors.white : AppColors.textSecondary,
           ),

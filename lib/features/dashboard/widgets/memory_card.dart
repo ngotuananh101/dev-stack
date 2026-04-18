@@ -19,7 +19,7 @@ class MemoryCard extends ConsumerWidget {
           const Text(
             'MEMORY ALLOCATION',
             style: TextStyle(
-              fontSize: AppTextSize.cardTitle,
+              fontSize: AppTextSize.xxs,
               fontWeight: FontWeight.bold,
               color: AppColors.textSecondary,
               letterSpacing: 1,
@@ -29,7 +29,7 @@ class MemoryCard extends ConsumerWidget {
           Text(
             '${metrics.memoryUsed.toStringAsFixed(1)} GB / ${metrics.memoryTotal.toStringAsFixed(0)} GB',
             style: const TextStyle(
-              fontSize: AppTextSize.h4,
+              fontSize: AppTextSize.lg,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
@@ -48,11 +48,17 @@ class MemoryCard extends ConsumerWidget {
             children: [
               Text(
                 'USED: ${metrics.memoryPercentage.toStringAsFixed(0)}%',
-                style: const TextStyle(fontSize: AppTextSize.small, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: AppTextSize.xxs,
+                  color: AppColors.textSecondary,
+                ),
               ),
               Text(
                 'FREE: ${(metrics.memoryTotal - metrics.memoryUsed).toStringAsFixed(1)} GB',
-                style: const TextStyle(fontSize: AppTextSize.small, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: AppTextSize.xxs,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -76,7 +82,7 @@ class MemoryCard extends ConsumerWidget {
         Text(
           label,
           style: const TextStyle(
-            fontSize: AppTextSize.tiny,
+            fontSize: AppTextSize.xxxs,
             color: AppColors.textSecondary,
             letterSpacing: 1,
           ),
@@ -84,7 +90,7 @@ class MemoryCard extends ConsumerWidget {
         Text(
           value,
           style: const TextStyle(
-            fontSize: AppTextSize.body,
+            fontSize: AppTextSize.sm,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
           ),

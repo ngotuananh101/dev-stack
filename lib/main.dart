@@ -55,9 +55,7 @@ class MainScreen extends ConsumerWidget {
       body: Row(
         children: [
           Sidebar(),
-          Expanded(
-            child: _buildPage(currentTab),
-          ),
+          Expanded(child: _buildPage(currentTab)),
         ],
       ),
     );
@@ -75,7 +73,10 @@ class MainScreen extends ConsumerWidget {
         return Center(
           child: Text(
             '${tab.name.toUpperCase()} feature coming soon...',
-            style: const TextStyle(color: Colors.white, fontSize: AppTextSize.navItem),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: AppTextSize.sm,
+            ),
           ),
         );
     }

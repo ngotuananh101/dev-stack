@@ -116,14 +116,14 @@ class Sidebar extends ConsumerWidget {
                 'DevStack',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: AppTextSize.h4,
+                  fontSize: AppTextSize.lg,
                   color: AppColors.textPrimary,
                 ),
               ),
               Text(
                 'LOCAL NODE',
                 style: TextStyle(
-                  fontSize: AppTextSize.small,
+                  fontSize: AppTextSize.xxs,
                   color: AppColors.textSecondary.withOpacity(0.7),
                   letterSpacing: 1,
                 ),

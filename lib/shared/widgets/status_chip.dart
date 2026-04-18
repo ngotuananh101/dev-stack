@@ -8,11 +8,7 @@ class StatusChip extends StatelessWidget {
   final StatusType type;
   final String? label;
 
-  const StatusChip({
-    super.key,
-    required this.type,
-    this.label,
-  });
+  const StatusChip({super.key, required this.type, this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +23,7 @@ class StatusChip extends StatelessWidget {
         (label ?? _getDefaultLabel()).toUpperCase(),
         style: TextStyle(
           color: _getColor(),
-          fontSize: AppTextSize.small,
+          fontSize: AppTextSize.xxs,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
         ),

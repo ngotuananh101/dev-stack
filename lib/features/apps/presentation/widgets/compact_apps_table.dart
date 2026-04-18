@@ -19,16 +19,19 @@ class CompactAppsTable extends StatelessWidget {
   IconData _getAppIcon(String appId) {
     if (appId.contains('nginx') && appId.contains('waf')) return Icons.shield;
     if (appId.contains('php')) return Icons.code;
-    if (appId.contains('apache') && appId.contains('waf')) return Icons.security;
+    if (appId.contains('apache') && appId.contains('waf'))
+      return Icons.security;
     if (appId.contains('mysql')) return Icons.storage;
     if (appId.contains('cloud')) return Icons.cloud;
     return Icons.apps;
   }
 
   Color _getIconColor(String appId) {
-    if (appId.contains('nginx') && appId.contains('waf')) return const Color(0xFF4169E1);
+    if (appId.contains('nginx') && appId.contains('waf'))
+      return const Color(0xFF4169E1);
     if (appId.contains('php')) return const Color(0xFF7B68EE);
-    if (appId.contains('apache') && appId.contains('waf')) return const Color(0xFFDC143C);
+    if (appId.contains('apache') && appId.contains('waf'))
+      return const Color(0xFFDC143C);
     if (appId.contains('mysql')) return const Color(0xFF20B2AA);
     if (appId.contains('cloud')) return const Color(0xFF58A6FF);
     return AppColors.primary;
@@ -49,16 +52,24 @@ class CompactAppsTable extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.surfaceLight,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8),
+              ),
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
               children: [
                 Expanded(flex: 3, child: _buildHeaderCell('SOFTWARE NAME')),
-                Expanded(flex: 1, child: _buildHeaderCell('DEVELOPER')),
+                Expanded(flex: 2, child: _buildHeaderCell('DEVELOPER')),
                 Expanded(flex: 3, child: _buildHeaderCell('DESCRIPTION')),
                 Expanded(flex: 1, child: _buildHeaderCell('STATUS')),
-                Expanded(flex: 2, child: _buildHeaderCell('OPERATE', alignment: TextAlign.right)),
+                Expanded(
+                  flex: 2,
+                  child: _buildHeaderCell(
+                    'OPERATE',
+                    alignment: TextAlign.right,
+                  ),
+                ),
               ],
             ),
           ),
@@ -73,12 +84,15 @@ class CompactAppsTable extends StatelessWidget {
     );
   }
 
-  Widget _buildHeaderCell(String label, {TextAlign alignment = TextAlign.left}) {
+  Widget _buildHeaderCell(
+    String label, {
+    TextAlign alignment = TextAlign.left,
+  }) {
     return Text(
       label,
       textAlign: alignment,
       style: const TextStyle(
-        fontSize: AppTextSize.tiny,
+        fontSize: AppTextSize.xxxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -123,7 +137,7 @@ class CompactAppsTable extends StatelessWidget {
                       Text(
                         app.name,
                         style: const TextStyle(
-                          fontSize: AppTextSize.small,
+                          fontSize: AppTextSize.sm,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
@@ -131,7 +145,7 @@ class CompactAppsTable extends StatelessWidget {
                       Text(
                         'v0.1.0',
                         style: TextStyle(
-                          fontSize: AppTextSize.tiny,
+                          fontSize: AppTextSize.xxxs,
                           color: AppColors.textMuted,
                         ),
                       ),
@@ -143,18 +157,35 @@ class CompactAppsTable extends StatelessWidget {
           ),
           // Developer
           Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                app.developer,
-                style: const TextStyle(
-                  fontSize: AppTextSize.tiny,
-                  color: AppColors.textSecondary,
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: app.developer.toLowerCase() == 'official'
+                      ? AppColors.primary.withOpacity(0.1)
+                      : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: app.developer.toLowerCase() == 'official'
+                        ? AppColors.primary.withOpacity(0.3)
+                        : AppColors.border,
+                    width: 0.5,
+                  ),
+                ),
+                child: Text(
+                  app.developer.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: app.developer.toLowerCase() == 'official'
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ),
@@ -167,21 +198,15 @@ class CompactAppsTable extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: AppTextSize.small,
+                fontSize: AppTextSize.xxs,
                 color: AppColors.textSecondary,
               ),
             ),
           ),
           // Status
-          Expanded(
-            flex: 1,
-            child: _buildStatusIndicator(app),
-          ),
+          Expanded(flex: 1, child: _buildStatusIndicator(app)),
           // Operate buttons
-          Expanded(
-            flex: 2,
-            child: _buildOperateButtons(context, app),
-          ),
+          Expanded(flex: 2, child: _buildOperateButtons(context, app)),
         ],
       ),
     );
@@ -203,7 +228,7 @@ class CompactAppsTable extends StatelessWidget {
           const Text(
             'Running',
             style: TextStyle(
-              fontSize: AppTextSize.small,
+              fontSize: AppTextSize.xxs,
               color: AppColors.success,
               fontWeight: FontWeight.w500,
             ),
@@ -225,7 +250,7 @@ class CompactAppsTable extends StatelessWidget {
           const Text(
             'Installed',
             style: TextStyle(
-              fontSize: AppTextSize.small,
+              fontSize: AppTextSize.xxs,
               color: AppColors.primary,
               fontWeight: FontWeight.w500,
             ),
@@ -235,10 +260,7 @@ class CompactAppsTable extends StatelessWidget {
     } else {
       return const Text(
         'Not Installed',
-        style: TextStyle(
-          fontSize: AppTextSize.small,
-          color: AppColors.textMuted,
-        ),
+        style: TextStyle(fontSize: AppTextSize.xxs, color: AppColors.textMuted),
       );
     }
   }
@@ -252,14 +274,17 @@ class CompactAppsTable extends StatelessWidget {
             OutlinedButton(
               onPressed: () => onToggleInstall(app),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 side: BorderSide(color: AppColors.border),
                 backgroundColor: AppColors.surfaceLight,
               ),
               child: const Text(
                 'STOP',
                 style: TextStyle(
-                  fontSize: AppTextSize.tiny,
+                  fontSize: AppTextSize.xxxs,
                   fontWeight: FontWeight.w600,
                   color: AppColors.error,
                 ),
@@ -269,14 +294,17 @@ class CompactAppsTable extends StatelessWidget {
             OutlinedButton(
               onPressed: () => onToggleInstall(app),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 side: BorderSide(color: AppColors.border),
                 backgroundColor: AppColors.surfaceLight,
               ),
               child: const Text(
                 'LOGS',
                 style: TextStyle(
-                  fontSize: AppTextSize.tiny,
+                  fontSize: AppTextSize.xxxs,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
                 ),
@@ -286,14 +314,17 @@ class CompactAppsTable extends StatelessWidget {
             OutlinedButton(
               onPressed: () => onToggleInstall(app),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 side: BorderSide(color: AppColors.border),
                 backgroundColor: AppColors.surfaceLight,
               ),
               child: const Text(
                 'SETUP',
                 style: TextStyle(
-                  fontSize: AppTextSize.tiny,
+                  fontSize: AppTextSize.xxxs,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
                 ),
@@ -303,13 +334,16 @@ class CompactAppsTable extends StatelessWidget {
             ElevatedButton(
               onPressed: () => onToggleInstall(app),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 backgroundColor: AppColors.primary.withOpacity(0.2),
               ),
               child: const Text(
                 'UPDATE',
                 style: TextStyle(
-                  fontSize: AppTextSize.tiny,
+                  fontSize: AppTextSize.xxxs,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primary,
                 ),
@@ -327,7 +361,7 @@ class CompactAppsTable extends StatelessWidget {
             child: const Text(
               'INSTALL',
               style: TextStyle(
-                fontSize: AppTextSize.tiny,
+                fontSize: AppTextSize.xxxs,
                 fontWeight: FontWeight.w600,
                 color: AppColors.primary,
               ),

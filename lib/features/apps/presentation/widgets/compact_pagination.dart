@@ -29,7 +29,7 @@ class CompactPagination extends StatelessWidget {
         Text(
           'Showing $startItem-$endItem of $totalItems items',
           style: const TextStyle(
-            fontSize: AppTextSize.small,
+            fontSize: AppTextSize.xxs,
             color: AppColors.textMuted,
           ),
         ),
@@ -39,7 +39,9 @@ class CompactPagination extends StatelessWidget {
             // Previous button
             _buildPageButton(
               icon: Icons.chevron_left,
-              onPressed: currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
+              onPressed: currentPage > 1
+                  ? () => onPageChanged(currentPage - 1)
+                  : null,
             ),
             const SizedBox(width: 4),
             // Page numbers
@@ -48,7 +50,9 @@ class CompactPagination extends StatelessWidget {
             // Next button
             _buildPageButton(
               icon: Icons.chevron_right,
-              onPressed: currentPage < totalPages ? () => onPageChanged(currentPage + 1) : null,
+              onPressed: currentPage < totalPages
+                  ? () => onPageChanged(currentPage + 1)
+                  : null,
             ),
           ],
         ),
@@ -69,23 +73,25 @@ class CompactPagination extends StatelessWidget {
         onPressed: onPressed,
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(),
-        color: onPressed == null ? AppColors.textMuted : AppColors.textSecondary,
+        color: onPressed == null
+            ? AppColors.textMuted
+            : AppColors.textSecondary,
       ),
     );
   }
 
   List<Widget> _buildPageNumbers() {
     if (totalPages <= 0) return [];
-    
+
     final List<Widget> widgets = [];
-    
+
     int start = (currentPage - 2).clamp(1, totalPages);
     int end = (start + 4).clamp(start, totalPages);
-    
+
     if (end == totalPages) {
       start = (end - 4).clamp(1, totalPages);
     }
-    
+
     for (int i = start; i <= end; i++) {
       widgets.add(
         Padding(
@@ -94,7 +100,7 @@ class CompactPagination extends StatelessWidget {
         ),
       );
     }
-    
+
     return widgets;
   }
 
@@ -105,7 +111,9 @@ class CompactPagination extends StatelessWidget {
       height: 28,
       decoration: BoxDecoration(
         color: isSelected ? AppColors.primary : Colors.transparent,
-        border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
+        border: Border.all(
+          color: isSelected ? AppColors.primary : AppColors.border,
+        ),
         borderRadius: BorderRadius.circular(4),
       ),
       child: TextButton(
@@ -118,7 +126,7 @@ class CompactPagination extends StatelessWidget {
         child: Text(
           '$page',
           style: TextStyle(
-            fontSize: AppTextSize.small,
+            fontSize: AppTextSize.xxs,
             color: isSelected ? Colors.white : AppColors.textSecondary,
           ),
         ),
