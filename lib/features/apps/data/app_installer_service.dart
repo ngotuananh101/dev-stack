@@ -57,7 +57,7 @@ class AppInstallerService {
       throw Exception('Download URL for version $version not found.');
     }
 
-    final installPath = p.join(defaultBaseDir, app.groupName ?? app.appId, version);
+    final installPath = p.join(defaultBaseDir, app.appId, version);
     final directory = Directory(installPath);
     if (!directory.existsSync()) {
       directory.createSync(recursive: true);

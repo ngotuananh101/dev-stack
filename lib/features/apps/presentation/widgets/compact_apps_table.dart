@@ -286,12 +286,16 @@ class CompactAppsTable extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                app.installStatus ?? 'Installing...',
-                style: const TextStyle(
-                  fontSize: AppTextSize.xxs,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  app.installStatus ?? 'Installing...',
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontSize: AppTextSize.xxs,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
