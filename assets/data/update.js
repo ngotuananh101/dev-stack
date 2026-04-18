@@ -312,14 +312,24 @@ async function fetchGithubReleases(repoPath) {
     data.forEach(r => {
       const ver = r.tag_name.replace(/^(v|release-|redis-|redis|r(?=\d))/i, '');
       
-      // Tìm asset phù hợp (zip, msi, exe)
-      let downloadUrl = r.html_url; // Fallback
+      // Tìm asset phù hợp (ưu tiên có 'win', sau đó là bất kỳ zip/msi nào)
+      let downloadUrl = `https://github.com/${repoPath}/archive/refs/tags/${r.tag_name}.zip`; // Fallback mặc định là source zip
+      
       if (r.assets && r.assets.length > 0) {
-        const winAsset = r.assets.find(a => 
-          a.name.toLowerCase().includes('win') || 
-          a.name.toLowerCase().endsWith('.zip') || 
-          a.name.toLowerCase().endsWith('.msi')
+        // Ưu tiên 1: Có 'win' và là zip/msi
+        let winAsset = r.assets.find(a => 
+          (a.name.toLowerCase().includes('win') || a.name.toLowerCase().includes('x64')) && 
+          (a.name.toLowerCase().endsWith('.zip') || a.name.toLowerCase().endsWith('.msi'))
         );
+        
+        // Ưu tiên 2: Bất kỳ file zip/msi nào
+        if (!winAsset) {
+          winAsset = r.assets.find(a => 
+            a.name.toLowerCase().endsWith('.zip') || 
+            a.name.toLowerCase().endsWith('.msi')
+          );
+        }
+        
         if (winAsset) downloadUrl = winAsset.browser_download_url;
       }
       
@@ -380,15 +390,15 @@ async function fetchApacheVersions() {
     
     const html = await response.text();
     
-    // Sử dụng regex linh hoạt hơn để bắt cả đường dẫn tương đối và tuyệt đối
-    // Tập trung vào thư mục /binaries/ để lấy đúng bộ cài Apache Core
-    const regex = /(?:https:\/\/www\.apachelounge\.com)?(\/download\/.*?\/binaries\/httpd-([\d.]+)-[\d]+-win64-.*?\.zip)/gi;
+    // Sử dụng regex giới hạn trong thẻ href để tránh bắt nhầm text bên ngoài
+    const regex = /href="([^"]*?\/binaries\/httpd-([\d.]+)-[\d]+-win64-.*?\.zip)"/gi;
     const matches = html.matchAll(regex);
     const versions = {};
     
     for (const match of matches) {
       const path = match[1];
       const ver = match[2];
+      // Nếu là đường dẫn tương đối, thêm domain vào
       const fullUrl = path.startsWith('http') ? path : `https://www.apachelounge.com${path}`;
       versions[ver] = fullUrl;
     }
