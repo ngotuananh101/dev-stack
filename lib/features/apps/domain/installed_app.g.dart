@@ -27,23 +27,33 @@ const InstalledAppSchema = CollectionSchema(
       name: r'appName',
       type: IsarType.string,
     ),
-    r'installedAt': PropertySchema(
+    r'cliFilePath': PropertySchema(
       id: 2,
+      name: r'cliFilePath',
+      type: IsarType.string,
+    ),
+    r'execFilePath': PropertySchema(
+      id: 3,
+      name: r'execFilePath',
+      type: IsarType.string,
+    ),
+    r'installedAt': PropertySchema(
+      id: 4,
       name: r'installedAt',
       type: IsarType.dateTime,
     ),
     r'location': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'location',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'status',
       type: IsarType.string,
     ),
     r'version': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'version',
       type: IsarType.string,
     )
@@ -84,6 +94,18 @@ int _installedAppEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.appId.length * 3;
   bytesCount += 3 + object.appName.length * 3;
+  {
+    final value = object.cliFilePath;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.execFilePath;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.location.length * 3;
   bytesCount += 3 + object.status.length * 3;
   {
@@ -103,10 +125,12 @@ void _installedAppSerialize(
 ) {
   writer.writeString(offsets[0], object.appId);
   writer.writeString(offsets[1], object.appName);
-  writer.writeDateTime(offsets[2], object.installedAt);
-  writer.writeString(offsets[3], object.location);
-  writer.writeString(offsets[4], object.status);
-  writer.writeString(offsets[5], object.version);
+  writer.writeString(offsets[2], object.cliFilePath);
+  writer.writeString(offsets[3], object.execFilePath);
+  writer.writeDateTime(offsets[4], object.installedAt);
+  writer.writeString(offsets[5], object.location);
+  writer.writeString(offsets[6], object.status);
+  writer.writeString(offsets[7], object.version);
 }
 
 InstalledApp _installedAppDeserialize(
@@ -118,10 +142,12 @@ InstalledApp _installedAppDeserialize(
   final object = InstalledApp(
     appId: reader.readString(offsets[0]),
     appName: reader.readString(offsets[1]),
-    installedAt: reader.readDateTimeOrNull(offsets[2]),
-    location: reader.readString(offsets[3]),
-    status: reader.readString(offsets[4]),
-    version: reader.readStringOrNull(offsets[5]),
+    cliFilePath: reader.readStringOrNull(offsets[2]),
+    execFilePath: reader.readStringOrNull(offsets[3]),
+    installedAt: reader.readDateTimeOrNull(offsets[4]),
+    location: reader.readString(offsets[5]),
+    status: reader.readString(offsets[6]),
+    version: reader.readStringOrNull(offsets[7]),
   );
   object.id = id;
   return object;
@@ -139,12 +165,16 @@ P _installedAppDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 5:
+      return (reader.readString(offset)) as P;
+    case 6:
+      return (reader.readString(offset)) as P;
+    case 7:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -610,6 +640,314 @@ extension InstalledAppQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'appName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'cliFilePath',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'cliFilePath',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'cliFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'cliFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'cliFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'cliFilePath',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'cliFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'cliFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'cliFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'cliFilePath',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'cliFilePath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      cliFilePathIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'cliFilePath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'execFilePath',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'execFilePath',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'execFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'execFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'execFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'execFilePath',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'execFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'execFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'execFilePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'execFilePath',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'execFilePath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      execFilePathIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'execFilePath',
         value: '',
       ));
     });
@@ -1200,6 +1538,32 @@ extension InstalledAppQuerySortBy
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByCliFilePath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cliFilePath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      sortByCliFilePathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cliFilePath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByExecFilePath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'execFilePath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      sortByExecFilePathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'execFilePath', Sort.desc);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByInstalledAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'installedAt', Sort.asc);
@@ -1273,6 +1637,32 @@ extension InstalledAppQuerySortThenBy
   QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByAppNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'appName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByCliFilePath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cliFilePath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      thenByCliFilePathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cliFilePath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByExecFilePath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'execFilePath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      thenByExecFilePathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'execFilePath', Sort.desc);
     });
   }
 
@@ -1354,6 +1744,20 @@ extension InstalledAppQueryWhereDistinct
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByCliFilePath(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'cliFilePath', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByExecFilePath(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'execFilePath', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByInstalledAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'installedAt');
@@ -1399,6 +1803,18 @@ extension InstalledAppQueryProperty
   QueryBuilder<InstalledApp, String, QQueryOperations> appNameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'appName');
+    });
+  }
+
+  QueryBuilder<InstalledApp, String?, QQueryOperations> cliFilePathProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'cliFilePath');
+    });
+  }
+
+  QueryBuilder<InstalledApp, String?, QQueryOperations> execFilePathProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'execFilePath');
     });
   }
 
