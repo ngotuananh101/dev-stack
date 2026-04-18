@@ -29,5 +29,6 @@ jobs:
             echo "GIST_ID is not set. Skipping gist update."
             exit 0
           fi
-          # Sử dụng GitHub CLI (sẵn có trên runner) để cập nhật Gist
-          gh gist edit "$GIST_ID" -f apps.json=assets/data/new-apps.json
+          # Sử dụng GitHub CLI để cập nhật nội dung file apps.json trong Gist
+          # Nếu file apps.json chưa tồn tại trong Gist, nó sẽ tự động được thêm vào
+          gh gist edit "$GIST_ID" -f "apps.json" < assets/data/new-apps.json
