@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_size.dart';
 import '../data/apps_provider.dart';
 import '../domain/app_model.dart';
 import 'widgets/marketplace_header.dart';
-import 'widgets/featured_banner.dart';
-import 'widgets/category_sidebar.dart';
+import 'widgets/category_bar.dart';
 import 'widgets/compact_apps_table.dart';
 import 'widgets/compact_pagination.dart';
 
@@ -82,9 +80,15 @@ class _AppsPageState extends ConsumerState<AppsPage> {
         data: (apps) {
           final filteredApps = _filterApps(apps);
           final paginatedApps = _paginateApps(filteredApps);
-          final totalPages = filteredApps.isEmpty ? 1 : (filteredApps.length / _itemsPerPage).ceil();
-          final startItem = filteredApps.isEmpty ? 0 : (_currentPage - 1) * _itemsPerPage + 1;
-          final endItem = filteredApps.isEmpty ? 0 : (_currentPage * _itemsPerPage).clamp(0, filteredApps.length);
+          final totalPages = filteredApps.isEmpty
+              ? 1
+              : (filteredApps.length / _itemsPerPage).ceil();
+          final startItem = filteredApps.isEmpty
+              ? 0
+              : (_currentPage - 1) * _itemsPerPage + 1;
+          final endItem = filteredApps.isEmpty
+              ? 0
+              : (_currentPage * _itemsPerPage).clamp(0, filteredApps.length);
           final categoryCounts = _getCategoryCounts(apps);
 
           return Column(
@@ -101,68 +105,57 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                 },
               ),
               const SizedBox(height: 24),
-              // Main content: Sidebar + Table
+              // Category Bar
+              CategoryBar(
+                selectedCategory: _selectedCategory,
+                onCategoryChanged: (value) {
+                  setState(() {
+                    _selectedCategory = value;
+                    _currentPage = 1;
+                  });
+                },
+                categoryCounts: categoryCounts,
+              ),
+              const SizedBox(height: 24),
+              // Main content: Table
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Column(
                   children: [
-                    // Sidebar
-                    SizedBox(
-                      width: 160,
-                      child: CategorySidebar(
-                        selectedCategory: _selectedCategory,
-                        onCategoryChanged: (value) {
-                          setState(() {
-                            _selectedCategory = value;
-                            _currentPage = 1;
-                          });
+                    // Table
+                    Expanded(
+                      child: CompactAppsTable(
+                        apps: paginatedApps,
+                        onToggleInstall: (app) async {
+                          await ref
+                              .read(appsNotifierProvider.notifier)
+                              .toggleInstallation(app);
                         },
-                        categoryCounts: categoryCounts,
+                        onToggleDashboard: (app) async {
+                          final repository = await ref.read(
+                            appsRepositoryProvider.future,
+                          );
+                          app.displayOnDashboard =
+                              !app.displayOnDashboard;
+                          await repository.save(app);
+                          await ref
+                              .read(appsNotifierProvider.notifier)
+                              .refresh();
+                        },
                       ),
                     ),
-                    const SizedBox(width: 24),
-                    // Table area
-                    Expanded(
-                      child: Column(
-                        children: [
-                          // Table
-                          Expanded(
-                            child: CompactAppsTable(
-                              apps: paginatedApps,
-                              onToggleInstall: (app) async {
-                                await ref
-                                    .read(appsNotifierProvider.notifier)
-                                    .toggleInstallation(app);
-                              },
-                              onToggleDashboard: (app) async {
-                                final repository = await ref.read(
-                                  appsRepositoryProvider.future,
-                                );
-                                app.displayOnDashboard =
-                                    !app.displayOnDashboard;
-                                await repository.save(app);
-                                await ref
-                                    .read(appsNotifierProvider.notifier)
-                                    .refresh();
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Pagination
-                          CompactPagination(
-                            currentPage: _currentPage,
-                            totalPages: totalPages,
-                            startItem: startItem,
-                            endItem: endItem,
-                            totalItems: filteredApps.length,
-                            onPageChanged: (page) {
-                              setState(() {
-                                _currentPage = page;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 16),
+                    // Pagination
+                    CompactPagination(
+                      currentPage: _currentPage,
+                      totalPages: totalPages,
+                      startItem: startItem,
+                      endItem: endItem,
+                      totalItems: filteredApps.length,
+                      onPageChanged: (page) {
+                        setState(() {
+                          _currentPage = page;
+                        });
+                      },
                     ),
                   ],
                 ),
