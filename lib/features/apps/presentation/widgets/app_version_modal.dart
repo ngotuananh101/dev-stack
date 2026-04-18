@@ -40,6 +40,23 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     return Icons.apps;
   }
 
+  String _getIconFileName() {
+    final id = widget.app.appId.toLowerCase();
+    final group = widget.app.groupName.toLowerCase();
+
+    if (id.contains('nodejs')) return 'nodejs';
+    if (id.contains('php')) return 'php';
+    if (id.contains('mysql')) return 'mysql';
+    if (id.contains('mariadb')) return 'mariadb';
+    if (id.contains('mongodb')) return 'mongodb';
+    if (id.contains('nginx')) return 'nginx';
+    if (id.contains('apache')) return 'apache';
+    if (id.contains('redis')) return 'redis';
+    if (id.contains('python') || id.contains('pyenv')) return 'python';
+
+    return group;
+  }
+
   Color _getIconColor() {
     if (widget.app.appId.contains('python') ||
         widget.app.appId.contains('pyenv')) {
@@ -92,14 +109,17 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: Row(
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: _getIconColor().withOpacity(0.15),
-              borderRadius: BorderRadius.circular(6),
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: Image.asset(
+              'assets/images/${_getIconFileName()}.png',
+              width: 28,
+              height: 28,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) =>
+                  Icon(_getAppIcon(), size: 18, color: _getIconColor()),
             ),
-            child: Icon(_getAppIcon(), size: 18, color: _getIconColor()),
           ),
           const SizedBox(width: 12),
           Expanded(

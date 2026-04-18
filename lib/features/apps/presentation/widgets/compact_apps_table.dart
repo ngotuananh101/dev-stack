@@ -26,6 +26,24 @@ class CompactAppsTable extends StatelessWidget {
     return Icons.apps;
   }
 
+  String _getIconFileName(AppModel app) {
+    final id = app.appId.toLowerCase();
+    final group = app.groupName.toLowerCase();
+
+    if (id.contains('nodejs')) return 'nodejs';
+    if (id.contains('php')) return 'php';
+    if (id.contains('mysql')) return 'mysql';
+    if (id.contains('mariadb')) return 'mariadb';
+    if (id.contains('mongodb')) return 'mongodb';
+    if (id.contains('nginx')) return 'nginx';
+    if (id.contains('apache')) return 'apache';
+    if (id.contains('redis')) return 'redis';
+    if (id.contains('python') || id.contains('pyenv')) return 'python';
+
+    // Fallback to group name if id doesn't match
+    return group;
+  }
+
   Color _getIconColor(String appId) {
     if (appId.contains('nginx') && appId.contains('waf'))
       return const Color(0xFF4169E1);
@@ -116,17 +134,19 @@ class CompactAppsTable extends StatelessWidget {
             flex: 3,
             child: Row(
               children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: _getIconColor(app.appId).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(
-                    _getAppIcon(app.appId),
-                    size: 16,
-                    color: _getIconColor(app.appId),
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: Image.asset(
+                    'assets/images/${_getIconFileName(app)}.png',
+                    width: 28,
+                    height: 28,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      _getAppIcon(app.appId),
+                      size: 16,
+                      color: _getIconColor(app.appId),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -137,7 +157,7 @@ class CompactAppsTable extends StatelessWidget {
                       Text(
                         app.name,
                         style: const TextStyle(
-                          fontSize: AppTextSize.xxs,
+                          fontSize: AppTextSize.xs,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
