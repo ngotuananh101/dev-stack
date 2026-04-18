@@ -1,6 +1,68 @@
 const fs = require('fs').promises;
 const path = require('path');
 
+/**
+ * Hàm hỗ trợ sắp xếp các chuỗi phiên bản theo thứ tự giảm dần (Semantic Versioning)
+ */
+function sortVersions(versions) {
+  if (!Array.isArray(versions)) return [];
+  
+  return [...new Set(versions)].sort((a, b) => {
+    const partsA = String(a).split('.').map(v => parseInt(v) || 0);
+    const partsB = String(b).split('.').map(v => parseInt(v) || 0);
+    
+    // So sánh từng thành phần của phiên bản
+    for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+      const numA = partsA[i] || 0;
+      const numB = partsB[i] || 0;
+      if (numA > numB) return -1;
+      if (numA < numB) return 1;
+    }
+    return 0;
+  });
+}
+
+/**
+ * Hàm hỗ trợ sắp xếp và trả về object { version: url } theo thứ tự giảm dần
+ * Đồng thời lọc chỉ lấy phiên bản Patch mới nhất cho mỗi cụm Major.Minor
+ */
+function sortVersionsObject(versionsObj) {
+  if (!versionsObj || typeof versionsObj !== 'object') return {};
+  
+  const allKeys = Object.keys(versionsObj);
+  if (allKeys.length === 0) return {};
+
+  const sortedKeys = sortVersions(allKeys);
+  const latestPatchVersions = {};
+  
+  // Duyệt qua danh sách đã sắp xếp (giảm dần)
+  // Bản đầu tiên gặp cho mỗi Major.Minor sẽ là bản mới nhất
+  sortedKeys.forEach(v => {
+    const parts = v.split('.');
+    // Chỉ xử lý các phiên bản có dạng X.Y.Z
+    if (parts.length >= 2) {
+      const majorMinor = `${parts[0]}.${parts[1]}`;
+      if (!latestPatchVersions[majorMinor]) {
+        latestPatchVersions[majorMinor] = v;
+      }
+    } else {
+      // Các trường hợp đặc biệt không theo X.Y.Z
+      if (!latestPatchVersions[v]) {
+        latestPatchVersions[v] = v;
+      }
+    }
+  });
+
+  // Xây dựng kết quả cuối cùng từ các bản đã lọc
+  const filteredKeys = sortVersions(Object.values(latestPatchVersions));
+  const result = {};
+  filteredKeys.forEach(k => {
+    result[k] = versionsObj[k];
+  });
+  
+  return result;
+}
+
 let baseDataObject = {
   version: "1.1.0",
   lastUpdated: "2026-04-18T11:07:14.436Z",
@@ -22,24 +84,6 @@ let baseDataObject = {
       group_name: "nodejs",
       exec_file: "node.exe",
       cli_file: "node.exe",
-    },
-    {
-      id: "php74",
-      name: "PHP 7.4",
-      description: "Hypertext Preprocessor v7.4",
-      category: "runtime",
-      group_name: "php",
-      exec_file: "php.exe",
-      cli_file: "php.exe",
-    },
-    {
-      id: "php81",
-      name: "PHP 8.1",
-      description: "Hypertext Preprocessor v8.1",
-      category: "runtime",
-      group_name: "php",
-      exec_file: "php.exe",
-      cli_file: "php.exe",
     },
     {
       id: "php82",
@@ -112,6 +156,24 @@ let baseDataObject = {
       group_name: "webserver",
       exec_file: "httpd.exe",
       cli_file: "httpd.exe",
+    },
+    {
+      id: "redis",
+      name: "Redis",
+      description: "In-memory data structure store, used as a database, cache, and message broker.",
+      category: "database",
+      group_name: "redis",
+      exec_file: "redis-server.exe",
+      cli_file: "redis-cli.exe",
+    },
+    {
+      id: "mongodb",
+      name: "MongoDB",
+      description: "NoSQL document-oriented database program.",
+      category: "database",
+      group_name: "database",
+      exec_file: "mongod.exe",
+      cli_file: "mongo.exe",
     }
   ]
 }
@@ -124,14 +186,15 @@ async function fetchNodejsVersions() {
     if (!response.ok) throw new Error('Network response was not ok');
     
     const data = await response.json();
+    const versions = {};
     
-    // Lọc các phiên bản từ v4.0.0 trở lên
-    const versions = data
-      .filter(v => {
-        const major = parseInt(v.version.replace('v', '').split('.')[0]);
-        return major >= 4;
-      })
-      .map(v => v.version.replace('v', ''));
+    data.filter(v => {
+      const major = parseInt(v.version.replace('v', '').split('.')[0]);
+      return major >= 4;
+    }).forEach(v => {
+      const ver = v.version.replace('v', '');
+      versions[ver] = `https://nodejs.org/dist/v${ver}/node-v${ver}-win-x64.zip`;
+    });
     
     return versions;
   } catch (error) {
@@ -141,16 +204,29 @@ async function fetchNodejsVersions() {
 }
 
 /**
- * Cập nhật dữ liệu phiên bản cho PHP từ php.net
+ * Cập nhật dữ liệu phiên bản cho PHP từ archives của php.net
  */
 async function fetchPhpVersions(versionPrefix) {
   try {
-    const url = `https://www.php.net/releases/index.php?json&version=${versionPrefix}`;
-    const response = await fetch(url);
+    const baseUrl = 'https://downloads.php.net/~windows/releases/archives/';
+    const response = await fetch(baseUrl);
     if (!response.ok) return null;
     
-    const data = await response.json();
-    return data.version ? [data.version] : [];
+    const html = await response.text();
+    const versions = {};
+    
+    // Regex tìm file zip NTS cho Windows x64
+    // Ví dụ: php-8.2.1-nts-Win32-vs16-x64.zip
+    const regex = new RegExp(`php-(${versionPrefix}\\.\\d+)-nts-Win32-.*?-x64\\.zip`, 'gi');
+    const matches = html.matchAll(regex);
+    
+    for (const match of matches) {
+      const fileName = match[0];
+      const ver = match[1];
+      versions[ver] = baseUrl + fileName;
+    }
+    
+    return versions;
   } catch (error) {
     console.error(`Error fetching PHP ${versionPrefix} versions:`, error);
     return null;
@@ -161,10 +237,9 @@ async function fetchPhpVersions(versionPrefix) {
  * Cập nhật dữ liệu phiên bản cho MySQL từ Docker Hub
  */
 async function fetchMysqlVersions() {
-  const allVersions = [];
   const regex = /^(\d+\.\d+\.\d+)$/; // Chỉ lấy phiên bản X.Y.Z
-  
   try {
+    const versions = {};
     for (let page = 1; page <= 5; page++) {
       const url = `https://hub.docker.com/v2/namespaces/library/repositories/mysql/tags?page=${page}&page_size=100`;
       const response = await fetch(url);
@@ -173,23 +248,16 @@ async function fetchMysqlVersions() {
       const data = await response.json();
       if (!data.results) break;
       
-      const versions = data.results
-        .map(t => t.name)
-        .filter(name => regex.test(name));
-        
-      allVersions.push(...versions);
+      data.results.forEach(tag => {
+        if (regex.test(tag.name)) {
+          const ver = tag.name;
+          const majorMinor = ver.split('.').slice(0, 2).join('.');
+          versions[ver] = `https://cdn.mysql.com/Downloads/MySQL-${majorMinor}/mysql-${ver}-winx64.zip`;
+        }
+      });
     }
     
-    // Xóa trùng và sắp xếp giảm dần
-    return [...new Set(allVersions)].sort((a, b) => {
-      const partsA = a.split('.').map(Number);
-      const partsB = b.split('.').map(Number);
-      for (let i = 0; i < 3; i++) {
-        if (partsA[i] > partsB[i]) return -1;
-        if (partsA[i] < partsB[i]) return 1;
-      }
-      return 0;
-    });
+    return versions;
   } catch (error) {
     console.error('Error fetching MySQL versions:', error);
     return null;
@@ -205,10 +273,15 @@ async function fetchMariadbVersions() {
     if (!response.ok) return null;
     
     const data = await response.json();
-    if (!data.major_releases) return [];
+    if (!data.major_releases) return {};
     
-    // Lấy tất cả release_id từ danh sách các bản phát hành lớn
-    return data.major_releases.map(r => r.release_id);
+    const versions = {};
+    data.major_releases.forEach(r => {
+      const ver = r.release_id;
+      versions[ver] = `https://mirror.mariadb.org/mariadb-${ver}/winx64-packages/mariadb-${ver}-winx64.zip`;
+    });
+    
+    return versions;
   } catch (error) {
     console.error('Error fetching MariaDB versions:', error);
     return null;
@@ -233,12 +306,66 @@ async function fetchGithubReleases(repoPath) {
     if (!response.ok) return null;
     
     const data = await response.json();
-    if (!Array.isArray(data)) return [];
+    if (!Array.isArray(data)) return {};
     
-    // Lấy tag_name và làm sạch (bỏ v hoặc release-)
-    return data.map(r => r.tag_name.replace('release-', '').replace('v', ''));
+    const versions = {};
+    data.forEach(r => {
+      const ver = r.tag_name.replace(/^(v|release-|redis-|redis|r(?=\d))/i, '');
+      
+      // Tìm asset phù hợp (zip, msi, exe)
+      let downloadUrl = r.html_url; // Fallback
+      if (r.assets && r.assets.length > 0) {
+        const winAsset = r.assets.find(a => 
+          a.name.toLowerCase().includes('win') || 
+          a.name.toLowerCase().endsWith('.zip') || 
+          a.name.toLowerCase().endsWith('.msi')
+        );
+        if (winAsset) downloadUrl = winAsset.browser_download_url;
+      }
+      
+      versions[ver] = downloadUrl;
+    });
+    
+    return versions;
   } catch (error) {
     console.error(`Error fetching Github releases for ${repoPath}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Lấy danh sách phiên bản MongoDB từ downloads.mongodb.org
+ */
+async function fetchMongodbVersions() {
+  try {
+    const url = 'https://downloads.mongodb.org/current.json';
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    
+    const json = await response.json();
+    const versions = {};
+
+    if (json.versions) {
+      json.versions.forEach(v => {
+        // Bỏ các bản pre-release (rc, alpha, beta)
+        if (v.version.match(/-(rc|alpha|beta)/i)) return;
+
+        // Tìm bản download cho Windows x86_64 Community (base)
+        const winAsset = v.downloads?.find(d => 
+          d.target === 'windows' && 
+          d.arch === 'x86_64' && 
+          d.edition === 'base'
+        );
+
+        if (winAsset?.archive) {
+          versions[v.version] = winAsset.archive.url;
+        }
+      });
+    }
+
+    return versions;
+  } catch (error) {
+    console.error('Error fetching MongoDB versions:', error);
     return null;
   }
 }
@@ -255,24 +382,18 @@ async function fetchApacheVersions() {
     
     // Sử dụng regex linh hoạt hơn để bắt cả đường dẫn tương đối và tuyệt đối
     // Tập trung vào thư mục /binaries/ để lấy đúng bộ cài Apache Core
-    const regex = /(?:https:\/\/www\.apachelounge\.com)?\/download\/.*?\/binaries\/httpd-([\d.]+)-[\d]+-win64-.*?\.zip/gi;
+    const regex = /(?:https:\/\/www\.apachelounge\.com)?(\/download\/.*?\/binaries\/httpd-([\d.]+)-[\d]+-win64-.*?\.zip)/gi;
     const matches = html.matchAll(regex);
-    const versions = [];
+    const versions = {};
     
     for (const match of matches) {
-      versions.push(match[1]); // Lấy group 1 là phiên bản X.Y.Z
+      const path = match[1];
+      const ver = match[2];
+      const fullUrl = path.startsWith('http') ? path : `https://www.apachelounge.com${path}`;
+      versions[ver] = fullUrl;
     }
     
-    // Xóa trùng và sắp xếp giảm dần
-    return [...new Set(versions)].sort((a, b) => {
-      const partsA = a.split('.').map(Number);
-      const partsB = b.split('.').map(Number);
-      for (let i = 0; i < 3; i++) {
-        if (partsA[i] > partsB[i]) return -1;
-        if (partsA[i] < partsB[i]) return 1;
-      }
-      return 0;
-    });
+    return versions;
   } catch (error) {
     console.error('Error fetching Apache versions:', error);
     return null;
@@ -290,21 +411,21 @@ async function updateAppsJson() {
     if (nodeApp) {
       const newVersions = await fetchNodejsVersions();
       if (newVersions) {
-        nodeApp.versions = newVersions;
-        console.log(`Updated ${newVersions.length} Node.js versions`);
+        nodeApp.versions = sortVersionsObject(newVersions);
+        console.log(`Updated Node.js: ${Object.keys(nodeApp.versions).length} versions`);
       }
     }
 
     // 2. Cập nhật PHP
     const phpApps = baseDataObject.apps.filter(app => app.id.startsWith('php'));
     for (const app of phpApps) {
-      // Lấy prefix từ name (e.g., "PHP 8.2" -> "8.2")
       const versionPrefix = app.name.split(' ')[1];
       if (versionPrefix) {
         const newVersions = await fetchPhpVersions(versionPrefix);
         if (newVersions) {
-          app.versions = newVersions;
-          console.log(`Updated ${app.name}:`, newVersions.slice(0, 3).join(', '), '...');
+          // Merge hoặc replace
+          app.versions = sortVersionsObject(newVersions);
+          console.log(`Updated ${app.name}: ${Object.keys(app.versions)[0]}`);
         }
       }
     }
@@ -314,8 +435,8 @@ async function updateAppsJson() {
     if (mysqlApp) {
       const newVersions = await fetchMysqlVersions();
       if (newVersions) {
-        mysqlApp.versions = newVersions;
-        console.log(`Updated MySQL: ${newVersions.length} versions found`);
+        mysqlApp.versions = sortVersionsObject(newVersions);
+        console.log(`Updated MySQL: ${Object.keys(mysqlApp.versions).length} versions`);
       }
     }
 
@@ -324,32 +445,52 @@ async function updateAppsJson() {
     if (mariadbApp) {
       const newVersions = await fetchMariadbVersions();
       if (newVersions) {
-        mariadbApp.versions = newVersions;
-        console.log(`Updated MariaDB: ${newVersions.length} versions found`);
+        mariadbApp.versions = sortVersionsObject(newVersions);
+        console.log(`Updated MariaDB: ${Object.keys(mariadbApp.versions).length} versions`);
       }
     }
 
-    // 5. Cập nhật Nginx từ Github Releases
+    // 5. Cập nhật Nginx
     const nginxApp = baseDataObject.apps.find(app => app.id === 'nginx');
     if (nginxApp) {
       const newVersions = await fetchGithubReleases('nginx/nginx');
       if (newVersions) {
-        nginxApp.versions = newVersions;
-        console.log(`Updated Nginx: ${newVersions.length} versions found`);
+        nginxApp.versions = sortVersionsObject(newVersions);
+        console.log(`Updated Nginx: ${Object.keys(nginxApp.versions).length} versions`);
       }
     }
 
-    // 6. Cập nhật Apache từ ApacheLounge
+    // 6. Cập nhật Apache
     const apacheApp = baseDataObject.apps.find(app => app.id === 'apache');
     if (apacheApp) {
       const newVersions = await fetchApacheVersions();
       if (newVersions) {
-        apacheApp.versions = newVersions;
-        console.log(`Updated Apache: ${newVersions.length} versions found`);
+        apacheApp.versions = sortVersionsObject(newVersions);
+        console.log(`Updated Apache: ${Object.keys(apacheApp.versions).length} versions`);
       }
     }
 
-    // 7. Cập nhật thời gian
+    // 7. Cập nhật Redis
+    const redisApp = baseDataObject.apps.find(app => app.id === 'redis');
+    if (redisApp) {
+      const newVersions = await fetchGithubReleases('zkteco-home/redis-windows');
+      if (newVersions) {
+        redisApp.versions = sortVersionsObject(newVersions);
+        console.log(`Updated Redis: ${Object.keys(redisApp.versions).length} versions`);
+      }
+    }
+
+    // 8. Cập nhật MongoDB
+    const mongodbApp = baseDataObject.apps.find(app => app.id === 'mongodb');
+    if (mongodbApp) {
+      const newVersions = await fetchMongodbVersions();
+      if (newVersions) {
+        mongodbApp.versions = sortVersionsObject(newVersions);
+        console.log(`Updated MongoDB: ${Object.keys(mongodbApp.versions).length} versions`);
+      }
+    }
+
+    // 9. Cập nhật thời gian
     baseDataObject.lastUpdated = new Date().toISOString();
     
     // Ghi lại file
