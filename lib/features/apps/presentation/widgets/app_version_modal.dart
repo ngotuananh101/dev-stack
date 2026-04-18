@@ -89,7 +89,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: Row(
         children: [
           Container(
@@ -298,7 +298,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
 
   Widget _buildFooter() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [

@@ -137,16 +137,9 @@ class CompactAppsTable extends StatelessWidget {
                       Text(
                         app.name,
                         style: const TextStyle(
-                          fontSize: AppTextSize.sm,
+                          fontSize: AppTextSize.xxs,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        'v0.1.0',
-                        style: TextStyle(
-                          fontSize: AppTextSize.xxxs,
-                          color: AppColors.textMuted,
                         ),
                       ),
                     ],
