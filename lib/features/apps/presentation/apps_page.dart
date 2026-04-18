@@ -19,7 +19,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
   String? _selectedTab;
   String? _selectedCategory;
   int _currentPage = 1;
-  final int _itemsPerPage = 5;
+  final int _itemsPerPage = 8;
 
   List<AppModel> _filterApps(List<AppModel> apps) {
     var filtered = apps;

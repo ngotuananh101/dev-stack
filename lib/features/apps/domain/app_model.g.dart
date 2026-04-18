@@ -92,8 +92,13 @@ const AppModelSchema = CollectionSchema(
       name: r'status',
       type: IsarType.string,
     ),
-    r'versions': PropertySchema(
+    r'versionLinksJson': PropertySchema(
       id: 15,
+      name: r'versionLinksJson',
+      type: IsarType.string,
+    ),
+    r'versions': PropertySchema(
+      id: 16,
       name: r'versions',
       type: IsarType.stringList,
     )
@@ -188,6 +193,12 @@ int _appModelEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.versionLinksJson;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.versions.length * 3;
   {
     for (var i = 0; i < object.versions.length; i++) {
@@ -219,7 +230,8 @@ void _appModelSerialize(
   writer.writeDouble(offsets[12], object.price);
   writer.writeString(offsets[13], object.selectedVersion);
   writer.writeString(offsets[14], object.status);
-  writer.writeStringList(offsets[15], object.versions);
+  writer.writeString(offsets[15], object.versionLinksJson);
+  writer.writeStringList(offsets[16], object.versions);
 }
 
 AppModel _appModelDeserialize(
@@ -245,7 +257,8 @@ AppModel _appModelDeserialize(
     price: reader.readDoubleOrNull(offsets[12]),
     selectedVersion: reader.readStringOrNull(offsets[13]),
     status: reader.readStringOrNull(offsets[14]),
-    versions: reader.readStringList(offsets[15]) ?? const ['latest'],
+    versionLinksJson: reader.readStringOrNull(offsets[15]),
+    versions: reader.readStringList(offsets[16]) ?? const ['latest'],
   );
   return object;
 }
@@ -288,6 +301,8 @@ P _appModelDeserializeProp<P>(
     case 14:
       return (reader.readStringOrNull(offset)) as P;
     case 15:
+      return (reader.readStringOrNull(offset)) as P;
+    case 16:
       return (reader.readStringList(offset) ?? const ['latest']) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2435,6 +2450,160 @@ extension AppModelQueryFilter
   }
 
   QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'versionLinksJson',
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'versionLinksJson',
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'versionLinksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'versionLinksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'versionLinksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'versionLinksJson',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'versionLinksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'versionLinksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'versionLinksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'versionLinksJson',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'versionLinksJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
+      versionLinksJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'versionLinksJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterFilterCondition>
       versionsElementEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -2832,6 +3001,18 @@ extension AppModelQuerySortBy on QueryBuilder<AppModel, AppModel, QSortBy> {
       return query.addSortBy(r'status', Sort.desc);
     });
   }
+
+  QueryBuilder<AppModel, AppModel, QAfterSortBy> sortByVersionLinksJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'versionLinksJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterSortBy> sortByVersionLinksJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'versionLinksJson', Sort.desc);
+    });
+  }
 }
 
 extension AppModelQuerySortThenBy
@@ -3016,6 +3197,18 @@ extension AppModelQuerySortThenBy
       return query.addSortBy(r'status', Sort.desc);
     });
   }
+
+  QueryBuilder<AppModel, AppModel, QAfterSortBy> thenByVersionLinksJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'versionLinksJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppModel, AppModel, QAfterSortBy> thenByVersionLinksJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'versionLinksJson', Sort.desc);
+    });
+  }
 }
 
 extension AppModelQueryWhereDistinct
@@ -3122,6 +3315,14 @@ extension AppModelQueryWhereDistinct
     });
   }
 
+  QueryBuilder<AppModel, AppModel, QDistinct> distinctByVersionLinksJson(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'versionLinksJson',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<AppModel, AppModel, QDistinct> distinctByVersions() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'versions');
@@ -3224,6 +3425,12 @@ extension AppModelQueryProperty
   QueryBuilder<AppModel, String?, QQueryOperations> statusProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'status');
+    });
+  }
+
+  QueryBuilder<AppModel, String?, QQueryOperations> versionLinksJsonProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'versionLinksJson');
     });
   }
 

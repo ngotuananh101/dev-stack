@@ -6,7 +6,7 @@ part of 'app_version_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$appVersionsHash() => r'7727d38a1a97cd9dae2d4e4c970faa9d0d6ffa13';
+String _$appVersionsHash() => r'65009748658838a4e8ce081a883a8294f01a9632';
 
 /// Copied from Dart SDK
 class _SystemHash {

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:isar/isar.dart';
 
 part 'app_model.g.dart';
@@ -18,6 +19,25 @@ class AppModel {
   late String cliFile;
 
   late List<String> versions; // Available versions for installation
+  
+  // Isar does not support Map directly, so we store links as a JSON string
+  late String? versionLinksJson; 
+
+  @ignore
+  Map<String, String> get versionLinks {
+    if (versionLinksJson == null) return {};
+    try {
+      final decoded = json.decode(versionLinksJson!) as Map<String, dynamic>;
+      return decoded.map((key, value) => MapEntry(key, value.toString()));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  set versionLinks(Map<String, String> links) {
+    versionLinksJson = json.encode(links);
+  }
+
   late String? selectedVersion; // Currently selected version
 
   late double? price; // null = Free
@@ -40,6 +60,7 @@ class AppModel {
     required this.execFile,
     required this.cliFile,
     this.versions = const ['latest'],
+    this.versionLinksJson,
     this.selectedVersion,
     this.price,
     this.expireDate,
