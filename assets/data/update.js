@@ -87,6 +87,15 @@ let baseDataObject = {
       cli_file: "mysql.exe",
     },
     {
+      id: "mariadb",
+      name: "MariaDB",
+      description: "MariaDB Database Server",
+      category: "database",
+      group_name: "database",
+      exec_file: "mariadbd.exe",
+      cli_file: "mariadb.exe",
+    },
+    {
       id: "nginx",
       name: "Nginx",
       description: "Lightweight, less memory, concurrent ability",
@@ -132,6 +141,145 @@ async function fetchNodejsVersions() {
 }
 
 /**
+ * Cập nhật dữ liệu phiên bản cho PHP từ php.net
+ */
+async function fetchPhpVersions(versionPrefix) {
+  try {
+    const url = `https://www.php.net/releases/index.php?json&version=${versionPrefix}`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    return data.version ? [data.version] : [];
+  } catch (error) {
+    console.error(`Error fetching PHP ${versionPrefix} versions:`, error);
+    return null;
+  }
+}
+
+/**
+ * Cập nhật dữ liệu phiên bản cho MySQL từ Docker Hub
+ */
+async function fetchMysqlVersions() {
+  const allVersions = [];
+  const regex = /^(\d+\.\d+\.\d+)$/; // Chỉ lấy phiên bản X.Y.Z
+  
+  try {
+    for (let page = 1; page <= 5; page++) {
+      const url = `https://hub.docker.com/v2/namespaces/library/repositories/mysql/tags?page=${page}&page_size=100`;
+      const response = await fetch(url);
+      if (!response.ok) break;
+      
+      const data = await response.json();
+      if (!data.results) break;
+      
+      const versions = data.results
+        .map(t => t.name)
+        .filter(name => regex.test(name));
+        
+      allVersions.push(...versions);
+    }
+    
+    // Xóa trùng và sắp xếp giảm dần
+    return [...new Set(allVersions)].sort((a, b) => {
+      const partsA = a.split('.').map(Number);
+      const partsB = b.split('.').map(Number);
+      for (let i = 0; i < 3; i++) {
+        if (partsA[i] > partsB[i]) return -1;
+        if (partsA[i] < partsB[i]) return 1;
+      }
+      return 0;
+    });
+  } catch (error) {
+    console.error('Error fetching MySQL versions:', error);
+    return null;
+  }
+}
+
+/**
+ * Cập nhật dữ liệu phiên bản cho MariaDB từ MariaDB REST API
+ */
+async function fetchMariadbVersions() {
+  try {
+    const response = await fetch('https://downloads.mariadb.org/rest-api/mariadb/');
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    if (!data.major_releases) return [];
+    
+    // Lấy tất cả release_id từ danh sách các bản phát hành lớn
+    return data.major_releases.map(r => r.release_id);
+  } catch (error) {
+    console.error('Error fetching MariaDB versions:', error);
+    return null;
+  }
+}
+
+/**
+ * Lấy danh sách phiên bản từ Github Releases
+ */
+/**
+ * Lấy danh sách phiên bản từ Github Releases
+ */
+async function fetchGithubReleases(repoPath) {
+  try {
+    const url = `https://api.github.com/repos/${repoPath}/releases`;
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Ponta-Update-Script'
+      }
+    });
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    if (!Array.isArray(data)) return [];
+    
+    // Lấy tag_name và làm sạch (bỏ v hoặc release-)
+    return data.map(r => r.tag_name.replace('release-', '').replace('v', ''));
+  } catch (error) {
+    console.error(`Error fetching Github releases for ${repoPath}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Lấy danh sách phiên bản Apache từ ApacheLounge (Parsing HTML)
+ */
+async function fetchApacheVersions() {
+  try {
+    const response = await fetch('https://www.apachelounge.com/download/');
+    if (!response.ok) return null;
+    
+    const html = await response.text();
+    
+    // Sử dụng regex linh hoạt hơn để bắt cả đường dẫn tương đối và tuyệt đối
+    // Tập trung vào thư mục /binaries/ để lấy đúng bộ cài Apache Core
+    const regex = /(?:https:\/\/www\.apachelounge\.com)?\/download\/.*?\/binaries\/httpd-([\d.]+)-[\d]+-win64-.*?\.zip/gi;
+    const matches = html.matchAll(regex);
+    const versions = [];
+    
+    for (const match of matches) {
+      versions.push(match[1]); // Lấy group 1 là phiên bản X.Y.Z
+    }
+    
+    // Xóa trùng và sắp xếp giảm dần
+    return [...new Set(versions)].sort((a, b) => {
+      const partsA = a.split('.').map(Number);
+      const partsB = b.split('.').map(Number);
+      for (let i = 0; i < 3; i++) {
+        if (partsA[i] > partsB[i]) return -1;
+        if (partsA[i] < partsB[i]) return 1;
+      }
+      return 0;
+    });
+  } catch (error) {
+    console.error('Error fetching Apache versions:', error);
+    return null;
+  }
+}
+
+/**
  * Hàm chính thực hiện cập nhật apps.json
  */
 async function updateAppsJson() {
@@ -143,9 +291,65 @@ async function updateAppsJson() {
       const newVersions = await fetchNodejsVersions();
       if (newVersions) {
         nodeApp.versions = newVersions;
+        console.log(`Updated ${newVersions.length} Node.js versions`);
       }
     }
-    // 2. Cập nhật thời gian
+
+    // 2. Cập nhật PHP
+    const phpApps = baseDataObject.apps.filter(app => app.id.startsWith('php'));
+    for (const app of phpApps) {
+      // Lấy prefix từ name (e.g., "PHP 8.2" -> "8.2")
+      const versionPrefix = app.name.split(' ')[1];
+      if (versionPrefix) {
+        const newVersions = await fetchPhpVersions(versionPrefix);
+        if (newVersions) {
+          app.versions = newVersions;
+          console.log(`Updated ${app.name}:`, newVersions.slice(0, 3).join(', '), '...');
+        }
+      }
+    }
+
+    // 3. Cập nhật MySQL
+    const mysqlApp = baseDataObject.apps.find(app => app.id === 'mysql');
+    if (mysqlApp) {
+      const newVersions = await fetchMysqlVersions();
+      if (newVersions) {
+        mysqlApp.versions = newVersions;
+        console.log(`Updated MySQL: ${newVersions.length} versions found`);
+      }
+    }
+
+    // 4. Cập nhật MariaDB
+    const mariadbApp = baseDataObject.apps.find(app => app.id === 'mariadb');
+    if (mariadbApp) {
+      const newVersions = await fetchMariadbVersions();
+      if (newVersions) {
+        mariadbApp.versions = newVersions;
+        console.log(`Updated MariaDB: ${newVersions.length} versions found`);
+      }
+    }
+
+    // 5. Cập nhật Nginx từ Github Releases
+    const nginxApp = baseDataObject.apps.find(app => app.id === 'nginx');
+    if (nginxApp) {
+      const newVersions = await fetchGithubReleases('nginx/nginx');
+      if (newVersions) {
+        nginxApp.versions = newVersions;
+        console.log(`Updated Nginx: ${newVersions.length} versions found`);
+      }
+    }
+
+    // 6. Cập nhật Apache từ ApacheLounge
+    const apacheApp = baseDataObject.apps.find(app => app.id === 'apache');
+    if (apacheApp) {
+      const newVersions = await fetchApacheVersions();
+      if (newVersions) {
+        apacheApp.versions = newVersions;
+        console.log(`Updated Apache: ${newVersions.length} versions found`);
+      }
+    }
+
+    // 7. Cập nhật thời gian
     baseDataObject.lastUpdated = new Date().toISOString();
     
     // Ghi lại file
