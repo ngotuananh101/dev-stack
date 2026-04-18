@@ -22,6 +22,8 @@ class AppModel {
   String? installedVersion;
   bool isInstalled;
   DateTime? installedAt;
+  String? execFilePath;
+  String? cliFilePath;
 
   // Real-time progress (non-persistent)
   double? installProgress;
@@ -67,6 +69,8 @@ class AppModel {
     this.installedVersion,
     this.isInstalled = false,
     this.installedAt,
+    this.execFilePath,
+    this.cliFilePath,
     this.installProgress,
     this.installStatus,
   });

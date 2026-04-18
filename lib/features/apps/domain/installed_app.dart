@@ -15,6 +15,9 @@ class InstalledApp {
   
   String? version; // The version currently installed
   DateTime? installedAt;
+  
+  String? execFilePath;
+  String? cliFilePath;
 
   InstalledApp({
     required this.appId,
@@ -23,5 +26,7 @@ class InstalledApp {
     required this.status,
     this.version,
     this.installedAt,
+    this.execFilePath,
+    this.cliFilePath,
   });
 }

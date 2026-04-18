@@ -100,11 +100,24 @@ class AppInstallerService {
         logInfo('Extracting TAR.GZ for ${app.name}');
         await _extractTarGz(bytes, installPath, onLog);
       } else {
-        logInfo('Saving direct binary for ${app.name}');
         final filename = p.basename(url).split('?').first;
         final file = File(p.join(installPath, filename));
         await file.writeAsBytes(bytes);
       }
+
+      // 4. Flatten directory if needed
+      await _flattenDirectory(installPath, logInfo);
+
+      // 5. Detect executable and CLI files
+      logInfo('Detecting executable and CLI files...');
+      final detected = await _detectFiles(
+        installPath, 
+        app.execFile, 
+        app.cliFile, 
+        logInfo
+      );
+      app.execFilePath = detected['exec'];
+      app.cliFilePath = detected['cli'];
 
       onProgress?.call(1.0, 'Completed');
       logInfo('Successfully installed ${app.name} to $installPath');
@@ -151,5 +164,71 @@ class AppInstallerService {
         await Directory(p.join(targetPath, filename)).create(recursive: true);
       }
     }
+  }
+
+  Future<void> _flattenDirectory(String targetPath, Function(String) logInfo) async {
+    final dir = Directory(targetPath);
+    if (!dir.existsSync()) return;
+
+    final entities = await dir.list().toList();
+    
+    // Check if there is only 1 entity and it's a directory
+    if (entities.length == 1 && entities.first is Directory) {
+      final subDir = entities.first as Directory;
+      logInfo('Detected nested directory: ${p.basename(subDir.path)}. Flattening...');
+      
+      final subEntities = await subDir.list().toList();
+      
+      for (final entity in subEntities) {
+        final newPath = p.join(targetPath, p.basename(entity.path));
+        // Using rename might fail across different partitions, but here it's same parent
+        await entity.rename(newPath);
+      }
+      
+      // Delete the now empty nested directory
+      await subDir.delete();
+      logInfo('Flattening completed.');
+    }
+  }
+
+  Future<Map<String, String?>> _detectFiles(
+    String installPath,
+    String? execName,
+    String? cliName,
+    Function(String) logInfo,
+  ) async {
+    final result = <String, String?>{
+      'exec': null,
+      'cli': null,
+    };
+
+    if (execName == null && cliName == null) return result;
+
+    final dir = Directory(installPath);
+    if (!dir.existsSync()) return result;
+
+    try {
+      final entities = await dir.list(recursive: true).toList();
+
+      for (final entity in entities) {
+        if (entity is File) {
+          final filename = p.basename(entity.path);
+          
+          if (execName != null && filename == execName && result['exec'] == null) {
+            result['exec'] = entity.path;
+            logInfo('Detected executable: ${entity.path}');
+          }
+          
+          if (cliName != null && filename == cliName && result['cli'] == null) {
+            result['cli'] = entity.path;
+            logInfo('Detected CLI: ${entity.path}');
+          }
+        }
+      }
+    } catch (e) {
+      logInfo('Error during file detection: $e');
+    }
+
+    return result;
   }
 }

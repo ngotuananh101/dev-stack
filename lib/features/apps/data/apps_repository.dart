@@ -52,6 +52,8 @@ class AppsRepository {
           status: installed?.status ?? 'not_installed',
           installedVersion: installed?.version,
           installedAt: installed?.installedAt,
+          execFilePath: installed?.execFilePath,
+          cliFilePath: installed?.cliFilePath,
         );
       }).toList();
     } catch (e) {
@@ -82,6 +84,8 @@ class AppsRepository {
         status: app.status ?? 'not_installed',
         version: app.installedVersion,
         installedAt: app.installedAt ?? DateTime.now(),
+        execFilePath: app.execFilePath,
+        cliFilePath: app.cliFilePath,
       );
       await isar.installedApps.put(installed);
     });
