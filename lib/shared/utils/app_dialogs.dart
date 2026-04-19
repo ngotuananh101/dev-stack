@@ -66,4 +66,52 @@ class AppDialogs {
       ),
     );
   }
+
+  static Future<void> showError(
+    BuildContext context, {
+    required String title,
+    required String message,
+  }) {
+    return QuickAlert.show(
+      context: context,
+      type: QuickAlertType.error,
+      title: title,
+      text: message,
+      confirmBtnText: 'CLOSE',
+      confirmBtnColor: AppColors.error,
+      backgroundColor: AppColors.surface,
+      titleColor: AppColors.textPrimary,
+      textColor: AppColors.textSecondary,
+      width: 420,
+      confirmBtnTextStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: AppTextSize.xs,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  static Future<void> showInfo({
+    required BuildContext context,
+    required String title,
+    required String text,
+  }) {
+    return QuickAlert.show(
+      context: context,
+      type: QuickAlertType.info,
+      title: title,
+      text: text,
+      confirmBtnText: 'OK',
+      confirmBtnColor: AppColors.primary,
+      backgroundColor: AppColors.surface,
+      titleColor: AppColors.textPrimary,
+      textColor: AppColors.textSecondary,
+      width: 420,
+      confirmBtnTextStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: AppTextSize.xs,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
 }

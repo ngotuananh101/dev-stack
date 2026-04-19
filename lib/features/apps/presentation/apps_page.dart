@@ -7,6 +7,7 @@ import 'widgets/marketplace_header.dart';
 import 'widgets/category_bar.dart';
 import 'widgets/compact_apps_table.dart';
 import 'widgets/compact_pagination.dart';
+import '../../../shared/utils/app_dialogs.dart';
 
 class AppsPage extends ConsumerStatefulWidget {
   const AppsPage({super.key});
@@ -99,6 +100,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                     _currentPage = 1;
                   });
                 },
+                onUpdate: () => _handleUpdateList(context),
               ),
               const SizedBox(height: 24),
               // Category Bar
@@ -163,5 +165,32 @@ class _AppsPageState extends ConsumerState<AppsPage> {
         error: (err, stack) => Center(child: Text('Error: $err')),
       ),
     );
+  }
+
+  Future<void> _handleUpdateList(BuildContext context) async {
+    try {
+      final notifier = ref.read(appsNotifierProvider.notifier);
+      await notifier.updateCatalog(
+        'https://gist.githubusercontent.com/ngotuananh101/d2e69956bc2030b0bcf27707aef9e9cd/raw/apps.json',
+      );
+      
+      if (!mounted) return;
+      
+      // ignore: use_build_context_synchronously
+      AppDialogs.showSuccess(
+        context: context,
+        title: 'Success',
+        text: 'App list updated successfully',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      
+      // ignore: use_build_context_synchronously
+      AppDialogs.showError(
+        context,
+        title: 'Update Failed',
+        message: 'Could not update app list: $e',
+      );
+    }
   }
 }

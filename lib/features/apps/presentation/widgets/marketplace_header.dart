@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class MarketplaceHeader extends StatelessWidget {
   final String? selectedTab;
   final Function(String?) onTabChanged;
+  final VoidCallback onUpdate;
 
   const MarketplaceHeader({
     super.key,
     this.selectedTab,
     required this.onTabChanged,
+    required this.onUpdate,
   });
 
   @override
@@ -41,6 +44,18 @@ class MarketplaceHeader extends StatelessWidget {
           ],
         ),
         const Spacer(),
+        // Update Button
+        IconButton(
+          onPressed: onUpdate,
+          icon: const Icon(
+            LucideIcons.refreshCw,
+            size: 18,
+            color: AppColors.textSecondary,
+          ),
+          tooltip: 'Update App List',
+          splashRadius: 20,
+        ),
+        const SizedBox(width: 8),
         // Right: Filter tabs
         Container(
           padding: const EdgeInsets.all(2),

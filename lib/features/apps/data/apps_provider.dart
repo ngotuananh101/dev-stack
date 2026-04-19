@@ -149,4 +149,15 @@ class AppsNotifier extends _$AppsNotifier {
       debugPrint('Uninstallation failed: $e');
     }
   }
+
+  Future<void> updateCatalog(String url) async {
+    state = const AsyncValue.loading();
+    try {
+      final repository = await ref.read(appsRepositoryProvider.future);
+      await repository.updateAppListFromUrl(url);
+      await refresh();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
 }

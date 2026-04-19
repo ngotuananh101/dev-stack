@@ -1,7 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:dio/dio.dart';
 import '../domain/app_model.dart';
 import '../domain/installed_app.dart';
 
@@ -12,8 +16,17 @@ class AppsRepository {
 
   Future<List<AppModel>> getAll() async {
     try {
-      // 1. Load marketplace data from apps.json
-      final String response = await rootBundle.loadString('assets/data/apps.json');
+      // 1. Load marketplace data
+      String response;
+      final supportDir = await getApplicationSupportDirectory();
+      final localFile = File(p.join(supportDir.path, 'apps.json'));
+
+      if (await localFile.exists()) {
+        response = await localFile.readAsString();
+      } else {
+        response = await rootBundle.loadString('assets/data/apps.json');
+      }
+
       final data = json.decode(response);
       final List appsJson = data['apps'];
 
@@ -96,5 +109,38 @@ class AppsRepository {
     await isar.writeTxn(() async {
       await isar.installedApps.filter().appIdEqualTo(appId).deleteAll();
     });
+  }
+
+  Future<void> updateAppListFromUrl(String url) async {
+    try {
+      final dio = Dio();
+      final response = await dio.get(url);
+      
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final jsonString = data is String ? data : jsonEncode(data);
+        
+        // Save to local support directory for runtime persistence
+        final supportDir = await getApplicationSupportDirectory();
+        final localFile = File(p.join(supportDir.path, 'apps.json'));
+        await localFile.writeAsString(jsonString);
+        
+        // Also try to update the source file if in dev mode
+        try {
+          // This is a heuristic to find the project root during development
+          final currentDir = Directory.current.path;
+          final projectFile = File(p.join(currentDir, 'assets', 'data', 'apps.json'));
+          if (await projectFile.exists()) {
+            await projectFile.writeAsString(jsonString);
+            debugPrint('Successfully updated project source file: ${projectFile.path}');
+          }
+        } catch (e) {
+          debugPrint('Could not update source file (expected in production): $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating app list: $e');
+      rethrow;
+    }
   }
 }
