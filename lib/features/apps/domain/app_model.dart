@@ -1,11 +1,7 @@
 import 'dart:convert';
 import 'package:intl/intl.dart';
-import 'package:isar/isar.dart';
 
-@collection
 class AppModel {
-  Id id = Isar.autoIncrement;
-  @Index(unique: true)
   final String appId;
   String name;
   String? description;
@@ -134,6 +130,7 @@ class AppModel {
     this.cliFilePath,
     this.isAddedToPath = false,
     this.addPathAfterInstall = false,
+    this.autoStartService = false,
     this.installProgress,
     this.installStatus,
   });

@@ -32,33 +32,38 @@ const InstalledAppSchema = CollectionSchema(
       name: r'appName',
       type: IsarType.string,
     ),
-    r'cliFilePath': PropertySchema(
+    r'autoStartService': PropertySchema(
       id: 3,
+      name: r'autoStartService',
+      type: IsarType.bool,
+    ),
+    r'cliFilePath': PropertySchema(
+      id: 4,
       name: r'cliFilePath',
       type: IsarType.string,
     ),
     r'execFilePath': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'execFilePath',
       type: IsarType.string,
     ),
     r'installedAt': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'installedAt',
       type: IsarType.dateTime,
     ),
     r'location': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'location',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'status',
       type: IsarType.string,
     ),
     r'version': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'version',
       type: IsarType.string,
     )
@@ -144,12 +149,13 @@ void _installedAppSerialize(
   writer.writeBool(offsets[0], object.addedToPath);
   writer.writeString(offsets[1], object.appId);
   writer.writeString(offsets[2], object.appName);
-  writer.writeString(offsets[3], object.cliFilePath);
-  writer.writeString(offsets[4], object.execFilePath);
-  writer.writeDateTime(offsets[5], object.installedAt);
-  writer.writeString(offsets[6], object.location);
-  writer.writeString(offsets[7], object.status);
-  writer.writeString(offsets[8], object.version);
+  writer.writeBool(offsets[3], object.autoStartService);
+  writer.writeString(offsets[4], object.cliFilePath);
+  writer.writeString(offsets[5], object.execFilePath);
+  writer.writeDateTime(offsets[6], object.installedAt);
+  writer.writeString(offsets[7], object.location);
+  writer.writeString(offsets[8], object.status);
+  writer.writeString(offsets[9], object.version);
 }
 
 InstalledApp _installedAppDeserialize(
@@ -162,12 +168,13 @@ InstalledApp _installedAppDeserialize(
     addedToPath: reader.readBoolOrNull(offsets[0]) ?? false,
     appId: reader.readString(offsets[1]),
     appName: reader.readString(offsets[2]),
-    cliFilePath: reader.readStringOrNull(offsets[3]),
-    execFilePath: reader.readStringOrNull(offsets[4]),
-    installedAt: reader.readDateTimeOrNull(offsets[5]),
-    location: reader.readString(offsets[6]),
-    status: reader.readString(offsets[7]),
-    version: reader.readStringOrNull(offsets[8]),
+    autoStartService: reader.readBoolOrNull(offsets[3]) ?? false,
+    cliFilePath: reader.readStringOrNull(offsets[4]),
+    execFilePath: reader.readStringOrNull(offsets[5]),
+    installedAt: reader.readDateTimeOrNull(offsets[6]),
+    location: reader.readString(offsets[7]),
+    status: reader.readString(offsets[8]),
+    version: reader.readStringOrNull(offsets[9]),
   );
   object.id = id;
   return object;
@@ -187,16 +194,18 @@ P _installedAppDeserializeProp<P>(
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBoolOrNull(offset) ?? false) as P;
     case 4:
       return (reader.readStringOrNull(offset)) as P;
     case 5:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 6:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 7:
       return (reader.readString(offset)) as P;
     case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -726,6 +735,16 @@ extension InstalledAppQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'appName',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      autoStartServiceEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'autoStartService',
+        value: value,
       ));
     });
   }
@@ -1636,6 +1655,20 @@ extension InstalledAppQuerySortBy
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      sortByAutoStartService() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStartService', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      sortByAutoStartServiceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStartService', Sort.desc);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByCliFilePath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'cliFilePath', Sort.asc);
@@ -1751,6 +1784,20 @@ extension InstalledAppQuerySortThenBy
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      thenByAutoStartService() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStartService', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      thenByAutoStartServiceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStartService', Sort.desc);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByCliFilePath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'cliFilePath', Sort.asc);
@@ -1861,6 +1908,13 @@ extension InstalledAppQueryWhereDistinct
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QDistinct>
+      distinctByAutoStartService() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'autoStartService');
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByCliFilePath(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1926,6 +1980,13 @@ extension InstalledAppQueryProperty
   QueryBuilder<InstalledApp, String, QQueryOperations> appNameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'appName');
+    });
+  }
+
+  QueryBuilder<InstalledApp, bool, QQueryOperations>
+      autoStartServiceProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'autoStartService');
     });
   }
 

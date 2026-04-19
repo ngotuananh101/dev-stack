@@ -22,6 +22,8 @@ class InstalledApp {
   @Index()
   bool addedToPath = false;
 
+  bool autoStartService = false;
+
   InstalledApp({
     required this.appId,
     required this.appName,
@@ -32,5 +34,6 @@ class InstalledApp {
     this.execFilePath,
     this.cliFilePath,
     this.addedToPath = false,
+    this.autoStartService = false,
   });
 }

@@ -71,8 +71,9 @@ class AppsRepository {
           execFilePath: installed?.execFilePath,
           cliFilePath: installed?.cliFilePath,
           isAddedToPath: installed?.addedToPath ?? false,
+          autoStartService: installed?.autoStartService ?? false,
         );
-      }).toList();
+      }).toList().cast<AppModel>();
     } catch (e) {
       debugPrint('Error loading apps: $e');
       return [];
@@ -104,6 +105,7 @@ class AppsRepository {
         execFilePath: app.execFilePath,
         cliFilePath: app.cliFilePath,
         addedToPath: app.isAddedToPath,
+        autoStartService: app.autoStartService,
       );
       await isar.installedApps.put(installed);
     });
