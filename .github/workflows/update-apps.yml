@@ -2,8 +2,8 @@ name: Update App Versions to Gist
 
 on:
   schedule:
-    - cron: '0 * * * *' # Chạy mỗi 1 tiếng
-  workflow_dispatch: # Cho phép chạy thủ công
+    - cron: '0 0 * * *' # Run every day at 00:00 UTC
+  workflow_dispatch: # Allow manual triggering
 
 jobs:
   update-gist:
@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Run update script
         run: node assets/data/update.js
