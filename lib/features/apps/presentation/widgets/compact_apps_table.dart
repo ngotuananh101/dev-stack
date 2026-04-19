@@ -10,6 +10,9 @@ class CompactAppsTable extends StatelessWidget {
   final Future<void> Function(AppModel) onToggleInstall;
   final Future<void> Function(AppModel) onToggleDashboard;
   final Future<void> Function(AppModel) onTogglePath;
+  final Future<void> Function(AppModel) onStartService;
+  final Future<void> Function(AppModel) onStopService;
+  final Future<void> Function(AppModel) onRestartService;
 
   const CompactAppsTable({
     super.key,
@@ -17,6 +20,9 @@ class CompactAppsTable extends StatelessWidget {
     required this.onToggleInstall,
     required this.onToggleDashboard,
     required this.onTogglePath,
+    required this.onStartService,
+    required this.onStopService,
+    required this.onRestartService,
   });
 
   IconData _getAppIcon(String appId) {
@@ -280,29 +286,54 @@ class CompactAppsTable extends StatelessWidget {
   }
 
   Widget _buildStatusIndicator(AppModel app) {
-    if (app.isInstalled && app.status == 'running') {
-      return Row(
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.success,
-            ),
-          ),
-          const SizedBox(width: 6),
-          const Text(
-            'Running',
-            style: TextStyle(
-              fontSize: AppTextSize.xxs,
-              color: AppColors.success,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      );
-    } else if (app.isInstalled) {
+    if (app.isInstalled) {
+      if (app.isService) {
+        return Row(
+          children: [
+            if (app.serviceStatus == 'stopped')
+              _buildServiceButton(
+                icon: Icons.play_arrow_rounded,
+                label: 'Start',
+                color: AppColors.success,
+                onPressed: () => onStartService(app),
+              )
+            else if (app.serviceStatus == 'running') ...[
+              _buildServiceButton(
+                icon: Icons.stop_rounded,
+                label: 'Stop',
+                color: AppColors.error,
+                onPressed: () => onStopService(app),
+              ),
+              const SizedBox(width: 4),
+              _buildServiceButton(
+                icon: Icons.refresh_rounded,
+                label: 'Restart',
+                color: AppColors.primary,
+                onPressed: () => onRestartService(app),
+              ),
+            ] else ...[
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                app.serviceStatus.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ],
+        );
+      }
+
       return Row(
         children: [
           Container(
@@ -389,6 +420,34 @@ class CompactAppsTable extends StatelessWidget {
         activeTrackColor: AppColors.success.withValues(alpha: 0.2),
         inactiveThumbColor: AppColors.textMuted,
         inactiveTrackColor: AppColors.border,
+      ),
+    );
+  }
+
+  Widget _buildServiceButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Tooltip(
+      message: label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(4),
+              border:
+                  Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
+            ),
+            child: Icon(icon, size: 14, color: color),
+          ),
+        ),
       ),
     );
   }

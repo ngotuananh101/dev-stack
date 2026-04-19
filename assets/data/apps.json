@@ -378,7 +378,7 @@
       "description": "Hypertext Preprocessor v8.2",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php.exe",
+      "exec_file": "php-cgi.exe",
       "cli_file": "php.exe",
       "prefix": "8.2",
       "versions": {
@@ -391,7 +391,7 @@
       "description": "Hypertext Preprocessor v8.3",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php.exe",
+      "exec_file": "php-cgi.exe",
       "cli_file": "php.exe",
       "prefix": "8.3",
       "versions": {
@@ -417,7 +417,7 @@
       "description": "Hypertext Preprocessor v8.5",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php.exe",
+      "exec_file": "php-cgi.exe",
       "cli_file": "php.exe",
       "prefix": "8.5",
       "versions": {

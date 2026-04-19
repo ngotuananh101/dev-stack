@@ -11,7 +11,7 @@ class AppModel {
   String? cliFile;
   List<String> versions;
   String? versionLinksJson;
-  
+
   // UI/State properties
   String? selectedVersion;
   bool displayOnDashboard;
@@ -26,6 +26,17 @@ class AppModel {
   String? cliFilePath;
   bool isAddedToPath;
   bool addPathAfterInstall;
+
+  // Service management (non-persistent)
+  bool get isService {
+    final serviceCategories = ['database', 'webserver'];
+    return serviceCategories.contains(categories.firstOrNull) ||
+        appId.startsWith('php'); // Example: php can be a service
+  }
+
+  String serviceStatus =
+      'stopped'; // 'stopped', 'starting', 'running', 'stopping'
+  int? servicePid;
 
   // Real-time progress (non-persistent)
   double? installProgress;
@@ -54,7 +65,8 @@ class AppModel {
   }
 
   bool get hasUpdateAvailable {
-    if (!isInstalled || installedVersion == null || versions.isEmpty) return false;
+    if (!isInstalled || installedVersion == null || versions.isEmpty)
+      return false;
 
     // Split installed version to get Major.Minor (e.g., 8.2 from 8.2.1)
     final parts = installedVersion!.split('.');

@@ -150,6 +150,21 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                             '${app.name} $status system PATH',
                           );
                         },
+                        onStartService: (app) async {
+                          await ref
+                              .read(appsNotifierProvider.notifier)
+                              .startService(app);
+                        },
+                        onStopService: (app) async {
+                          await ref
+                              .read(appsNotifierProvider.notifier)
+                              .stopService(app);
+                        },
+                        onRestartService: (app) async {
+                          await ref
+                              .read(appsNotifierProvider.notifier)
+                              .restartService(app);
+                        },
                       ),
                     ),
                     const SizedBox(height: 16),

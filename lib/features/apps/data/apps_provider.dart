@@ -5,6 +5,7 @@ import '../../../core/database/isar_provider.dart';
 import '../domain/app_model.dart';
 import 'apps_repository.dart';
 import 'app_installer_service.dart';
+import 'app_service_manager.dart';
 import '../../../core/services/path_service.dart';
 
 part 'apps_provider.g.dart';
@@ -270,6 +271,39 @@ class AppsNotifier extends _$AppsNotifier {
       notifyUpdate(force: true);
     } catch (e) {
       debugPrint('Error toggling PATH: $e');
+    }
+  }
+
+  Future<void> startService(AppModel app) async {
+    final manager = ref.read(appServiceManagerProvider);
+    try {
+      await manager.start(
+        app, 
+        onStatusChange: () => notifyUpdate(force: true),
+      );
+      notifyUpdate(force: true);
+    } catch (e) {
+      debugPrint('Error starting service: $e');
+    }
+  }
+
+  Future<void> stopService(AppModel app) async {
+    final manager = ref.read(appServiceManagerProvider);
+    try {
+      await manager.stop(app);
+      notifyUpdate(force: true);
+    } catch (e) {
+      debugPrint('Error stopping service: $e');
+    }
+  }
+
+  Future<void> restartService(AppModel app) async {
+    final manager = ref.read(appServiceManagerProvider);
+    try {
+      await manager.restart(app);
+      notifyUpdate(force: true);
+    } catch (e) {
+      debugPrint('Error restarting service: $e');
     }
   }
 }
