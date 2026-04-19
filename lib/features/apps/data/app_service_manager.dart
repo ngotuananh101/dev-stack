@@ -27,19 +27,23 @@ class AppServiceManager {
     if (app.execFilePath == null) throw Exception('Executable path not found');
 
     final exeFile = File(app.execFilePath!);
-    if (!exeFile.existsSync()) throw Exception('Executable file does not exist');
+    if (!exeFile.existsSync())
+      throw Exception('Executable file does not exist');
 
     _logger.info('Starting service: ${app.name} (${app.appId})');
     app.serviceStatus = 'starting';
 
     try {
       final workingDir = exeFile.parent.path;
-      
+
       // Specific arguments for certain apps
       List<String> args = [];
       String execPath = app.execFilePath!;
-      final fileName = exeFile.path.split(Platform.pathSeparator).last.toLowerCase();
-      
+      final fileName = exeFile.path
+          .split(Platform.pathSeparator)
+          .last
+          .toLowerCase();
+
       if (fileName == 'php-cgi.exe' || fileName == 'php.exe') {
         // Dynamic port based on version: php82 -> 9082
         String port = '9000';
@@ -66,7 +70,9 @@ class AppServiceManager {
       app.servicePid = process.pid;
       app.serviceStatus = 'running';
       app.serviceLogs = []; // Clear old logs on start
-      app.addServiceLog('Service started (PID: ${process.pid})');
+      app.addServiceLog(
+        'Service started (PID: ${process.pid}) with command ${exeFile.path} ${args.join(' ')}',
+      );
       onStatusChange?.call();
 
       // Listen for exit
@@ -89,7 +95,7 @@ class AppServiceManager {
           }
         }
       });
-      
+
       process.stderr.transform(utf8.decoder).listen((data) {
         final lines = data.split('\n');
         for (final line in lines) {
@@ -99,7 +105,6 @@ class AppServiceManager {
           }
         }
       });
-
     } catch (e) {
       _logger.error('Failed to start service ${app.name}: $e');
       app.serviceStatus = 'stopped';
@@ -118,7 +123,9 @@ class AppServiceManager {
       // Try graceful kill
       final success = process.kill();
       if (!success) {
-        _logger.warning('Failed to kill process gracefully, trying force kill...');
+        _logger.warning(
+          'Failed to kill process gracefully, trying force kill...',
+        );
         // On Windows, taskkill might be better for some apps
         await Process.run('taskkill', ['/F', '/PID', process.pid.toString()]);
       }
@@ -131,7 +138,9 @@ class AppServiceManager {
 
   Future<void> restart(AppModel app, {VoidCallback? onStatusChange}) async {
     await stop(app);
-    await Future.delayed(const Duration(milliseconds: 500)); // Give it a moment to release ports
+    await Future.delayed(
+      const Duration(milliseconds: 500),
+    ); // Give it a moment to release ports
     await start(app, onStatusChange: onStatusChange);
   }
 }
