@@ -231,4 +231,12 @@ class AppInstallerService {
 
     return result;
   }
+
+  Future<void> delete(String path) async {
+    final directory = Directory(path);
+    if (directory.existsSync()) {
+      _logger.info('Deleting directory: $path');
+      await directory.delete(recursive: true);
+    }
+  }
 }

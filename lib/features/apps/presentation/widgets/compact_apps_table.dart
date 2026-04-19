@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_model.dart';
@@ -154,13 +155,42 @@ class CompactAppsTable extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        app.name,
-                        style: const TextStyle(
-                          fontSize: AppTextSize.xs,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              app.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: AppTextSize.xs,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (app.isInstalled &&
+                              app.installedVersion != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'v${app.installedVersion}',
+                                style: const TextStyle(
+                                  fontSize: AppTextSize.xxs,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
@@ -177,12 +207,12 @@ class CompactAppsTable extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: app.developer.toLowerCase() == 'official'
-                      ? AppColors.primary.withOpacity(0.1)
+                      ? AppColors.primary.withValues(alpha: 0.1)
                       : AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
                     color: app.developer.toLowerCase() == 'official'
-                        ? AppColors.primary.withOpacity(0.3)
+                        ? AppColors.primary.withValues(alpha: 0.3)
                         : AppColors.border,
                     width: 0.5,
                   ),
@@ -320,91 +350,65 @@ class CompactAppsTable extends StatelessWidget {
     }
   }
 
+  Widget _buildIconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required Color color,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              border: Border.all(color: AppColors.border, width: 0.5),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Icon(icon, size: 14, color: color),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildOperateButtons(BuildContext context, AppModel app) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         if (app.isInstalled) ...[
-          if (app.status == 'running') ...[
-            OutlinedButton(
-              onPressed: () => onToggleInstall(app),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                side: const BorderSide(color: AppColors.border, width: 0.5),
-                backgroundColor: AppColors.surfaceLight,
-              ),
-              child: const Text(
-                'STOP',
-                style: TextStyle(
-                  fontSize: AppTextSize.xxxs,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.error,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            OutlinedButton(
-              onPressed: () => onToggleInstall(app),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                side: const BorderSide(color: AppColors.border, width: 0.5),
-                backgroundColor: AppColors.surfaceLight,
-              ),
-              child: const Text(
-                'LOGS',
-                style: TextStyle(
-                  fontSize: AppTextSize.xxxs,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ] else ...[
-            OutlinedButton(
-              onPressed: () => onToggleInstall(app),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                side: const BorderSide(color: AppColors.border, width: 0.5),
-                backgroundColor: AppColors.surfaceLight,
-              ),
-              child: const Text(
-                'SETUP',
-                style: TextStyle(
-                  fontSize: AppTextSize.xxxs,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: () => onToggleInstall(app),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                backgroundColor: AppColors.primary.withOpacity(0.2),
-              ),
-              child: const Text(
-                'UPDATE',
-                style: TextStyle(
-                  fontSize: AppTextSize.xxxs,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ],
+          _buildIconButton(
+            icon: Icons.refresh_rounded,
+            onPressed: () => onToggleInstall(app),
+            color: AppColors.primary,
+            tooltip: 'Update',
+          ),
+          const SizedBox(width: 8),
+          _buildIconButton(
+            icon: Icons.settings_outlined,
+            onPressed: () => onToggleInstall(app),
+            color: AppColors.textSecondary,
+            tooltip: 'Settings',
+          ),
+          const SizedBox(width: 8),
+          _buildIconButton(
+            icon: Icons.delete_outline_rounded,
+            onPressed: () {
+              AppDialogs.showConfirm(
+                context: context,
+                title: 'Uninstall App',
+                text: 'Are you sure you want to uninstall ${app.name}?\nThis will delete all files.',
+                onConfirm: () => onToggleInstall(app),
+              );
+            },
+            color: AppColors.error,
+            tooltip: 'Uninstall',
+          ),
         ] else if (app.status == 'installing')
           const OutlinedButton(
             onPressed: null,
@@ -417,21 +421,11 @@ class CompactAppsTable extends StatelessWidget {
             ),
           )
         else
-          OutlinedButton(
+          _buildIconButton(
+            icon: Icons.file_download_outlined,
             onPressed: () => _showVersionModal(context, app),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              side: const BorderSide(color: AppColors.primary, width: 0.5),
-              backgroundColor: Colors.transparent,
-            ),
-            child: const Text(
-              'INSTALL',
-              style: TextStyle(
-                fontSize: AppTextSize.xxxs,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-              ),
-            ),
+            color: AppColors.primary,
+            tooltip: 'Install',
           ),
       ],
     );

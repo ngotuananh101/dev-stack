@@ -97,12 +97,50 @@ class AppsNotifier extends _$AppsNotifier {
         notifyUpdate(force: true);
       }
     } else {
-      // Logic for uninstalling could go here
-      app.isInstalled = false;
-      app.status = 'not_installed';
-      await repository.delete(app.appId);
+      // Logic for uninstalling
+      try {
+        if (app.location != null) {
+          final installer = ref.read(appInstallerServiceProvider);
+          await installer.delete(app.location!);
+        }
+        
+        app.isInstalled = false;
+        app.status = 'not_installed';
+        app.installedVersion = null;
+        app.location = null;
+        app.installedAt = null;
+        app.execFilePath = null;
+        app.cliFilePath = null;
+        
+        await repository.delete(app.appId);
+      } catch (e) {
+        print('Uninstallation failed: $e');
+      }
     }
     
     notifyUpdate(force: true);
+  }
+
+  Future<void> uninstall(AppModel app) async {
+    final repository = await ref.read(appsRepositoryProvider.future);
+    try {
+      if (app.location != null) {
+        final installer = ref.read(appInstallerServiceProvider);
+        await installer.delete(app.location!);
+      }
+      
+      app.isInstalled = false;
+      app.status = 'not_installed';
+      app.installedVersion = null;
+      app.location = null;
+      app.installedAt = null;
+      app.execFilePath = null;
+      app.cliFilePath = null;
+      
+      await repository.delete(app.appId);
+      notifyUpdate(force: true);
+    } catch (e) {
+      print('Uninstallation failed: $e');
+    }
   }
 }
