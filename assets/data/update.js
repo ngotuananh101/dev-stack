@@ -92,7 +92,9 @@ const fetchers = {
     const data = await res.json();
     const versions = {};
     data.major_releases?.forEach(r => {
-      versions[r.release_id] = `https://mirror.mariadb.org/mariadb-${r.release_id}/winx64-packages/mariadb-${r.release_id}-winx64.zip`;
+      if (r.release_status !== 'Preview') {
+        versions[r.release_id] = `https://mirror.mariadb.org/mariadb-${r.release_id}/winx64-packages/mariadb-${r.release_id}-winx64.zip`;
+      }
     });
     return versions;
   },
