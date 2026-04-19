@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_model.dart';
 import '../../data/php_settings_provider.dart';
+import '../../data/db_settings_provider.dart';
 import '../../data/app_service_manager.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
@@ -34,10 +35,17 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
   List<PhpExtension> _extensions = [];
   String _searchQuery = '';
 
+  bool get _isPhp => widget.app.groupName == 'php' || widget.app.appId.startsWith('php');
+  bool get _isDb => 
+      widget.app.groupName == 'mysql' || 
+      widget.app.groupName == 'mariadb' || 
+      widget.app.appId.toLowerCase().contains('mysql') || 
+      widget.app.appId.toLowerCase().contains('mariadb');
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: _isPhp ? 3 : 2, vsync: this);
     _loadData();
   }
 
@@ -51,10 +59,16 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    final provider = ref.read(phpSettingsProvider.notifier);
+    String content = '';
     
-    final content = await provider.readPhpIni(widget.app);
-    _extensions = await provider.getExtensions(widget.app, content);
+    if (_isPhp) {
+      final provider = ref.read(phpSettingsProvider.notifier);
+      content = await provider.readPhpIni(widget.app);
+      _extensions = await provider.getExtensions(widget.app, content);
+    } else if (_isDb) {
+      content = await ref.read(dbSettingsProvider.notifier).readConfig(widget.app);
+      _extensions = [];
+    }
     
     if (mounted) {
       final lineCount = content.split('\n').length;
@@ -104,7 +118,13 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
         : _fallbackController.text;
         
     setState(() => _isLoading = true);
-    await ref.read(phpSettingsProvider.notifier).savePhpIni(widget.app, text);
+    
+    if (_isPhp) {
+      await ref.read(phpSettingsProvider.notifier).savePhpIni(widget.app, text);
+    } else if (_isDb) {
+      await ref.read(dbSettingsProvider.notifier).saveConfig(widget.app, text);
+    }
+    
     await _loadData();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -150,7 +170,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
                     children: [
                       KeepAliveWrapper(child: _buildServiceTab()),
                       KeepAliveWrapper(child: _buildConfigTab()),
-                      KeepAliveWrapper(child: _buildExtensionsTab()),
+                      if (_isPhp) KeepAliveWrapper(child: _buildExtensionsTab()),
                     ],
                   ),
           ),
@@ -259,22 +279,23 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.tune_rounded, size: 16),
-                SizedBox(width: 8),
-                Text('Configuration'),
+                const Icon(Icons.tune_rounded, size: 16),
+                const SizedBox(width: 8),
+                Text(_isDb ? 'my.ini' : 'php.ini'),
               ],
             ),
           ),
-          Tab(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.extension_rounded, size: 16),
-                SizedBox(width: 8),
-                Text('Extensions'),
-              ],
+          if (_isPhp)
+            const Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.extension_rounded, size: 16),
+                  SizedBox(width: 8),
+                  Text('Extensions'),
+                ],
+              ),
             ),
-          ),
         ],
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textMuted,
