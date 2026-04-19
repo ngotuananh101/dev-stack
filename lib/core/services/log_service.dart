@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../config/app_config.dart';
 
 part 'log_service.g.dart';
 
@@ -13,7 +14,7 @@ LogService logService(Ref ref) {
 }
 
 class LogService {
-  static const String baseLogDir = 'C:\\Ponta\\logs';
+  static const String baseLogDir = AppConfig.logsDir;
 
   Future<void> info(String message) => _write('INFO', message);
   Future<void> error(String message) => _write('ERROR', message);

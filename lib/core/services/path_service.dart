@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'log_service.dart';
 import '../../features/apps/domain/app_model.dart';
+import '../config/app_config.dart';
 
 part 'path_service.g.dart';
 
@@ -15,7 +16,7 @@ PathService pathService(Ref ref) {
 
 class PathService {
   final LogService _logger;
-  static const String binDir = 'C:\\Ponta\\bin';
+  static const String binDir = AppConfig.binDir;
 
   PathService(this._logger);
 

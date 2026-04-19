@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
+import '../../../core/config/app_config.dart';
 
 part 'app_installer_service.g.dart';
 
@@ -26,7 +27,7 @@ typedef InstallationLogCallback = void Function(String message);
 
 class AppInstallerService {
   final LogService _logger;
-  static const String defaultBaseDir = 'C:\\Ponta\\apps';
+  static const String defaultBaseDir = AppConfig.appsDir;
   final _dio = Dio();
 
   AppInstallerService(this._logger);

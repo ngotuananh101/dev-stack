@@ -1,0 +1,13 @@
+class AppConfig {
+  /// The base directory for all Ponta data and applications.
+  static const String baseDir = 'C:\\Ponta';
+
+  /// Directory where applications are installed.
+  static const String appsDir = '$baseDir\\apps';
+
+  /// Directory for system binaries and tools.
+  static const String binDir = '$baseDir\\bin';
+
+  /// Directory for system and service logs.
+  static const String logsDir = '$baseDir\\logs';
+}
