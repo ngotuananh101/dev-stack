@@ -5,6 +5,7 @@ import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_model.dart';
 import 'app_version_modal.dart';
 import 'service_logs_modal.dart';
+import 'app_settings_modal.dart';
 
 class CompactAppsTable extends StatelessWidget {
   final List<AppModel> apps;
@@ -515,7 +516,7 @@ class CompactAppsTable extends StatelessWidget {
           ],
           _buildIconButton(
             icon: Icons.settings_outlined,
-            onPressed: () => onToggleInstall(app),
+            onPressed: () => _showSettingsModal(context, app),
             color: AppColors.textSecondary,
             tooltip: 'Settings',
           ),
@@ -586,6 +587,21 @@ class CompactAppsTable extends StatelessWidget {
         return Dialog(
           backgroundColor: Colors.transparent,
           child: ServiceLogsModal(
+            app: app,
+            onClose: () => Navigator.of(dialogContext).pop(),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSettingsModal(BuildContext context, AppModel app) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: AppSettingsModal(
             app: app,
             onClose: () => Navigator.of(dialogContext).pop(),
           ),

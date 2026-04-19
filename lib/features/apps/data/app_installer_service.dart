@@ -137,6 +137,19 @@ class AppInstallerService {
         }
       }
 
+      // 6. Post-installation: Handle PHP configuration
+      if (app.groupName == 'php') {
+        final phpIniDev = File(p.join(installPath, 'php.ini-development'));
+        final phpIni = File(p.join(installPath, 'php.ini'));
+
+        if (phpIniDev.existsSync() && !phpIni.existsSync()) {
+          logInfo('Copying php.ini-development to php.ini...');
+          await phpIniDev.copy(phpIni.path);
+          logInfo('Successfully created php.ini');
+          await _tunePhpIni(phpIni, logInfo);
+        }
+      }
+
       // Cleanup
       if (tempFile.existsSync()) await tempFile.delete();
 
@@ -257,6 +270,44 @@ class AppInstallerService {
     }
 
     return result;
+  }
+
+  Future<void> _tunePhpIni(File phpIni, Function(String) logInfo) async {
+    if (!phpIni.existsSync()) return;
+
+    logInfo('Tuning php.ini for better performance...');
+    String content = await phpIni.readAsString();
+
+    final Map<String, String> replacements = {
+      r'^;?\s*max_execution_time\s*=.*': 'max_execution_time = 1800',
+      r'^;?\s*max_input_time\s*=.*': 'max_input_time = 3600',
+      r'^;?\s*memory_limit\s*=.*': 'memory_limit = 2G',
+      r'^;?\s*post_max_size\s*=.*': 'post_max_size = 2G',
+      r'^;?\s*upload_max_filesize\s*=.*': 'upload_max_filesize = 512M',
+      r'^;?\s*extension_dir\s*=\s*"ext"': 'extension_dir = "ext"',
+      r'^;?\s*zend_extension\s*=\s*opcache.*': 'zend_extension = opcache',
+      r'^;?\s*opcache\.enable\s*=.*': 'opcache.enable = 1',
+      r'^;?\s*opcache\.enable_cli\s*=.*': 'opcache.enable_cli = 1',
+      r'^;?\s*opcache\.memory_consumption\s*=.*': 'opcache.memory_consumption = 128',
+      r'^;?\s*opcache\.max_accelerated_files\s*=.*': 'opcache.max_accelerated_files = 10000',
+      r'^;?\s*opcache\.validate_timestamps\s*=.*': 'opcache.validate_timestamps = 1',
+      r'^;?\s*opcache\.revalidate_freq\s*=.*': 'opcache.revalidate_freq = 2',
+      r'^;?\s*realpath_cache_size\s*=.*': 'realpath_cache_size = 4096k',
+      r'^;?\s*realpath_cache_ttl\s*=.*': 'realpath_cache_ttl = 600',
+    };
+
+    for (final entry in replacements.entries) {
+      final regExp = RegExp(entry.key, multiLine: true, caseSensitive: false);
+      if (regExp.hasMatch(content)) {
+        content = content.replaceFirst(regExp, entry.value);
+      } else {
+        // If not found, append it at the end
+        content += '\n${entry.value}';
+      }
+    }
+
+    await phpIni.writeAsString(content);
+    logInfo('php.ini tuning completed.');
   }
 
   Future<void> delete(String path) async {

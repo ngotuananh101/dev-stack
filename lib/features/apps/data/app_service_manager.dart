@@ -27,8 +27,9 @@ class AppServiceManager {
     if (app.execFilePath == null) throw Exception('Executable path not found');
 
     final exeFile = File(app.execFilePath!);
-    if (!exeFile.existsSync())
+    if (!exeFile.existsSync()) {
       throw Exception('Executable file does not exist');
+    }
 
     _logger.info('Starting service: ${app.name} (${app.appId})');
     app.serviceStatus = 'starting';
@@ -129,6 +130,13 @@ class AppServiceManager {
         // On Windows, taskkill might be better for some apps
         await Process.run('taskkill', ['/F', '/PID', process.pid.toString()]);
       }
+      
+      // Wait for process to actually exit
+      try {
+        await process.exitCode.timeout(const Duration(seconds: 5));
+      } catch (e) {
+        _logger.warning('Timeout waiting for service ${app.name} to stop: $e');
+      }
     }
 
     _processes.remove(app.appId);
@@ -142,5 +150,27 @@ class AppServiceManager {
       const Duration(milliseconds: 500),
     ); // Give it a moment to release ports
     await start(app, onStatusChange: onStatusChange);
+  }
+
+  Future<void> forceKillByNames(List<String> names) async {
+    if (!Platform.isWindows) return;
+
+    for (final name in names) {
+      if (name.trim().isEmpty) continue;
+
+      // Ensure it has .exe extension if missing
+      String taskName = name;
+      if (!taskName.toLowerCase().endsWith('.exe')) {
+        taskName += '.exe';
+      }
+
+      _logger.info('Force killing processes by name: $taskName');
+      try {
+        // /F - force, /IM - image name, /T - child processes
+        await Process.run('taskkill', ['/F', '/IM', taskName, '/T']);
+      } catch (e) {
+        _logger.warning('Failed to kill task $taskName: $e');
+      }
+    }
   }
 }

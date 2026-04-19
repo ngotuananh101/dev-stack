@@ -126,7 +126,6 @@ class AppsNotifier extends _$AppsNotifier {
       if (app.selectedVersion != null && app.selectedVersion != app.installedVersion) {
         try {
           final oldPath = app.location;
-          final oldVersion = app.installedVersion;
           final wasInPath = app.isAddedToPath;
           final newVersion = app.selectedVersion!;
           final installer = ref.read(appInstallerServiceProvider);
@@ -136,6 +135,19 @@ class AppsNotifier extends _$AppsNotifier {
           app.installStatus = 'Updating to $newVersion...';
           app.installLogs = [];
           notifyUpdate(force: true);
+
+          // 0. Stop service if running before update
+          final manager = ref.read(appServiceManagerProvider);
+          if (manager.isRunning(app.appId)) {
+            debugPrint('Stopping service before update: ${app.name}');
+            await manager.stop(app);
+          }
+          
+          // Force kill any related processes to be safe
+          await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
+          
+          // Safety delay for Windows file handles
+          await Future.delayed(const Duration(seconds: 1));
 
           // 1. Download and install new version to a new folder
           final newInstallPath = await installer.install(
@@ -191,6 +203,19 @@ class AppsNotifier extends _$AppsNotifier {
       } else {
         // Logic for uninstalling (the existing logic)
         try {
+          // Stop service if running
+          final manager = ref.read(appServiceManagerProvider);
+          if (manager.isRunning(app.appId)) {
+            debugPrint('Stopping service before uninstallation: ${app.name}');
+            await manager.stop(app);
+          }
+          
+          // Force kill any related processes to be safe
+          await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
+
+          // Safety delay for Windows file handles
+          await Future.delayed(const Duration(seconds: 1));
+
           if (app.location != null) {
             final installer = ref.read(appInstallerServiceProvider);
             await installer.delete(app.location!);
@@ -224,6 +249,19 @@ class AppsNotifier extends _$AppsNotifier {
   Future<void> uninstall(AppModel app) async {
     final repository = await ref.read(appsRepositoryProvider.future);
     try {
+      // Stop service if running
+      final manager = ref.read(appServiceManagerProvider);
+      if (manager.isRunning(app.appId)) {
+        debugPrint('Stopping service before uninstallation: ${app.name}');
+        await manager.stop(app);
+      }
+      
+      // Force kill any related processes to be safe
+      await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
+
+      // Safety delay for Windows file handles
+      await Future.delayed(const Duration(seconds: 1));
+
       if (app.location != null) {
         final installer = ref.read(appInstallerServiceProvider);
         await installer.delete(app.location!);
