@@ -147,6 +147,7 @@ class AppInstallerService {
           await phpIniDev.copy(phpIni.path);
           logInfo('Successfully created php.ini');
           await _tunePhpIni(phpIni, logInfo);
+          await _enableDefaultExtensions(phpIni, installPath, logInfo);
         }
       }
 
@@ -308,6 +309,67 @@ class AppInstallerService {
 
     await phpIni.writeAsString(content);
     logInfo('php.ini tuning completed.');
+  }
+
+  Future<void> _enableDefaultExtensions(
+    File phpIni,
+    String installPath,
+    Function(String) logInfo,
+  ) async {
+    logInfo('Enabling default extensions (curl, mbstring, pdo, etc.)...');
+    String content = await phpIni.readAsString();
+
+    final extensions = [
+      'curl',
+      'fileinfo',
+      'mbstring',
+      'pdo_mysql',
+      'pdo_sqlite',
+      'sqlite3',
+      'zip',
+    ];
+
+    for (final ext in extensions) {
+      final dllName = 'php_$ext.dll';
+      final extPath = p.join(installPath, 'ext', dllName);
+
+      // Verify the DLL exists before enabling
+      if (!File(extPath).existsSync()) {
+        logInfo('Skipping $ext: DLL not found at $extPath');
+        continue;
+      }
+
+      final newLine = 'extension="$extPath"';
+
+      // 1. Remove ANY existing lines for this extension
+      final searchRegex = RegExp(
+        r'^;?\s*(?:extension|zend_extension)\s*=\s*"?\s*(?:[^"\r\n]*?[\\/])?(?:php_)?' +
+            RegExp.escape(ext) +
+            r'(?:\.dll)?"?\s*$\r?\n?',
+        multiLine: true,
+        caseSensitive: false,
+      );
+      content = content.replaceAll(searchRegex, '');
+
+      // 2. Insert after opcache or append
+      final opcacheRegex = RegExp(
+        r'^;?\s*zend_extension\s*=\s*"?\s*opcache(?:\.dll)?"?\s*$',
+        multiLine: true,
+        caseSensitive: false,
+      );
+
+      if (opcacheRegex.hasMatch(content)) {
+        content = content.replaceFirstMapped(
+          opcacheRegex,
+          (match) => '${match.group(0)}\n$newLine',
+        );
+      } else {
+        content += '\n$newLine';
+      }
+    }
+
+    await phpIni.writeAsString(content);
+    logInfo('Default extensions enabled successfully.');
   }
 
   Future<void> delete(String path) async {

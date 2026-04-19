@@ -26,15 +26,46 @@ class PhpSettings extends _$PhpSettings {
     await file.writeAsString(content);
   }
 
-  Future<List<PhpExtension>> getExtensions(AppModel app) async {
+  Future<List<PhpExtension>> getExtensions(AppModel app, [String? iniContent]) async {
     if (app.location == null) return [];
     
     final extDir = Directory('${app.location}${Platform.pathSeparator}ext');
     if (!await extDir.exists()) return [];
 
-    final iniContent = await readPhpIni(app);
+    final content = iniContent ?? await readPhpIni(app);
     final List<FileSystemEntity> entities = await extDir.list().toList();
     final dllFiles = entities.where((f) => f.path.toLowerCase().endsWith('.dll')).toList();
+
+    // Optimize: Parse ini once to find all extension lines
+    final activeExtensions = <String>{};
+    final disabledExtensions = <String>{};
+    
+    // Regex to match extension/zend_extension lines and capture the name
+    // Matches: extension=mbstring, ;extension=curl, zend_extension="opcache"
+    final extLineRegex = RegExp(
+      r'^;?\s*(?:extension|zend_extension)\s*=\s*"?\s*(?:php_)?([^"\r\n]+?)(?:\.dll)?"?\s*$', 
+      multiLine: true, 
+      caseSensitive: false
+    );
+    
+    final matches = extLineRegex.allMatches(content);
+    for (final match in matches) {
+      final fullLine = match.group(0)!;
+      String name = match.group(1)!.toLowerCase();
+      
+      // If it's an absolute path, extract the filename
+      if (name.contains('\\') || name.contains('/')) {
+        name = name.split(RegExp(r'[\\/]')).last;
+        // Clean up php_ prefix and .dll if present in filename
+        name = name.replaceAll('.dll', '').replaceFirst('php_', '');
+      }
+      
+      if (fullLine.trim().startsWith(';')) {
+        disabledExtensions.add(name);
+      } else {
+        activeExtensions.add(name);
+      }
+    }
 
     final List<PhpExtension> extensions = [];
     
@@ -45,18 +76,14 @@ class PhpSettings extends _$PhpSettings {
       if (name.startsWith('php_')) {
         name = name.substring(4);
       }
+      final lowerName = name.toLowerCase();
 
-      // Check if it's a zend extension (like opcache)
-      bool isZend = name.toLowerCase() == 'opcache' || name.toLowerCase() == 'xdebug';
+      // Skip opcache and xdebug as requested
+      if (lowerName == 'opcache' || lowerName == 'xdebug') continue;
 
-      String typePrefix = isZend ? 'zend_extension' : 'extension';
-
-      // Match extension=name or extension=php_name.dll or extension="name"
-      final enabledRegex = RegExp(r'^' + typePrefix + r'\s*=\s*"? (?:php_)?' + name + r'(?:\.dll)?"?', multiLine: true, caseSensitive: false);
-      final disabledRegex = RegExp(r'^;\s*' + typePrefix + r'\s*=\s*"? (?:php_)?' + name + r'(?:\.dll)?"?', multiLine: true, caseSensitive: false);
-
-      bool isEnabled = enabledRegex.hasMatch(iniContent);
-      bool isFoundInIni = isEnabled || disabledRegex.hasMatch(iniContent);
+      bool isZend = lowerName == 'xdebug'; // opcache is usually internal or also zend
+      bool isEnabled = activeExtensions.contains(lowerName);
+      bool isFoundInIni = isEnabled || disabledExtensions.contains(lowerName);
       
       extensions.add(PhpExtension(
         name: name,
@@ -78,42 +105,35 @@ class PhpSettings extends _$PhpSettings {
 
   Future<void> toggleExtension(AppModel app, PhpExtension ext, bool enable) async {
     final file = _getPhpIni(app);
-    if (file == null || !await file.exists()) return;
+    if (file == null || !await file.exists() || app.location == null) return;
 
     String content = await file.readAsString();
     final name = ext.name;
-    final typePrefix = ext.isZend ? 'zend_extension' : 'extension';
+    
+    // 1. Remove ALL existing lines for this extension (enabled or commented)
+    // This cleans up any previous attempts or manual edits to avoid duplication
+    // Handles both short names and absolute paths
+    final searchRegex = RegExp(
+      r'^;?\s*(?:extension|zend_extension)\s*=\s*"?\s*(?:[^"\r\n]*?[\\/])?(?:php_)?' + RegExp.escape(name) + r'(?:\.dll)?"?\s*$\r?\n?', 
+      multiLine: true, 
+      caseSensitive: false
+    );
+    content = content.replaceAll(searchRegex, '');
 
-    // Regex to find the extension line (commented or not)
-    final regex = RegExp(r'^;?\s*' + typePrefix + r'\s*=\s*"? (?:php_)?' + name + r'(?:\.dll)?"?', multiLine: true, caseSensitive: false);
-
-    if (regex.hasMatch(content)) {
-      if (enable) {
-        // Uncomment
-        content = content.replaceFirstMapped(regex, (match) {
-          String line = match.group(0)!;
-          if (line.startsWith(';')) {
-            line = line.substring(1).trimLeft();
-          }
-          return line;
+    if (enable) {
+      final type = ext.isZend ? 'zend_extension' : 'extension';
+      final extPath = '${app.location}${Platform.pathSeparator}ext${Platform.pathSeparator}${ext.fileName}';
+      final newLine = '$type="$extPath"';
+      
+      // 2. Try to insert after opcache for organization, else append
+      final opcacheRegex = RegExp(r'^;?\s*zend_extension\s*=\s*"?\s*opcache(?:\.dll)?"?\s*$', multiLine: true, caseSensitive: false);
+      
+      if (opcacheRegex.hasMatch(content)) {
+        content = content.replaceFirstMapped(opcacheRegex, (match) {
+          return '${match.group(0)}\n$newLine';
         });
       } else {
-        // Comment
-        content = content.replaceFirstMapped(regex, (match) {
-          final line = match.group(0)!;
-          if (!line.startsWith(';')) {
-            return ';$line';
-          }
-          return line;
-        });
-      }
-    } else if (enable) {
-      // Add new line if not found and enabling
-      // Find the extensions section if possible, or just append
-      if (content.contains('Dynamic Extensions')) {
-        content = content.replaceFirst('; Dynamic Extensions', '; Dynamic Extensions\n$typePrefix=$name');
-      } else {
-        content += '\n$typePrefix=$name';
+        content += '\n$newLine';
       }
     }
 

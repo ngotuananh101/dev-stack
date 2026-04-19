@@ -23,22 +23,30 @@ class AppSettingsModal extends ConsumerStatefulWidget {
   ConsumerState<AppSettingsModal> createState() => _AppSettingsModalState();
 }
 
-class _AppSettingsModalState extends ConsumerState<AppSettingsModal> {
+class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   CodeController? _codeController;
+  final TextEditingController _fallbackController = TextEditingController();
+  String? _iniContent;
   bool _isLoading = true;
+  bool _isEditorReady = false;
+  bool _useCodeEditor = false;
   List<PhpExtension> _extensions = [];
   String _searchQuery = '';
 
   @override
-  void dispose() {
-    _codeController?.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _loadData();
   }
 
   @override
-  void initState() {
-    super.initState();
-    _loadData();
+  void dispose() {
+    _tabController.dispose();
+    _codeController?.dispose();
+    _fallbackController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -46,23 +54,57 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> {
     final provider = ref.read(phpSettingsProvider.notifier);
     
     final content = await provider.readPhpIni(widget.app);
-    if (_codeController == null) {
-      _codeController = CodeController(text: content, language: properties);
-    } else {
-      _codeController!.text = content;
-    }
-    
-    _extensions = await provider.getExtensions(widget.app);
+    _extensions = await provider.getExtensions(widget.app, content);
     
     if (mounted) {
-      setState(() => _isLoading = false);
+      final lineCount = content.split('\n').length;
+      setState(() {
+        _iniContent = content;
+        _fallbackController.text = content;
+        if (_codeController != null) {
+          _codeController!.text = content;
+        }
+        _useCodeEditor = lineCount <= 200;
+        _isLoading = false;
+      });
+
+      // Background initialization of the heavy CodeController ONLY if needed
+      if (_useCodeEditor) {
+        _initCodeControllerLazily();
+      }
     }
   }
 
+  void _initCodeControllerLazily() {
+    // Wait for modal transition to finish completely
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (!mounted || _iniContent == null) return;
+      
+      // Step 1: Create controller WITHOUT language (much faster)
+      final controller = CodeController(text: _iniContent!);
+      if (mounted) {
+        setState(() {
+          _codeController = controller;
+          _isEditorReady = true;
+        });
+      }
+
+      // Step 2: Apply highlighting after another delay to avoid micro-stutter
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _codeController != null) {
+          _codeController!.language = properties;
+        }
+      });
+    });
+  }
+
   Future<void> _saveConfig() async {
-    if (_codeController == null) return;
+    final text = _useCodeEditor && _codeController != null 
+        ? _codeController!.text 
+        : _fallbackController.text;
+        
     setState(() => _isLoading = true);
-    await ref.read(phpSettingsProvider.notifier).savePhpIni(widget.app, _codeController!.text);
+    await ref.read(phpSettingsProvider.notifier).savePhpIni(widget.app, text);
     await _loadData();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -96,25 +138,24 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> {
           ),
         ],
       ),
-      child: DefaultTabController(
-        length: 2,
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildTabBar(),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : TabBarView(
-                      children: [
-                        _buildConfigTab(),
-                        _buildExtensionsTab(),
-                      ],
-                    ),
-            ),
-            _buildFooter(),
-          ],
-        ),
+      child: Column(
+        children: [
+          _buildHeader(),
+          _buildTabBar(),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      KeepAliveWrapper(child: _buildServiceTab()),
+                      KeepAliveWrapper(child: _buildConfigTab()),
+                      KeepAliveWrapper(child: _buildExtensionsTab()),
+                    ],
+                  ),
+          ),
+          _buildFooter(),
+        ],
       ),
     );
   }
@@ -177,7 +218,18 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> {
         border: const Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: TabBar(
+        controller: _tabController,
         tabs: [
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.info_outline_rounded, size: 16),
+                SizedBox(width: 8),
+                Text('Service'),
+              ],
+            ),
+          ),
           Tab(
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -205,6 +257,101 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> {
         indicatorWeight: 3,
         labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: AppTextSize.xs),
       ),
+    );
+  }
+
+  Widget _buildServiceTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInfoSection(
+            'Installation Details',
+            [
+              _buildInfoRow(Icons.folder_open, 'Location', widget.app.location ?? 'Unknown'),
+              _buildInfoRow(Icons.new_releases_outlined, 'Installed Version', widget.app.installedVersion ?? 'N/A'),
+              _buildInfoRow(Icons.calendar_today_outlined, 'Installed At', 
+                widget.app.installedAt != null ? widget.app.installedAt.toString().split('.')[0] : 'N/A'),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildInfoSection(
+            'Executable Paths',
+            [
+              _buildInfoRow(Icons.terminal, 'PHP CLI', widget.app.cliFilePath ?? 'Not found'),
+              _buildInfoRow(Icons.javascript_outlined, 'PHP CGI', widget.app.execFilePath ?? 'Not found'),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildInfoSection(
+            'System Integration',
+            [
+              _buildInfoRow(
+                widget.app.isAddedToPath ? Icons.check_circle_outline : Icons.error_outline,
+                'PATH Environment', 
+                widget.app.isAddedToPath ? 'Added to Windows PATH' : 'Not added to PATH',
+                valueColor: widget.app.isAddedToPath ? AppColors.success : AppColors.warning,
+              ),
+              _buildInfoRow(
+                Icons.auto_mode,
+                'Auto Start', 
+                widget.app.autoStartService ? 'Enabled' : 'Disabled',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoSection(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: AppTextSize.xs,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: children.expand((w) => [w, if (w != children.last) const Divider(height: 24, color: AppColors.border)]).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value, {Color? valueColor}) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textMuted),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: const TextStyle(fontSize: AppTextSize.xxs, color: AppColors.textSecondary),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: AppTextSize.xxs,
+            fontWeight: FontWeight.w500,
+            color: valueColor ?? AppColors.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 
@@ -249,19 +396,38 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> {
                 border: Border.all(color: AppColors.border),
               ),
               clipBehavior: Clip.antiAlias,
-              child: CodeTheme(
-                data: CodeThemeData(styles: monokaiSublimeTheme),
-                child: SingleChildScrollView(
-                  child: CodeField(
-                    controller: _codeController!,
-                    textStyle: const TextStyle(
+              child: !_useCodeEditor || !_isEditorReady || _codeController == null
+                ? TextField(
+                    controller: _fallbackController,
+                    maxLines: null,
+                    expands: true,
+                    readOnly: false, // User can edit large files in plain text
+                    textAlignVertical: TextAlignVertical.top,
+                    style: const TextStyle(
                       fontFamily: 'Consolas',
                       fontSize: AppTextSize.xs,
+                      color: Color(0xFFD4D4D4),
                       height: 1.5,
                     ),
+                    decoration: const InputDecoration(
+                      contentPadding: EdgeInsets.all(20),
+                      border: InputBorder.none,
+                      hintText: 'Configuration content...',
+                      hintStyle: TextStyle(color: AppColors.textMuted),
+                    ),
+                  )
+                : CodeTheme(
+                    data: CodeThemeData(styles: monokaiSublimeTheme),
+                    child: CodeField(
+                      controller: _codeController!,
+                      textStyle: const TextStyle(
+                        fontFamily: 'Consolas',
+                        fontSize: AppTextSize.xs,
+                        height: 1.5,
+                      ),
+                      expands: true,
+                    ),
                   ),
-                ),
-              ),
             ),
           ),
         ],
@@ -451,4 +617,23 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> {
       ),
     );
   }
+}
+
+class KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+  const KeepAliveWrapper({super.key, required this.child});
+
+  @override
+  State<KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<KeepAliveWrapper> with AutomaticKeepAliveClientMixin {
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+
+  @override
+  bool get wantKeepAlive => true;
 }
