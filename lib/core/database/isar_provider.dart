@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/dashboard/domain/environment_model.dart';
 import '../../features/apps/domain/installed_app.dart';
@@ -50,6 +51,6 @@ class IsarInstance {
 }
 
 @Riverpod(keepAlive: true)
-Future<Isar> isar(IsarRef ref) async {
+Future<Isar> isar(Ref ref) async {
   return await IsarInstance.getInstance();
 }

@@ -6,7 +6,7 @@ part of 'apps_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$appsRepositoryHash() => r'00867a609557b4d103fbad48cab241317acbc3ff';
+String _$appsRepositoryHash() => r'a8c9f29fef64b8e00c491d7f01238136458df61e';
 
 /// See also [appsRepository].
 @ProviderFor(appsRepository)
@@ -22,7 +22,7 @@ final appsRepositoryProvider =
 );
 
 typedef AppsRepositoryRef = AutoDisposeFutureProviderRef<AppsRepository>;
-String _$appsNotifierHash() => r'46bc786eba700ea93954938e84714761bd732947';
+String _$appsNotifierHash() => r'b80ed523280692744067c9063c3132495b2ca713';
 
 /// See also [AppsNotifier].
 @ProviderFor(AppsNotifier)

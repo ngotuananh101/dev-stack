@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -6,7 +8,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'log_service.g.dart';
 
 @riverpod
-LogService logService(LogServiceRef ref) {
+LogService logService(Ref ref) {
   return LogService();
 }
 
@@ -33,7 +35,7 @@ class LogService {
     await logFile.writeAsString(logEntry, mode: FileMode.append);
     
     // Also print to console for dev
-    print(logEntry.trim());
+    debugPrint(logEntry.trim());
   }
 
   Future<List<String>> getLogsForDate(DateTime date) async {

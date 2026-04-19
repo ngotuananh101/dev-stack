@@ -85,7 +85,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
       data: (list) =>
           list.firstWhere((a) => a.appId == widget.app.appId, orElse: () => widget.app),
       loading: () => widget.app,
-      error: (_, __) => widget.app,
+      error: (_, _) => widget.app,
     );
 
     // Show progress if installing OR if just finished installing
@@ -100,7 +100,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -133,7 +133,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     if (bytes <= 0) return '0 B';
     const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
     var i = (log(bytes) / log(1024)).floor();
-    return ((bytes / pow(1024, i)).toStringAsFixed(2)) + ' ' + suffixes[i];
+    return '${(bytes / pow(1024, i)).toStringAsFixed(2)} ${suffixes[i]}';
   }
 
   Widget _buildProgressSection(AppModel app) {
@@ -179,7 +179,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
               color: AppColors.primary,
             ),
           ),
@@ -340,7 +340,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           Icon(
             Icons.error_outline,
             size: 48,
-            color: AppColors.error.withOpacity(0.5),
+            color: AppColors.error.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(

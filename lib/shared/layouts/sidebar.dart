@@ -99,7 +99,7 @@ class Sidebar extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.accent.withOpacity(0.2),
+              color: AppColors.accent.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(
@@ -124,7 +124,7 @@ class Sidebar extends ConsumerWidget {
                 'LOCAL NODE',
                 style: TextStyle(
                   fontSize: AppTextSize.xxs,
-                  color: AppColors.textSecondary.withOpacity(0.7),
+                  color: AppColors.textSecondary.withValues(alpha: 0.7),
                   letterSpacing: 1,
                 ),
               ),

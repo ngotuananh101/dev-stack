@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/database/isar_provider.dart';
 import '../domain/app_model.dart';
@@ -7,7 +9,7 @@ import 'app_installer_service.dart';
 part 'apps_provider.g.dart';
 
 @riverpod
-Future<AppsRepository> appsRepository(AppsRepositoryRef ref) async {
+Future<AppsRepository> appsRepository(Ref ref) async {
   final isar = await ref.watch(isarProvider.future);
   return AppsRepository(isar);
 }
@@ -19,7 +21,11 @@ class AppsNotifier extends _$AppsNotifier {
     final repository = await ref.watch(appsRepositoryProvider.future);
     
     // Import initial data if needed
-    await repository.importInitialData();
+    try {
+      await repository.importInitialData();
+    } catch (e) {
+      debugPrint('Error in importInitialData: $e');
+    }
     
     return await repository.getAll();
   }
@@ -90,7 +96,7 @@ class AppsNotifier extends _$AppsNotifier {
         await repository.save(app);
         notifyUpdate(force: true);
       } catch (e) {
-        print('Installation failed: $e');
+        debugPrint('Installation failed: $e');
         app.status = 'not_installed';
         app.installProgress = null;
         app.installStatus = null;
@@ -114,7 +120,7 @@ class AppsNotifier extends _$AppsNotifier {
         
         await repository.delete(app.appId);
       } catch (e) {
-        print('Uninstallation failed: $e');
+        debugPrint('Uninstallation failed: $e');
       }
     }
     
@@ -140,7 +146,7 @@ class AppsNotifier extends _$AppsNotifier {
       await repository.delete(app.appId);
       notifyUpdate(force: true);
     } catch (e) {
-      print('Uninstallation failed: $e');
+      debugPrint('Uninstallation failed: $e');
     }
   }
 }

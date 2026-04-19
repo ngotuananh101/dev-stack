@@ -92,6 +92,6 @@ class EnvironmentCard extends StatelessWidget {
   }
 
   Widget _buildIconButton(IconData icon, {double size = 16}) {
-    return Icon(icon, size: size, color: AppColors.primary.withOpacity(0.7));
+    return Icon(icon, size: size, color: AppColors.primary.withValues(alpha: 0.7));
   }
 }

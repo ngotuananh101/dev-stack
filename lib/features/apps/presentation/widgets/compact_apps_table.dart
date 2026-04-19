@@ -18,12 +18,21 @@ class CompactAppsTable extends StatelessWidget {
   });
 
   IconData _getAppIcon(String appId) {
-    if (appId.contains('nginx') && appId.contains('waf')) return Icons.shield;
-    if (appId.contains('php')) return Icons.code;
-    if (appId.contains('apache') && appId.contains('waf'))
+    if (appId.contains('nginx') && appId.contains('waf')) {
+      return Icons.shield;
+    }
+    if (appId.contains('php')) {
+      return Icons.code;
+    }
+    if (appId.contains('apache') && appId.contains('waf')) {
       return Icons.security;
-    if (appId.contains('mysql')) return Icons.storage;
-    if (appId.contains('cloud')) return Icons.cloud;
+    }
+    if (appId.contains('mysql')) {
+      return Icons.storage;
+    }
+    if (appId.contains('cloud')) {
+      return Icons.cloud;
+    }
     return Icons.apps;
   }
 
@@ -46,13 +55,21 @@ class CompactAppsTable extends StatelessWidget {
   }
 
   Color _getIconColor(String appId) {
-    if (appId.contains('nginx') && appId.contains('waf'))
+    if (appId.contains('nginx') && appId.contains('waf')) {
       return const Color(0xFF4169E1);
-    if (appId.contains('php')) return const Color(0xFF7B68EE);
-    if (appId.contains('apache') && appId.contains('waf'))
+    }
+    if (appId.contains('php')) {
+      return const Color(0xFF7B68EE);
+    }
+    if (appId.contains('apache') && appId.contains('waf')) {
       return const Color(0xFFDC143C);
-    if (appId.contains('mysql')) return const Color(0xFF20B2AA);
-    if (appId.contains('cloud')) return const Color(0xFF58A6FF);
+    }
+    if (appId.contains('mysql')) {
+      return const Color(0xFF20B2AA);
+    }
+    if (appId.contains('cloud')) {
+      return const Color(0xFF58A6FF);
+    }
     return AppColors.primary;
   }
 
@@ -97,7 +114,7 @@ class CompactAppsTable extends StatelessWidget {
             final index = entry.key;
             final app = entry.value;
             return _buildAppRow(context, app, index == apps.length - 1);
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -177,7 +194,7 @@ class CompactAppsTable extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.08),
+                                color: AppColors.primary.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -336,7 +353,7 @@ class CompactAppsTable extends StatelessWidget {
             child: LinearProgressIndicator(
               value: app.installProgress,
               minHeight: 3,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
               color: AppColors.primary,
             ),
           ),

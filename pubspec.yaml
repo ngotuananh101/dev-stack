@@ -51,6 +51,7 @@ dependencies:
   intl: ^0.20.2
   dio: ^5.9.2
   quickalert: ^1.1.0
+  highlight: ^0.7.0
 
 dev_dependencies:
   flutter_test:

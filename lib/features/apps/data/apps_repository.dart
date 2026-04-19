@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import '../domain/app_model.dart';
@@ -57,7 +58,7 @@ class AppsRepository {
         );
       }).toList();
     } catch (e) {
-      print('Error loading apps: $e');
+      debugPrint('Error loading apps: $e');
       return [];
     }
   }
@@ -71,7 +72,7 @@ class AppsRepository {
         // Isar will use the new schema automatically since we registered it
       });
     } catch (e) {
-      print('Error in importInitialData: $e');
+      debugPrint('Error in importInitialData: $e');
     }
   }
 

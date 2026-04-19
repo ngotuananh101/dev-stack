@@ -1,8 +1,8 @@
 import 'dart:io';
-import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
@@ -10,7 +10,7 @@ import '../../../core/services/log_service.dart';
 part 'app_installer_service.g.dart';
 
 @riverpod
-AppInstallerService appInstallerService(AppInstallerServiceRef ref) {
+AppInstallerService appInstallerService(Ref ref) {
   final logger = ref.read(logServiceProvider);
   return AppInstallerService(logger);
 }

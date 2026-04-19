@@ -67,7 +67,7 @@ class FeaturedBanner extends StatelessWidget {
                 Icon(
                   Icons.cloud_sync,
                   size: 64,
-                  color: AppColors.primary.withOpacity(0.3),
+                  color: AppColors.primary.withValues(alpha: 0.3),
                 ),
               ],
             ),
