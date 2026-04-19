@@ -8,6 +8,7 @@ import 'shared/providers/navigation_provider.dart';
 import 'shared/layouts/sidebar.dart';
 import 'features/hosts/presentation/hosts_page.dart';
 import 'features/apps/presentation/apps_page.dart';
+import 'features/apps/data/apps_provider.dart';
 import 'core/theme/app_text_size.dart';
 
 void main() async {
@@ -49,6 +50,9 @@ class MainScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Eagerly initialize apps provider for background services auto-start
+    ref.watch(appsNotifierProvider.future);
+    
     final currentTab = ref.watch(navigationProvider);
 
     return Scaffold(

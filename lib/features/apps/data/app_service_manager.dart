@@ -40,10 +40,19 @@ class AppServiceManager {
       String execPath = app.execFilePath!;
       final fileName = exeFile.path.split(Platform.pathSeparator).last.toLowerCase();
       
-      if (fileName == 'php-cgi.exe') {
-        args = ['-b', '127.0.0.1:9000'];
-      } else if (fileName == 'php.exe') {
-        args = ['-S', '127.0.0.1:9000'];
+      if (fileName == 'php-cgi.exe' || fileName == 'php.exe') {
+        // Dynamic port based on version: php82 -> 9082
+        String port = '9000';
+        final versionMatch = RegExp(r'\d+').firstMatch(app.appId);
+        if (versionMatch != null) {
+          port = '90${versionMatch.group(0)}';
+        }
+
+        if (fileName == 'php-cgi.exe') {
+          args = ['-b', '127.0.0.1:$port'];
+        } else {
+          args = ['-S', '127.0.0.1:$port'];
+        }
       }
 
       final process = await Process.start(
@@ -120,8 +129,9 @@ class AppServiceManager {
     app.servicePid = null;
   }
 
-  Future<void> restart(AppModel app) async {
+  Future<void> restart(AppModel app, {VoidCallback? onStatusChange}) async {
     await stop(app);
-    await start(app);
+    await Future.delayed(const Duration(milliseconds: 500)); // Give it a moment to release ports
+    await start(app, onStatusChange: onStatusChange);
   }
 }

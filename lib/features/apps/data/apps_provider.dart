@@ -319,7 +319,10 @@ class AppsNotifier extends _$AppsNotifier {
   Future<void> restartService(AppModel app) async {
     final manager = ref.read(appServiceManagerProvider);
     try {
-      await manager.restart(app);
+      await manager.restart(
+        app, 
+        onStatusChange: () => notifyUpdate(force: true),
+      );
       notifyUpdate(force: true);
     } catch (e) {
       debugPrint('Error restarting service: $e');
