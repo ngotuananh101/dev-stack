@@ -132,12 +132,23 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                           final repository = await ref.read(
                             appsRepositoryProvider.future,
                           );
-                          app.displayOnDashboard =
-                              !app.displayOnDashboard;
+                          app.displayOnDashboard = !app.displayOnDashboard;
                           await repository.save(app);
                           await ref
                               .read(appsNotifierProvider.notifier)
                               .refresh();
+                        },
+                        onTogglePath: (app) async {
+                          await ref
+                              .read(appsNotifierProvider.notifier)
+                              .togglePath(app);
+                          
+                          if (!context.mounted) return;
+                          final status = app.isAddedToPath ? 'Added to' : 'Removed from';
+                          AppDialogs.showToast(
+                            context, 
+                            '${app.name} $status system PATH',
+                          );
                         },
                       ),
                     ),

@@ -68,6 +68,7 @@ class AppsRepository {
           installedAt: installed?.installedAt,
           execFilePath: installed?.execFilePath,
           cliFilePath: installed?.cliFilePath,
+          isAddedToPath: installed?.addedToPath ?? false,
         );
       }).toList();
     } catch (e) {
@@ -100,6 +101,7 @@ class AppsRepository {
         installedAt: app.installedAt ?? DateTime.now(),
         execFilePath: app.execFilePath,
         cliFilePath: app.cliFilePath,
+        addedToPath: app.isAddedToPath,
       );
       await isar.installedApps.put(installed);
     });

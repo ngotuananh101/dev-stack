@@ -17,43 +17,48 @@ const InstalledAppSchema = CollectionSchema(
   name: r'InstalledApp',
   id: 9146148135859156626,
   properties: {
-    r'appId': PropertySchema(
+    r'addedToPath': PropertySchema(
       id: 0,
+      name: r'addedToPath',
+      type: IsarType.bool,
+    ),
+    r'appId': PropertySchema(
+      id: 1,
       name: r'appId',
       type: IsarType.string,
     ),
     r'appName': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'appName',
       type: IsarType.string,
     ),
     r'cliFilePath': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'cliFilePath',
       type: IsarType.string,
     ),
     r'execFilePath': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'execFilePath',
       type: IsarType.string,
     ),
     r'installedAt': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'installedAt',
       type: IsarType.dateTime,
     ),
     r'location': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'location',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'status',
       type: IsarType.string,
     ),
     r'version': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'version',
       type: IsarType.string,
     )
@@ -74,6 +79,19 @@ const InstalledAppSchema = CollectionSchema(
           name: r'appId',
           type: IndexType.hash,
           caseSensitive: true,
+        )
+      ],
+    ),
+    r'addedToPath': IndexSchema(
+      id: 4463128705234900207,
+      name: r'addedToPath',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'addedToPath',
+          type: IndexType.value,
+          caseSensitive: false,
         )
       ],
     )
@@ -123,14 +141,15 @@ void _installedAppSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.appId);
-  writer.writeString(offsets[1], object.appName);
-  writer.writeString(offsets[2], object.cliFilePath);
-  writer.writeString(offsets[3], object.execFilePath);
-  writer.writeDateTime(offsets[4], object.installedAt);
-  writer.writeString(offsets[5], object.location);
-  writer.writeString(offsets[6], object.status);
-  writer.writeString(offsets[7], object.version);
+  writer.writeBool(offsets[0], object.addedToPath);
+  writer.writeString(offsets[1], object.appId);
+  writer.writeString(offsets[2], object.appName);
+  writer.writeString(offsets[3], object.cliFilePath);
+  writer.writeString(offsets[4], object.execFilePath);
+  writer.writeDateTime(offsets[5], object.installedAt);
+  writer.writeString(offsets[6], object.location);
+  writer.writeString(offsets[7], object.status);
+  writer.writeString(offsets[8], object.version);
 }
 
 InstalledApp _installedAppDeserialize(
@@ -140,14 +159,15 @@ InstalledApp _installedAppDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = InstalledApp(
-    appId: reader.readString(offsets[0]),
-    appName: reader.readString(offsets[1]),
-    cliFilePath: reader.readStringOrNull(offsets[2]),
-    execFilePath: reader.readStringOrNull(offsets[3]),
-    installedAt: reader.readDateTimeOrNull(offsets[4]),
-    location: reader.readString(offsets[5]),
-    status: reader.readString(offsets[6]),
-    version: reader.readStringOrNull(offsets[7]),
+    addedToPath: reader.readBoolOrNull(offsets[0]) ?? false,
+    appId: reader.readString(offsets[1]),
+    appName: reader.readString(offsets[2]),
+    cliFilePath: reader.readStringOrNull(offsets[3]),
+    execFilePath: reader.readStringOrNull(offsets[4]),
+    installedAt: reader.readDateTimeOrNull(offsets[5]),
+    location: reader.readString(offsets[6]),
+    status: reader.readString(offsets[7]),
+    version: reader.readStringOrNull(offsets[8]),
   );
   object.id = id;
   return object;
@@ -161,20 +181,22 @@ P _installedAppDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
+      return (reader.readBoolOrNull(offset) ?? false) as P;
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 3:
       return (reader.readStringOrNull(offset)) as P;
     case 4:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 5:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 6:
       return (reader.readString(offset)) as P;
     case 7:
+      return (reader.readString(offset)) as P;
+    case 8:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -254,6 +276,14 @@ extension InstalledAppQueryWhereSort
   QueryBuilder<InstalledApp, InstalledApp, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterWhere> anyAddedToPath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'addedToPath'),
+      );
     });
   }
 }
@@ -371,10 +401,65 @@ extension InstalledAppQueryWhere
       }
     });
   }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterWhereClause>
+      addedToPathEqualTo(bool addedToPath) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'addedToPath',
+        value: [addedToPath],
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterWhereClause>
+      addedToPathNotEqualTo(bool addedToPath) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'addedToPath',
+              lower: [],
+              upper: [addedToPath],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'addedToPath',
+              lower: [addedToPath],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'addedToPath',
+              lower: [addedToPath],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'addedToPath',
+              lower: [],
+              upper: [addedToPath],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
 }
 
 extension InstalledAppQueryFilter
     on QueryBuilder<InstalledApp, InstalledApp, QFilterCondition> {
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      addedToPathEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'addedToPath',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition> appIdEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1514,6 +1599,19 @@ extension InstalledAppQueryLinks
 
 extension InstalledAppQuerySortBy
     on QueryBuilder<InstalledApp, InstalledApp, QSortBy> {
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByAddedToPath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'addedToPath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      sortByAddedToPathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'addedToPath', Sort.desc);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByAppId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'appId', Sort.asc);
@@ -1616,6 +1714,19 @@ extension InstalledAppQuerySortBy
 
 extension InstalledAppQuerySortThenBy
     on QueryBuilder<InstalledApp, InstalledApp, QSortThenBy> {
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByAddedToPath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'addedToPath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      thenByAddedToPathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'addedToPath', Sort.desc);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByAppId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'appId', Sort.asc);
@@ -1730,6 +1841,12 @@ extension InstalledAppQuerySortThenBy
 
 extension InstalledAppQueryWhereDistinct
     on QueryBuilder<InstalledApp, InstalledApp, QDistinct> {
+  QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByAddedToPath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'addedToPath');
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByAppId(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1791,6 +1908,12 @@ extension InstalledAppQueryProperty
   QueryBuilder<InstalledApp, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<InstalledApp, bool, QQueryOperations> addedToPathProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'addedToPath');
     });
   }
 

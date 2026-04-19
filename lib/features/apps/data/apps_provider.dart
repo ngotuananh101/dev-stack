@@ -5,6 +5,7 @@ import '../../../core/database/isar_provider.dart';
 import '../domain/app_model.dart';
 import 'apps_repository.dart';
 import 'app_installer_service.dart';
+import '../../../core/services/path_service.dart';
 
 part 'apps_provider.g.dart';
 
@@ -94,6 +95,12 @@ class AppsNotifier extends _$AppsNotifier {
         app.installStatus = null;
         
         await repository.save(app);
+
+        // Auto add to PATH if requested
+        if (app.addPathAfterInstall && app.cliFilePath != null) {
+          await togglePath(app);
+        }
+
         notifyUpdate(force: true);
       } catch (e) {
         debugPrint('Installation failed: $e');
@@ -144,6 +151,14 @@ class AppsNotifier extends _$AppsNotifier {
       app.cliFilePath = null;
       
       await repository.delete(app.appId);
+
+      // Remove from PATH if added
+      if (app.isAddedToPath) {
+        final pathService = ref.read(pathServiceProvider);
+        await pathService.removeAppFromPath(app);
+        app.isAddedToPath = false;
+      }
+
       notifyUpdate(force: true);
     } catch (e) {
       debugPrint('Uninstallation failed: $e');
@@ -158,6 +173,28 @@ class AppsNotifier extends _$AppsNotifier {
       await refresh();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> togglePath(AppModel app) async {
+    if (!app.isInstalled || app.cliFilePath == null) return;
+
+    final repository = await ref.read(appsRepositoryProvider.future);
+    final pathService = ref.read(pathServiceProvider);
+
+    try {
+      if (!app.isAddedToPath) {
+        await pathService.addAppToPath(app);
+        app.isAddedToPath = true;
+      } else {
+        await pathService.removeAppFromPath(app);
+        app.isAddedToPath = false;
+      }
+
+      await repository.save(app);
+      notifyUpdate(force: true);
+    } catch (e) {
+      debugPrint('Error toggling PATH: $e');
     }
   }
 }

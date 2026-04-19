@@ -9,12 +9,14 @@ class CompactAppsTable extends StatelessWidget {
   final List<AppModel> apps;
   final Future<void> Function(AppModel) onToggleInstall;
   final Future<void> Function(AppModel) onToggleDashboard;
+  final Future<void> Function(AppModel) onTogglePath;
 
   const CompactAppsTable({
     super.key,
     required this.apps,
     required this.onToggleInstall,
     required this.onToggleDashboard,
+    required this.onTogglePath,
   });
 
   IconData _getAppIcon(String appId) {
@@ -99,6 +101,7 @@ class CompactAppsTable extends StatelessWidget {
                 Expanded(flex: 2, child: _buildHeaderCell('DEVELOPER')),
                 Expanded(flex: 3, child: _buildHeaderCell('DESCRIPTION')),
                 Expanded(flex: 1, child: _buildHeaderCell('STATUS')),
+                Expanded(flex: 1, child: _buildHeaderCell('PATH')),
                 Expanded(
                   flex: 2,
                   child: _buildHeaderCell(
@@ -194,7 +197,9 @@ class CompactAppsTable extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.08),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.08,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -265,6 +270,8 @@ class CompactAppsTable extends StatelessWidget {
           ),
           // Status
           Expanded(flex: 1, child: _buildStatusIndicator(app)),
+          // PATH toggle
+          Expanded(flex: 1, child: _buildPathToggle(app)),
           // Operate buttons
           Expanded(flex: 2, child: _buildOperateButtons(context, app)),
         ],
@@ -367,6 +374,25 @@ class CompactAppsTable extends StatelessWidget {
     }
   }
 
+  Widget _buildPathToggle(AppModel app) {
+    if (!app.isInstalled || app.cliFilePath == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Transform.scale(
+      scale: 0.7,
+      alignment: Alignment.centerLeft,
+      child: Switch(
+        value: app.isAddedToPath,
+        onChanged: (_) => onTogglePath(app),
+        activeColor: AppColors.success,
+        activeTrackColor: AppColors.success.withValues(alpha: 0.2),
+        inactiveThumbColor: AppColors.textMuted,
+        inactiveTrackColor: AppColors.border,
+      ),
+    );
+  }
+
   Widget _buildIconButton({
     required IconData icon,
     required VoidCallback onPressed,
@@ -419,7 +445,8 @@ class CompactAppsTable extends StatelessWidget {
               AppDialogs.showConfirm(
                 context: context,
                 title: 'Uninstall App',
-                text: 'Are you sure you want to uninstall ${app.name}?\nThis will delete all files.',
+                text:
+                    'Are you sure you want to uninstall ${app.name}?\nThis will delete all files.',
                 onConfirm: () => onToggleInstall(app),
               );
             },

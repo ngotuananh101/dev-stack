@@ -18,6 +18,9 @@ class InstalledApp {
   
   String? execFilePath;
   String? cliFilePath;
+  
+  @Index()
+  bool addedToPath = false;
 
   InstalledApp({
     required this.appId,
@@ -28,5 +31,6 @@ class InstalledApp {
     this.installedAt,
     this.execFilePath,
     this.cliFilePath,
+    this.addedToPath = false,
   });
 }

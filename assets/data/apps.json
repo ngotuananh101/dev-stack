@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "lastUpdated": "2026-04-19T01:16:33.905Z",
+  "lastUpdated": "2026-04-19T04:40:54.890Z",
   "apps": [
     {
       "id": "pyenv",
@@ -459,13 +459,12 @@
       "exec_file": "mariadbd.exe",
       "cli_file": "mariadb.exe",
       "versions": {
-        "13.0": "https://mirror.mariadb.org/mariadb-13.0/winx64-packages/mariadb-13.0-winx64.zip",
-        "12.3": "https://mirror.mariadb.org/mariadb-12.3/winx64-packages/mariadb-12.3-winx64.zip",
-        "12.2": "https://mirror.mariadb.org/mariadb-12.2/winx64-packages/mariadb-12.2-winx64.zip",
-        "11.8": "https://mirror.mariadb.org/mariadb-11.8/winx64-packages/mariadb-11.8-winx64.zip",
-        "11.4": "https://mirror.mariadb.org/mariadb-11.4/winx64-packages/mariadb-11.4-winx64.zip",
-        "10.11": "https://mirror.mariadb.org/mariadb-10.11/winx64-packages/mariadb-10.11-winx64.zip",
-        "10.6": "https://mirror.mariadb.org/mariadb-10.6/winx64-packages/mariadb-10.6-winx64.zip"
+        "12.3.1": "http://downloads.mariadb.org/rest-api/mariadb/12.3.1/mariadb-12.3.1-winx64.zip",
+        "12.2.2": "http://downloads.mariadb.org/rest-api/mariadb/12.2.2/mariadb-12.2.2-winx64.zip",
+        "11.8.6": "http://downloads.mariadb.org/rest-api/mariadb/11.8.6/mariadb-11.8.6-winx64.zip",
+        "11.4.10": "http://downloads.mariadb.org/rest-api/mariadb/11.4.10/mariadb-11.4.10-winx64.zip",
+        "10.11.16": "http://downloads.mariadb.org/rest-api/mariadb/10.11.16/mariadb-10.11.16-winx64.zip",
+        "10.6.25": "http://downloads.mariadb.org/rest-api/mariadb/10.6.25/mariadb-10.6.25-winx64.zip"
       }
     },
     {
