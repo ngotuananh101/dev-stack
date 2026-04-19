@@ -154,7 +154,6 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
                     ],
                   ),
           ),
-          _buildFooter(),
         ],
       ),
     );
@@ -200,6 +199,32 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
             ],
           ),
           const Spacer(),
+          if (widget.app.serviceStatus == 'running')
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await ref.read(appServiceManagerProvider).restart(widget.app);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Service restarted successfully'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 14),
+                label: const Text('Restart'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.close, size: 20),
             onPressed: widget.onClose,
@@ -557,62 +582,6 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
             'No extensions found matching "$_searchQuery"',
             style: const TextStyle(color: AppColors.textSecondary),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFooter() {
-    final isRunning = widget.app.serviceStatus == 'running';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          if (isRunning) ...[
-            const Icon(Icons.info_outline, size: 16, color: AppColors.warning),
-            const SizedBox(width: 12),
-            const Text(
-              'A restart is required to apply changes to the running service.',
-              style: TextStyle(fontSize: AppTextSize.xxs, color: AppColors.textSecondary),
-            ),
-            const Spacer(),
-            OutlinedButton.icon(
-              onPressed: () async {
-                await ref.read(appServiceManagerProvider).restart(widget.app);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Service restarted successfully'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('Restart Service'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-          ] else ...[
-            const Spacer(),
-            TextButton(
-              onPressed: widget.onClose,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.textSecondary,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              child: const Text('Close Settings'),
-            ),
-          ],
         ],
       ),
     );
