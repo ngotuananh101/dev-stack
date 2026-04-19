@@ -22,8 +22,10 @@ class AppsRepository {
       final localFile = File(p.join(supportDir.path, 'apps.json'));
 
       if (await localFile.exists()) {
+        debugPrint('Loading apps from local storage: ${localFile.path}');
         response = await localFile.readAsString();
       } else {
+        debugPrint('Loading apps from assets bundle');
         response = await rootBundle.loadString('assets/data/apps.json');
       }
 
