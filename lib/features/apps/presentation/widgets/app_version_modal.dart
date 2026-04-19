@@ -11,12 +11,14 @@ class AppVersionModal extends ConsumerStatefulWidget {
   final AppModel app;
   final VoidCallback onInstall;
   final VoidCallback onClose;
+  final bool isUpdate;
 
   const AppVersionModal({
     super.key,
     required this.app,
     required this.onInstall,
     required this.onClose,
+    this.isUpdate = false,
   });
 
   @override
@@ -249,7 +251,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Install ${widget.app.name}',
+                  widget.isUpdate
+                      ? 'Update ${widget.app.name}'
+                      : 'Install ${widget.app.name}',
                   style: const TextStyle(
                     fontSize: AppTextSize.sm,
                     fontWeight: FontWeight.bold,
@@ -258,8 +262,12 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                 ),
                 Text(
                   isInProgress
-                      ? 'Installing ${widget.app.name}...'
-                      : 'Select version to install',
+                      ? (widget.isUpdate
+                          ? 'Updating ${widget.app.name}...'
+                          : 'Installing ${widget.app.name}...')
+                      : (widget.isUpdate
+                          ? 'Updating to patch version'
+                          : 'Select version to install'),
                   style: TextStyle(
                     fontSize: AppTextSize.xxs,
                     color: AppColors.textMuted,
@@ -476,7 +484,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                     const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               ),
               child: Text(
-                'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
+                widget.isUpdate
+                    ? 'Update to ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}'
+                    : 'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
                 style: const TextStyle(
                   fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.w500,
@@ -495,7 +505,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                     const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               ),
               child: Text(
-                appState.status == 'installed' ? 'Finish' : 'Installing...',
+                appState.status == 'installed'
+                    ? 'Finish'
+                    : (widget.isUpdate ? 'Updating...' : 'Installing...'),
                 style: const TextStyle(
                   fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.w500,

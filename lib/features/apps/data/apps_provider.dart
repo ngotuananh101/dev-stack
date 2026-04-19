@@ -110,24 +110,99 @@ class AppsNotifier extends _$AppsNotifier {
         notifyUpdate(force: true);
       }
     } else {
-      // Logic for uninstalling
-      try {
-        if (app.location != null) {
+      // Check if it's an update (different version selected)
+      if (app.selectedVersion != null && app.selectedVersion != app.installedVersion) {
+        try {
+          final oldPath = app.location;
+          final oldVersion = app.installedVersion;
+          final wasInPath = app.isAddedToPath;
+          final newVersion = app.selectedVersion!;
           final installer = ref.read(appInstallerServiceProvider);
-          await installer.delete(app.location!);
+
+          app.status = 'installing';
+          app.installProgress = 0.0;
+          app.installStatus = 'Updating to $newVersion...';
+          app.installLogs = [];
+          notifyUpdate(force: true);
+
+          // 1. Download and install new version to a new folder
+          final newInstallPath = await installer.install(
+            app,
+            newVersion,
+            onProgress: (progress, status, {downloadedBytes, totalBytes}) {
+              app.installProgress = progress;
+              app.installStatus = status;
+              app.downloadedBytes = downloadedBytes;
+              app.totalBytes = totalBytes;
+              notifyUpdate();
+            },
+            onLog: (message) {
+              app.addLog(message);
+              notifyUpdate();
+            },
+          );
+
+          // 2. Manage PATH if needed
+          if (wasInPath) {
+            final pathService = ref.read(pathServiceProvider);
+            // Remove old shim
+            await pathService.removeAppFromPath(app);
+            // Add new shim (app object now has new cliFilePath from installer.install)
+            await pathService.addAppToPath(app);
+            app.isAddedToPath = true;
+          }
+
+          // 3. Delete old version folder
+          if (oldPath != null) {
+            await installer.delete(oldPath);
+          }
+
+          // 4. Update state
+          app.isInstalled = true;
+          app.status = 'installed';
+          app.location = newInstallPath;
+          app.installedVersion = newVersion;
+          app.installedAt = DateTime.now();
+          app.installProgress = null;
+          app.installStatus = null;
+          app.selectedVersion = null; // Clear selected version after update
+
+          await repository.save(app);
+          notifyUpdate(force: true);
+        } catch (e) {
+          debugPrint('Update failed: $e');
+          app.status = 'installed'; // Revert to installed
+          app.installProgress = null;
+          app.installStatus = null;
+          notifyUpdate(force: true);
         }
-        
-        app.isInstalled = false;
-        app.status = 'not_installed';
-        app.installedVersion = null;
-        app.location = null;
-        app.installedAt = null;
-        app.execFilePath = null;
-        app.cliFilePath = null;
-        
-        await repository.delete(app.appId);
-      } catch (e) {
-        debugPrint('Uninstallation failed: $e');
+      } else {
+        // Logic for uninstalling (the existing logic)
+        try {
+          if (app.location != null) {
+            final installer = ref.read(appInstallerServiceProvider);
+            await installer.delete(app.location!);
+          }
+          
+          // Remove from PATH if added
+          if (app.isAddedToPath) {
+            final pathService = ref.read(pathServiceProvider);
+            await pathService.removeAppFromPath(app);
+            app.isAddedToPath = false;
+          }
+
+          app.isInstalled = false;
+          app.status = 'not_installed';
+          app.installedVersion = null;
+          app.location = null;
+          app.installedAt = null;
+          app.execFilePath = null;
+          app.cliFilePath = null;
+          
+          await repository.delete(app.appId);
+        } catch (e) {
+          debugPrint('Uninstallation failed: $e');
+        }
       }
     }
     

@@ -67,7 +67,7 @@ class AppModel {
 
       // Check if version belongs to the same Major.Minor branch
       if (v.startsWith('$baseVersion.')) {
-        if (_isVersionNewer(v, installedVersion!)) {
+        if (isVersionNewer(v, installedVersion!)) {
           return true;
         }
       }
@@ -75,7 +75,7 @@ class AppModel {
     return false;
   }
 
-  bool _isVersionNewer(String newV, String oldV) {
+  bool isVersionNewer(String newV, String oldV) {
     final newParts = newV.split('.');
     final oldParts = oldV.split('.');
 

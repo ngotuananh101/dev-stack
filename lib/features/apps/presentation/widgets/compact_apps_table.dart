@@ -428,9 +428,19 @@ class CompactAppsTable extends StatelessWidget {
           if (app.hasUpdateAvailable) ...[
             _buildIconButton(
               icon: Icons.refresh_rounded,
-              onPressed: () => onToggleInstall(app),
+              onPressed: () {
+                // Find the latest compatible version
+                final parts = app.installedVersion!.split('.');
+                final baseVersion = '${parts[0]}.${parts[1]}';
+                final latestPatch = app.versions
+                    .where((v) => v.startsWith('$baseVersion.'))
+                    .reduce((a, b) => app.isVersionNewer(b, a) ? b : a);
+                
+                app.selectedVersion = latestPatch;
+                _showVersionModal(context, app, isUpdate: true);
+              },
               color: AppColors.primary,
-              tooltip: 'Update',
+              tooltip: 'Update to new patch',
             ),
             const SizedBox(width: 8),
           ],
@@ -477,7 +487,7 @@ class CompactAppsTable extends StatelessWidget {
     );
   }
 
-  void _showVersionModal(BuildContext context, AppModel app) {
+  void _showVersionModal(BuildContext context, AppModel app, {bool isUpdate = false}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -486,6 +496,7 @@ class CompactAppsTable extends StatelessWidget {
           backgroundColor: Colors.transparent,
           child: AppVersionModal(
             app: app,
+            isUpdate: isUpdate,
             onInstall: () {
               onToggleInstall(app);
             },
