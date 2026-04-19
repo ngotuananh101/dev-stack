@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -55,23 +56,39 @@ class AppServiceManager {
       _processes[app.appId] = process;
       app.servicePid = process.pid;
       app.serviceStatus = 'running';
+      app.serviceLogs = []; // Clear old logs on start
+      app.addServiceLog('Service started (PID: ${process.pid})');
       onStatusChange?.call();
 
       // Listen for exit
       process.exitCode.then((code) {
         _logger.info('Service ${app.name} exited with code $code');
+        app.addServiceLog('Service exited with code $code');
         _processes.remove(app.appId);
         app.serviceStatus = 'stopped';
         app.servicePid = null;
         onStatusChange?.call();
       });
 
-      // Handle output if needed (optional)
-      process.stdout.listen((event) {
-        // debugPrint('[${app.name} STDOUT]: ${String.fromCharCodes(event)}');
+      // Handle output
+      process.stdout.transform(utf8.decoder).listen((data) {
+        final lines = data.split('\n');
+        for (final line in lines) {
+          if (line.trim().isNotEmpty) {
+            app.addServiceLog(line.trim());
+            onStatusChange?.call();
+          }
+        }
       });
-      process.stderr.listen((event) {
-        debugPrint('[${app.name} STDERR]: ${String.fromCharCodes(event)}');
+      
+      process.stderr.transform(utf8.decoder).listen((data) {
+        final lines = data.split('\n');
+        for (final line in lines) {
+          if (line.trim().isNotEmpty) {
+            app.addServiceLog('[ERROR] ${line.trim()}');
+            onStatusChange?.call();
+          }
+        }
       });
 
     } catch (e) {

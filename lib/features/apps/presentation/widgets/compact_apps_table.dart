@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_model.dart';
 import 'app_version_modal.dart';
+import 'service_logs_modal.dart';
 
 class CompactAppsTable extends StatelessWidget {
   final List<AppModel> apps;
@@ -503,6 +504,15 @@ class CompactAppsTable extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
+          if (app.isService) ...[
+            _buildIconButton(
+              icon: Icons.terminal_rounded,
+              onPressed: () => _showLogsModal(context, app),
+              color: AppColors.primary,
+              tooltip: 'View Logs',
+            ),
+            const SizedBox(width: 8),
+          ],
           _buildIconButton(
             icon: Icons.settings_outlined,
             onPressed: () => onToggleInstall(app),
@@ -563,6 +573,21 @@ class CompactAppsTable extends StatelessWidget {
               app.installLogs = [];
               Navigator.of(dialogContext).pop();
             },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showLogsModal(BuildContext context, AppModel app) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: ServiceLogsModal(
+            app: app,
+            onClose: () => Navigator.of(dialogContext).pop(),
           ),
         );
       },

@@ -1,6 +1,11 @@
 import 'dart:convert';
+import 'package:intl/intl.dart';
+import 'package:isar/isar.dart';
 
+@collection
 class AppModel {
+  Id id = Isar.autoIncrement;
+  @Index(unique: true)
   final String appId;
   String name;
   String? description;
@@ -34,9 +39,15 @@ class AppModel {
         appId.startsWith('php'); // Example: php can be a service
   }
 
-  String serviceStatus =
-      'stopped'; // 'stopped', 'starting', 'running', 'stopping'
+  String serviceStatus = 'stopped'; // 'stopped', 'starting', 'running', 'stopping'
   int? servicePid;
+  List<String> serviceLogs = [];
+
+  void addServiceLog(String message) {
+    final timestamp = DateFormat('HH:mm:ss').format(DateTime.now());
+    serviceLogs.add('[$timestamp] $message');
+    if (serviceLogs.length > 100) serviceLogs.removeAt(0);
+  }
 
   // Real-time progress (non-persistent)
   double? installProgress;
