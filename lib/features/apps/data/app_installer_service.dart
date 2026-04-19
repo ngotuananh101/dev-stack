@@ -15,12 +15,13 @@ AppInstallerService appInstallerService(Ref ref) {
   return AppInstallerService(logger);
 }
 
-typedef InstallationProgressCallback = void Function(
-  double progress,
-  String status, {
-  int? downloadedBytes,
-  int? totalBytes,
-});
+typedef InstallationProgressCallback =
+    void Function(
+      double progress,
+      String status, {
+      int? downloadedBytes,
+      int? totalBytes,
+    });
 typedef InstallationLogCallback = void Function(String message);
 
 class AppInstallerService {
@@ -31,7 +32,7 @@ class AppInstallerService {
   AppInstallerService(this._logger);
 
   Future<String> install(
-    AppModel app, 
+    AppModel app,
     String version, {
     InstallationProgressCallback? onProgress,
     InstallationLogCallback? onLog,
@@ -47,7 +48,9 @@ class AppInstallerService {
     }
 
     if (app.appId == 'pyenv') {
-      logError('pyenv installation requested but not supported through this flow.');
+      logError(
+        'pyenv installation requested but not supported through this flow.',
+      );
       throw Exception('pyenv installation is not supported through this flow.');
     }
 
@@ -67,8 +70,10 @@ class AppInstallerService {
     logInfo('Starting installation for ${app.name} ($version)');
     onProgress?.call(0.1, 'Downloading...');
 
-    final tempFile = File(p.join(Directory.systemTemp.path, '${app.appId}_$version.tmp'));
-    
+    final tempFile = File(
+      p.join(Directory.systemTemp.path, '${app.appId}_$version.tmp'),
+    );
+
     try {
       await _dio.download(
         url,
@@ -111,20 +116,29 @@ class AppInstallerService {
       // 5. Detect executable and CLI files
       logInfo('Detecting executable and CLI files...');
       final detected = await _detectFiles(
-        installPath, 
-        app.execFile, 
-        app.cliFile, 
-        logInfo
+        installPath,
+        app.execFile,
+        app.cliFile,
+        logInfo,
       );
       app.execFilePath = detected['exec'];
       app.cliFilePath = detected['cli'];
 
       onProgress?.call(1.0, 'Completed');
       logInfo('Successfully installed ${app.name} to $installPath');
-      
+
+      // 5. Post-installation: Create data directory for databases
+      if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
+        final dataDir = Directory(p.join(installPath, 'data'));
+        if (!dataDir.existsSync()) {
+          logInfo('Creating data directory for database: ${dataDir.path}');
+          await dataDir.create(recursive: true);
+        }
+      }
+
       // Cleanup
       if (tempFile.existsSync()) await tempFile.delete();
-      
+
       return installPath;
     } catch (e) {
       logError('Installation failed for ${app.name}: $e');
@@ -133,7 +147,11 @@ class AppInstallerService {
     }
   }
 
-  Future<void> _extractZip(List<int> bytes, String targetPath, InstallationLogCallback? onLog) async {
+  Future<void> _extractZip(
+    List<int> bytes,
+    String targetPath,
+    InstallationLogCallback? onLog,
+  ) async {
     final archive = ZipDecoder().decodeBytes(bytes);
     for (final file in archive) {
       final filename = file.name;
@@ -149,7 +167,11 @@ class AppInstallerService {
     }
   }
 
-  Future<void> _extractTarGz(List<int> bytes, String targetPath, InstallationLogCallback? onLog) async {
+  Future<void> _extractTarGz(
+    List<int> bytes,
+    String targetPath,
+    InstallationLogCallback? onLog,
+  ) async {
     final tarBytes = GZipDecoder().decodeBytes(bytes);
     final archive = TarDecoder().decodeBytes(tarBytes);
     for (final file in archive) {
@@ -166,25 +188,30 @@ class AppInstallerService {
     }
   }
 
-  Future<void> _flattenDirectory(String targetPath, Function(String) logInfo) async {
+  Future<void> _flattenDirectory(
+    String targetPath,
+    Function(String) logInfo,
+  ) async {
     final dir = Directory(targetPath);
     if (!dir.existsSync()) return;
 
     final entities = await dir.list().toList();
-    
+
     // Check if there is only 1 entity and it's a directory
     if (entities.length == 1 && entities.first is Directory) {
       final subDir = entities.first as Directory;
-      logInfo('Detected nested directory: ${p.basename(subDir.path)}. Flattening...');
-      
+      logInfo(
+        'Detected nested directory: ${p.basename(subDir.path)}. Flattening...',
+      );
+
       final subEntities = await subDir.list().toList();
-      
+
       for (final entity in subEntities) {
         final newPath = p.join(targetPath, p.basename(entity.path));
         // Using rename might fail across different partitions, but here it's same parent
         await entity.rename(newPath);
       }
-      
+
       // Delete the now empty nested directory
       await subDir.delete();
       logInfo('Flattening completed.');
@@ -197,10 +224,7 @@ class AppInstallerService {
     String? cliName,
     Function(String) logInfo,
   ) async {
-    final result = <String, String?>{
-      'exec': null,
-      'cli': null,
-    };
+    final result = <String, String?>{'exec': null, 'cli': null};
 
     if (execName == null && cliName == null) return result;
 
@@ -213,12 +237,14 @@ class AppInstallerService {
       for (final entity in entities) {
         if (entity is File) {
           final filename = p.basename(entity.path);
-          
-          if (execName != null && filename == execName && result['exec'] == null) {
+
+          if (execName != null &&
+              filename == execName &&
+              result['exec'] == null) {
             result['exec'] = entity.path;
             logInfo('Detected executable: ${entity.path}');
           }
-          
+
           if (cliName != null && filename == cliName && result['cli'] == null) {
             result['cli'] = entity.path;
             logInfo('Detected CLI: ${entity.path}');
