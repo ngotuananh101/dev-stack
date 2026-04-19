@@ -53,6 +53,41 @@ class AppModel {
     versionLinksJson = json.encode(links);
   }
 
+  bool get hasUpdateAvailable {
+    if (!isInstalled || installedVersion == null || versions.isEmpty) return false;
+
+    // Split installed version to get Major.Minor (e.g., 8.2 from 8.2.1)
+    final parts = installedVersion!.split('.');
+    if (parts.length < 2) return false;
+    final baseVersion = '${parts[0]}.${parts[1]}';
+
+    for (final v in versions) {
+      if (v == 'latest') continue;
+      if (v == installedVersion) continue;
+
+      // Check if version belongs to the same Major.Minor branch
+      if (v.startsWith('$baseVersion.')) {
+        if (_isVersionNewer(v, installedVersion!)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  bool _isVersionNewer(String newV, String oldV) {
+    final newParts = newV.split('.');
+    final oldParts = oldV.split('.');
+
+    for (var i = 0; i < newParts.length && i < oldParts.length; i++) {
+      final n = int.tryParse(newParts[i]) ?? 0;
+      final o = int.tryParse(oldParts[i]) ?? 0;
+      if (n > o) return true;
+      if (n < o) return false;
+    }
+    return newParts.length > oldParts.length;
+  }
+
   AppModel({
     required this.appId,
     required this.name,

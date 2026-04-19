@@ -425,13 +425,15 @@ class CompactAppsTable extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         if (app.isInstalled) ...[
-          _buildIconButton(
-            icon: Icons.refresh_rounded,
-            onPressed: () => onToggleInstall(app),
-            color: AppColors.primary,
-            tooltip: 'Update',
-          ),
-          const SizedBox(width: 8),
+          if (app.hasUpdateAvailable) ...[
+            _buildIconButton(
+              icon: Icons.refresh_rounded,
+              onPressed: () => onToggleInstall(app),
+              color: AppColors.primary,
+              tooltip: 'Update',
+            ),
+            const SizedBox(width: 8),
+          ],
           _buildIconButton(
             icon: Icons.settings_outlined,
             onPressed: () => onToggleInstall(app),
