@@ -31,6 +31,7 @@ class AppModel {
   String? cliFilePath;
   bool isAddedToPath;
   bool addPathAfterInstall;
+  bool autoStartService = false;
 
   // Service management (non-persistent)
   bool get isService {

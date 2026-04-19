@@ -28,8 +28,19 @@ class AppsNotifier extends _$AppsNotifier {
     } catch (e) {
       debugPrint('Error in importInitialData: $e');
     }
+    final apps = await repository.getAll();
     
-    return await repository.getAll();
+    // Auto start services after initial load
+    Future.microtask(() {
+      for (final app in apps) {
+        if (app.isInstalled && app.isService && app.autoStartService) {
+          debugPrint('Auto-starting service: ${app.name}');
+          startService(app);
+        }
+      }
+    });
+
+    return apps;
   }
 
   Future<void> refresh() async {
@@ -276,7 +287,11 @@ class AppsNotifier extends _$AppsNotifier {
 
   Future<void> startService(AppModel app) async {
     final manager = ref.read(appServiceManagerProvider);
+    final repository = await ref.read(appsRepositoryProvider.future);
     try {
+      app.autoStartService = true;
+      await repository.save(app);
+      
       await manager.start(
         app, 
         onStatusChange: () => notifyUpdate(force: true),
@@ -289,7 +304,11 @@ class AppsNotifier extends _$AppsNotifier {
 
   Future<void> stopService(AppModel app) async {
     final manager = ref.read(appServiceManagerProvider);
+    final repository = await ref.read(appsRepositoryProvider.future);
     try {
+      app.autoStartService = false;
+      await repository.save(app);
+
       await manager.stop(app);
       notifyUpdate(force: true);
     } catch (e) {
