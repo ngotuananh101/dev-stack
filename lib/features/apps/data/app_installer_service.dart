@@ -128,13 +128,9 @@ class AppInstallerService {
       onProgress?.call(1.0, 'Completed');
       logInfo('Successfully installed ${app.name} to $installPath');
 
-      // 5. Post-installation: Create data directory for databases
+      // 5. Post-installation: Initialize database
       if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
-        final dataDir = Directory(p.join(installPath, 'data'));
-        if (!dataDir.existsSync()) {
-          logInfo('Creating data directory for database: ${dataDir.path}');
-          await dataDir.create(recursive: true);
-        }
+        await _initializeDatabase(app, installPath, logInfo);
       }
 
       // 6. Post-installation: Handle PHP configuration
@@ -370,6 +366,65 @@ class AppInstallerService {
 
     await phpIni.writeAsString(content);
     logInfo('Default extensions enabled successfully.');
+  }
+
+  Future<void> _initializeDatabase(
+    AppModel app,
+    String installPath,
+    Function(String) logInfo,
+  ) async {
+    logInfo('Initializing database system tables...');
+    final dataDir = Directory(p.join(installPath, 'data'));
+    if (!dataDir.existsSync()) {
+      await dataDir.create(recursive: true);
+    }
+
+    final binDir = Directory(p.join(installPath, 'bin'));
+    if (!binDir.existsSync()) {
+      logInfo('Bin directory not found, skipping initialization');
+      return;
+    }
+
+    String? initExec;
+    List<String> args = [];
+
+    if (app.appId.contains('mysql')) {
+      initExec = p.join(binDir.path, 'mysqld.exe');
+      args = [
+        '--initialize-insecure',
+        '--console',
+        '--datadir=${dataDir.path}',
+      ];
+    } else if (app.appId.contains('mariadb')) {
+      // MariaDB uses mysql_install_db or mariadb-install-db
+      final mdbInstall = File(p.join(binDir.path, 'mariadb-install-db.exe'));
+      final mysqlInstall = File(p.join(binDir.path, 'mysql_install_db.exe'));
+
+      if (mdbInstall.existsSync()) {
+        initExec = mdbInstall.path;
+      } else if (mysqlInstall.existsSync()) {
+        initExec = mysqlInstall.path;
+      }
+      args = ['--datadir=${dataDir.path}'];
+    }
+
+    if (initExec != null && File(initExec).existsSync()) {
+      logInfo('Running: $initExec ${args.join(' ')}');
+      try {
+        final result = await Process.run(initExec, args);
+        if (result.exitCode == 0) {
+          logInfo('Database initialized successfully.');
+        } else {
+          logInfo('Initialization returned non-zero code: ${result.exitCode}');
+          logInfo('Output: ${result.stdout}');
+          logInfo('Error: ${result.stderr}');
+        }
+      } catch (e) {
+        logInfo('Error during database initialization: $e');
+      }
+    } else {
+      logInfo('Could not find database initialization executable.');
+    }
   }
 
   Future<void> delete(String path) async {
