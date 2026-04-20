@@ -3,32 +3,26 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
 import '../domain/app_model.dart';
 
-part 'webserver_settings_provider.g.dart';
+part 'redis_settings_provider.g.dart';
 
 @riverpod
-class WebserverSettings extends _$WebserverSettings {
+class RedisSettings extends _$RedisSettings {
   @override
   void build() {}
 
   File? _getConfigFile(AppModel app) {
     if (app.location == null) return null;
 
-    final appId = app.appId.toLowerCase();
     final location = app.location!;
+    
+    // Redis on Windows often uses redis.windows.conf or redis.conf
+    final winPath = p.join(location, 'redis.windows.conf');
+    final stdPath = p.join(location, 'redis.conf');
 
-    if (appId.contains('nginx')) {
-      return File(p.join(location, 'conf', 'nginx.conf'));
-    } else if (appId.contains('apache')) {
-      // Handle both standard and Apache24 structure
-      final stdPath = p.join(location, 'conf', 'httpd.conf');
-      final nestedPath = p.join(location, 'Apache24', 'conf', 'httpd.conf');
-
-      if (File(nestedPath).existsSync()) {
-        return File(nestedPath);
-      }
-      return File(stdPath);
+    if (File(winPath).existsSync()) {
+      return File(winPath);
     }
-    return null;
+    return File(stdPath);
   }
 
   Future<String> readConfig(AppModel app) async {

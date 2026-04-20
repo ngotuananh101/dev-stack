@@ -1,26 +1,26 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'webserver_settings_provider.dart';
+part of 'mongodb_settings_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$webserverSettingsHash() => r'7952cf3ee4dccdd3726e2d555fe31ffb7b77cc9d';
+String _$mongodbSettingsHash() => r'3e459b9e60e4fd122dd8a3c3376c9a5c877d2255';
 
-/// See also [WebserverSettings].
-@ProviderFor(WebserverSettings)
-final webserverSettingsProvider =
-    AutoDisposeNotifierProvider<WebserverSettings, void>.internal(
-  WebserverSettings.new,
-  name: r'webserverSettingsProvider',
+/// See also [MongodbSettings].
+@ProviderFor(MongodbSettings)
+final mongodbSettingsProvider =
+    AutoDisposeNotifierProvider<MongodbSettings, void>.internal(
+  MongodbSettings.new,
+  name: r'mongodbSettingsProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$webserverSettingsHash,
+      : _$mongodbSettingsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$WebserverSettings = AutoDisposeNotifier<void>;
+typedef _$MongodbSettings = AutoDisposeNotifier<void>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

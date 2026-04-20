@@ -3,32 +3,26 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
 import '../domain/app_model.dart';
 
-part 'webserver_settings_provider.g.dart';
+part 'mongodb_settings_provider.g.dart';
 
 @riverpod
-class WebserverSettings extends _$WebserverSettings {
+class MongodbSettings extends _$MongodbSettings {
   @override
   void build() {}
 
   File? _getConfigFile(AppModel app) {
     if (app.location == null) return null;
 
-    final appId = app.appId.toLowerCase();
     final location = app.location!;
+    
+    // MongoDB on Windows often uses bin/mongod.cfg or mongod.cfg (sometimes .conf)
+    final binPath = p.join(location, 'bin', 'mongod.cfg');
+    final rootPath = p.join(location, 'mongod.cfg');
+    final rootConfPath = p.join(location, 'mongod.conf');
 
-    if (appId.contains('nginx')) {
-      return File(p.join(location, 'conf', 'nginx.conf'));
-    } else if (appId.contains('apache')) {
-      // Handle both standard and Apache24 structure
-      final stdPath = p.join(location, 'conf', 'httpd.conf');
-      final nestedPath = p.join(location, 'Apache24', 'conf', 'httpd.conf');
-
-      if (File(nestedPath).existsSync()) {
-        return File(nestedPath);
-      }
-      return File(stdPath);
-    }
-    return null;
+    if (File(binPath).existsSync()) return File(binPath);
+    if (File(rootPath).existsSync()) return File(rootPath);
+    return File(rootConfPath);
   }
 
   Future<String> readConfig(AppModel app) async {

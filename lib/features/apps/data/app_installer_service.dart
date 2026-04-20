@@ -154,6 +154,11 @@ class AppInstallerService {
         await _configureWebserver(app, installPath, logInfo);
       }
 
+      // 8. Post-installation: Configure MongoDB
+      if (app.appId.toLowerCase().contains('mongodb')) {
+        await _configureMongodb(app, installPath, logInfo);
+      }
+
       // Cleanup
       if (tempFile.existsSync()) await tempFile.delete();
 
@@ -548,6 +553,48 @@ class AppInstallerService {
       } else {
         logInfo('Warning: Could not find Apache httpd.conf to configure.');
       }
+    }
+  }
+
+  Future<void> _configureMongodb(
+    AppModel app,
+    String installPath,
+    Function(String) logInfo,
+  ) async {
+    final binDir = Directory(p.join(app.location!, 'bin'));
+    final binExists = binDir.existsSync();
+    final baseDir = binExists ? binDir.path : app.location!;
+
+    // 1. Create data directory
+    final dataDir = Directory(p.join(app.location!, 'data'));
+    if (!dataDir.existsSync()) {
+      await dataDir.create(recursive: true);
+      logInfo('Created MongoDB data directory at ${dataDir.path}');
+    }
+
+    // 2. Create default mongod.cfg
+    final confFile = File(p.join(baseDir, 'mongod.cfg'));
+    if (!confFile.existsSync()) {
+      final dbPath = dataDir.path.replaceAll('\\', '/');
+      final logPath = p.join(app.location!, 'mongod.log').replaceAll('\\', '/');
+
+      final configContent = '''
+storage:
+  dbPath: "$dbPath"
+  journal:
+    enabled: true
+
+systemLog:
+  destination: file
+  logAppend: true
+  path: "$logPath"
+
+net:
+  port: 27017
+  bindIp: 127.0.0.1
+''';
+      await confFile.writeAsString(configContent);
+      logInfo('Created MongoDB configuration at ${confFile.path}');
     }
   }
 

@@ -6,6 +6,8 @@ import '../../domain/app_model.dart';
 import '../../data/php_settings_provider.dart';
 import '../../data/db_settings_provider.dart';
 import '../../data/webserver_settings_provider.dart';
+import '../../data/redis_settings_provider.dart';
+import '../../data/mongodb_settings_provider.dart';
 import '../../data/app_service_manager.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
@@ -50,10 +52,15 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       widget.app.groupName == 'webserver' ||
       widget.app.appId.toLowerCase().contains('nginx') ||
       widget.app.appId.toLowerCase().contains('apache');
+  bool get _isRedis =>
+      widget.app.groupName == 'redis' ||
+      widget.app.appId.toLowerCase().contains('redis');
+  bool get _isMongodb =>
+      widget.app.appId.toLowerCase().contains('mongodb');
 
   int get _tabCount {
     if (_isPhp) return 3;
-    if (_isDb || _isWebserver) return 2;
+    if (_isDb || _isWebserver || _isRedis || _isMongodb) return 2;
     return 1;
   }
 
@@ -71,7 +78,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (_tabController.indexIsChanging) return;
     
     final index = _tabController.index;
-    if (index == 1 && (_isPhp || _isDb || _isWebserver) && !_isConfigLoaded) {
+    if (index == 1 && (_isPhp || _isDb || _isWebserver || _isRedis || _isMongodb) && !_isConfigLoaded) {
       _loadConfig();
     } else if (index == 2 && _isPhp && !_isExtensionsLoaded) {
       _loadExtensions();
@@ -97,6 +104,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       content = await ref.read(dbSettingsProvider.notifier).readConfig(widget.app);
     } else if (_isWebserver) {
       content = await ref.read(webserverSettingsProvider.notifier).readConfig(widget.app);
+    } else if (_isRedis) {
+      content = await ref.read(redisSettingsProvider.notifier).readConfig(widget.app);
+    } else if (_isMongodb) {
+      content = await ref.read(mongodbSettingsProvider.notifier).readConfig(widget.app);
     }
 
     if (mounted) {
@@ -168,6 +179,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       await ref.read(dbSettingsProvider.notifier).saveConfig(widget.app, text);
     } else if (_isWebserver) {
       await ref.read(webserverSettingsProvider.notifier).saveConfig(widget.app, text);
+    } else if (_isRedis) {
+      await ref.read(redisSettingsProvider.notifier).saveConfig(widget.app, text);
+    } else if (_isMongodb) {
+      await ref.read(mongodbSettingsProvider.notifier).saveConfig(widget.app, text);
     }
 
     _isConfigLoaded = false; // Force reload after save
@@ -218,7 +233,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                     controller: _tabController,
                     children: [
                       KeepAliveWrapper(child: _buildServiceTab()),
-                      if (_isPhp || _isDb || _isWebserver) KeepAliveWrapper(child: _buildConfigTab()),
+                      if (_isPhp || _isDb || _isWebserver || _isRedis || _isMongodb) KeepAliveWrapper(child: _buildConfigTab()),
                       if (_isPhp) KeepAliveWrapper(child: _buildExtensionsTab()),
                     ],
                   ),
@@ -336,7 +351,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               ],
             ),
           ),
-          if (_isPhp || _isDb || _isWebserver)
+          if (_isPhp || _isDb || _isWebserver || _isRedis || _isMongodb)
             Tab(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -347,7 +362,11 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                       ? 'my.ini'
                       : _isWebserver
                           ? (widget.app.appId.contains('nginx') ? 'nginx.conf' : 'httpd.conf')
-                          : 'Config'),
+                          : _isRedis
+                              ? 'redis.conf'
+                              : _isMongodb
+                                  ? 'mongod.cfg'
+                                  : 'Config'),
                 ],
               ),
             ),
@@ -523,7 +542,11 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                     ? 'my.ini'
                     : _isWebserver
                         ? (widget.app.appId.contains('nginx') ? 'nginx.conf' : 'httpd.conf')
-                        : 'php.ini',
+                        : _isRedis
+                            ? 'redis.conf'
+                            : _isMongodb
+                                ? 'mongod.cfg'
+                                : 'php.ini',
                 style: const TextStyle(
                   fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.bold,

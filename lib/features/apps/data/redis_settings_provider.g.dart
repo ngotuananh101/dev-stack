@@ -1,26 +1,26 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'webserver_settings_provider.dart';
+part of 'redis_settings_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$webserverSettingsHash() => r'7952cf3ee4dccdd3726e2d555fe31ffb7b77cc9d';
+String _$redisSettingsHash() => r'5130815861e7a9d028cba0d5739329e09c5a5e9f';
 
-/// See also [WebserverSettings].
-@ProviderFor(WebserverSettings)
-final webserverSettingsProvider =
-    AutoDisposeNotifierProvider<WebserverSettings, void>.internal(
-  WebserverSettings.new,
-  name: r'webserverSettingsProvider',
+/// See also [RedisSettings].
+@ProviderFor(RedisSettings)
+final redisSettingsProvider =
+    AutoDisposeNotifierProvider<RedisSettings, void>.internal(
+  RedisSettings.new,
+  name: r'redisSettingsProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$webserverSettingsHash,
+      : _$redisSettingsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$WebserverSettings = AutoDisposeNotifier<void>;
+typedef _$RedisSettings = AutoDisposeNotifier<void>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

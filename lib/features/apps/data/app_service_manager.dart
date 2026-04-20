@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
@@ -57,6 +58,18 @@ class AppServiceManager {
           args = ['-b', '127.0.0.1:$port'];
         } else {
           args = ['-S', '127.0.0.1:$port'];
+        }
+      } else if (fileName == 'mongod.exe') {
+        // Look for mongod.cfg in the same directory as mongod.exe or its parent
+        final confFile = File(p.join(workingDir, 'mongod.cfg'));
+        if (confFile.existsSync()) {
+          args = ['--config', confFile.path];
+        } else {
+          // Try parent directory
+          final parentConf = File(p.join(Directory(workingDir).parent.path, 'mongod.cfg'));
+          if (parentConf.existsSync()) {
+            args = ['--config', parentConf.path];
+          }
         }
       }
 
