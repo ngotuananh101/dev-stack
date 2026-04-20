@@ -561,12 +561,12 @@ class AppInstallerService {
     String installPath,
     Function(String) logInfo,
   ) async {
-    final binDir = Directory(p.join(app.location!, 'bin'));
+    final binDir = Directory(p.join(installPath, 'bin'));
     final binExists = binDir.existsSync();
-    final baseDir = binExists ? binDir.path : app.location!;
+    final baseDir = binExists ? binDir.path : installPath;
 
     // 1. Create data directory
-    final dataDir = Directory(p.join(app.location!, 'data'));
+    final dataDir = Directory(p.join(installPath, 'data'));
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
       logInfo('Created MongoDB data directory at ${dataDir.path}');
@@ -576,13 +576,11 @@ class AppInstallerService {
     final confFile = File(p.join(baseDir, 'mongod.cfg'));
     if (!confFile.existsSync()) {
       final dbPath = dataDir.path.replaceAll('\\', '/');
-      final logPath = p.join(app.location!, 'mongod.log').replaceAll('\\', '/');
+      final logPath = p.join(installPath, 'mongod.log').replaceAll('\\', '/');
 
       final configContent = '''
 storage:
   dbPath: "$dbPath"
-  journal:
-    enabled: true
 
 systemLog:
   destination: file
