@@ -14,17 +14,14 @@ class AppSettingsModal extends ConsumerStatefulWidget {
   final AppModel app;
   final VoidCallback onClose;
 
-  const AppSettingsModal({
-    super.key,
-    required this.app,
-    required this.onClose,
-  });
+  const AppSettingsModal({super.key, required this.app, required this.onClose});
 
   @override
   ConsumerState<AppSettingsModal> createState() => _AppSettingsModalState();
 }
 
-class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with SingleTickerProviderStateMixin {
+class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   CodeController? _codeController;
   final TextEditingController _fallbackController = TextEditingController();
@@ -34,19 +31,49 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
   bool _useCodeEditor = false;
   List<PhpExtension> _extensions = [];
   String _searchQuery = '';
+  
+  // Lazy loading flags
+  bool _isConfigLoaded = false;
+  bool _isExtensionsLoaded = false;
+  bool _isConfigLoading = false;
+  bool _isExtensionsLoading = false;
 
-  bool get _isPhp => widget.app.groupName == 'php' || widget.app.appId.startsWith('php');
-  bool get _isDb => 
-      widget.app.groupName == 'mysql' || 
-      widget.app.groupName == 'mariadb' || 
-      widget.app.appId.toLowerCase().contains('mysql') || 
+  bool get _isPhp =>
+      widget.app.groupName == 'php' || widget.app.appId.startsWith('php');
+  bool get _isDb =>
+      widget.app.groupName == 'mysql' ||
+      widget.app.groupName == 'mariadb' ||
+      widget.app.appId.toLowerCase().contains('mysql') ||
       widget.app.appId.toLowerCase().contains('mariadb');
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _isPhp ? 3 : 2, vsync: this);
-    _loadData();
+    int tabLength = 1;
+    if (_isPhp) {
+      tabLength = 3;
+    } else if (_isDb) {
+      tabLength = 2;
+    } else {
+      tabLength = 1; // Default for others (Show only service tab)
+    }
+
+    _tabController = TabController(length: tabLength, vsync: this);
+    _tabController.addListener(_handleTabSelection);
+    
+    // Set loading to false immediately to show Service tab info instantly
+    _isLoading = false;
+  }
+
+  void _handleTabSelection() {
+    if (_tabController.indexIsChanging) return;
+    
+    final index = _tabController.index;
+    if (index == 1 && (_isPhp || _isDb) && !_isConfigLoaded) {
+      _loadConfig();
+    } else if (index == 2 && _isPhp && !_isExtensionsLoaded) {
+      _loadExtensions();
+    }
   }
 
   @override
@@ -57,43 +84,57 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    String content = '';
+  Future<void> _loadConfig() async {
+    if (_isConfigLoading) return;
+    setState(() => _isConfigLoading = true);
     
+    String content = '';
     if (_isPhp) {
-      final provider = ref.read(phpSettingsProvider.notifier);
-      content = await provider.readPhpIni(widget.app);
-      _extensions = await provider.getExtensions(widget.app, content);
+      content = await ref.read(phpSettingsProvider.notifier).readPhpIni(widget.app);
     } else if (_isDb) {
       content = await ref.read(dbSettingsProvider.notifier).readConfig(widget.app);
-      _extensions = [];
     }
-    
+
     if (mounted) {
-      final lineCount = content.split('\n').length;
       setState(() {
         _iniContent = content;
         _fallbackController.text = content;
-        if (_codeController != null) {
-          _codeController!.text = content;
-        }
-        _useCodeEditor = lineCount <= 200;
-        _isLoading = false;
+        _isConfigLoaded = true;
+        _isConfigLoading = false;
+        
+        // Use CodeEditor for all configs to maintain consistent UI
+        _useCodeEditor = true;
       });
 
-      // Background initialization of the heavy CodeController ONLY if needed
       if (_useCodeEditor) {
         _initCodeControllerLazily();
       }
     }
   }
 
+  Future<void> _loadExtensions() async {
+    if (_isExtensionsLoading) return;
+    setState(() => _isExtensionsLoading = true);
+    
+    final content = _iniContent ?? await ref.read(phpSettingsProvider.notifier).readPhpIni(widget.app);
+    final exts = await ref.read(phpSettingsProvider.notifier).getExtensions(widget.app, content);
+
+    if (mounted) {
+      setState(() {
+        _extensions = exts;
+        _isExtensionsLoaded = true;
+        _isExtensionsLoading = false;
+      });
+    }
+  }
+
+
+
   void _initCodeControllerLazily() {
     // Wait for modal transition to finish completely
     Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted || _iniContent == null) return;
-      
+
       // Step 1: Create controller WITHOUT language (much faster)
       final controller = CodeController(text: _iniContent!);
       if (mounted) {
@@ -113,19 +154,18 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
   }
 
   Future<void> _saveConfig() async {
-    final text = _useCodeEditor && _codeController != null 
-        ? _codeController!.text 
+    final text = _useCodeEditor && _codeController != null
+        ? _codeController!.text
         : _fallbackController.text;
-        
-    setState(() => _isLoading = true);
-    
+
     if (_isPhp) {
       await ref.read(phpSettingsProvider.notifier).savePhpIni(widget.app, text);
     } else if (_isDb) {
       await ref.read(dbSettingsProvider.notifier).saveConfig(widget.app, text);
     }
-    
-    await _loadData();
+
+    _isConfigLoaded = false; // Force reload after save
+    await _loadConfig();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -137,8 +177,11 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
   }
 
   Future<void> _toggleExtension(PhpExtension ext, bool value) async {
-    await ref.read(phpSettingsProvider.notifier).toggleExtension(widget.app, ext, value);
-    await _loadData();
+    await ref
+        .read(phpSettingsProvider.notifier)
+        .toggleExtension(widget.app, ext, value);
+    _isExtensionsLoaded = false;
+    await _loadExtensions();
   }
 
   @override
@@ -169,7 +212,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
                     controller: _tabController,
                     children: [
                       KeepAliveWrapper(child: _buildServiceTab()),
-                      KeepAliveWrapper(child: _buildConfigTab()),
+                      if (_isPhp || _isDb) KeepAliveWrapper(child: _buildConfigTab()),
                       if (_isPhp) KeepAliveWrapper(child: _buildExtensionsTab()),
                     ],
                   ),
@@ -195,7 +238,11 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.settings_outlined, color: AppColors.primary, size: 20),
+            child: const Icon(
+              Icons.settings_outlined,
+              color: AppColors.primary,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 16),
           Column(
@@ -239,9 +286,17 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: const BorderSide(color: AppColors.primary),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
               ),
             ),
@@ -269,22 +324,23 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.info_outline_rounded, size: 16),
-                SizedBox(width: 8),
-                Text('Service'),
-              ],
-            ),
-          ),
-          Tab(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.tune_rounded, size: 16),
+                const Icon(Icons.info_outline_rounded, size: 16),
                 const SizedBox(width: 8),
-                Text(_isDb ? 'my.ini' : 'php.ini'),
+                const Text('Service'),
               ],
             ),
           ),
+          if (_isPhp || _isDb)
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.tune_rounded, size: 16),
+                  const SizedBox(width: 8),
+                  Text(_isDb ? 'my.ini' : 'Config'),
+                ],
+              ),
+            ),
           if (_isPhp)
             const Tab(
               child: Row(
@@ -301,7 +357,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
         unselectedLabelColor: AppColors.textMuted,
         indicatorColor: AppColors.primary,
         indicatorWeight: 3,
-        labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: AppTextSize.xs),
+        labelStyle: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: AppTextSize.xs,
+        ),
       ),
     );
   }
@@ -312,40 +371,58 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoSection(
-            'Installation Details',
-            [
-              _buildInfoRow(Icons.folder_open, 'Location', widget.app.location ?? 'Unknown'),
-              _buildInfoRow(Icons.new_releases_outlined, 'Installed Version', widget.app.installedVersion ?? 'N/A'),
-              _buildInfoRow(Icons.calendar_today_outlined, 'Installed At', 
-                widget.app.installedAt != null ? widget.app.installedAt.toString().split('.')[0] : 'N/A'),
-            ],
-          ),
+          _buildInfoSection('Installation Details', [
+            _buildInfoRow(
+              Icons.folder_open,
+              'Location',
+              widget.app.location ?? 'Unknown',
+            ),
+            _buildInfoRow(
+              Icons.new_releases_outlined,
+              'Installed Version',
+              widget.app.installedVersion ?? 'N/A',
+            ),
+            _buildInfoRow(
+              Icons.calendar_today_outlined,
+              'Installed At',
+              widget.app.installedAt != null
+                  ? widget.app.installedAt.toString().split('.')[0]
+                  : 'N/A',
+            ),
+          ]),
           const SizedBox(height: 24),
-          _buildInfoSection(
-            'Executable Paths',
-            [
-              _buildInfoRow(Icons.terminal, 'PHP CLI', widget.app.cliFilePath ?? 'Not found'),
-              _buildInfoRow(Icons.javascript_outlined, 'PHP CGI', widget.app.execFilePath ?? 'Not found'),
-            ],
-          ),
+          _buildInfoSection('Executable Paths', [
+            _buildInfoRow(
+              Icons.terminal,
+              'PHP CLI',
+              widget.app.cliFilePath ?? 'Not found',
+            ),
+            _buildInfoRow(
+              Icons.javascript_outlined,
+              'PHP CGI',
+              widget.app.execFilePath ?? 'Not found',
+            ),
+          ]),
           const SizedBox(height: 24),
-          _buildInfoSection(
-            'System Integration',
-            [
-              _buildInfoRow(
-                widget.app.isAddedToPath ? Icons.check_circle_outline : Icons.error_outline,
-                'PATH Environment', 
-                widget.app.isAddedToPath ? 'Added to Windows PATH' : 'Not added to PATH',
-                valueColor: widget.app.isAddedToPath ? AppColors.success : AppColors.warning,
-              ),
-              _buildInfoRow(
-                Icons.auto_mode,
-                'Auto Start', 
-                widget.app.autoStartService ? 'Enabled' : 'Disabled',
-              ),
-            ],
-          ),
+          _buildInfoSection('System Integration', [
+            _buildInfoRow(
+              widget.app.isAddedToPath
+                  ? Icons.check_circle_outline
+                  : Icons.error_outline,
+              'PATH Environment',
+              widget.app.isAddedToPath
+                  ? 'Added to Windows PATH'
+                  : 'Not added to PATH',
+              valueColor: widget.app.isAddedToPath
+                  ? AppColors.success
+                  : AppColors.warning,
+            ),
+            _buildInfoRow(
+              Icons.auto_mode,
+              'Auto Start',
+              widget.app.autoStartService ? 'Enabled' : 'Disabled',
+            ),
+          ]),
         ],
       ),
     );
@@ -372,21 +449,37 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
             border: Border.all(color: AppColors.border),
           ),
           child: Column(
-            children: children.expand((w) => [w, if (w != children.last) const Divider(height: 24, color: AppColors.border)]).toList(),
+            children: children
+                .expand(
+                  (w) => [
+                    w,
+                    if (w != children.last)
+                      const Divider(height: 24, color: AppColors.border),
+                  ],
+                )
+                .toList(),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, {Color? valueColor}) {
+  Widget _buildInfoRow(
+    IconData icon,
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
     return Row(
       children: [
         Icon(icon, size: 16, color: AppColors.textMuted),
         const SizedBox(width: 12),
         Text(
           label,
-          style: const TextStyle(fontSize: AppTextSize.xxs, color: AppColors.textSecondary),
+          style: const TextStyle(
+            fontSize: AppTextSize.xxs,
+            color: AppColors.textSecondary,
+          ),
         ),
         const Spacer(),
         Text(
@@ -409,72 +502,92 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
         children: [
           Row(
             children: [
-              const Icon(Icons.description_outlined, size: 16, color: AppColors.textSecondary),
+              const Icon(
+                Icons.description_outlined,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(width: 8),
-              const Text(
-                'php.ini',
-                style: TextStyle(
+              Text(
+                _isDb ? 'my.ini' : 'php.ini',
+                style: const TextStyle(
                   fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textSecondary,
                 ),
               ),
               const Spacer(),
-              ElevatedButton.icon(
-                onPressed: _saveConfig,
-                icon: const Icon(Icons.save_rounded, size: 16),
-                label: const Text('Save Changes'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.background,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              if (_isConfigLoading)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                ElevatedButton.icon(
+                  onPressed: _saveConfig,
+                  icon: const Icon(Icons.save_rounded, size: 16),
+                  label: const Text('Save Changes'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.background,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: !_useCodeEditor || !_isEditorReady || _codeController == null
-                ? TextField(
-                    controller: _fallbackController,
-                    maxLines: null,
-                    expands: true,
-                    readOnly: false, // User can edit large files in plain text
-                    textAlignVertical: TextAlignVertical.top,
-                    style: const TextStyle(
-                      fontFamily: 'Consolas',
-                      fontSize: AppTextSize.xs,
-                      color: Color(0xFFD4D4D4),
-                      height: 1.5,
+            child: _isConfigLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
                     ),
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.all(20),
-                      border: InputBorder.none,
-                      hintText: 'Configuration content...',
-                      hintStyle: TextStyle(color: AppColors.textMuted),
-                    ),
-                  )
-                : CodeTheme(
-                    data: CodeThemeData(styles: monokaiSublimeTheme),
-                    child: CodeField(
-                      controller: _codeController!,
-                      textStyle: const TextStyle(
-                        fontFamily: 'Consolas',
-                        fontSize: AppTextSize.xs,
-                        height: 1.5,
-                      ),
-                      expands: true,
-                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: !_useCodeEditor ||
+                            !_isEditorReady ||
+                            _codeController == null
+                        ? TextField(
+                            controller: _fallbackController,
+                            maxLines: null,
+                            expands: true,
+                            readOnly: false,
+                            textAlignVertical: TextAlignVertical.top,
+                            style: const TextStyle(
+                              fontFamily: 'Consolas',
+                              fontSize: AppTextSize.xs,
+                              color: Color(0xFFD4D4D4),
+                              height: 1.5,
+                            ),
+                            decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.all(20),
+                              border: InputBorder.none,
+                              hintText: 'Configuration content...',
+                              hintStyle: TextStyle(color: AppColors.textMuted),
+                            ),
+                          )
+                        : CodeTheme(
+                            data: CodeThemeData(styles: monokaiSublimeTheme),
+                            child: CodeField(
+                              controller: _codeController!,
+                              textStyle: const TextStyle(
+                                fontFamily: 'Consolas',
+                                fontSize: AppTextSize.xs,
+                                height: 1.5,
+                              ),
+                              expands: true,
+                            ),
+                          ),
                   ),
-            ),
           ),
         ],
       ),
@@ -492,14 +605,24 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
         children: [
           TextField(
             onChanged: (v) => setState(() => _searchQuery = v),
-            style: const TextStyle(fontSize: AppTextSize.xs, color: AppColors.textPrimary),
+            style: const TextStyle(
+              fontSize: AppTextSize.xs,
+              color: AppColors.textPrimary,
+            ),
             decoration: InputDecoration(
               hintText: 'Search extensions (e.g. mbstring, curl, gd)...',
               hintStyle: const TextStyle(color: AppColors.textMuted),
-              prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textMuted),
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 20,
+                color: AppColors.textMuted,
+              ),
               filled: true,
               fillColor: AppColors.surfaceLight,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -510,27 +633,33 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1,
+                ),
               ),
             ),
           ),
           const SizedBox(height: 20),
           Expanded(
-            child: filteredExtensions.isEmpty
-                ? _buildEmptyExtensions()
-                : GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 4,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
-                    itemCount: filteredExtensions.length,
-                    itemBuilder: (context, index) {
-                      final ext = filteredExtensions[index];
-                      return _buildExtensionCard(ext);
-                    },
-                  ),
+            child: _isExtensionsLoading
+                ? const Center(child: CircularProgressIndicator())
+                : filteredExtensions.isEmpty
+                    ? _buildEmptyExtensions()
+                    : GridView.builder(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 4,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
+                        itemCount: filteredExtensions.length,
+                        itemBuilder: (context, index) {
+                          final ext = filteredExtensions[index];
+                          return _buildExtensionCard(ext);
+                        },
+                      ),
           ),
         ],
       ),
@@ -544,8 +673,8 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
         color: AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: ext.isEnabled 
-              ? AppColors.primary.withValues(alpha: 0.5) 
+          color: ext.isEnabled
+              ? AppColors.primary.withValues(alpha: 0.5)
               : AppColors.border,
           width: ext.isEnabled ? 1.5 : 1,
         ),
@@ -568,12 +697,17 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal> with Single
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: AppTextSize.xs,
-                    color: ext.isEnabled ? AppColors.textPrimary : AppColors.textSecondary,
+                    color: ext.isEnabled
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
                   ),
                 ),
                 Text(
                   ext.isZend ? 'Zend Extension' : 'Standard extension',
-                  style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -617,7 +751,8 @@ class KeepAliveWrapper extends StatefulWidget {
   State<KeepAliveWrapper> createState() => _KeepAliveWrapperState();
 }
 
-class _KeepAliveWrapperState extends State<KeepAliveWrapper> with AutomaticKeepAliveClientMixin {
+class _KeepAliveWrapperState extends State<KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
   @override
   Widget build(BuildContext context) {
     super.build(context);
