@@ -147,6 +147,13 @@ class AppInstallerService {
         }
       }
 
+      // 7. Post-installation: Configure Web Servers
+      if (app.groupName == 'webserver' ||
+          app.appId.contains('nginx') ||
+          app.appId.contains('apache')) {
+        await _configureWebserver(app, installPath, logInfo);
+      }
+
       // Cleanup
       if (tempFile.existsSync()) await tempFile.delete();
 
@@ -424,6 +431,123 @@ class AppInstallerService {
       }
     } else {
       logInfo('Could not find database initialization executable.');
+    }
+  }
+
+  Future<void> _configureWebserver(
+    AppModel app,
+    String installPath,
+    Function(String) logInfo,
+  ) async {
+    final wwwDir = Directory(AppConfig.webserverRoot);
+    if (!wwwDir.existsSync()) {
+      logInfo('Creating webserver root directory: ${wwwDir.path}');
+      await wwwDir.create(recursive: true);
+    }
+
+    // Add default index.html if empty
+    final entities = await wwwDir.list().toList();
+    if (entities.isEmpty) {
+      final indexHtml = File(p.join(wwwDir.path, 'index.html'));
+      await indexHtml.writeAsString('''<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome to Ponta</title>
+    <style>
+        body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f4f7f6; color: #333; }
+        .container { text-align: center; padding: 40px; background: white; border-radius: 12px; shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to Ponta Web Server</h1>
+        <p>This is the default root directory at <code>${wwwDir.path}</code></p>
+    </div>
+</body>
+</html>''');
+    }
+
+    final webRoot = AppConfig.webserverRoot.replaceAll('\\', '/');
+
+    if (app.appId.contains('nginx')) {
+      final confFile = File(p.join(installPath, 'conf', 'nginx.conf'));
+      if (confFile.existsSync()) {
+        logInfo('Configuring Nginx default root to $webRoot...');
+        String content = await confFile.readAsString();
+
+        // Standard Nginx default root replacement
+        content = content.replaceFirst(
+          RegExp(r'root\s+html;'),
+          'root   "$webRoot";',
+        );
+
+        // Optimize worker_processes for Nginx
+        content = content.replaceFirst(
+          RegExp(r'worker_processes\s+\d+;'),
+          'worker_processes  auto;',
+        );
+
+        await confFile.writeAsString(content);
+        logInfo('Nginx configuration updated (root and worker_processes).');
+      }
+    } else if (app.appId.contains('apache')) {
+      // Apache Lounge zips often contain an 'Apache24' subfolder
+      String apacheRoot = installPath;
+      File confFile = File(p.join(installPath, 'conf', 'httpd.conf'));
+
+      if (!confFile.existsSync()) {
+        final nestedConf = File(p.join(installPath, 'Apache24', 'conf', 'httpd.conf'));
+        if (nestedConf.existsSync()) {
+          confFile = nestedConf;
+          apacheRoot = p.join(installPath, 'Apache24');
+        }
+      }
+
+      if (confFile.existsSync()) {
+        logInfo('Configuring Apache paths in ${confFile.path}...');
+        String content = await confFile.readAsString();
+
+        final srvRoot = apacheRoot.replaceAll('\\', '/');
+
+        // 1. Fix SRVROOT (Essential for Apache Lounge binaries)
+        content = content.replaceFirst(
+          RegExp(r'Define\s+SRVROOT\s+".*?"'),
+          'Define SRVROOT "$srvRoot"',
+        );
+
+        // 2. Replace DocumentRoot (handle with or without quotes, and ${SRVROOT} variable)
+        content = content.replaceFirst(
+          RegExp(r'^DocumentRoot\s+.*$', multiLine: true),
+          'DocumentRoot "$webRoot"',
+        );
+
+        // 3. Replace the corresponding <Directory> block and grant permissions
+        // We avoid the global <Directory /> block by requiring a path-like string
+        content = content.replaceFirst(
+          RegExp(r'^<Directory\s+"[^/].*?">', multiLine: true),
+          '<Directory "$webRoot">',
+        );
+
+        // 4. Ensure permissions for the new root
+        content = content.replaceFirst(
+          '<Directory "$webRoot">',
+          '<Directory "$webRoot">\n    Options Indexes FollowSymLinks\n    AllowOverride All\n    Require all granted',
+        );
+
+        // 5. Fix ServerName warning
+        if (!content.contains('ServerName localhost')) {
+          content = content.replaceFirst(
+            RegExp(r'^#?ServerName\s+.*$', multiLine: true),
+            'ServerName localhost:80',
+          );
+        }
+
+        await confFile.writeAsString(content);
+        logInfo('Apache configuration updated (SRVROOT, DocumentRoot and Permissions set).');
+      } else {
+        logInfo('Warning: Could not find Apache httpd.conf to configure.');
+      }
     }
   }
 

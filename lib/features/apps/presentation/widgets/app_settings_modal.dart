@@ -5,6 +5,7 @@ import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_model.dart';
 import '../../data/php_settings_provider.dart';
 import '../../data/db_settings_provider.dart';
+import '../../data/webserver_settings_provider.dart';
 import '../../data/app_service_manager.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
@@ -45,20 +46,21 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       widget.app.groupName == 'mariadb' ||
       widget.app.appId.toLowerCase().contains('mysql') ||
       widget.app.appId.toLowerCase().contains('mariadb');
+  bool get _isWebserver =>
+      widget.app.groupName == 'webserver' ||
+      widget.app.appId.toLowerCase().contains('nginx') ||
+      widget.app.appId.toLowerCase().contains('apache');
+
+  int get _tabCount {
+    if (_isPhp) return 3;
+    if (_isDb || _isWebserver) return 2;
+    return 1;
+  }
 
   @override
   void initState() {
     super.initState();
-    int tabLength = 1;
-    if (_isPhp) {
-      tabLength = 3;
-    } else if (_isDb) {
-      tabLength = 2;
-    } else {
-      tabLength = 1; // Default for others (Show only service tab)
-    }
-
-    _tabController = TabController(length: tabLength, vsync: this);
+    _tabController = TabController(length: _tabCount, vsync: this);
     _tabController.addListener(_handleTabSelection);
     
     // Set loading to false immediately to show Service tab info instantly
@@ -69,7 +71,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (_tabController.indexIsChanging) return;
     
     final index = _tabController.index;
-    if (index == 1 && (_isPhp || _isDb) && !_isConfigLoaded) {
+    if (index == 1 && (_isPhp || _isDb || _isWebserver) && !_isConfigLoaded) {
       _loadConfig();
     } else if (index == 2 && _isPhp && !_isExtensionsLoaded) {
       _loadExtensions();
@@ -93,6 +95,8 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       content = await ref.read(phpSettingsProvider.notifier).readPhpIni(widget.app);
     } else if (_isDb) {
       content = await ref.read(dbSettingsProvider.notifier).readConfig(widget.app);
+    } else if (_isWebserver) {
+      content = await ref.read(webserverSettingsProvider.notifier).readConfig(widget.app);
     }
 
     if (mounted) {
@@ -162,6 +166,8 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       await ref.read(phpSettingsProvider.notifier).savePhpIni(widget.app, text);
     } else if (_isDb) {
       await ref.read(dbSettingsProvider.notifier).saveConfig(widget.app, text);
+    } else if (_isWebserver) {
+      await ref.read(webserverSettingsProvider.notifier).saveConfig(widget.app, text);
     }
 
     _isConfigLoaded = false; // Force reload after save
@@ -212,7 +218,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                     controller: _tabController,
                     children: [
                       KeepAliveWrapper(child: _buildServiceTab()),
-                      if (_isPhp || _isDb) KeepAliveWrapper(child: _buildConfigTab()),
+                      if (_isPhp || _isDb || _isWebserver) KeepAliveWrapper(child: _buildConfigTab()),
                       if (_isPhp) KeepAliveWrapper(child: _buildExtensionsTab()),
                     ],
                   ),
@@ -330,14 +336,18 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               ],
             ),
           ),
-          if (_isPhp || _isDb)
+          if (_isPhp || _isDb || _isWebserver)
             Tab(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.tune_rounded, size: 16),
                   const SizedBox(width: 8),
-                  Text(_isDb ? 'my.ini' : 'Config'),
+                  Text(_isDb
+                      ? 'my.ini'
+                      : _isWebserver
+                          ? (widget.app.appId.contains('nginx') ? 'nginx.conf' : 'httpd.conf')
+                          : 'Config'),
                 ],
               ),
             ),
@@ -509,7 +519,11 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               ),
               const SizedBox(width: 8),
               Text(
-                _isDb ? 'my.ini' : 'php.ini',
+                _isDb
+                    ? 'my.ini'
+                    : _isWebserver
+                        ? (widget.app.appId.contains('nginx') ? 'nginx.conf' : 'httpd.conf')
+                        : 'php.ini',
                 style: const TextStyle(
                   fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.bold,
