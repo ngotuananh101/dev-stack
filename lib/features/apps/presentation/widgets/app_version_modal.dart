@@ -84,11 +84,47 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
 
     // Find current app state in notifier list
     final appState = appsAsync.when(
-      data: (list) =>
-          list.firstWhere((a) => a.appId == widget.app.appId, orElse: () => widget.app),
+      data: (list) => list.firstWhere((a) => a.appId == widget.app.appId,
+          orElse: () => widget.app),
       loading: () => widget.app,
       error: (_, _) => widget.app,
     );
+
+    // Check for mutually exclusive application pairs (MySQL/MariaDB, Nginx/Apache)
+    final appId = widget.app.appId.toLowerCase();
+    final groupName = widget.app.groupName?.toLowerCase() ?? '';
+    
+    final conflictPairs = {
+      'mysql': 'mariadb',
+      'mariadb': 'mysql',
+      'nginx': 'apache',
+      'apache': 'nginx',
+    };
+
+    String? otherGroup;
+    for (final entry in conflictPairs.entries) {
+      if (appId.contains(entry.key) || groupName.contains(entry.key)) {
+        otherGroup = entry.value;
+        break;
+      }
+    }
+
+    AppModel? conflictingApp;
+    if (!widget.isUpdate && otherGroup != null) {
+      final conflictPattern = otherGroup; // Capture for predicate
+      appsAsync.whenData((list) {
+        try {
+          conflictingApp = list.firstWhere(
+            (a) =>
+                ((a.groupName?.toLowerCase() ?? '').contains(conflictPattern) ||
+                    a.appId.toLowerCase().contains(conflictPattern)) &&
+                a.isInstalled,
+          );
+        } catch (_) {
+          conflictingApp = null;
+        }
+      });
+    }
 
     // Show progress if installing OR if just finished installing
     final isInProgress = appState.status == 'installing' || 
@@ -119,13 +155,14 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             _buildProgressSection(appState)
           else
             versionsAsync.when(
-              data: (versionInfo) => _buildVersionSelection(versionInfo),
-              loading: () => _buildLoadingState(),
-              error: (error, stack) => _buildErrorState(error.toString()),
-            ),
+            data: (versionInfo) =>
+                _buildVersionSelection(versionInfo, conflictingApp),
+            loading: () => _buildLoadingState(),
+            error: (error, stack) => _buildErrorState(error.toString()),
+          ),
           const Divider(color: AppColors.border, height: 1),
           // Footer
-          _buildFooter(isInProgress, appState),
+          _buildFooter(isInProgress, appState, conflictingApp),
         ],
       ),
     );
@@ -281,7 +318,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     );
   }
 
-  Widget _buildVersionSelection(AppVersionInfo versionInfo) {
+  Widget _buildVersionSelection(
+      AppVersionInfo versionInfo, AppModel? conflictingApp) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -309,6 +347,34 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
               ),
             ),
           ),
+          if (conflictingApp != null) ...[
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      color: AppColors.error, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Cannot install ${widget.app.name} because ${conflictingApp.name} is already installed. Please uninstall it first.',
+                      style: const TextStyle(
+                        fontSize: AppTextSize.xxs,
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -448,7 +514,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     );
   }
 
-  Widget _buildFooter(bool isInProgress, AppModel appState) {
+  Widget _buildFooter(
+      bool isInProgress, AppModel appState, AppModel? conflictingApp) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: Row(
@@ -473,10 +540,12 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             ),
             const SizedBox(width: 12),
             ElevatedButton(
-              onPressed: () {
-                widget.app.selectedVersion = _selectedVersion;
-                widget.onInstall();
-              },
+              onPressed: conflictingApp != null
+                  ? null
+                  : () {
+                      widget.app.selectedVersion = _selectedVersion;
+                      widget.onInstall();
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,

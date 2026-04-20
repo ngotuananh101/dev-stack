@@ -10,4 +10,7 @@ class AppConfig {
 
   /// Directory for system and service logs.
   static const String logsDir = '$baseDir\\logs';
+
+  /// Directory for webserver roots.
+  static const String webserverRoot = '$baseDir\\www';
 }
