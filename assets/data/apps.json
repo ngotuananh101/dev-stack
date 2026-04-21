@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "lastUpdated": "2026-04-19T09:25:53.570Z",
+  "lastUpdated": "2026-04-21T16:31:54.259Z",
   "apps": [
     {
       "id": "pyenv",
@@ -440,7 +440,7 @@
         "9.2.0": "https://cdn.mysql.com/Downloads/MySQL-9.2/mysql-9.2.0-winx64.zip",
         "9.1.0": "https://cdn.mysql.com/Downloads/MySQL-9.1/mysql-9.1.0-winx64.zip",
         "9.0.1": "https://cdn.mysql.com/Downloads/MySQL-9.0/mysql-9.0.1-winx64.zip",
-        "8.4.8": "https://cdn.mysql.com/Downloads/MySQL-8.4/mysql-8.4.8-winx64.zip",
+        "8.4.9": "https://cdn.mysql.com/Downloads/MySQL-8.4/mysql-8.4.9-winx64.zip",
         "8.3.0": "https://cdn.mysql.com/Downloads/MySQL-8.3/mysql-8.3.0-winx64.zip",
         "8.2.0": "https://cdn.mysql.com/Downloads/MySQL-8.2/mysql-8.2.0-winx64.zip",
         "8.1.0": "https://cdn.mysql.com/Downloads/MySQL-8.1/mysql-8.1.0-winx64.zip",
@@ -528,6 +528,20 @@
         "8.2.7": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.2.7.zip",
         "8.0.20": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.0.20.zip",
         "7.0.31": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.31.zip"
+      }
+    },
+    {
+      "id": "phpMyAdmin",
+      "name": "phpMyAdmin",
+      "description": "Web interface for MySQL and MariaDB.",
+      "category": "tool",
+      "group_name": "database",
+      "exec_file": "index.php",
+      "cli_file": "index.php",
+      "versions": {
+        "latest": "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip",
+        "5.2.1": "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip",
+        "6.0": "https://files.phpmyadmin.net/snapshots/phpMyAdmin-6.0+snapshot-all-languages.zip"
       }
     }
   ]

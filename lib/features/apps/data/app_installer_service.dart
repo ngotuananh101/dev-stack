@@ -159,6 +159,11 @@ class AppInstallerService {
         await _configureMongodb(app, installPath, logInfo);
       }
 
+      // 9. Post-installation: Configure phpMyAdmin
+      if (app.appId == 'phpMyAdmin') {
+        await _configurePhpMyAdmin(installPath, logInfo);
+      }
+
       // Cleanup
       if (tempFile.existsSync()) await tempFile.delete();
 
@@ -297,9 +302,12 @@ class AppInstallerService {
       r'^;?\s*zend_extension\s*=\s*opcache.*': 'zend_extension = opcache',
       r'^;?\s*opcache\.enable\s*=.*': 'opcache.enable = 1',
       r'^;?\s*opcache\.enable_cli\s*=.*': 'opcache.enable_cli = 1',
-      r'^;?\s*opcache\.memory_consumption\s*=.*': 'opcache.memory_consumption = 128',
-      r'^;?\s*opcache\.max_accelerated_files\s*=.*': 'opcache.max_accelerated_files = 10000',
-      r'^;?\s*opcache\.validate_timestamps\s*=.*': 'opcache.validate_timestamps = 1',
+      r'^;?\s*opcache\.memory_consumption\s*=.*':
+          'opcache.memory_consumption = 128',
+      r'^;?\s*opcache\.max_accelerated_files\s*=.*':
+          'opcache.max_accelerated_files = 10000',
+      r'^;?\s*opcache\.validate_timestamps\s*=.*':
+          'opcache.validate_timestamps = 1',
       r'^;?\s*opcache\.revalidate_freq\s*=.*': 'opcache.revalidate_freq = 2',
       r'^;?\s*realpath_cache_size\s*=.*': 'realpath_cache_size = 4096k',
       r'^;?\s*realpath_cache_ttl\s*=.*': 'realpath_cache_ttl = 600',
@@ -502,7 +510,9 @@ class AppInstallerService {
       File confFile = File(p.join(installPath, 'conf', 'httpd.conf'));
 
       if (!confFile.existsSync()) {
-        final nestedConf = File(p.join(installPath, 'Apache24', 'conf', 'httpd.conf'));
+        final nestedConf = File(
+          p.join(installPath, 'Apache24', 'conf', 'httpd.conf'),
+        );
         if (nestedConf.existsSync()) {
           confFile = nestedConf;
           apacheRoot = p.join(installPath, 'Apache24');
@@ -549,7 +559,9 @@ class AppInstallerService {
         }
 
         await confFile.writeAsString(content);
-        logInfo('Apache configuration updated (SRVROOT, DocumentRoot and Permissions set).');
+        logInfo(
+          'Apache configuration updated (SRVROOT, DocumentRoot and Permissions set).',
+        );
       } else {
         logInfo('Warning: Could not find Apache httpd.conf to configure.');
       }
@@ -578,7 +590,8 @@ class AppInstallerService {
       final dbPath = dataDir.path.replaceAll('\\', '/');
       final logPath = p.join(installPath, 'mongod.log').replaceAll('\\', '/');
 
-      final configContent = '''
+      final configContent =
+          '''
 storage:
   dbPath: "$dbPath"
 
@@ -601,6 +614,263 @@ net:
     if (directory.existsSync()) {
       _logger.info('Deleting directory: $path');
       await directory.delete(recursive: true);
+    }
+  }
+
+  /// Syncs configurations between different apps (e.g., phpMyAdmin with Web Servers)
+  Future<void> syncInterAppConfigs(
+    AppModel currentApp,
+    List<AppModel> allApps, {
+    Function(String)? onLog,
+  }) async {
+    final log = (String m) {
+      _logger.info(m);
+      onLog?.call(m);
+    };
+
+    final isPMA = currentApp.appId == 'phpMyAdmin';
+    final isWebServer =
+        currentApp.appId.contains('nginx') ||
+        currentApp.appId.contains('apache');
+
+    if (!isPMA && !isWebServer) return;
+
+    log('Syncing inter-app configurations for ${currentApp.name}...');
+
+    // 1. Identify phpMyAdmin
+    AppModel? phpMyAdmin;
+    if (isPMA) {
+      phpMyAdmin = currentApp;
+    } else {
+      phpMyAdmin = allApps.firstWhere(
+        (a) => a.appId == 'phpMyAdmin' && a.isInstalled,
+        orElse: () => currentApp, // Dummy to check if it's really installed
+      );
+      if (phpMyAdmin.appId != 'phpMyAdmin' || !phpMyAdmin.isInstalled) {
+        phpMyAdmin = null;
+      }
+    }
+
+    if (phpMyAdmin == null) {
+      log('phpMyAdmin not installed, skipping web server integration.');
+      return;
+    }
+
+    // 2. Identify Web Servers to update
+    List<AppModel> webServers = [];
+    if (isWebServer) {
+      webServers = [currentApp];
+    } else {
+      webServers = allApps
+          .where(
+            (a) =>
+                a.isInstalled &&
+                (a.appId.contains('nginx') || a.appId.contains('apache')),
+          )
+          .toList();
+    }
+
+    if (webServers.isEmpty) {
+      log('No installed web servers found to configure.');
+      return;
+    }
+
+    // 3. Find the best PHP version for FastCGI/Nginx
+    final phpApps = allApps
+        .where((a) => a.isInstalled && a.groupName == 'php')
+        .toList();
+    phpApps.sort((a, b) => b.appId.compareTo(a.appId)); // Newest first
+    final bestPhp = phpApps.firstOrNull;
+
+    for (final ws in webServers) {
+      try {
+        if (ws.appId.contains('nginx')) {
+          await _configurePhpMyAdminInNginx(ws, phpMyAdmin, bestPhp, log);
+        } else if (ws.appId.contains('apache')) {
+          await _configurePhpMyAdminInApache(ws, phpMyAdmin, log);
+        }
+      } catch (e) {
+        log('Error configuring ${ws.name}: $e');
+      }
+    }
+  }
+
+  Future<void> _configurePhpMyAdminInNginx(
+    AppModel nginx,
+    AppModel pma,
+    AppModel? php,
+    Function(String) log,
+  ) async {
+    final wsPath = nginx.location;
+    final pmaPath = pma.location;
+    if (wsPath == null || pmaPath == null) return;
+
+    final confDir = Directory(p.join(wsPath, 'conf', 'ponta_apps'));
+    if (!confDir.existsSync()) confDir.createSync(recursive: true);
+
+    final pmaConfFile = File(p.join(confDir.path, 'phpmyadmin.conf'));
+
+    // Determine PHP port
+    String phpPort = '9000'; // Default
+    if (php != null) {
+      final versionMatch = RegExp(r'\d+').firstMatch(php.appId);
+      if (versionMatch != null) {
+        phpPort = '90${versionMatch.group(0)}';
+      }
+    }
+
+    final pmaPathUnix = pmaPath.replaceAll('\\', '/');
+
+    final pmaConfig =
+        '''
+location /phpmyadmin {
+    alias "$pmaPathUnix/";
+    index index.php;
+    try_files \$uri \$uri/ /phpmyadmin/index.php?\$args;
+
+    location ~ ^/phpmyadmin/(.+\\.php)\$ {
+        alias "$pmaPathUnix/\$1";
+        fastcgi_pass 127.0.0.1:$phpPort;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME \$request_filename;
+    }
+}
+''';
+
+    await pmaConfFile.writeAsString(pmaConfig);
+    log(
+      'Created Nginx config for phpMyAdmin at ${pmaConfFile.path} (PHP Port: $phpPort)',
+    );
+
+    // Ensure nginx.conf includes this
+    final nginxConf = File(p.join(wsPath, 'conf', 'nginx.conf'));
+    if (nginxConf.existsSync()) {
+      String content = await nginxConf.readAsString();
+      if (!content.contains('ponta_apps/*.conf')) {
+        log('Injecting ponta_apps include into nginx.conf...');
+        // Look for the last '}' of the main 'server' block
+        // We assume the default nginx.conf has a server block with 'listen 80'
+        final serverBlockRegex = RegExp(
+          r'server\s*\{[^}]*?listen\s+80',
+          multiLine: true,
+        );
+        if (serverBlockRegex.hasMatch(content)) {
+          // Find the end of this server block
+          // This is a bit naive but works for standard nginx.conf
+          content = content.replaceFirst(
+            'listen       80;',
+            'listen       80;\n        include ponta_apps/*.conf;',
+          );
+          await nginxConf.writeAsString(content);
+          log('Successfully added include to nginx.conf');
+        }
+      }
+    }
+  }
+
+  Future<void> _configurePhpMyAdminInApache(
+    AppModel apache,
+    AppModel pma,
+    Function(String) log,
+  ) async {
+    final wsPath = apache.location;
+    final pmaPath = pma.location;
+    if (wsPath == null || pmaPath == null) return;
+
+    // Apache root might be nested in Apache24
+    String apacheRoot = wsPath;
+    File httpdConf = File(p.join(wsPath, 'conf', 'httpd.conf'));
+    if (!httpdConf.existsSync()) {
+      final nestedConf = File(p.join(wsPath, 'Apache24', 'conf', 'httpd.conf'));
+      if (nestedConf.existsSync()) {
+        httpdConf = nestedConf;
+        apacheRoot = p.join(wsPath, 'Apache24');
+      }
+    }
+
+    if (!httpdConf.existsSync()) {
+      log('Apache httpd.conf not found, skipping integration.');
+      return;
+    }
+
+    final extraDir = Directory(p.join(apacheRoot, 'conf', 'extra'));
+    if (!extraDir.existsSync()) extraDir.createSync(recursive: true);
+
+    final pmaConfFile = File(p.join(extraDir.path, 'httpd-phpmyadmin.conf'));
+    final pmaPathUnix = pmaPath.replaceAll('\\', '/');
+
+    final pmaConfig =
+        '''
+Alias /phpmyadmin "$pmaPathUnix/"
+<Directory "$pmaPathUnix/">
+    Options Indexes FollowSymLinks MultiViews
+    AllowOverride All
+    Require all granted
+</Directory>
+''';
+
+    await pmaConfFile.writeAsString(pmaConfig);
+    log('Created Apache config for phpMyAdmin at ${pmaConfFile.path}');
+
+    // Ensure httpd.conf includes this
+    String content = await httpdConf.readAsString();
+    if (!content.contains('httpd-phpmyadmin.conf')) {
+      log('Injecting phpMyAdmin include into httpd.conf...');
+      // Append at the end of the file
+      content +=
+          '\n# phpMyAdmin Integration\nInclude conf/extra/httpd-phpmyadmin.conf\n';
+      await httpdConf.writeAsString(content);
+      log('Successfully added include to httpd.conf');
+    }
+  }
+
+  Future<void> _configurePhpMyAdmin(
+    String installPath,
+    Function(String) logInfo,
+  ) async {
+    logInfo('Configuring phpMyAdmin (config.inc.php)...');
+    final sampleFile = File(p.join(installPath, 'config.sample.inc.php'));
+    final configFile = File(p.join(installPath, 'config.inc.php'));
+
+    if (sampleFile.existsSync() && !configFile.existsSync()) {
+      logInfo('Creating config.inc.php from sample...');
+      String content = await sampleFile.readAsString();
+
+      // 1. Set Blowfish secret (required for cookies)
+      final random = DateTime.now().microsecondsSinceEpoch.toString();
+      final secret =
+          'ponta_secret_' +
+          random.substring(random.length - 10) +
+          '_32_chars_long_str_base';
+      content = content.replaceFirst(
+        RegExp(r"(\$cfg\['blowfish_secret'\]\s*=\s*').*?(';)"),
+        "\$1$secret\$2",
+      );
+
+      // 2. Set default server to 127.0.0.1
+      content = content.replaceFirst(
+        RegExp(r"(\$cfg\['Servers'\]\[\$i\]\['host'\]\s*=\s*').*?(';)"),
+        "\$1127.0.0.1\$2",
+      );
+
+      // 3. Allow no password (useful for development)
+      if (!content.contains('AllowNoPassword')) {
+        content = content.replaceFirst(
+          "['host'] = '127.0.0.1';",
+          "['host'] = '127.0.0.1';\n\$cfg['Servers'][\$i]['AllowNoPassword'] = true;",
+        );
+      } else {
+        content = content.replaceFirst(
+          RegExp(
+            r"(\$cfg\['Servers'\]\[\$i\]\['AllowNoPassword'\]\s*=\s*).*?;",
+          ),
+          "\$1true;",
+        );
+      }
+
+      await configFile.writeAsString(content);
+      logInfo('phpMyAdmin configuration completed.');
     }
   }
 }

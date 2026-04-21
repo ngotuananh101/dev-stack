@@ -108,6 +108,14 @@ class AppsNotifier extends _$AppsNotifier {
         
         await repository.save(app);
 
+        // Post-install orchestration
+        final allApps = state.valueOrNull ?? [];
+        await installer.syncInterAppConfigs(
+          app, 
+          allApps,
+          onLog: (m) => app.addLog(m),
+        );
+
         // Auto add to PATH if requested
         if (app.addPathAfterInstall && app.cliFilePath != null) {
           await togglePath(app);
@@ -192,6 +200,15 @@ class AppsNotifier extends _$AppsNotifier {
           app.selectedVersion = null; // Clear selected version after update
 
           await repository.save(app);
+        
+          // Post-install orchestration
+          final allApps = state.valueOrNull ?? [];
+          await installer.syncInterAppConfigs(
+            app, 
+            allApps,
+            onLog: (m) => app.addLog(m),
+          );
+        
           notifyUpdate(force: true);
         } catch (e) {
           debugPrint('Update failed: $e');
@@ -339,6 +356,14 @@ class AppsNotifier extends _$AppsNotifier {
         app, 
         onStatusChange: () => notifyUpdate(force: true),
       );
+
+      // Sync configs if it's a webserver starting
+      if (app.categories.contains('webserver')) {
+        final installer = ref.read(appInstallerServiceProvider);
+        final allApps = state.valueOrNull ?? [];
+        await installer.syncInterAppConfigs(app, allApps);
+      }
+
       notifyUpdate(force: true);
     } catch (e) {
       debugPrint('Error starting service: $e');
