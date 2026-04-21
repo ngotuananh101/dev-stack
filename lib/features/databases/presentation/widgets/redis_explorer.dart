@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -8,31 +9,55 @@ import '../../../apps/domain/app_model.dart';
 
 class RedisExplorer extends ConsumerStatefulWidget {
   final AppModel app;
+  final String? searchQuery;
+  final int selectedDb;
+  final Function(int) onDbChanged;
 
-  const RedisExplorer({super.key, required this.app});
+  const RedisExplorer({
+    super.key, 
+    required this.app, 
+    this.searchQuery,
+    required this.selectedDb,
+    required this.onDbChanged,
+  });
 
   @override
   ConsumerState<RedisExplorer> createState() => _RedisExplorerState();
 }
 
 class _RedisExplorerState extends ConsumerState<RedisExplorer> {
-  int _selectedDb = 0;
-  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _dbScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _dbScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _refresh();
+  }
+
+  @override
+  void didUpdateWidget(RedisExplorer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.searchQuery != widget.searchQuery || oldWidget.selectedDb != widget.selectedDb) {
       _refresh();
-    });
+    }
   }
 
   void _refresh() {
-    ref.read(redisNotifierProvider.notifier).fetchKeys(
-      widget.app, 
-      _selectedDb, 
-      query: _searchController.text
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final query = widget.searchQuery ?? '';
+      ref.read(redisNotifierProvider.notifier).fetchKeys(
+        widget.app, 
+        widget.selectedDb, 
+        query: query.isEmpty ? '*' : '*$query*'
+      );
+    });
   }
 
   @override
@@ -43,11 +68,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildToolbar(),
-        const SizedBox(height: 16),
         _buildDbTabs(statsAsync.asData?.value ?? {}),
-        const SizedBox(height: 16),
-        _buildSearchAndFeedback(),
         const SizedBox(height: 16),
         Expanded(
           child: keysAsync.when(
@@ -60,130 +81,55 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
     );
   }
 
-  Widget _buildToolbar() {
-    return Row(
-      children: [
-        _buildToolbarButton('Add Key', LucideIcons.plus, color: AppColors.success),
-        const SizedBox(width: 8),
-        _buildToolbarButton('Remote DB', LucideIcons.globe),
-        const SizedBox(width: 8),
-        _buildToolbarButton('Backup list', LucideIcons.list),
-        const SizedBox(width: 8),
-        _buildToolbarButton('Clear DB', LucideIcons.trash2, onTap: () => _handleClearDb()),
-        const Spacer(),
-        _buildStatusCapsule(),
-      ],
-    );
-  }
-
-  Widget _buildToolbarButton(String label, IconData icon, {Color? color, VoidCallback? onTap}) {
-    return ElevatedButton.icon(
-      onPressed: onTap ?? () {},
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color ?? AppColors.surfaceLight,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-      ),
-      icon: Icon(icon, size: 16),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-    );
-  }
-
-  Widget _buildStatusCapsule() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Redis ${widget.app.installedVersion ?? "N/A"}',
-            style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.bold),
-          ),
-          const Icon(LucideIcons.play, size: 12, color: AppColors.error),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDbTabs(Map<int, int> stats) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: List.generate(16, (index) {
-          final isSelected = _selectedDb == index;
-          final count = stats[index] ?? 0;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              onTap: () {
-                setState(() => _selectedDb = index);
-                _refresh();
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.surfaceLight : AppColors.surface,
-                  border: Border.all(color: isSelected ? AppColors.accent : AppColors.border),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'DB$index($count)',
-                  style: TextStyle(
-                    color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return SizedBox(
+      height: 48,
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.trackpad,
+          },
+        ),
+        child: Scrollbar(
+          controller: _dbScrollController,
+          thickness: 3,
+          radius: const Radius.circular(4),
+          child: ListView.builder(
+            controller: _dbScrollController,
+            padding: const EdgeInsets.only(bottom: 8),
+            scrollDirection: Axis.horizontal,
+            itemCount: 16,
+            itemBuilder: (context, index) {
+              final isSelected = widget.selectedDb == index;
+              final count = stats[index] ?? 0;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8, bottom: 4),
+                child: InkWell(
+                  onTap: () => widget.onDbChanged(index),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.surfaceLight : AppColors.surface,
+                      border: Border.all(color: isSelected ? AppColors.accent : AppColors.border),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'DB$index($count)',
+                      style: TextStyle(
+                        color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _buildSearchAndFeedback() {
-    return Row(
-      children: [
-        Icon(LucideIcons.messageSquare, size: 16, color: AppColors.success),
-        const SizedBox(width: 8),
-        const Text('Feedback', style: TextStyle(color: AppColors.success, fontSize: 12)),
-        const Spacer(),
-        SizedBox(
-          width: 300,
-          height: 36,
-          child: TextField(
-            controller: _searchController,
-            onSubmitted: (_) => _refresh(),
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-            decoration: InputDecoration(
-              hintText: 'Search key',
-              hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-              suffixIcon: IconButton(
-                icon: const Icon(LucideIcons.search, size: 14),
-                onPressed: _refresh,
-              ),
-              filled: true,
-              fillColor: AppColors.surface,
-              isDense: true,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: AppColors.border)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            ),
+              );
+            },
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -219,7 +165,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
       ),
       child: Row(
         children: [
-          const SizedBox(width: 24), // Checkbox placeholder
+          const SizedBox(width: 24), 
           Expanded(flex: 3, child: _buildHeaderCell('Key')),
           Expanded(flex: 4, child: _buildHeaderCell('Value')),
           Expanded(flex: 1, child: _buildHeaderCell('Data type')),
@@ -293,27 +239,6 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
   }
 
   void _handleDeleteKey(String key) async {
-    await ref.read(redisNotifierProvider.notifier).deleteKey(widget.app, _selectedDb, key);
-  }
-
-  void _handleClearDb() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear Database'),
-        content: Text('Are you sure you want to clear all keys in DB$_selectedDb?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true), 
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Clear'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await ref.read(redisNotifierProvider.notifier).clearDb(widget.app, _selectedDb);
-    }
+    await ref.read(redisNotifierProvider.notifier).deleteKey(widget.app, widget.selectedDb, key);
   }
 }

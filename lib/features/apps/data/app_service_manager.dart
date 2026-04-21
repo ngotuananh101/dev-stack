@@ -59,6 +59,12 @@ class AppServiceManager {
         } else {
           args = ['-S', '127.0.0.1:$port'];
         }
+      } else if (fileName == 'redis-server.exe') {
+        // Force bind to 127.0.0.1 to avoid common bind errors on Windows
+        args = ['--bind', '127.0.0.1'];
+        
+        // Optional: Support custom port if 6379 is busy (later improvement)
+        // args.addAll(['--port', '6379']);
       } else if (fileName == 'mongod.exe') {
         // Look for mongod.cfg in the same directory as mongod.exe or its parent
         final confFile = File(p.join(workingDir, 'mongod.cfg'));

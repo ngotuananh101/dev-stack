@@ -8,6 +8,7 @@ import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:dev_stack/features/databases/domain/database_record.dart';
 import 'widgets/database_table.dart';
 import 'widgets/redis_explorer.dart';
+import '../data/redis_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../apps/presentation/widgets/compact_pagination.dart';
 
@@ -24,6 +25,9 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
   String _searchQuery = '';
   int _currentPage = 1;
   final int _itemsPerPage = 10;
+  
+  // Redis specific state
+  int _selectedRedisDb = 0;
 
   @override
   void initState() {
@@ -38,7 +42,11 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
 
   void _refreshDatabases() {
     if (selectedEngine != null) {
-      ref.read(databasesNotifierProvider.notifier).fetchByEngine(selectedEngine!.appId);
+      if (selectedEngine!.appId.contains('redis')) {
+        ref.read(redisNotifierProvider.notifier).fetchKeys(selectedEngine!, _selectedRedisDb, query: _searchQuery);
+      } else {
+        ref.read(databasesNotifierProvider.notifier).fetchByEngine(selectedEngine!.appId);
+      }
     }
   }
 
@@ -86,7 +94,14 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                       const SizedBox(height: 16),
                       Expanded(
                         child: isRedis
-                            ? RedisExplorer(app: selectedEngine!)
+                            ? RedisExplorer(
+                                app: selectedEngine!,
+                                searchQuery: _searchQuery,
+                                selectedDb: _selectedRedisDb,
+                                onDbChanged: (index) {
+                                  setState(() => _selectedRedisDb = index);
+                                },
+                              )
                             : databasesAsync.when(
                                 data: (dbs) {
                                   final filtered = dbs.where((d) => d.name.toLowerCase().contains(_searchQuery)).toList();
@@ -135,23 +150,17 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
 
   void _handleDelete(DatabaseRecord record) async {
     if (selectedEngine == null) return;
-    final isRedis = selectedEngine!.appId.contains('redis');
-    final title = isRedis ? 'Clear Redis Record' : 'Delete Database';
-    final content = isRedis 
-        ? 'Clear this record from local view? This will NOT delete Redis data.' 
-        : 'Are you sure you want to delete "${record.name}"? This action cannot be undone.';
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
+        title: const Text('Delete Database'),
+        content: Text('Are you sure you want to delete "${record.name}"? This action cannot be undone.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(context, true), 
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: Text(isRedis ? 'Clear' : 'Delete'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -233,17 +242,53 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           _buildActionButton('phpMyAdmin', LucideIcons.externalLink, onTap: _launchPhpMyAdmin),
           const SizedBox(width: 12),
         ],
+        if (isRedis) ...[
+          _buildActionButton('Add Key', LucideIcons.plus, color: AppColors.success, onTap: _showAddRedisKeyDialog),
+          const SizedBox(width: 12),
+        ],
         _buildActionButton('Sync DB', LucideIcons.refreshCw, color: AppColors.accent, onTap: () {
           if (selectedEngine != null) {
-            ref.read(databasesNotifierProvider.notifier).syncDatabases(selectedEngine!);
+            if (isRedis) {
+              ref.invalidate(redisDbStatsProvider(selectedEngine!));
+              ref.read(redisNotifierProvider.notifier).fetchKeys(selectedEngine!, _selectedRedisDb, query: _searchQuery);
+            } else {
+              ref.read(databasesNotifierProvider.notifier).syncDatabases(selectedEngine!);
+            }
           }
         }),
+        if (isRedis) ...[
+          const SizedBox(width: 12),
+          _buildActionButton('Clear DB', LucideIcons.trash2, color: AppColors.error, onTap: _handleClearRedisDb),
+        ],
         const SizedBox(width: 12),
         _buildServiceStatusButton(),
         const Spacer(),
-        _buildSearchField(),
+        _buildSearchField(isRedis),
       ],
     );
+  }
+
+  void _handleClearRedisDb() async {
+    if (selectedEngine == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Redis DB'),
+        content: Text('Are you sure you want to clear all keys in DB$_selectedRedisDb?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(redisNotifierProvider.notifier).clearDb(selectedEngine!, _selectedRedisDb);
+      ref.invalidate(redisDbStatsProvider(selectedEngine!));
+    }
   }
 
   Widget _buildServiceStatusButton() {
@@ -350,7 +395,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     );
   }
 
-  Widget _buildSearchField() {
+  Widget _buildSearchField(bool isRedis) {
     return SizedBox(
       width: 280,
       height: 36,
@@ -358,7 +403,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
         controller: _searchController,
         style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
         decoration: InputDecoration(
-          hintText: 'Database search',
+          hintText: isRedis ? 'Search key' : 'Database search',
           hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
           prefixIcon: const Icon(LucideIcons.search, size: 14, color: AppColors.textMuted),
           filled: true,
@@ -383,6 +428,48 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
     }
+  }
+
+  void _showAddRedisKeyDialog() {
+    if (selectedEngine == null) return;
+    
+    final keyController = TextEditingController();
+    final valueController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('Add Key (DB$_selectedRedisDb)', style: const TextStyle(color: AppColors.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildDialogField('Key Name', keyController),
+            const SizedBox(height: 12),
+            _buildDialogField('Value (String)', valueController),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final key = keyController.text.trim();
+              if (key.isNotEmpty) {
+                await ref.read(redisNotifierProvider.notifier).setKey(
+                  selectedEngine!,
+                  _selectedRedisDb,
+                  key,
+                  valueController.text,
+                );
+                if (mounted) Navigator.pop(context);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddDatabaseDialog() {
