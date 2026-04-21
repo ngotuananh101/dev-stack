@@ -107,18 +107,18 @@ class CompactAppsTable extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Expanded(flex: 3, child: _buildHeaderCell('SOFTWARE NAME')),
+                Expanded(flex: 4, child: _buildHeaderCell('SOFTWARE NAME')),
                 const SizedBox(width: 12),
                 Expanded(flex: 2, child: _buildHeaderCell('DEVELOPER')),
                 const SizedBox(width: 12),
-                Expanded(flex: 3, child: _buildHeaderCell('DESCRIPTION')),
+                Expanded(flex: 4, child: _buildHeaderCell('DESCRIPTION')),
                 const SizedBox(width: 12),
-                Expanded(flex: 1, child: _buildHeaderCell('STATUS')),
+                Expanded(flex: 2, child: _buildHeaderCell('STATUS')),
                 const SizedBox(width: 12),
                 Expanded(flex: 1, child: _buildHeaderCell('PATH')),
                 const SizedBox(width: 12),
                 Expanded(
-                  flex: 2,
+                  flex: 4,
                   child: _buildHeaderCell(
                     'OPERATE',
                     alignment: TextAlign.right,
@@ -167,7 +167,7 @@ class CompactAppsTable extends StatelessWidget {
         children: [
           // Software name with icon
           Expanded(
-            flex: 3,
+            flex: 4,
             child: Row(
               children: [
                 SizedBox(
@@ -302,7 +302,7 @@ class CompactAppsTable extends StatelessWidget {
           const SizedBox(width: 12),
           // Description
           Expanded(
-            flex: 3,
+            flex: 4,
             child: Text(
               app.description ?? 'No description',
               maxLines: 1,
@@ -315,13 +315,13 @@ class CompactAppsTable extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           // Status
-          Expanded(flex: 1, child: _buildStatusIndicator(app)),
+          Expanded(flex: 2, child: _buildStatusIndicator(app)),
           const SizedBox(width: 12),
           // PATH toggle
           Expanded(flex: 1, child: _buildPathToggle(app)),
           const SizedBox(width: 12),
           // Operate buttons
-          Expanded(flex: 2, child: _buildOperateButtons(context, app)),
+          Expanded(flex: 4, child: _buildOperateButtons(context, app)),
         ],
       ),
     );

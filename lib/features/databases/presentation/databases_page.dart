@@ -25,7 +25,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
   String _searchQuery = '';
   int _currentPage = 1;
   final int _itemsPerPage = 10;
-  
+
   // Redis specific state
   int _selectedRedisDb = 0;
 
@@ -43,9 +43,13 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
   void _refreshDatabases() {
     if (selectedEngine != null) {
       if (selectedEngine!.appId.contains('redis')) {
-        ref.read(redisNotifierProvider.notifier).fetchKeys(selectedEngine!, _selectedRedisDb, query: _searchQuery);
+        ref
+            .read(redisNotifierProvider.notifier)
+            .fetchKeys(selectedEngine!, _selectedRedisDb, query: _searchQuery);
       } else {
-        ref.read(databasesNotifierProvider.notifier).fetchByEngine(selectedEngine!.appId);
+        ref
+            .read(databasesNotifierProvider.notifier)
+            .fetchByEngine(selectedEngine!.appId);
       }
     }
   }
@@ -68,10 +72,12 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       body: enginesAsync.when(
         data: (engines) {
           if (engines.isEmpty) return _buildEmptyState();
-          
+
           if (selectedEngine == null) {
             selectedEngine = engines.first;
-            WidgetsBinding.instance.addPostFrameCallback((_) => _refreshDatabases());
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _refreshDatabases(),
+            );
           } else if (appsState.hasValue) {
             selectedEngine = appsState.value!.firstWhere(
               (e) => e.appId == selectedEngine!.appId,
@@ -104,11 +110,29 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                               )
                             : databasesAsync.when(
                                 data: (dbs) {
-                                  final filtered = dbs.where((d) => d.name.toLowerCase().contains(_searchQuery)).toList();
-                                  final paginated = _paginateDatabases(filtered);
-                                  final totalPages = filtered.isEmpty ? 1 : (filtered.length / _itemsPerPage).ceil();
-                                  final startItem = filtered.isEmpty ? 0 : (_currentPage - 1) * _itemsPerPage + 1;
-                                  final endItem = filtered.isEmpty ? 0 : (_currentPage * _itemsPerPage).clamp(0, filtered.length);
+                                  final filtered = dbs
+                                      .where(
+                                        (d) => d.name.toLowerCase().contains(
+                                          _searchQuery,
+                                        ),
+                                      )
+                                      .toList();
+                                  final paginated = _paginateDatabases(
+                                    filtered,
+                                  );
+                                  final totalPages = filtered.isEmpty
+                                      ? 1
+                                      : (filtered.length / _itemsPerPage)
+                                            .ceil();
+                                  final startItem = filtered.isEmpty
+                                      ? 0
+                                      : (_currentPage - 1) * _itemsPerPage + 1;
+                                  final endItem = filtered.isEmpty
+                                      ? 0
+                                      : (_currentPage * _itemsPerPage).clamp(
+                                          0,
+                                          filtered.length,
+                                        );
 
                                   return Column(
                                     children: [
@@ -116,7 +140,8 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                                         child: DatabaseTable(
                                           databases: paginated,
                                           engineId: selectedEngine?.appId ?? '',
-                                          onDelete: (record) => _handleDelete(record),
+                                          onDelete: (record) =>
+                                              _handleDelete(record),
                                         ),
                                       ),
                                       const SizedBox(height: 16),
@@ -126,13 +151,17 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                                         startItem: startItem,
                                         endItem: endItem,
                                         totalItems: filtered.length,
-                                        onPageChanged: (page) => setState(() => _currentPage = page),
+                                        onPageChanged: (page) =>
+                                            setState(() => _currentPage = page),
                                       ),
                                     ],
                                   );
                                 },
-                                loading: () => const Center(child: CircularProgressIndicator()),
-                                error: (e, s) => Center(child: Text('Error: $e')),
+                                loading: () => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                                error: (e, s) =>
+                                    Center(child: Text('Error: $e')),
                               ),
                       ),
                     ],
@@ -154,11 +183,16 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Database'),
-        content: Text('Are you sure you want to delete "${record.name}"? This action cannot be undone.'),
+        content: Text(
+          'Are you sure you want to delete "${record.name}"? This action cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(
-            onPressed: () => Navigator.pop(context, true), 
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('Delete'),
           ),
@@ -167,7 +201,9 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     );
 
     if (confirmed == true) {
-      await ref.read(databasesNotifierProvider.notifier).deleteDatabase(selectedEngine!, record);
+      await ref
+          .read(databasesNotifierProvider.notifier)
+          .deleteDatabase(selectedEngine!, record);
     }
   }
 
@@ -178,9 +214,15 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
         children: [
           Icon(LucideIcons.database, size: 64, color: AppColors.textMuted),
           const SizedBox(height: 16),
-          const Text('No database engines installed', style: TextStyle(color: AppColors.textPrimary, fontSize: 18)),
+          const Text(
+            'No database engines installed',
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 18),
+          ),
           const SizedBox(height: 8),
-          const Text('Go to Apps to install MySQL, MariaDB, or MongoDB', style: TextStyle(color: AppColors.textSecondary)),
+          const Text(
+            'Go to Apps to install MySQL, MariaDB, or MongoDB',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
         ],
       ),
     );
@@ -222,7 +264,9 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
               child: Text(
                 engine.name,
                 style: TextStyle(
-                  color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                  color: isSelected
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -237,28 +281,60 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     return Row(
       children: [
         if (!isRedis) ...[
-          _buildActionButton('Add DB', LucideIcons.plus, color: AppColors.success, onTap: _showAddDatabaseDialog),
+          _buildActionButton(
+            'Add DB',
+            LucideIcons.plus,
+            color: AppColors.success,
+            onTap: _showAddDatabaseDialog,
+          ),
           const SizedBox(width: 12),
-          _buildActionButton('phpMyAdmin', LucideIcons.externalLink, onTap: _launchPhpMyAdmin),
+          _buildActionButton(
+            'phpMyAdmin',
+            LucideIcons.externalLink,
+            onTap: _launchPhpMyAdmin,
+          ),
           const SizedBox(width: 12),
         ],
         if (isRedis) ...[
-          _buildActionButton('Add Key', LucideIcons.plus, color: AppColors.success, onTap: _showAddRedisKeyDialog),
+          _buildActionButton(
+            'Add Key',
+            LucideIcons.plus,
+            color: AppColors.success,
+            onTap: _showAddRedisKeyDialog,
+          ),
           const SizedBox(width: 12),
         ],
-        _buildActionButton('Sync DB', LucideIcons.refreshCw, color: AppColors.accent, onTap: () {
-          if (selectedEngine != null) {
-            if (isRedis) {
-              ref.invalidate(redisDbStatsProvider(selectedEngine!));
-              ref.read(redisNotifierProvider.notifier).fetchKeys(selectedEngine!, _selectedRedisDb, query: _searchQuery);
-            } else {
-              ref.read(databasesNotifierProvider.notifier).syncDatabases(selectedEngine!);
+        _buildActionButton(
+          'Sync DB',
+          LucideIcons.refreshCw,
+          color: AppColors.accent,
+          onTap: () {
+            if (selectedEngine != null) {
+              if (isRedis) {
+                ref.invalidate(redisDbStatsProvider(selectedEngine!));
+                ref
+                    .read(redisNotifierProvider.notifier)
+                    .fetchKeys(
+                      selectedEngine!,
+                      _selectedRedisDb,
+                      query: _searchQuery,
+                    );
+              } else {
+                ref
+                    .read(databasesNotifierProvider.notifier)
+                    .syncDatabases(selectedEngine!);
+              }
             }
-          }
-        }),
+          },
+        ),
         if (isRedis) ...[
           const SizedBox(width: 12),
-          _buildActionButton('Clear DB', LucideIcons.trash2, color: AppColors.error, onTap: _handleClearRedisDb),
+          _buildActionButton(
+            'Clear DB',
+            LucideIcons.trash2,
+            color: AppColors.error,
+            onTap: _handleClearRedisDb,
+          ),
         ],
         const SizedBox(width: 12),
         _buildServiceStatusButton(),
@@ -274,11 +350,16 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear Redis DB'),
-        content: Text('Are you sure you want to clear all keys in DB$_selectedRedisDb?'),
+        content: Text(
+          'Are you sure you want to clear all keys in DB$_selectedRedisDb?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(
-            onPressed: () => Navigator.pop(context, true), 
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('Clear'),
           ),
@@ -286,7 +367,9 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       ),
     );
     if (confirmed == true) {
-      await ref.read(redisNotifierProvider.notifier).clearDb(selectedEngine!, _selectedRedisDb);
+      await ref
+          .read(redisNotifierProvider.notifier)
+          .clearDb(selectedEngine!, _selectedRedisDb);
       ref.invalidate(redisDbStatsProvider(selectedEngine!));
     }
   }
@@ -303,17 +386,26 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       offset: const Offset(0, 40),
       onSelected: (value) async {
         if (value == 'start') {
-          await ref.read(appsNotifierProvider.notifier).startService(selectedEngine!);
+          await ref
+              .read(appsNotifierProvider.notifier)
+              .startService(selectedEngine!);
         } else if (value == 'stop') {
-          await ref.read(appsNotifierProvider.notifier).stopService(selectedEngine!);
+          await ref
+              .read(appsNotifierProvider.notifier)
+              .stopService(selectedEngine!);
         } else if (value == 'restart') {
-          await ref.read(appsNotifierProvider.notifier).restartService(selectedEngine!);
+          await ref
+              .read(appsNotifierProvider.notifier)
+              .restartService(selectedEngine!);
         }
       },
       itemBuilder: (context) => [
         PopupMenuItem(
           enabled: false,
-          child: Text('Version: $version', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          child: Text(
+            'Version: $version',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
         ),
         const PopupMenuDivider(),
         if (!isRunning)
@@ -371,17 +463,30 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
             const SizedBox(width: 8),
             Text(
               version,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(width: 4),
-            const Icon(LucideIcons.chevronDown, size: 12, color: AppColors.textMuted),
+            const Icon(
+              LucideIcons.chevronDown,
+              size: 12,
+              color: AppColors.textMuted,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, {Color? color, VoidCallback? onTap}) {
+  Widget _buildActionButton(
+    String label,
+    IconData icon, {
+    Color? color,
+    VoidCallback? onTap,
+  }) {
     return ElevatedButton.icon(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
@@ -391,7 +496,10 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       icon: Icon(icon, size: 16),
-      label: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
@@ -405,7 +513,11 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
         decoration: InputDecoration(
           hintText: isRedis ? 'Search key' : 'Database search',
           hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-          prefixIcon: const Icon(LucideIcons.search, size: 14, color: AppColors.textMuted),
+          prefixIcon: const Icon(
+            LucideIcons.search,
+            size: 14,
+            color: AppColors.textMuted,
+          ),
           filled: true,
           fillColor: AppColors.surface,
           isDense: true,
@@ -417,14 +529,17 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
             borderRadius: BorderRadius.circular(8),
             borderSide: const BorderSide(color: AppColors.border),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 8,
+            horizontal: 12,
+          ),
         ),
       ),
     );
   }
 
   void _launchPhpMyAdmin() async {
-    final url = Uri.parse('http://localhost/phpmyadmin');
+    final url = Uri.parse('http://localhost/phpmyadmin/');
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
     }
@@ -432,7 +547,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
 
   void _showAddRedisKeyDialog() {
     if (selectedEngine == null) return;
-    
+
     final keyController = TextEditingController();
     final valueController = TextEditingController();
 
@@ -440,7 +555,10 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: Text('Add Key (DB$_selectedRedisDb)', style: const TextStyle(color: AppColors.textPrimary)),
+        title: Text(
+          'Add Key (DB$_selectedRedisDb)',
+          style: const TextStyle(color: AppColors.textPrimary),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -450,17 +568,22 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () async {
               final key = keyController.text.trim();
               if (key.isNotEmpty) {
-                await ref.read(redisNotifierProvider.notifier).setKey(
-                  selectedEngine!,
-                  _selectedRedisDb,
-                  key,
-                  valueController.text,
-                );
+                await ref
+                    .read(redisNotifierProvider.notifier)
+                    .setKey(
+                      selectedEngine!,
+                      _selectedRedisDb,
+                      key,
+                      valueController.text,
+                    );
                 if (mounted) Navigator.pop(context);
               }
             },
@@ -474,7 +597,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
 
   void _showAddDatabaseDialog() {
     if (selectedEngine == null) return;
-    
+
     final nameController = TextEditingController();
     final userController = TextEditingController(text: 'root');
     final passController = TextEditingController();
@@ -484,7 +607,10 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Add New Database', style: TextStyle(color: AppColors.textPrimary)),
+        title: const Text(
+          'Add New Database',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -498,18 +624,23 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () async {
               final name = nameController.text.trim();
               if (name.isNotEmpty) {
-                await ref.read(databasesNotifierProvider.notifier).addDatabase(
-                  app: selectedEngine!,
-                  name: name,
-                  user: userController.text,
-                  password: passController.text,
-                  note: noteController.text,
-                );
+                await ref
+                    .read(databasesNotifierProvider.notifier)
+                    .addDatabase(
+                      app: selectedEngine!,
+                      name: name,
+                      user: userController.text,
+                      password: passController.text,
+                      note: noteController.text,
+                    );
                 if (mounted) Navigator.pop(context);
               }
             },
@@ -521,7 +652,11 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     );
   }
 
-  Widget _buildDialogField(String label, TextEditingController controller, {bool isPassword = false}) {
+  Widget _buildDialogField(
+    String label,
+    TextEditingController controller, {
+    bool isPassword = false,
+  }) {
     return TextField(
       controller: controller,
       obscureText: isPassword,
@@ -529,7 +664,9 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: AppColors.textSecondary),
-        enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.border)),
+        enabledBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: AppColors.border),
+        ),
       ),
     );
   }

@@ -343,6 +343,7 @@ class AppInstallerService {
       'pdo_sqlite',
       'sqlite3',
       'zip',
+      'mysqli',
     ];
 
     for (final ext in extensions) {
@@ -679,21 +680,23 @@ net:
     final phpApps = allApps
         .where((a) => a.isInstalled && a.groupName == 'php')
         .toList();
-    
+
     // Sort so default is first, then newest
     phpApps.sort((a, b) {
       if (a.isDefault && !b.isDefault) return -1;
       if (!a.isDefault && b.isDefault) return 1;
       return b.appId.compareTo(a.appId);
     });
-    
+
     final bestPhp = phpApps.firstOrNull;
 
     // Ensure extensions for PMA are enabled in the default PHP
     if (bestPhp != null && bestPhp.location != null) {
       final phpIni = File(p.join(bestPhp.location!, 'php.ini'));
       if (phpIni.existsSync()) {
-        log('Ensuring mysqli, mbstring, openssl are enabled in ${bestPhp.name}...');
+        log(
+          'Ensuring mysqli, mbstring, openssl are enabled in ${bestPhp.name}...',
+        );
         await _enableDefaultExtensions(phpIni, bestPhp.location!, log);
       }
     }
@@ -738,7 +741,8 @@ net:
       }
     }
 
-    final pmaPathUnix = pmaPath.replaceAll('\\', '/');
+    final pmaWebRoot = _resolvePmaWebRoot(pmaPath);
+    final pmaPathUnix = pmaWebRoot.replaceAll('\\', '/');
 
     final pmaConfig =
         '''
@@ -768,7 +772,7 @@ location /phpmyadmin {
       String content = await nginxConf.readAsString();
       if (!content.contains('ponta_apps/*.conf')) {
         log('Injecting ponta_apps include into nginx.conf...');
-        
+
         // 1. Try to find the default server block with listen 80
         if (content.contains('listen       80;')) {
           content = content.replaceFirst(
@@ -785,7 +789,7 @@ location /phpmyadmin {
           // 3. Last resort: append at the end (might not work well if outside http/server)
           content += '\n# Ponta Apps\ninclude ponta_apps/*.conf;\n';
         }
-        
+
         await nginxConf.writeAsString(content);
         log('Successfully added include to nginx.conf');
       }
@@ -822,9 +826,9 @@ location /phpmyadmin {
       log('Creating Apache ponta_apps directory: ${confDir.path}');
       confDir.createSync(recursive: true);
     }
-
     final pmaConfFile = File(p.join(confDir.path, 'phpmyadmin.conf'));
-    final pmaPathUnix = pmaPath.replaceAll('\\', '/');
+    final pmaWebRoot = _resolvePmaWebRoot(pmaPath);
+    final pmaPathUnix = pmaWebRoot.replaceAll('\\', '/');
 
     final pmaConfig =
         '''
@@ -845,8 +849,7 @@ Alias /phpmyadmin "$pmaPathUnix/"
     if (!content.contains('ponta_apps/*.conf')) {
       log('Injecting ponta_apps include into httpd.conf...');
       // Append at the end of the file
-      content +=
-          '\n# Ponta Apps Integration\nInclude conf/ponta_apps/*.conf\n';
+      content += '\n# Ponta Apps Integration\nInclude conf/ponta_apps/*.conf\n';
       await httpdConf.writeAsString(content);
       log('Successfully added include to httpd.conf');
     }
@@ -870,15 +873,15 @@ Alias /phpmyadmin "$pmaPathUnix/"
           'ponta_secret_' +
           random.substring(random.length - 10) +
           '_32_chars_long_str_base';
-      content = content.replaceFirst(
+      content = content.replaceFirstMapped(
         RegExp(r"(\$cfg\['blowfish_secret'\]\s*=\s*').*?(';)"),
-        "\$1$secret\$2",
+        (match) => "${match.group(1)}$secret${match.group(2)}",
       );
 
       // 2. Set default server to 127.0.0.1
-      content = content.replaceFirst(
+      content = content.replaceFirstMapped(
         RegExp(r"(\$cfg\['Servers'\]\[\$i\]\['host'\]\s*=\s*').*?(';)"),
-        "\$1127.0.0.1\$2",
+        (match) => "${match.group(1)}127.0.0.1${match.group(2)}",
       );
 
       // 3. Allow no password (useful for development)
@@ -888,16 +891,50 @@ Alias /phpmyadmin "$pmaPathUnix/"
           "['host'] = '127.0.0.1';\n\$cfg['Servers'][\$i]['AllowNoPassword'] = true;",
         );
       } else {
-        content = content.replaceFirst(
+        content = content.replaceFirstMapped(
           RegExp(
             r"(\$cfg\['Servers'\]\[\$i\]\['AllowNoPassword'\]\s*=\s*).*?;",
           ),
-          "\$1true;",
+          (match) => "${match.group(1)}true;",
         );
       }
 
       await configFile.writeAsString(content);
       logInfo('phpMyAdmin configuration completed.');
     }
+  }
+
+  /// Resolves the correct web root for phpMyAdmin by checking for common subdirectories
+  String _resolvePmaWebRoot(String pmaPath) {
+    // 1. Check if index.php is already in the root
+    if (File(p.join(pmaPath, 'index.php')).existsSync()) {
+      return pmaPath;
+    }
+
+    // 2. Check for 'latest' folder (common in some setups)
+    final latestDir = Directory(p.join(pmaPath, 'latest'));
+    if (latestDir.existsSync() &&
+        File(p.join(latestDir.path, 'index.php')).existsSync()) {
+      return latestDir.path;
+    }
+
+    // 3. Check for any subdirectory that contains index.php (e.g. phpMyAdmin-x.y.z-all-languages)
+    try {
+      final dir = Directory(pmaPath);
+      if (dir.existsSync()) {
+        final entities = dir.listSync();
+        for (final entity in entities) {
+          if (entity is Directory) {
+            if (File(p.join(entity.path, 'index.php')).existsSync()) {
+              return entity.path;
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // Ignore errors during directory listing
+    }
+
+    return pmaPath; // Fallback to original path
   }
 }
