@@ -24,7 +24,7 @@ final installedDatabaseEnginesProvider =
 
 typedef InstalledDatabaseEnginesRef
     = AutoDisposeFutureProviderRef<List<AppModel>>;
-String _$databasesNotifierHash() => r'b740d0a5791d1cb09ce96dfcc5946931058c1c54';
+String _$databasesNotifierHash() => r'12926e29a7363bf570f76333fc0321cd7fc375d0';
 
 /// See also [DatabasesNotifier].
 @ProviderFor(DatabasesNotifier)

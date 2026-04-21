@@ -7,6 +7,7 @@ import 'package:dev_stack/features/apps/data/apps_provider.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:dev_stack/features/databases/domain/database_record.dart';
 import 'widgets/database_table.dart';
+import 'widgets/redis_explorer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../apps/presentation/widgets/compact_pagination.dart';
 
@@ -84,38 +85,40 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                       _buildActionHeader(isRedis),
                       const SizedBox(height: 16),
                       Expanded(
-                        child: databasesAsync.when(
-                          data: (dbs) {
-                            final filtered = dbs.where((d) => d.name.toLowerCase().contains(_searchQuery)).toList();
-                            final paginated = _paginateDatabases(filtered);
-                            final totalPages = filtered.isEmpty ? 1 : (filtered.length / _itemsPerPage).ceil();
-                            final startItem = filtered.isEmpty ? 0 : (_currentPage - 1) * _itemsPerPage + 1;
-                            final endItem = filtered.isEmpty ? 0 : (_currentPage * _itemsPerPage).clamp(0, filtered.length);
+                        child: isRedis
+                            ? RedisExplorer(app: selectedEngine!)
+                            : databasesAsync.when(
+                                data: (dbs) {
+                                  final filtered = dbs.where((d) => d.name.toLowerCase().contains(_searchQuery)).toList();
+                                  final paginated = _paginateDatabases(filtered);
+                                  final totalPages = filtered.isEmpty ? 1 : (filtered.length / _itemsPerPage).ceil();
+                                  final startItem = filtered.isEmpty ? 0 : (_currentPage - 1) * _itemsPerPage + 1;
+                                  final endItem = filtered.isEmpty ? 0 : (_currentPage * _itemsPerPage).clamp(0, filtered.length);
 
-                            return Column(
-                              children: [
-                                Expanded(
-                                  child: DatabaseTable(
-                                    databases: paginated,
-                                    engineId: selectedEngine?.appId ?? '',
-                                    onDelete: (record) => _handleDelete(record),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                CompactPagination(
-                                  currentPage: _currentPage,
-                                  totalPages: totalPages,
-                                  startItem: startItem,
-                                  endItem: endItem,
-                                  totalItems: filtered.length,
-                                  onPageChanged: (page) => setState(() => _currentPage = page),
-                                ),
-                              ],
-                            );
-                          },
-                          loading: () => const Center(child: CircularProgressIndicator()),
-                          error: (e, s) => Center(child: Text('Error: $e')),
-                        ),
+                                  return Column(
+                                    children: [
+                                      Expanded(
+                                        child: DatabaseTable(
+                                          databases: paginated,
+                                          engineId: selectedEngine?.appId ?? '',
+                                          onDelete: (record) => _handleDelete(record),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      CompactPagination(
+                                        currentPage: _currentPage,
+                                        totalPages: totalPages,
+                                        startItem: startItem,
+                                        endItem: endItem,
+                                        totalItems: filtered.length,
+                                        onPageChanged: (page) => setState(() => _currentPage = page),
+                                      ),
+                                    ],
+                                  );
+                                },
+                                loading: () => const Center(child: CircularProgressIndicator()),
+                                error: (e, s) => Center(child: Text('Error: $e')),
+                              ),
                       ),
                     ],
                   ),
