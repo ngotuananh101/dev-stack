@@ -9,29 +9,39 @@ class DbSettings extends _$DbSettings {
   @override
   void build() {}
 
-  File? _getMyIni(AppModel app) {
+  File? _getConfigFile(AppModel app) {
     if (app.location == null) return null;
-    
-    final isMariaDb = app.groupName == 'mariadb' || 
-                      app.appId.toLowerCase().contains('mariadb');
-    
+
+    final id = app.appId.toLowerCase();
+    if (id == 'phpmyadmin') {
+      return File(
+        '${app.location}${Platform.pathSeparator}config.inc.php',
+      );
+    }
+
+    final isMariaDb =
+        app.groupName == 'mariadb' ||
+        app.appId.toLowerCase().contains('mariadb');
+
     // MariaDB puts my.ini in data directory
     if (isMariaDb) {
-      return File('${app.location}${Platform.pathSeparator}data${Platform.pathSeparator}my.ini');
+      return File(
+        '${app.location}${Platform.pathSeparator}data${Platform.pathSeparator}my.ini',
+      );
     }
-    
+
     // MySQL (and others) usually put it in the root directory
     return File('${app.location}${Platform.pathSeparator}my.ini');
   }
 
   Future<String> readConfig(AppModel app) async {
-    final file = _getMyIni(app);
+    final file = _getConfigFile(app);
     if (file == null || !await file.exists()) return '';
     return await file.readAsString();
   }
 
   Future<void> saveConfig(AppModel app, String content) async {
-    final file = _getMyIni(app);
+    final file = _getConfigFile(app);
     if (file == null) return;
     await file.writeAsString(content);
   }

@@ -33,8 +33,9 @@ class AppModel {
   // Service management (non-persistent)
   bool get isService {
     final serviceCategories = ['database', 'webserver'];
-    return serviceCategories.contains(categories.firstOrNull) ||
-        appId.startsWith('php'); // Example: php can be a service
+    return (serviceCategories.contains(categories.firstOrNull) ||
+            appId.startsWith('php')) &&
+        appId.toLowerCase() != 'phpmyadmin';
   }
 
   String serviceStatus = 'stopped'; // 'stopped', 'starting', 'running', 'stopping'

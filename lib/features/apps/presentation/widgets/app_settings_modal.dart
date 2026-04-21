@@ -34,31 +34,39 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   bool _useCodeEditor = false;
   List<PhpExtension> _extensions = [];
   String _searchQuery = '';
-  
+
   // Lazy loading flags
   bool _isConfigLoaded = false;
   bool _isExtensionsLoaded = false;
   bool _isConfigLoading = false;
   bool _isExtensionsLoading = false;
 
+  bool get _isPma => widget.app.appId.toLowerCase() == 'phpmyadmin';
+
   bool get _isPhp =>
-      widget.app.groupName == 'php' || widget.app.appId.startsWith('php');
+      (widget.app.groupName == 'php' || widget.app.appId.startsWith('php')) &&
+      !_isPma;
+
   bool get _isDb =>
       widget.app.groupName == 'mysql' ||
       widget.app.groupName == 'mariadb' ||
       widget.app.appId.toLowerCase().contains('mysql') ||
-      widget.app.appId.toLowerCase().contains('mariadb');
+      widget.app.appId.toLowerCase().contains('mariadb') ||
+      _isPma;
+
   bool get _isWebserver =>
       widget.app.groupName == 'webserver' ||
       widget.app.appId.toLowerCase().contains('nginx') ||
       widget.app.appId.toLowerCase().contains('apache');
+
   bool get _isRedis =>
       widget.app.groupName == 'redis' ||
       widget.app.appId.toLowerCase().contains('redis');
-  bool get _isMongodb =>
-      widget.app.appId.toLowerCase().contains('mongodb');
+
+  bool get _isMongodb => widget.app.appId.toLowerCase().contains('mongodb');
 
   int get _tabCount {
+    if (_isPma) return 2;
     if (_isPhp) return 3;
     if (_isDb || _isWebserver || _isRedis || _isMongodb) return 2;
     return 1;
@@ -69,16 +77,18 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     super.initState();
     _tabController = TabController(length: _tabCount, vsync: this);
     _tabController.addListener(_handleTabSelection);
-    
+
     // Set loading to false immediately to show Service tab info instantly
     _isLoading = false;
   }
 
   void _handleTabSelection() {
     if (_tabController.indexIsChanging) return;
-    
+
     final index = _tabController.index;
-    if (index == 1 && (_isPhp || _isDb || _isWebserver || _isRedis || _isMongodb) && !_isConfigLoaded) {
+    if (index == 1 &&
+        (_isPhp || _isDb || _isWebserver || _isRedis || _isMongodb) &&
+        !_isConfigLoaded) {
       _loadConfig();
     } else if (index == 2 && _isPhp && !_isExtensionsLoaded) {
       _loadExtensions();
@@ -96,18 +106,28 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   Future<void> _loadConfig() async {
     if (_isConfigLoading) return;
     setState(() => _isConfigLoading = true);
-    
+
     String content = '';
     if (_isPhp) {
-      content = await ref.read(phpSettingsProvider.notifier).readPhpIni(widget.app);
+      content = await ref
+          .read(phpSettingsProvider.notifier)
+          .readPhpIni(widget.app);
     } else if (_isDb) {
-      content = await ref.read(dbSettingsProvider.notifier).readConfig(widget.app);
+      content = await ref
+          .read(dbSettingsProvider.notifier)
+          .readConfig(widget.app);
     } else if (_isWebserver) {
-      content = await ref.read(webserverSettingsProvider.notifier).readConfig(widget.app);
+      content = await ref
+          .read(webserverSettingsProvider.notifier)
+          .readConfig(widget.app);
     } else if (_isRedis) {
-      content = await ref.read(redisSettingsProvider.notifier).readConfig(widget.app);
+      content = await ref
+          .read(redisSettingsProvider.notifier)
+          .readConfig(widget.app);
     } else if (_isMongodb) {
-      content = await ref.read(mongodbSettingsProvider.notifier).readConfig(widget.app);
+      content = await ref
+          .read(mongodbSettingsProvider.notifier)
+          .readConfig(widget.app);
     }
 
     if (mounted) {
@@ -116,7 +136,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
         _fallbackController.text = content;
         _isConfigLoaded = true;
         _isConfigLoading = false;
-        
+
         // Use CodeEditor for all configs to maintain consistent UI
         _useCodeEditor = true;
       });
@@ -130,9 +150,13 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   Future<void> _loadExtensions() async {
     if (_isExtensionsLoading) return;
     setState(() => _isExtensionsLoading = true);
-    
-    final content = _iniContent ?? await ref.read(phpSettingsProvider.notifier).readPhpIni(widget.app);
-    final exts = await ref.read(phpSettingsProvider.notifier).getExtensions(widget.app, content);
+
+    final content =
+        _iniContent ??
+        await ref.read(phpSettingsProvider.notifier).readPhpIni(widget.app);
+    final exts = await ref
+        .read(phpSettingsProvider.notifier)
+        .getExtensions(widget.app, content);
 
     if (mounted) {
       setState(() {
@@ -142,8 +166,6 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       });
     }
   }
-
-
 
   void _initCodeControllerLazily() {
     // Wait for modal transition to finish completely
@@ -178,11 +200,17 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     } else if (_isDb) {
       await ref.read(dbSettingsProvider.notifier).saveConfig(widget.app, text);
     } else if (_isWebserver) {
-      await ref.read(webserverSettingsProvider.notifier).saveConfig(widget.app, text);
+      await ref
+          .read(webserverSettingsProvider.notifier)
+          .saveConfig(widget.app, text);
     } else if (_isRedis) {
-      await ref.read(redisSettingsProvider.notifier).saveConfig(widget.app, text);
+      await ref
+          .read(redisSettingsProvider.notifier)
+          .saveConfig(widget.app, text);
     } else if (_isMongodb) {
-      await ref.read(mongodbSettingsProvider.notifier).saveConfig(widget.app, text);
+      await ref
+          .read(mongodbSettingsProvider.notifier)
+          .saveConfig(widget.app, text);
     }
 
     _isConfigLoaded = false; // Force reload after save
@@ -233,8 +261,14 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                     controller: _tabController,
                     children: [
                       KeepAliveWrapper(child: _buildServiceTab()),
-                      if (_isPhp || _isDb || _isWebserver || _isRedis || _isMongodb) KeepAliveWrapper(child: _buildConfigTab()),
-                      if (_isPhp) KeepAliveWrapper(child: _buildExtensionsTab()),
+                      if (_isPhp ||
+                          _isDb ||
+                          _isWebserver ||
+                          _isRedis ||
+                          _isMongodb)
+                        KeepAliveWrapper(child: _buildConfigTab()),
+                      if (_isPhp)
+                        KeepAliveWrapper(child: _buildExtensionsTab()),
                     ],
                   ),
           ),
@@ -358,15 +392,21 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                 children: [
                   const Icon(Icons.tune_rounded, size: 16),
                   const SizedBox(width: 8),
-                  Text(_isDb
-                      ? 'my.ini'
-                      : _isWebserver
-                          ? (widget.app.appId.contains('nginx') ? 'nginx.conf' : 'httpd.conf')
-                          : _isRedis
-                              ? 'redis.conf'
-                              : _isMongodb
-                                  ? 'mongod.cfg'
-                                  : 'Config'),
+                  Text(
+                    _isPma
+                        ? 'config.inc.php'
+                        : _isDb
+                        ? 'my.ini'
+                        : _isWebserver
+                        ? (widget.app.appId.contains('nginx')
+                              ? 'nginx.conf'
+                              : 'httpd.conf')
+                        : _isRedis
+                        ? 'redis.conf'
+                        : _isMongodb
+                        ? 'mongod.cfg'
+                        : 'Config',
+                  ),
                 ],
               ),
             ),
@@ -423,12 +463,12 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           _buildInfoSection('Executable Paths', [
             _buildInfoRow(
               Icons.terminal,
-              'PHP CLI',
+              'CLI  File Path',
               widget.app.cliFilePath ?? 'Not found',
             ),
             _buildInfoRow(
               Icons.javascript_outlined,
-              'PHP CGI',
+              'Executable File Path',
               widget.app.execFilePath ?? 'Not found',
             ),
           ]),
@@ -538,15 +578,19 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               ),
               const SizedBox(width: 8),
               Text(
-                _isDb
+                _isPma
+                    ? 'config.inc.php'
+                    : _isDb
                     ? 'my.ini'
                     : _isWebserver
-                        ? (widget.app.appId.contains('nginx') ? 'nginx.conf' : 'httpd.conf')
-                        : _isRedis
-                            ? 'redis.conf'
-                            : _isMongodb
-                                ? 'mongod.cfg'
-                                : 'php.ini',
+                    ? (widget.app.appId.contains('nginx')
+                          ? 'nginx.conf'
+                          : 'httpd.conf')
+                    : _isRedis
+                    ? 'redis.conf'
+                    : _isMongodb
+                    ? 'mongod.cfg'
+                    : 'php.ini',
                 style: const TextStyle(
                   fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.bold,
@@ -590,7 +634,8 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                       border: Border.all(color: AppColors.border),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: !_useCodeEditor ||
+                    child:
+                        !_useCodeEditor ||
                             !_isEditorReady ||
                             _codeController == null
                         ? TextField(
@@ -682,21 +727,21 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             child: _isExtensionsLoading
                 ? const Center(child: CircularProgressIndicator())
                 : filteredExtensions.isEmpty
-                    ? _buildEmptyExtensions()
-                    : GridView.builder(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
+                ? _buildEmptyExtensions()
+                : GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           childAspectRatio: 4,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
                         ),
-                        itemCount: filteredExtensions.length,
-                        itemBuilder: (context, index) {
-                          final ext = filteredExtensions[index];
-                          return _buildExtensionCard(ext);
-                        },
-                      ),
+                    itemCount: filteredExtensions.length,
+                    itemBuilder: (context, index) {
+                      final ext = filteredExtensions[index];
+                      return _buildExtensionCard(ext);
+                    },
+                  ),
           ),
         ],
       ),

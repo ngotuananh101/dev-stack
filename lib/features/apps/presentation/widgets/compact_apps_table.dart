@@ -53,6 +53,7 @@ class CompactAppsTable extends StatelessWidget {
     final group = app.groupName?.toLowerCase() ?? '';
 
     if (id.contains('nodejs')) return 'nodejs';
+    if (id == 'phpmyadmin') return 'phpmyadmin';
     if (id.contains('php')) return 'php';
     if (id.contains('mysql')) return 'mysql';
     if (id.contains('mariadb')) return 'mariadb';
