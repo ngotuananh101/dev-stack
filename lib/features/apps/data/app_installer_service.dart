@@ -867,12 +867,9 @@ Alias /phpmyadmin "$pmaPathUnix/"
       logInfo('Creating config.inc.php from sample...');
       String content = await sampleFile.readAsString();
 
-      // 1. Set Blowfish secret (required for cookies)
+      // 1. Set Blowfish secret (required for cookies, must be 32 chars)
       final random = DateTime.now().microsecondsSinceEpoch.toString();
-      final secret =
-          'ponta_secret_' +
-          random.substring(random.length - 10) +
-          '_32_chars_long_str_base';
+      final secret = (random + 'ponta_secret_key_for_cookie_32_chars').substring(0, 32);
       content = content.replaceFirstMapped(
         RegExp(r"(\$cfg\['blowfish_secret'\]\s*=\s*').*?(';)"),
         (match) => "${match.group(1)}$secret${match.group(2)}",
