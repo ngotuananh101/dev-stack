@@ -1,5 +1,6 @@
 const fs = require("fs").promises;
 const path = require("path");
+const { versions } = require("process");
 
 /**
  * Hàm hỗ trợ sắp xếp các chuỗi phiên bản theo thứ tự giảm dần (Semantic Versioning)
@@ -321,6 +322,23 @@ let baseDataObject = {
       group_name: "database",
       exec_file: "mongod.exe",
       cli_file: "mongo.exe",
+    },
+    {
+      id: "phpMyAdmin",
+      name: "phpMyAdmin",
+      description: "Web interface for MySQL and MariaDB.",
+      category: "tool",
+      group_name: "database",
+      exec_file: "index.php",
+      cli_file: "index.php",
+      versions: {
+        latest:
+          "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip",
+        "5.2.1":
+          "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip",
+        "6.0":
+          "https://files.phpmyadmin.net/snapshots/phpMyAdmin-6.0+snapshot-all-languages.zip",
+      },
     },
   ],
 };
