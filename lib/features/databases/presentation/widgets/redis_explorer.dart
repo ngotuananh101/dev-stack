@@ -2,10 +2,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../domain/redis_key.dart';
-import '../../data/redis_provider.dart';
 import '../../../apps/domain/app_model.dart';
+import '../../data/redis_provider.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class RedisExplorer extends ConsumerStatefulWidget {
   final AppModel app;
@@ -14,8 +14,8 @@ class RedisExplorer extends ConsumerStatefulWidget {
   final Function(int) onDbChanged;
 
   const RedisExplorer({
-    super.key, 
-    required this.app, 
+    super.key,
+    required this.app,
     this.searchQuery,
     required this.selectedDb,
     required this.onDbChanged,
@@ -43,7 +43,8 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
   @override
   void didUpdateWidget(RedisExplorer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.searchQuery != widget.searchQuery || oldWidget.selectedDb != widget.selectedDb) {
+    if (oldWidget.searchQuery != widget.searchQuery ||
+        oldWidget.selectedDb != widget.selectedDb) {
       _refresh();
     }
   }
@@ -52,11 +53,13 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final query = widget.searchQuery ?? '';
-      ref.read(redisNotifierProvider.notifier).fetchKeys(
-        widget.app, 
-        widget.selectedDb, 
-        query: query.isEmpty ? '*' : '*$query*'
-      );
+      ref
+          .read(redisNotifierProvider.notifier)
+          .fetchKeys(
+            widget.app,
+            widget.selectedDb,
+            query: query.isEmpty ? '*' : '*$query*',
+          );
     });
   }
 
@@ -68,13 +71,26 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDbTabs(statsAsync.asData?.value ?? {}),
+        statsAsync.when(
+          data: (stats) => _buildDbTabs(stats),
+          loading: () => const SizedBox(
+            height: 48,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (_, __) => const SizedBox(height: 48),
+        ),
         const SizedBox(height: 16),
         Expanded(
+          flex: 1,
           child: keysAsync.when(
             data: (keys) => _buildKeysTable(keys),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, s) => Center(child: Text('Error: $e')),
+            error: (err, _) => Center(
+              child: Text(
+                err.toString(),
+                style: TextStyle(color: AppColors.error),
+              ),
+            ),
           ),
         ),
       ],
@@ -109,18 +125,29 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
                 child: InkWell(
                   onTap: () => widget.onDbChanged(index),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.surfaceLight : AppColors.surface,
-                      border: Border.all(color: isSelected ? AppColors.accent : AppColors.border),
+                      color: isSelected
+                          ? AppColors.surfaceLight
+                          : AppColors.surface,
+                      border: Border.all(
+                        color: isSelected ? AppColors.accent : AppColors.border,
+                      ),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       'DB$index($count)',
                       style: TextStyle(
-                        color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                        color: isSelected
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
                         fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -147,7 +174,8 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
           Expanded(
             child: ListView.builder(
               itemCount: keys.length,
-              itemBuilder: (context, index) => _buildTableRow(keys[index], index == keys.length - 1),
+              itemBuilder: (context, index) =>
+                  _buildTableRow(keys[index], index == keys.length - 1),
             ),
           ),
         ],
@@ -165,23 +193,38 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
       ),
       child: Row(
         children: [
-          const SizedBox(width: 24), 
-          Expanded(flex: 3, child: _buildHeaderCell('Key')),
-          Expanded(flex: 4, child: _buildHeaderCell('Value')),
-          Expanded(flex: 1, child: _buildHeaderCell('Data type')),
-          Expanded(flex: 1, child: _buildHeaderCell('Data length')),
-          Expanded(flex: 2, child: _buildHeaderCell('Term of validity')),
-          Expanded(flex: 1, child: _buildHeaderCell('Operate', alignment: TextAlign.right)),
+          Expanded(flex: 3, child: _buildHeaderCell('KEY')),
+          const SizedBox(width: 12),
+          Expanded(flex: 4, child: _buildHeaderCell('VALUE')),
+          const SizedBox(width: 12),
+          Expanded(flex: 1, child: _buildHeaderCell('DATA TYPE')),
+          const SizedBox(width: 12),
+          Expanded(flex: 1, child: _buildHeaderCell('DATA LENGTH')),
+          const SizedBox(width: 12),
+          Expanded(flex: 2, child: _buildHeaderCell('TERM OF VALIDITY')),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 1,
+            child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderCell(String label, {TextAlign alignment = TextAlign.left}) {
+  Widget _buildHeaderCell(
+    String label, {
+    TextAlign alignment = TextAlign.left,
+  }) {
     return Text(
       label,
       textAlign: alignment,
-      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted),
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textMuted,
+        letterSpacing: 0.5,
+      ),
     );
   }
 
@@ -189,40 +232,72 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        border: isLast ? null : Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+        border: isLast
+            ? null
+            : Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Row(
         children: [
-          const Icon(LucideIcons.square, size: 14, color: AppColors.textMuted),
-          const SizedBox(width: 10),
           Expanded(
             flex: 3,
-            child: Text(item.key, style: const TextStyle(color: AppColors.textPrimary, fontSize: 12), overflow: TextOverflow.ellipsis),
+            child: Text(
+              item.key,
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             flex: 4,
-            child: Text(item.value, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11), overflow: TextOverflow.ellipsis),
+            child: Text(
+              item.value,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             flex: 1,
-            child: Text(item.type, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            child: Text(
+              item.type,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             flex: 1,
-            child: Text(item.length.toString(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            child: Text(
+              item.length.toString(),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             flex: 2,
-            child: Text(item.ttl, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            child: Text(
+              item.ttl,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             flex: 1,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _buildActionText('Edit', AppColors.success, () {}),
-                const SizedBox(width: 12),
-                _buildActionText('Delete', AppColors.error, () => _handleDeleteKey(item.key)),
+                _buildIconButton(
+                  icon: Icons.edit_outlined,
+                  onPressed: () {},
+                  color: AppColors.textSecondary,
+                  tooltip: 'Edit',
+                ),
+                const SizedBox(width: 8),
+                _buildIconButton(
+                  icon: Icons.delete_outline_rounded,
+                  onPressed: () => _handleDeleteKey(item.key),
+                  color: AppColors.error,
+                  tooltip: 'Delete',
+                ),
               ],
             ),
           ),
@@ -231,14 +306,63 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
     );
   }
 
-  Widget _buildActionText(String label, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+  Widget _buildIconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required Color color,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              border: Border.all(color: AppColors.border, width: 0.5),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Icon(icon, size: 14, color: color),
+          ),
+        ),
+      ),
     );
   }
 
-  void _handleDeleteKey(String key) async {
-    await ref.read(redisNotifierProvider.notifier).deleteKey(widget.app, widget.selectedDb, key);
+  void _handleDeleteKey(String key) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          'Delete Key',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: Text(
+          'Are you sure you want to delete key "$key"?',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await ref
+                  .read(redisNotifierProvider.notifier)
+                  .deleteKey(widget.app, widget.selectedDb, key);
+              if (mounted) Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 }

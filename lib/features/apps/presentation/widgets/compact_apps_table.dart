@@ -106,10 +106,15 @@ class CompactAppsTable extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(flex: 3, child: _buildHeaderCell('SOFTWARE NAME')),
+                const SizedBox(width: 12),
                 Expanded(flex: 2, child: _buildHeaderCell('DEVELOPER')),
+                const SizedBox(width: 12),
                 Expanded(flex: 3, child: _buildHeaderCell('DESCRIPTION')),
+                const SizedBox(width: 12),
                 Expanded(flex: 1, child: _buildHeaderCell('STATUS')),
+                const SizedBox(width: 12),
                 Expanded(flex: 1, child: _buildHeaderCell('PATH')),
+                const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
                   child: _buildHeaderCell(
@@ -228,6 +233,7 @@ class CompactAppsTable extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 12),
           // Developer
           Expanded(
             flex: 2,
@@ -263,6 +269,7 @@ class CompactAppsTable extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(width: 12),
           // Description
           Expanded(
             flex: 3,
@@ -276,10 +283,13 @@ class CompactAppsTable extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(width: 12),
           // Status
           Expanded(flex: 1, child: _buildStatusIndicator(app)),
+          const SizedBox(width: 12),
           // PATH toggle
           Expanded(flex: 1, child: _buildPathToggle(app)),
+          const SizedBox(width: 12),
           // Operate buttons
           Expanded(flex: 2, child: _buildOperateButtons(context, app)),
         ],
