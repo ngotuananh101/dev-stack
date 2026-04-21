@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/apps_provider.dart';
 import '../domain/app_model.dart';
+import '../../../shared/providers/error_provider.dart';
 import 'widgets/marketplace_header.dart';
 import 'widgets/category_bar.dart';
 import 'widgets/compact_apps_table.dart';
@@ -69,6 +70,14 @@ class _AppsPageState extends ConsumerState<AppsPage> {
   @override
   Widget build(BuildContext context) {
     final appsAsync = ref.watch(appsNotifierProvider);
+
+    // Listen for global errors
+    ref.listen(errorNotifierProvider, (previous, next) {
+      if (next != null) {
+        AppDialogs.showError(context, title: 'Error', message: next);
+        ref.read(errorNotifierProvider.notifier).clearError();
+      }
+    });
 
     return Container(
       color: AppColors.background,
@@ -164,6 +173,14 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                           await ref
                               .read(appsNotifierProvider.notifier)
                               .restartService(app);
+                        },
+                        onChangeDefault: (appId) async {
+                          await ref
+                              .read(appsNotifierProvider.notifier)
+                              .changeDefaultPhp(appId);
+                          
+                          if (!context.mounted) return;
+                          AppDialogs.showToast(context, 'Set as Default PHP successful');
                         },
                       ),
                     ),

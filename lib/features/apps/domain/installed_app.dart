@@ -23,6 +23,11 @@ class InstalledApp {
   bool addedToPath = false;
 
   bool autoStartService = false;
+  
+  @Index()
+  String? groupName;
+
+  bool isDefault = false;
 
   InstalledApp({
     required this.appId,
@@ -35,5 +40,7 @@ class InstalledApp {
     this.cliFilePath,
     this.addedToPath = false,
     this.autoStartService = false,
+    this.groupName,
+    this.isDefault = false,
   });
 }

@@ -15,6 +15,7 @@ class CompactAppsTable extends StatelessWidget {
   final Future<void> Function(AppModel) onStartService;
   final Future<void> Function(AppModel) onStopService;
   final Future<void> Function(AppModel) onRestartService;
+  final Future<void> Function(String) onChangeDefault;
 
   const CompactAppsTable({
     super.key,
@@ -25,6 +26,7 @@ class CompactAppsTable extends StatelessWidget {
     required this.onStartService,
     required this.onStopService,
     required this.onRestartService,
+    required this.onChangeDefault,
   });
 
   IconData _getAppIcon(String appId) {
@@ -221,6 +223,34 @@ class CompactAppsTable extends StatelessWidget {
                                   fontSize: AppTextSize.xxs,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (app.isDefault) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withValues(
+                                  alpha: 0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: AppColors.success.withValues(alpha: 0.3),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: const Text(
+                                'DEFAULT',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.success,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ),
@@ -523,6 +553,15 @@ class CompactAppsTable extends StatelessWidget {
               onPressed: () => _showLogsModal(context, app),
               color: AppColors.primary,
               tooltip: 'View Logs',
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (app.groupName == 'php' && !app.isDefault) ...[
+            _buildIconButton(
+              icon: Icons.star_border_rounded,
+              onPressed: () => onChangeDefault(app.appId),
+              color: Colors.amber,
+              tooltip: 'Set as Default PHP',
             ),
             const SizedBox(width: 8),
           ],

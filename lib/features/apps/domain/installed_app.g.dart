@@ -47,23 +47,33 @@ const InstalledAppSchema = CollectionSchema(
       name: r'execFilePath',
       type: IsarType.string,
     ),
-    r'installedAt': PropertySchema(
+    r'groupName': PropertySchema(
       id: 6,
+      name: r'groupName',
+      type: IsarType.string,
+    ),
+    r'installedAt': PropertySchema(
+      id: 7,
       name: r'installedAt',
       type: IsarType.dateTime,
     ),
+    r'isDefault': PropertySchema(
+      id: 8,
+      name: r'isDefault',
+      type: IsarType.bool,
+    ),
     r'location': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'location',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'status',
       type: IsarType.string,
     ),
     r'version': PropertySchema(
-      id: 9,
+      id: 11,
       name: r'version',
       type: IsarType.string,
     )
@@ -99,6 +109,19 @@ const InstalledAppSchema = CollectionSchema(
           caseSensitive: false,
         )
       ],
+    ),
+    r'groupName': IndexSchema(
+      id: -6302961014654519938,
+      name: r'groupName',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'groupName',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
     )
   },
   links: {},
@@ -129,6 +152,12 @@ int _installedAppEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.groupName;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.location.length * 3;
   bytesCount += 3 + object.status.length * 3;
   {
@@ -152,10 +181,12 @@ void _installedAppSerialize(
   writer.writeBool(offsets[3], object.autoStartService);
   writer.writeString(offsets[4], object.cliFilePath);
   writer.writeString(offsets[5], object.execFilePath);
-  writer.writeDateTime(offsets[6], object.installedAt);
-  writer.writeString(offsets[7], object.location);
-  writer.writeString(offsets[8], object.status);
-  writer.writeString(offsets[9], object.version);
+  writer.writeString(offsets[6], object.groupName);
+  writer.writeDateTime(offsets[7], object.installedAt);
+  writer.writeBool(offsets[8], object.isDefault);
+  writer.writeString(offsets[9], object.location);
+  writer.writeString(offsets[10], object.status);
+  writer.writeString(offsets[11], object.version);
 }
 
 InstalledApp _installedAppDeserialize(
@@ -171,10 +202,12 @@ InstalledApp _installedAppDeserialize(
     autoStartService: reader.readBoolOrNull(offsets[3]) ?? false,
     cliFilePath: reader.readStringOrNull(offsets[4]),
     execFilePath: reader.readStringOrNull(offsets[5]),
-    installedAt: reader.readDateTimeOrNull(offsets[6]),
-    location: reader.readString(offsets[7]),
-    status: reader.readString(offsets[8]),
-    version: reader.readStringOrNull(offsets[9]),
+    groupName: reader.readStringOrNull(offsets[6]),
+    installedAt: reader.readDateTimeOrNull(offsets[7]),
+    isDefault: reader.readBoolOrNull(offsets[8]) ?? false,
+    location: reader.readString(offsets[9]),
+    status: reader.readString(offsets[10]),
+    version: reader.readStringOrNull(offsets[11]),
   );
   object.id = id;
   return object;
@@ -200,12 +233,16 @@ P _installedAppDeserializeProp<P>(
     case 5:
       return (reader.readStringOrNull(offset)) as P;
     case 6:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 7:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 8:
-      return (reader.readString(offset)) as P;
+      return (reader.readBoolOrNull(offset) ?? false) as P;
     case 9:
+      return (reader.readString(offset)) as P;
+    case 10:
+      return (reader.readString(offset)) as P;
+    case 11:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -450,6 +487,73 @@ extension InstalledAppQueryWhere
               indexName: r'addedToPath',
               lower: [],
               upper: [addedToPath],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterWhereClause>
+      groupNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'groupName',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterWhereClause>
+      groupNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'groupName',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterWhereClause> groupNameEqualTo(
+      String? groupName) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'groupName',
+        value: [groupName],
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterWhereClause>
+      groupNameNotEqualTo(String? groupName) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'groupName',
+              lower: [],
+              upper: [groupName],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'groupName',
+              lower: [groupName],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'groupName',
+              lower: [groupName],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'groupName',
+              lower: [],
+              upper: [groupName],
               includeUpper: false,
             ));
       }
@@ -1057,6 +1161,160 @@ extension InstalledAppQueryFilter
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'groupName',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'groupName',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'groupName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'groupName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'groupName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'groupName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'groupName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'groupName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'groupName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'groupName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'groupName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      groupNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'groupName',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition> idEqualTo(
       Id value) {
     return QueryBuilder.apply(this, (query) {
@@ -1180,6 +1438,16 @@ extension InstalledAppQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      isDefaultEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isDefault',
+        value: value,
       ));
     });
   }
@@ -1695,6 +1963,18 @@ extension InstalledAppQuerySortBy
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByGroupName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'groupName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByGroupNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'groupName', Sort.desc);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByInstalledAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'installedAt', Sort.asc);
@@ -1705,6 +1985,18 @@ extension InstalledAppQuerySortBy
       sortByInstalledAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'installedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByIsDefault() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isDefault', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByIsDefaultDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isDefault', Sort.desc);
     });
   }
 
@@ -1824,6 +2116,18 @@ extension InstalledAppQuerySortThenBy
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByGroupName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'groupName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByGroupNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'groupName', Sort.desc);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -1846,6 +2150,18 @@ extension InstalledAppQuerySortThenBy
       thenByInstalledAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'installedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByIsDefault() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isDefault', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByIsDefaultDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isDefault', Sort.desc);
     });
   }
 
@@ -1929,9 +2245,22 @@ extension InstalledAppQueryWhereDistinct
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByGroupName(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'groupName', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByInstalledAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'installedAt');
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByIsDefault() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isDefault');
     });
   }
 
@@ -2002,10 +2331,22 @@ extension InstalledAppQueryProperty
     });
   }
 
+  QueryBuilder<InstalledApp, String?, QQueryOperations> groupNameProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'groupName');
+    });
+  }
+
   QueryBuilder<InstalledApp, DateTime?, QQueryOperations>
       installedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'installedAt');
+    });
+  }
+
+  QueryBuilder<InstalledApp, bool, QQueryOperations> isDefaultProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isDefault');
     });
   }
 

@@ -72,11 +72,27 @@ class AppsRepository {
           cliFilePath: installed?.cliFilePath,
           isAddedToPath: installed?.addedToPath ?? false,
           autoStartService: installed?.autoStartService ?? false,
+          isDefault: installed?.isDefault ?? false,
         );
       }).toList().cast<AppModel>();
-    } catch (e) {
-      debugPrint('Error loading apps: $e');
-      return [];
+    } catch (e, stack) {
+      debugPrint('Error loading apps: $e\n$stack');
+      
+      // If it's a RangeError or corruption, try to delete local cache to force a fresh load next time
+      if (e is RangeError || e.toString().contains('RangeError')) {
+        try {
+          final supportDir = await getApplicationSupportDirectory();
+          final localFile = File(p.join(supportDir.path, 'apps.json'));
+          if (await localFile.exists()) {
+            await localFile.delete();
+            debugPrint('Deleted corrupted apps.json');
+          }
+        } catch (err) {
+          debugPrint('Failed to delete corrupted apps.json: $err');
+        }
+      }
+      
+      rethrow; // Rethrow so the UI can show the error
     }
   }
 
@@ -106,11 +122,35 @@ class AppsRepository {
         cliFilePath: app.cliFilePath,
         addedToPath: app.isAddedToPath,
         autoStartService: app.autoStartService,
+        groupName: app.groupName,
+        isDefault: app.isDefault,
       );
       await isar.installedApps.put(installed);
     });
   }
 
+  Future<void> setDefaultPhp(String appId) async {
+    await isar.writeTxn(() async {
+      // 1. Find the target app
+      final target = await isar.installedApps.filter().appIdEqualTo(appId).findFirst();
+      if (target == null) return;
+
+      // 2. Unset all other apps in the same group (e.g., PHP versions)
+      if (target.groupName != null) {
+        final groupApps = await isar.installedApps.filter().groupNameEqualTo(target.groupName).findAll();
+        for (final app in groupApps) {
+          if (app.appId != appId && app.isDefault) {
+            app.isDefault = false;
+            await isar.installedApps.put(app);
+          }
+        }
+      }
+
+      // 3. Set target as default
+      target.isDefault = true;
+      await isar.installedApps.put(target);
+    });
+  }
   Future<void> delete(String appId) async {
     await isar.writeTxn(() async {
       await isar.installedApps.filter().appIdEqualTo(appId).deleteAll();

@@ -8,6 +8,9 @@ import 'app_installer_service.dart';
 import 'app_service_manager.dart';
 import '../../../core/services/path_service.dart';
 
+import '../../../shared/providers/error_provider.dart';
+import '../../../shared/utils/app_dialogs.dart';
+
 part 'apps_provider.g.dart';
 
 @riverpod
@@ -27,6 +30,7 @@ class AppsNotifier extends _$AppsNotifier {
       await repository.importInitialData();
     } catch (e) {
       debugPrint('Error in importInitialData: $e');
+      ref.read(errorNotifierProvider.notifier).setError('Database initialization failed: $e');
     }
     final apps = await repository.getAll();
     
@@ -75,6 +79,19 @@ class AppsNotifier extends _$AppsNotifier {
         final version = app.selectedVersion ?? 'latest';
         final installer = ref.read(appInstallerServiceProvider);
         
+        // Rules for phpMyAdmin
+        if (app.appId == 'phpMyAdmin') {
+          final allApps = state.valueOrNull ?? [];
+          final hasWebServer = allApps.any((a) => a.isInstalled && a.categories.contains('webserver'));
+          final hasPhp = allApps.any((a) => a.isInstalled && a.groupName == 'php');
+          
+          if (!hasWebServer || !hasPhp) {
+            final error = !hasWebServer ? 'Please install Nginx or Apache first.' : 'Please install at least one PHP version first.';
+            app.addLog('Error: $error');
+            throw Exception(error);
+          }
+        }
+        
         // Update status to installing
         app.status = 'installing';
         app.installProgress = 0.0;
@@ -107,6 +124,16 @@ class AppsNotifier extends _$AppsNotifier {
         app.installStatus = null;
         
         await repository.save(app);
+        
+        // Auto set default PHP if it's the first one
+        if (app.groupName == 'php') {
+          final allApps = state.valueOrNull ?? [];
+          final otherPhp = allApps.where((a) => a.isInstalled && a.groupName == 'php' && a.appId != app.appId);
+          if (otherPhp.isEmpty) {
+            await repository.setDefaultPhp(app.appId);
+            app.isDefault = true;
+          }
+        }
 
         // Post-install orchestration
         final allApps = state.valueOrNull ?? [];
@@ -127,6 +154,10 @@ class AppsNotifier extends _$AppsNotifier {
         app.status = 'not_installed';
         app.installProgress = null;
         app.installStatus = null;
+        
+        // Notify UI of error
+        ref.read(errorNotifierProvider.notifier).setError(e.toString());
+        
         notifyUpdate(force: true);
       }
     } else {
@@ -215,48 +246,14 @@ class AppsNotifier extends _$AppsNotifier {
           app.status = 'installed'; // Revert to installed
           app.installProgress = null;
           app.installStatus = null;
+          
+          // Notify UI of error
+          ref.read(errorNotifierProvider.notifier).setError(e.toString());
+          
           notifyUpdate(force: true);
         }
       } else {
-        // Logic for uninstalling (the existing logic)
-        try {
-          // Stop service if running
-          final manager = ref.read(appServiceManagerProvider);
-          if (manager.isRunning(app.appId)) {
-            debugPrint('Stopping service before uninstallation: ${app.name}');
-            await manager.stop(app);
-          }
-          
-          // Force kill any related processes to be safe
-          await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
-
-          // Safety delay for Windows file handles
-          await Future.delayed(const Duration(seconds: 1));
-
-          if (app.location != null) {
-            final installer = ref.read(appInstallerServiceProvider);
-            await installer.delete(app.location!);
-          }
-          
-          // Remove from PATH if added
-          if (app.isAddedToPath) {
-            final pathService = ref.read(pathServiceProvider);
-            await pathService.removeAppFromPath(app);
-            app.isAddedToPath = false;
-          }
-
-          app.isInstalled = false;
-          app.status = 'not_installed';
-          app.installedVersion = null;
-          app.location = null;
-          app.installedAt = null;
-          app.execFilePath = null;
-          app.cliFilePath = null;
-          
-          await repository.delete(app.appId);
-        } catch (e) {
-          debugPrint('Uninstallation failed: $e');
-        }
+        await uninstall(app);
       }
     }
     
@@ -265,7 +262,23 @@ class AppsNotifier extends _$AppsNotifier {
 
   Future<void> uninstall(AppModel app) async {
     final repository = await ref.read(appsRepositoryProvider.future);
+    final allApps = state.valueOrNull ?? [];
+    
+    // 1. Guards
+    if (app.groupName == 'php') {
+      final isPmaInstalled = allApps.any((a) => a.appId == 'phpMyAdmin' && a.isInstalled);
+      final otherPhps = allApps.where((a) => a.isInstalled && a.groupName == 'php' && a.appId != app.appId);
+      
+      if (isPmaInstalled && otherPhps.isEmpty) {
+        final error = 'Cannot uninstall the last PHP version while phpMyAdmin is installed.';
+        app.addLog('Error: $error');
+        throw Exception(error);
+      }
+    }
+
     try {
+      final wasDefault = app.isDefault;
+
       // Stop service if running
       final manager = ref.read(appServiceManagerProvider);
       if (manager.isRunning(app.appId)) {
@@ -285,6 +298,7 @@ class AppsNotifier extends _$AppsNotifier {
       }
       
       app.isInstalled = false;
+      app.isDefault = false;
       app.status = 'not_installed';
       app.installedVersion = null;
       app.location = null;
@@ -293,6 +307,16 @@ class AppsNotifier extends _$AppsNotifier {
       app.cliFilePath = null;
       
       await repository.delete(app.appId);
+
+      // 2. Handle Default PHP reassignment
+      if (wasDefault && app.groupName == 'php') {
+        final remainingPhps = allApps.where((a) => a.isInstalled && a.groupName == 'php' && a.appId != app.appId).toList();
+        if (remainingPhps.isNotEmpty) {
+          // Find most recently installed
+          remainingPhps.sort((a, b) => (b.installedAt ?? DateTime(0)).compareTo(a.installedAt ?? DateTime(0)));
+          await changeDefaultPhp(remainingPhps.first.appId);
+        }
+      }
 
       // Remove from PATH if added
       if (app.isAddedToPath) {
@@ -304,6 +328,7 @@ class AppsNotifier extends _$AppsNotifier {
       notifyUpdate(force: true);
     } catch (e) {
       debugPrint('Uninstallation failed: $e');
+      ref.read(errorNotifierProvider.notifier).setError(e.toString());
     }
   }
 
@@ -394,6 +419,43 @@ class AppsNotifier extends _$AppsNotifier {
       notifyUpdate(force: true);
     } catch (e) {
       debugPrint('Error restarting service: $e');
+    }
+  }
+
+  Future<void> changeDefaultPhp(String appId) async {
+    try {
+      final repository = await ref.read(appsRepositoryProvider.future);
+      final allApps = state.valueOrNull ?? [];
+      
+      // 1. Update DB
+      await repository.setDefaultPhp(appId);
+      
+      // 2. Update local state
+      for (final a in allApps) {
+        if (a.groupName == 'php') {
+          a.isDefault = (a.appId == appId);
+        }
+      }
+      
+      // 3. Sync configs (PMA needs to point to new PHP port)
+      final installer = ref.read(appInstallerServiceProvider);
+      final targetApp = allApps.firstWhere((a) => a.appId == appId);
+      await installer.syncInterAppConfigs(targetApp, allApps);
+      
+      // 4. Restart Web Servers if running
+      final manager = ref.read(appServiceManagerProvider);
+      final webServers = allApps.where((a) => a.isInstalled && a.categories.contains('webserver'));
+      for (final ws in webServers) {
+        if (manager.isRunning(ws.appId)) {
+          debugPrint('Restarting ${ws.name} due to default PHP change...');
+          await manager.restart(ws, onStatusChange: () => notifyUpdate(force: true));
+        }
+      }
+      
+      notifyUpdate(force: true);
+    } catch (e) {
+      debugPrint('Error changing default PHP: $e');
+      ref.read(errorNotifierProvider.notifier).setError('Failed to change default PHP: $e');
     }
   }
 }

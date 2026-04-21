@@ -675,12 +675,28 @@ net:
       return;
     }
 
-    // 3. Find the best PHP version for FastCGI/Nginx
+    // 3. Find the best PHP version for FastCGI/Nginx (prefer isDefault)
     final phpApps = allApps
         .where((a) => a.isInstalled && a.groupName == 'php')
         .toList();
-    phpApps.sort((a, b) => b.appId.compareTo(a.appId)); // Newest first
+    
+    // Sort so default is first, then newest
+    phpApps.sort((a, b) {
+      if (a.isDefault && !b.isDefault) return -1;
+      if (!a.isDefault && b.isDefault) return 1;
+      return b.appId.compareTo(a.appId);
+    });
+    
     final bestPhp = phpApps.firstOrNull;
+
+    // Ensure extensions for PMA are enabled in the default PHP
+    if (bestPhp != null && bestPhp.location != null) {
+      final phpIni = File(p.join(bestPhp.location!, 'php.ini'));
+      if (phpIni.existsSync()) {
+        log('Ensuring mysqli, mbstring, openssl are enabled in ${bestPhp.name}...');
+        await _enableDefaultExtensions(phpIni, bestPhp.location!, log);
+      }
+    }
 
     for (final ws in webServers) {
       try {
@@ -706,7 +722,10 @@ net:
     if (wsPath == null || pmaPath == null) return;
 
     final confDir = Directory(p.join(wsPath, 'conf', 'ponta_apps'));
-    if (!confDir.existsSync()) confDir.createSync(recursive: true);
+    if (!confDir.existsSync()) {
+      log('Creating Nginx ponta_apps directory: ${confDir.path}');
+      confDir.createSync(recursive: true);
+    }
 
     final pmaConfFile = File(p.join(confDir.path, 'phpmyadmin.conf'));
 
@@ -749,22 +768,26 @@ location /phpmyadmin {
       String content = await nginxConf.readAsString();
       if (!content.contains('ponta_apps/*.conf')) {
         log('Injecting ponta_apps include into nginx.conf...');
-        // Look for the last '}' of the main 'server' block
-        // We assume the default nginx.conf has a server block with 'listen 80'
-        final serverBlockRegex = RegExp(
-          r'server\s*\{[^}]*?listen\s+80',
-          multiLine: true,
-        );
-        if (serverBlockRegex.hasMatch(content)) {
-          // Find the end of this server block
-          // This is a bit naive but works for standard nginx.conf
+        
+        // 1. Try to find the default server block with listen 80
+        if (content.contains('listen       80;')) {
           content = content.replaceFirst(
             'listen       80;',
             'listen       80;\n        include ponta_apps/*.conf;',
           );
-          await nginxConf.writeAsString(content);
-          log('Successfully added include to nginx.conf');
+        } else if (content.contains('server {')) {
+          // 2. Fallback to first server block
+          content = content.replaceFirst(
+            'server {',
+            'server {\n        include ponta_apps/*.conf;',
+          );
+        } else {
+          // 3. Last resort: append at the end (might not work well if outside http/server)
+          content += '\n# Ponta Apps\ninclude ponta_apps/*.conf;\n';
         }
+        
+        await nginxConf.writeAsString(content);
+        log('Successfully added include to nginx.conf');
       }
     }
   }
@@ -794,14 +817,18 @@ location /phpmyadmin {
       return;
     }
 
-    final extraDir = Directory(p.join(apacheRoot, 'conf', 'extra'));
-    if (!extraDir.existsSync()) extraDir.createSync(recursive: true);
+    final confDir = Directory(p.join(apacheRoot, 'conf', 'ponta_apps'));
+    if (!confDir.existsSync()) {
+      log('Creating Apache ponta_apps directory: ${confDir.path}');
+      confDir.createSync(recursive: true);
+    }
 
-    final pmaConfFile = File(p.join(extraDir.path, 'httpd-phpmyadmin.conf'));
+    final pmaConfFile = File(p.join(confDir.path, 'phpmyadmin.conf'));
     final pmaPathUnix = pmaPath.replaceAll('\\', '/');
 
     final pmaConfig =
         '''
+# phpMyAdmin Configuration
 Alias /phpmyadmin "$pmaPathUnix/"
 <Directory "$pmaPathUnix/">
     Options Indexes FollowSymLinks MultiViews
@@ -815,11 +842,11 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
     // Ensure httpd.conf includes this
     String content = await httpdConf.readAsString();
-    if (!content.contains('httpd-phpmyadmin.conf')) {
-      log('Injecting phpMyAdmin include into httpd.conf...');
+    if (!content.contains('ponta_apps/*.conf')) {
+      log('Injecting ponta_apps include into httpd.conf...');
       // Append at the end of the file
       content +=
-          '\n# phpMyAdmin Integration\nInclude conf/extra/httpd-phpmyadmin.conf\n';
+          '\n# Ponta Apps Integration\nInclude conf/ponta_apps/*.conf\n';
       await httpdConf.writeAsString(content);
       log('Successfully added include to httpd.conf');
     }

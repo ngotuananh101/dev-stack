@@ -156,7 +156,7 @@ class _RedisDbStatsProviderElement
   AppModel get app => (origin as RedisDbStatsProvider).app;
 }
 
-String _$redisNotifierHash() => r'c414e47f9e64ca021896723329d3018da8da9d68';
+String _$redisNotifierHash() => r'03945f6f384b7f3878a297836483a86d77c37244';
 
 /// See also [RedisNotifier].
 @ProviderFor(RedisNotifier)

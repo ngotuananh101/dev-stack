@@ -28,6 +28,7 @@ class AppModel {
   bool isAddedToPath;
   bool addPathAfterInstall;
   bool autoStartService = false;
+  bool isDefault = false;
 
   // Service management (non-persistent)
   bool get isService {
@@ -131,6 +132,7 @@ class AppModel {
     this.isAddedToPath = false,
     this.addPathAfterInstall = false,
     this.autoStartService = false,
+    this.isDefault = false,
     this.installProgress,
     this.installStatus,
   });
