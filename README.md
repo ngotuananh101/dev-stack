@@ -1,4 +1,4 @@
-# ponta_app
+# dev_stack
 
 A new Flutter project.
 
