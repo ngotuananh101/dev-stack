@@ -749,7 +749,7 @@ net:
 location /phpmyadmin {
     alias "$pmaPathUnix/";
     index index.php;
-    try_files \$uri \$uri/ /phpmyadmin/index.php?\$args;
+    try_files \$uri \$uri/ /index.php?\$args;
 
     location ~ ^/phpmyadmin/(.+\\.php)\$ {
         alias "$pmaPathUnix/\$1";
@@ -869,7 +869,8 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
       // 1. Set Blowfish secret (required for cookies, must be 32 chars)
       final random = DateTime.now().microsecondsSinceEpoch.toString();
-      final secret = (random + 'ponta_secret_key_for_cookie_32_chars').substring(0, 32);
+      final secret = (random + 'ponta_secret_key_for_cookie_32_chars')
+          .substring(0, 32);
       content = content.replaceFirstMapped(
         RegExp(r"(\$cfg\['blowfish_secret'\]\s*=\s*').*?(';)"),
         (match) => "${match.group(1)}$secret${match.group(2)}",
