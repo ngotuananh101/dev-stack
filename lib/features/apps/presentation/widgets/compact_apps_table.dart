@@ -228,30 +228,13 @@ class CompactAppsTable extends StatelessWidget {
                             ),
                           ],
                           if (app.isDefault) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.success.withValues(
-                                  alpha: 0.1,
-                                ),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color: AppColors.success.withValues(alpha: 0.3),
-                                  width: 0.5,
-                                ),
-                              ),
-                              child: const Text(
-                                'DEFAULT',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.success,
-                                  letterSpacing: 0.5,
-                                ),
+                            const SizedBox(width: 6),
+                            const Tooltip(
+                              message: 'Default Version',
+                              child: Icon(
+                                Icons.verified_rounded,
+                                size: 14,
+                                color: AppColors.success,
                               ),
                             ),
                           ],

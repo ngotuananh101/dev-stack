@@ -334,7 +334,7 @@ let baseDataObject = {
       versions: {
         latest:
           "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip",
-        "5.2.1":
+        "5.2.3":
           "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip",
         "6.0":
           "https://files.phpmyadmin.net/snapshots/phpMyAdmin-6.0+snapshot-all-languages.zip",
