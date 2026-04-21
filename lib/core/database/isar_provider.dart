@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/dashboard/domain/environment_model.dart';
 import '../../features/apps/domain/installed_app.dart';
+import '../../features/databases/domain/database_record.dart';
 
 part 'isar_provider.g.dart';
 
@@ -16,13 +17,14 @@ class IsarInstance {
       return _instance!;
     }
 
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await getApplicationSupportDirectory();
     
     try {
       _instance = await Isar.open(
         [
           EnvironmentModelSchema,
           InstalledAppSchema,
+          DatabaseRecordSchema,
         ],
         directory: dir.path,
       );
@@ -37,6 +39,7 @@ class IsarInstance {
         [
           EnvironmentModelSchema,
           InstalledAppSchema,
+          DatabaseRecordSchema,
         ],
         directory: dir.path,
       );

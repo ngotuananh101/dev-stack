@@ -139,7 +139,7 @@ class CompactAppsTable extends StatelessWidget {
       label,
       textAlign: alignment,
       style: const TextStyle(
-        fontSize: AppTextSize.xxxs,
+        fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -444,8 +444,10 @@ class CompactAppsTable extends StatelessWidget {
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4),
-              border:
-                  Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
+              border: Border.all(
+                color: color.withValues(alpha: 0.3),
+                width: 0.5,
+              ),
             ),
             child: Icon(icon, size: 14, color: color),
           ),
@@ -496,7 +498,7 @@ class CompactAppsTable extends StatelessWidget {
                 final latestPatch = app.versions
                     .where((v) => v.startsWith('$baseVersion.'))
                     .reduce((a, b) => app.isVersionNewer(b, a) ? b : a);
-                
+
                 app.selectedVersion = latestPatch;
                 _showVersionModal(context, app, isUpdate: true);
               },
@@ -557,7 +559,11 @@ class CompactAppsTable extends StatelessWidget {
     );
   }
 
-  void _showVersionModal(BuildContext context, AppModel app, {bool isUpdate = false}) {
+  void _showVersionModal(
+    BuildContext context,
+    AppModel app, {
+    bool isUpdate = false,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: false,
