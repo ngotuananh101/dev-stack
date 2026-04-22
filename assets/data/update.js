@@ -179,6 +179,7 @@ const fetchers = {
     const versions = {};
     if (!Array.isArray(data)) return {};
     data.forEach((r) => {
+      if (r.prerelease) return;
       const ver = r.tag_name.replace(/^(v|release-|redis-|redis|r(?=\d))/i, "");
       let url = `https://github.com/${repoPath}/archive/refs/tags/${r.tag_name}.zip`;
       if (r.assets?.length > 0) {
@@ -329,8 +330,8 @@ let baseDataObject = {
       description: "The GUI for MongoDB.",
       category: "tool",
       group_name: "database",
-      exec_file: "MongoDB Compass.exe",
-      cli_file: "MongoDB Compass.exe",
+      exec_file: "MongoDBCompass.exe",
+      cli_file: "MongoDBCompass.exe",
       repo: "mongodb-js/compass",
     },
     {
