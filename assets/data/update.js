@@ -183,19 +183,30 @@ const fetchers = {
       const ver = r.tag_name.replace(/^(v|release-|redis-|redis|r(?=\d))/i, "");
       let url = `https://github.com/${repoPath}/archive/refs/tags/${r.tag_name}.zip`;
       if (r.assets?.length > 0) {
-        let asset = r.assets.find(
-          (a) =>
-            (a.name.toLowerCase().includes("win") ||
-              a.name.toLowerCase().includes("x64")) &&
-            (a.name.toLowerCase().endsWith(".zip") ||
-              a.name.toLowerCase().endsWith(".msi")),
-        );
-        if (!asset)
+        let asset;
+        if (repoPath === "mongodb-js/compass") {
           asset = r.assets.find(
             (a) =>
-              a.name.toLowerCase().endsWith(".zip") ||
-              a.name.toLowerCase().endsWith(".msi"),
+              a.name.toLowerCase().includes("win32-x64") &&
+              a.name.toLowerCase().endsWith(".zip") &&
+              !a.name.toLowerCase().includes("isolated") &&
+              !a.name.toLowerCase().includes("readonly"),
           );
+        } else {
+          asset = r.assets.find(
+            (a) =>
+              (a.name.toLowerCase().includes("win") ||
+                a.name.toLowerCase().includes("x64")) &&
+              (a.name.toLowerCase().endsWith(".zip") ||
+                a.name.toLowerCase().endsWith(".msi")),
+          );
+          if (!asset)
+            asset = r.assets.find(
+              (a) =>
+                a.name.toLowerCase().endsWith(".zip") ||
+                a.name.toLowerCase().endsWith(".msi"),
+            );
+        }
         if (asset) url = asset.browser_download_url;
       }
       versions[ver] = url;
