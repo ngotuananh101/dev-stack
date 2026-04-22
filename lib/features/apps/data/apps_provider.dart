@@ -27,16 +27,18 @@ class AppsNotifier extends _$AppsNotifier {
   @override
   Future<List<AppModel>> build() async {
     final repository = await ref.watch(appsRepositoryProvider.future);
-    
+
     // Import initial data if needed
     try {
       await repository.importInitialData();
     } catch (e) {
       debugPrint('Error in importInitialData: $e');
-      ref.read(errorNotifierProvider.notifier).setError('Database initialization failed: $e');
+      ref
+          .read(errorNotifierProvider.notifier)
+          .setError('Database initialization failed: $e');
     }
     final apps = await repository.getAll();
-    
+
     // Auto start services after initial load
     Future.microtask(() {
       for (final app in apps) {
@@ -76,25 +78,31 @@ class AppsNotifier extends _$AppsNotifier {
 
   Future<void> toggleInstallation(AppModel app) async {
     final repository = await ref.read(appsRepositoryProvider.future);
-    
+
     if (!app.isInstalled) {
       try {
         final version = app.selectedVersion ?? 'latest';
         final installer = ref.read(appInstallerServiceProvider);
-        
+
         // Rules for phpMyAdmin
         if (app.appId == 'phpMyAdmin') {
           final allApps = state.valueOrNull ?? [];
-          final hasWebServer = allApps.any((a) => a.isInstalled && a.categories.contains('webserver'));
-          final hasPhp = allApps.any((a) => a.isInstalled && a.groupName == 'php');
-          
+          final hasWebServer = allApps.any(
+            (a) => a.isInstalled && a.categories.contains('webserver'),
+          );
+          final hasPhp = allApps.any(
+            (a) => a.isInstalled && a.groupName == 'php',
+          );
+
           if (!hasWebServer || !hasPhp) {
-            final error = !hasWebServer ? 'Please install Nginx or Apache first.' : 'Please install at least one PHP version first.';
+            final error = !hasWebServer
+                ? 'Please install Nginx or Apache first.'
+                : 'Please install at least one PHP version first.';
             app.addLog('Error: $error');
             throw Exception(error);
           }
         }
-        
+
         // Update status to installing
         app.status = 'installing';
         app.installProgress = 0.0;
@@ -103,21 +111,21 @@ class AppsNotifier extends _$AppsNotifier {
         notifyUpdate(force: true); // Notify UI of in-memory change
 
         final installPath = await installer.install(
-          app, 
+          app,
           version,
           onProgress: (progress, status, {downloadedBytes, totalBytes}) {
             app.installProgress = progress;
             app.installStatus = status;
             app.downloadedBytes = downloadedBytes;
             app.totalBytes = totalBytes;
-            notifyUpdate(); 
+            notifyUpdate();
           },
           onLog: (message) {
             app.addLog(message);
             notifyUpdate();
           },
         );
-        
+
         app.isInstalled = true;
         app.status = 'installed';
         app.location = installPath;
@@ -125,13 +133,16 @@ class AppsNotifier extends _$AppsNotifier {
         app.installedAt = DateTime.now();
         app.installProgress = null;
         app.installStatus = null;
-        
+
         await repository.save(app);
-        
+
         // Auto set default PHP if it's the first one
         if (app.groupName == 'php') {
           final allApps = state.valueOrNull ?? [];
-          final otherPhp = allApps.where((a) => a.isInstalled && a.groupName == 'php' && a.appId != app.appId);
+          final otherPhp = allApps.where(
+            (a) =>
+                a.isInstalled && a.groupName == 'php' && a.appId != app.appId,
+          );
           if (otherPhp.isEmpty) {
             await repository.setDefaultPhp(app.appId);
             app.isDefault = true;
@@ -141,7 +152,7 @@ class AppsNotifier extends _$AppsNotifier {
         // Post-install orchestration
         final allApps = state.valueOrNull ?? [];
         await installer.syncInterAppConfigs(
-          app, 
+          app,
           allApps,
           onLog: (m) => app.addLog(m),
         );
@@ -157,15 +168,16 @@ class AppsNotifier extends _$AppsNotifier {
         app.status = 'not_installed';
         app.installProgress = null;
         app.installStatus = null;
-        
+
         // Notify UI of error
         ref.read(errorNotifierProvider.notifier).setError(e.toString());
-        
+
         notifyUpdate(force: true);
       }
     } else {
       // Check if it's an update (different version selected)
-      if (app.selectedVersion != null && app.selectedVersion != app.installedVersion) {
+      if (app.selectedVersion != null &&
+          app.selectedVersion != app.installedVersion) {
         try {
           final oldPath = app.location;
           final wasInPath = app.isAddedToPath;
@@ -184,10 +196,13 @@ class AppsNotifier extends _$AppsNotifier {
             debugPrint('Stopping service before update: ${app.name}');
             await manager.stop(app);
           }
-          
+
           // Force kill any related processes to be safe
-          await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
-          
+          await manager.forceKillByNames([
+            app.execFile ?? '',
+            app.cliFile ?? '',
+          ]);
+
           // Safety delay for Windows file handles
           await Future.delayed(const Duration(seconds: 1));
 
@@ -234,51 +249,38 @@ class AppsNotifier extends _$AppsNotifier {
           app.selectedVersion = null; // Clear selected version after update
 
           await repository.save(app);
-        
+
           // Post-install orchestration
           final allApps = state.valueOrNull ?? [];
           await installer.syncInterAppConfigs(
-            app, 
+            app,
             allApps,
             onLog: (m) => app.addLog(m),
           );
-        
+
           notifyUpdate(force: true);
         } catch (e) {
           debugPrint('Update failed: $e');
           app.status = 'installed'; // Revert to installed
           app.installProgress = null;
           app.installStatus = null;
-          
+
           // Notify UI of error
           ref.read(errorNotifierProvider.notifier).setError(e.toString());
-          
+
           notifyUpdate(force: true);
         }
       } else {
         await uninstall(app);
       }
     }
-    
+
     notifyUpdate(force: true);
   }
 
   Future<void> uninstall(AppModel app) async {
     final repository = await ref.read(appsRepositoryProvider.future);
     final allApps = state.valueOrNull ?? [];
-    
-    // 1. Guards
-    if (app.groupName == 'php') {
-      final isPmaInstalled = allApps.any((a) => a.appId == 'phpMyAdmin' && a.isInstalled);
-      final otherPhps = allApps.where((a) => a.isInstalled && a.groupName == 'php' && a.appId != app.appId);
-      
-      if (isPmaInstalled && otherPhps.isEmpty) {
-        final error = 'Cannot uninstall the last PHP version while phpMyAdmin is installed.';
-        app.addLog('Error: $error');
-        throw Exception(error);
-      }
-    }
-
     try {
       final wasDefault = app.isDefault;
 
@@ -288,7 +290,7 @@ class AppsNotifier extends _$AppsNotifier {
         debugPrint('Stopping service before uninstallation: ${app.name}');
         await manager.stop(app);
       }
-      
+
       // Force kill any related processes to be safe
       await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
 
@@ -299,7 +301,7 @@ class AppsNotifier extends _$AppsNotifier {
         final installer = ref.read(appInstallerServiceProvider);
         await installer.delete(app.location!);
       }
-      
+
       app.isInstalled = false;
       app.isDefault = false;
       app.status = 'not_installed';
@@ -308,15 +310,24 @@ class AppsNotifier extends _$AppsNotifier {
       app.installedAt = null;
       app.execFilePath = null;
       app.cliFilePath = null;
-      
+
       await repository.delete(app.appId);
 
       // 2. Handle Default PHP reassignment
       if (wasDefault && app.groupName == 'php') {
-        final remainingPhps = allApps.where((a) => a.isInstalled && a.groupName == 'php' && a.appId != app.appId).toList();
+        final remainingPhps = allApps
+            .where(
+              (a) =>
+                  a.isInstalled && a.groupName == 'php' && a.appId != app.appId,
+            )
+            .toList();
         if (remainingPhps.isNotEmpty) {
           // Find most recently installed
-          remainingPhps.sort((a, b) => (b.installedAt ?? DateTime(0)).compareTo(a.installedAt ?? DateTime(0)));
+          remainingPhps.sort(
+            (a, b) => (b.installedAt ?? DateTime(0)).compareTo(
+              a.installedAt ?? DateTime(0),
+            ),
+          );
           await changeDefaultPhp(remainingPhps.first.appId);
         }
       }
@@ -374,16 +385,13 @@ class AppsNotifier extends _$AppsNotifier {
     try {
       app.autoStartService = true;
       await repository.save(app);
-      
+
       // Force kill any existing processes with the same name to free up ports
       await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
       // Brief delay to let the OS release the socket
       await Future.delayed(const Duration(milliseconds: 500));
 
-      await manager.start(
-        app, 
-        onStatusChange: () => notifyUpdate(force: true),
-      );
+      await manager.start(app, onStatusChange: () => notifyUpdate(force: true));
 
       // Sync configs if it's a webserver starting
       if (app.categories.contains('webserver')) {
@@ -416,7 +424,7 @@ class AppsNotifier extends _$AppsNotifier {
     final manager = ref.read(appServiceManagerProvider);
     try {
       await manager.restart(
-        app, 
+        app,
         onStatusChange: () => notifyUpdate(force: true),
       );
       notifyUpdate(force: true);
@@ -429,42 +437,49 @@ class AppsNotifier extends _$AppsNotifier {
     try {
       final repository = await ref.read(appsRepositoryProvider.future);
       final allApps = state.valueOrNull ?? [];
-      
+
       // 1. Update DB
       await repository.setDefaultPhp(appId);
-      
+
       // 2. Update local state
       for (final a in allApps) {
         if (a.groupName == 'php') {
           a.isDefault = (a.appId == appId);
         }
       }
-      
+
       // 3. Sync configs (PMA needs to point to new PHP port)
       final installer = ref.read(appInstallerServiceProvider);
       final targetApp = allApps.firstWhere((a) => a.appId == appId);
       await installer.syncInterAppConfigs(targetApp, allApps);
-      
+
       // 4. Restart Web Servers if running
       final manager = ref.read(appServiceManagerProvider);
-      final webServers = allApps.where((a) => a.isInstalled && a.categories.contains('webserver'));
+      final webServers = allApps.where(
+        (a) => a.isInstalled && a.categories.contains('webserver'),
+      );
       for (final ws in webServers) {
         if (manager.isRunning(ws.appId)) {
           debugPrint('Restarting ${ws.name} due to default PHP change...');
-          await manager.restart(ws, onStatusChange: () => notifyUpdate(force: true));
+          await manager.restart(
+            ws,
+            onStatusChange: () => notifyUpdate(force: true),
+          );
         }
       }
-      
+
       notifyUpdate(force: true);
     } catch (e) {
       debugPrint('Error changing default PHP: $e');
-      ref.read(errorNotifierProvider.notifier).setError('Failed to change default PHP: $e');
+      ref
+          .read(errorNotifierProvider.notifier)
+          .setError('Failed to change default PHP: $e');
     }
   }
 
   Future<void> openApp(AppModel app) async {
     if (!app.isInstalled || app.execFilePath == null) return;
-    
+
     try {
       final file = File(app.execFilePath!);
       if (await file.exists()) {
@@ -475,7 +490,9 @@ class AppsNotifier extends _$AppsNotifier {
       }
     } catch (e) {
       debugPrint('Error opening app: $e');
-      ref.read(errorNotifierProvider.notifier).setError('Failed to open ${app.name}: $e');
+      ref
+          .read(errorNotifierProvider.notifier)
+          .setError('Failed to open ${app.name}: $e');
     }
   }
 }
