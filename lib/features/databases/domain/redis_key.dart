@@ -4,6 +4,7 @@ class RedisKey {
   final String type;
   final int length;
   final String ttl;
+  final int rawTtl;
 
   RedisKey({
     required this.key,
@@ -11,5 +12,6 @@ class RedisKey {
     required this.type,
     required this.length,
     required this.ttl,
+    required this.rawTtl,
   });
 }

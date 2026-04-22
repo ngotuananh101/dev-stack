@@ -7,6 +7,7 @@ import '../../../apps/domain/app_model.dart';
 import '../../data/redis_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
+import 'add_redis_key_modal.dart';
 
 class RedisExplorer extends ConsumerStatefulWidget {
   final AppModel app;
@@ -288,7 +289,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
               children: [
                 _buildIconButton(
                   icon: Icons.edit_outlined,
-                  onPressed: () {},
+                  onPressed: () => _handleEditKey(item),
                   color: AppColors.textSecondary,
                   tooltip: 'Edit',
                 ),
@@ -345,6 +346,23 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             .read(redisNotifierProvider.notifier)
             .deleteKey(widget.app, widget.selectedDb, key);
       },
+    );
+  }
+
+  void _handleEditKey(RedisKey item) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) => Center(
+        child: AddRedisKeyModal(
+          engine: widget.app,
+          dbIndex: widget.selectedDb,
+          initialKey: item.key,
+          initialValue: item.value,
+          initialTtl: item.rawTtl,
+          onClose: () => Navigator.pop(context),
+        ),
+      ),
     );
   }
 }

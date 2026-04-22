@@ -66,6 +66,7 @@ class RedisNotifier extends _$RedisNotifier {
             type: type,
             length: length,
             ttl: ttlDisplay,
+            rawTtl: ttlSeconds,
           ));
         }
         return redisKeys;
@@ -92,10 +93,23 @@ class RedisNotifier extends _$RedisNotifier {
     return '${s}s';
   }
 
-  Future<void> setKey(AppModel app, int dbIndex, String key, String value) async {
+  Future<bool> checkKeyExists(AppModel app, int dbIndex, String key) async {
+    final cliPath = app.cliFilePath;
+    if (cliPath == null) return false;
+    final result = await Process.run(
+        cliPath, ['-n', dbIndex.toString(), 'EXISTS', key]);
+    return result.stdout.toString().trim() == '1';
+  }
+
+  Future<void> setKey(AppModel app, int dbIndex, String key, String value,
+      {int? ttl}) async {
     final cliPath = app.cliFilePath;
     if (cliPath == null) return;
     await Process.run(cliPath, ['-n', dbIndex.toString(), 'SET', key, value]);
+    if (ttl != null && ttl > 0) {
+      await Process.run(
+          cliPath, ['-n', dbIndex.toString(), 'EXPIRE', key, ttl.toString()]);
+    }
     await fetchKeys(app, dbIndex);
   }
 

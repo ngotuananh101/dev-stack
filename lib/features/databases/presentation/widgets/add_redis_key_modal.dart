@@ -5,17 +5,24 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/redis_provider.dart';
 import '../../../apps/domain/app_model.dart';
+import 'package:dev_stack/shared/utils/app_dialogs.dart';
 
 class AddRedisKeyModal extends ConsumerStatefulWidget {
   final AppModel engine;
   final int dbIndex;
   final VoidCallback onClose;
+  final String? initialKey;
+  final String? initialValue;
+  final int? initialTtl;
 
   const AddRedisKeyModal({
     super.key,
     required this.engine,
     required this.dbIndex,
     required this.onClose,
+    this.initialKey,
+    this.initialValue,
+    this.initialTtl,
   });
 
   @override
@@ -26,12 +33,27 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
   final _formKey = GlobalKey<FormState>();
   final _keyController = TextEditingController();
   final _valueController = TextEditingController();
+  final _ttlController = TextEditingController();
   bool _isAdding = false;
+  bool get isEdit => widget.initialKey != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (isEdit) {
+      _keyController.text = widget.initialKey!;
+      _valueController.text = widget.initialValue ?? '';
+      if (widget.initialTtl != null && widget.initialTtl! > 0) {
+        _ttlController.text = widget.initialTtl.toString();
+      }
+    }
+  }
 
   @override
   void dispose() {
     _keyController.dispose();
     _valueController.dispose();
+    _ttlController.dispose();
     super.dispose();
   }
 
@@ -40,13 +62,36 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
 
     setState(() => _isAdding = true);
     try {
+      final key = _keyController.text.trim();
+
+      // Check if key exists only when adding new key
+      if (!isEdit) {
+        final exists = await ref
+            .read(redisNotifierProvider.notifier)
+            .checkKeyExists(widget.engine, widget.dbIndex, key);
+
+        if (exists) {
+          if (mounted) {
+            AppDialogs.showError(
+              context,
+              title: 'Key Already Exists',
+              message:
+                  'The key "$key" already exists in DB${widget.dbIndex}. Please use a different name or edit the existing key.',
+            );
+          }
+          setState(() => _isAdding = false);
+          return;
+        }
+      }
+
       await ref
           .read(redisNotifierProvider.notifier)
           .setKey(
             widget.engine,
             widget.dbIndex,
-            _keyController.text.trim(),
+            key,
             _valueController.text,
+            ttl: int.tryParse(_ttlController.text.trim()),
           );
       widget.onClose();
     } catch (e) {
@@ -92,26 +137,24 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    LucideIcons.key,
-                    size: 20,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Add Redis Key (DB${widget.dbIndex})',
+                          isEdit
+                              ? 'Edit Redis Key (DB${widget.dbIndex})'
+                              : 'Add Redis Key (DB${widget.dbIndex})',
                           style: TextStyle(
                             fontSize: AppTextSize.sm,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        const Text(
-                          'Set a new key-value pair in Redis',
+                        Text(
+                          isEdit
+                              ? 'Update existing key-value pair'
+                              : 'Set a new key-value pair in Redis',
                           style: TextStyle(
                             fontSize: AppTextSize.xxs,
                             color: AppColors.textMuted,
@@ -148,7 +191,7 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
                     _buildTextField(
                       controller: _keyController,
                       hint: 'e.g. user:123:session',
-                      icon: LucideIcons.tag,
+                      enabled: !isEdit,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter a key name';
@@ -161,11 +204,24 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
                     _buildTextField(
                       controller: _valueController,
                       hint: 'Enter string value',
-                      icon: LucideIcons.type,
                       maxLines: 5,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter a value';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    _buildLabel('Term of Validity (Seconds, Optional)'),
+                    _buildTextField(
+                      controller: _ttlController,
+                      hint: 'e.g. 3600 (empty for No limit)',
+                      validator: (value) {
+                        if (value != null &&
+                            value.isNotEmpty &&
+                            int.tryParse(value) == null) {
+                          return 'Please enter a valid number';
                         }
                         return null;
                       },
@@ -218,7 +274,9 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
                       ),
                     ),
                     child: Text(
-                      _isAdding ? 'Adding...' : 'Add Key',
+                      _isAdding
+                          ? (isEdit ? 'Updating...' : 'Adding...')
+                          : (isEdit ? 'Update Key' : 'Add Key'),
                       style: TextStyle(
                         fontSize: AppTextSize.xs,
                         fontWeight: FontWeight.w500,
@@ -251,22 +309,22 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
-    required IconData icon,
     int maxLines = 1,
+    bool enabled = true,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
+      enabled: enabled,
       validator: validator,
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+      style: TextStyle(
+        color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+        fontSize: 14,
+      ),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-        prefixIcon: Padding(
-          padding: const EdgeInsets.only(bottom: 0),
-          child: Icon(icon, size: 16, color: AppColors.textMuted),
-        ),
         filled: true,
         fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(
