@@ -373,29 +373,45 @@
       }
     },
     {
-      "id": "php82",
-      "name": "PHP 8.2",
-      "description": "Hypertext Preprocessor v8.2",
-      "category": "runtime",
-      "group_name": "php",
-      "exec_file": "php-cgi.exe",
-      "cli_file": "php.exe",
-      "prefix": "8.2",
+      "id": "nginx",
+      "name": "Nginx",
+      "description": "Lightweight, less memory, concurrent ability",
+      "category": "webserver",
+      "group_name": "webserver",
+      "exec_file": "nginx.exe",
+      "cli_file": "nginx.exe",
+      "repo": "nginx/nginx",
       "versions": {
-        "8.2.30": "https://downloads.php.net/~windows/releases/archives/php-8.2.30-nts-Win32-vs16-x64.zip"
+        "1.30.0": "https://github.com/nginx/nginx/releases/download/release-1.30.0/nginx-1.30.0.zip",
+        "1.29.8": "https://github.com/nginx/nginx/releases/download/release-1.29.8/nginx-1.29.8.zip",
+        "1.28.3": "https://github.com/nginx/nginx/releases/download/release-1.28.3/nginx-1.28.3.zip",
+        "1.27.5": "https://github.com/nginx/nginx/releases/download/release-1.27.5/nginx-1.27.5.zip",
+        "1.26.3": "https://github.com/nginx/nginx/releases/download/release-1.26.3/nginx-1.26.3.zip"
       }
     },
     {
-      "id": "php83",
-      "name": "PHP 8.3",
-      "description": "Hypertext Preprocessor v8.3",
+      "id": "apache",
+      "name": "Apache",
+      "description": "World No. 1 web server",
+      "category": "webserver",
+      "group_name": "webserver",
+      "exec_file": "httpd.exe",
+      "cli_file": "httpd.exe",
+      "versions": {
+        "2.4.66": "https://www.apachelounge.com/download/VS18/binaries/httpd-2.4.66-260223-Win64-VS18.zip"
+      }
+    },
+    {
+      "id": "php85",
+      "name": "PHP 8.5",
+      "description": "Hypertext Preprocessor v8.5",
       "category": "runtime",
       "group_name": "php",
       "exec_file": "php-cgi.exe",
       "cli_file": "php.exe",
-      "prefix": "8.3",
+      "prefix": "8.5",
       "versions": {
-        "8.3.30": "https://downloads.php.net/~windows/releases/archives/php-8.3.30-nts-Win32-vs16-x64.zip"
+        "8.5.5": "https://downloads.php.net/~windows/releases/archives/php-8.5.5-nts-Win32-vs17-x64.zip"
       }
     },
     {
@@ -412,16 +428,29 @@
       }
     },
     {
-      "id": "php85",
-      "name": "PHP 8.5",
-      "description": "Hypertext Preprocessor v8.5",
+      "id": "php83",
+      "name": "PHP 8.3",
+      "description": "Hypertext Preprocessor v8.3",
       "category": "runtime",
       "group_name": "php",
       "exec_file": "php-cgi.exe",
       "cli_file": "php.exe",
-      "prefix": "8.5",
+      "prefix": "8.3",
       "versions": {
-        "8.5.5": "https://downloads.php.net/~windows/releases/archives/php-8.5.5-nts-Win32-vs17-x64.zip"
+        "8.3.30": "https://downloads.php.net/~windows/releases/archives/php-8.3.30-nts-Win32-vs16-x64.zip"
+      }
+    },
+    {
+      "id": "php82",
+      "name": "PHP 8.2",
+      "description": "Hypertext Preprocessor v8.2",
+      "category": "runtime",
+      "group_name": "php",
+      "exec_file": "php-cgi.exe",
+      "cli_file": "php.exe",
+      "prefix": "8.2",
+      "versions": {
+        "8.2.30": "https://downloads.php.net/~windows/releases/archives/php-8.2.30-nts-Win32-vs16-x64.zip"
       }
     },
     {
@@ -468,35 +497,6 @@
       }
     },
     {
-      "id": "nginx",
-      "name": "Nginx",
-      "description": "Lightweight, less memory, concurrent ability",
-      "category": "webserver",
-      "group_name": "webserver",
-      "exec_file": "nginx.exe",
-      "cli_file": "nginx.exe",
-      "repo": "nginx/nginx",
-      "versions": {
-        "1.30.0": "https://github.com/nginx/nginx/releases/download/release-1.30.0/nginx-1.30.0.zip",
-        "1.29.8": "https://github.com/nginx/nginx/releases/download/release-1.29.8/nginx-1.29.8.zip",
-        "1.28.3": "https://github.com/nginx/nginx/releases/download/release-1.28.3/nginx-1.28.3.zip",
-        "1.27.5": "https://github.com/nginx/nginx/releases/download/release-1.27.5/nginx-1.27.5.zip",
-        "1.26.3": "https://github.com/nginx/nginx/releases/download/release-1.26.3/nginx-1.26.3.zip"
-      }
-    },
-    {
-      "id": "apache",
-      "name": "Apache",
-      "description": "World No. 1 web server",
-      "category": "webserver",
-      "group_name": "webserver",
-      "exec_file": "httpd.exe",
-      "cli_file": "httpd.exe",
-      "versions": {
-        "2.4.66": "https://www.apachelounge.com/download/VS18/binaries/httpd-2.4.66-260223-Win64-VS18.zip"
-      }
-    },
-    {
       "id": "redis",
       "name": "Redis",
       "description": "In-memory data structure store.",
@@ -531,17 +531,17 @@
       }
     },
     {
-      "id": "mongodb-compass",
-      "name": "MongoDB Compass",
-      "description": "The GUI for MongoDB.",
+      "id": "phpMyAdmin",
+      "name": "phpMyAdmin",
+      "description": "Web interface for MySQL and MariaDB.",
       "category": "tool",
       "group_name": "database",
-      "exec_file": "MongoDBCompass.exe",
-      "cli_file": "MongoDBCompass.exe",
-      "repo": "mongodb-js/compass",
+      "exec_file": "index.php",
+      "cli_file": "index.php",
       "versions": {
-        "1.49.4": "https://github.com/mongodb-js/compass/releases/download/v1.49.4/mongodb-compass-1.49.4-win32-x64.zip",
-        "1.48.2": "https://github.com/mongodb-js/compass/releases/download/v1.48.2/mongodb-compass-1.48.2-win32-x64.zip"
+        "latest": "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip",
+        "5.2.3": "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip",
+        "6.0": "https://files.phpmyadmin.net/snapshots/phpMyAdmin-6.0+snapshot-all-languages.zip"
       }
     },
     {
@@ -560,17 +560,17 @@
       }
     },
     {
-      "id": "phpMyAdmin",
-      "name": "phpMyAdmin",
-      "description": "Web interface for MySQL and MariaDB.",
+      "id": "mongodb-compass",
+      "name": "MongoDB Compass",
+      "description": "The GUI for MongoDB.",
       "category": "tool",
       "group_name": "database",
-      "exec_file": "index.php",
-      "cli_file": "index.php",
+      "exec_file": "MongoDBCompass.exe",
+      "cli_file": "MongoDBCompass.exe",
+      "repo": "mongodb-js/compass",
       "versions": {
-        "latest": "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip",
-        "5.2.3": "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip",
-        "6.0": "https://files.phpmyadmin.net/snapshots/phpMyAdmin-6.0+snapshot-all-languages.zip"
+        "1.49.4": "https://github.com/mongodb-js/compass/releases/download/v1.49.4/mongodb-compass-1.49.4-win32-x64.zip",
+        "1.48.2": "https://github.com/mongodb-js/compass/releases/download/v1.48.2/mongodb-compass-1.48.2-win32-x64.zip"
       }
     }
   ]
