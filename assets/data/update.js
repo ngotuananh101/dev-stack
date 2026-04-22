@@ -196,7 +196,7 @@ const fetchers = {
         } else if (repoPath === "HeidiSQL/HeidiSQL") {
           url = null;
           asset = r.assets.find((a) =>
-            a.name.toLowerCase().endsWith("_64_Portable.zip"),
+            a.name.toLowerCase().endsWith("_64_portable.zip"),
           );
         } else {
           asset = r.assets.find(
