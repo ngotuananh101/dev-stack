@@ -192,6 +192,10 @@ const fetchers = {
               !a.name.toLowerCase().includes("isolated") &&
               !a.name.toLowerCase().includes("readonly"),
           );
+        } else if (repoPath === "HeidiSQL/HeidiSQL") {
+          asset = r.assets.find((a) =>
+            a.name.toLowerCase().endsWith("_64_Portable.zip"),
+          );
         } else {
           asset = r.assets.find(
             (a) =>
@@ -348,7 +352,8 @@ let baseDataObject = {
     {
       id: "heidisql",
       name: "HeidiSQL",
-      description: "A powerful and easy-to-use tool for managing MySQL, MariaDB and PostgreSQL.",
+      description:
+        "A powerful and easy-to-use tool for managing MySQL, MariaDB and PostgreSQL.",
       category: "tool",
       group_name: "database",
       exec_file: "heidisql.exe",
