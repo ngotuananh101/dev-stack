@@ -11,6 +11,7 @@ import 'widgets/redis_explorer.dart';
 import '../data/redis_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../apps/presentation/widgets/compact_pagination.dart';
+import '../../../shared/providers/navigation_provider.dart';
 
 class DatabasesPage extends ConsumerStatefulWidget {
   const DatabasesPage({super.key});
@@ -66,6 +67,15 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     final enginesAsync = ref.watch(installedDatabaseEnginesProvider);
     final databasesAsync = ref.watch(databasesNotifierProvider);
     final appsState = ref.watch(appsNotifierProvider);
+    final allApps = appsState.valueOrNull ?? [];
+    final heidiSql = allApps.firstWhere(
+      (a) => a.appId == 'heidisql' && a.isInstalled,
+      orElse: () => AppModel(appId: '', name: '', categories: []),
+    );
+    final mongoCompass = allApps.firstWhere(
+      (a) => a.appId == 'mongodb-compass' && a.isInstalled,
+      orElse: () => AppModel(appId: '', name: '', categories: []),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -96,7 +106,14 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildActionHeader(isRedis),
+                      _buildActionHeader(
+                        isRedis,
+                        isMongo:
+                            selectedEngine?.appId.contains('mongodb') == true,
+                        heidiSql: heidiSql.appId.isNotEmpty ? heidiSql : null,
+                        mongoCompass:
+                            mongoCompass.appId.isNotEmpty ? mongoCompass : null,
+                      ),
                       const SizedBox(height: 16),
                       Expanded(
                         child: isRedis
@@ -108,61 +125,70 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                                   setState(() => _selectedRedisDb = index);
                                 },
                               )
-                            : databasesAsync.when(
-                                data: (dbs) {
-                                  final filtered = dbs
-                                      .where(
-                                        (d) => d.name.toLowerCase().contains(
-                                          _searchQuery,
-                                        ),
-                                      )
-                                      .toList();
-                                  final paginated = _paginateDatabases(
-                                    filtered,
-                                  );
-                                  final totalPages = filtered.isEmpty
-                                      ? 1
-                                      : (filtered.length / _itemsPerPage)
-                                            .ceil();
-                                  final startItem = filtered.isEmpty
-                                      ? 0
-                                      : (_currentPage - 1) * _itemsPerPage + 1;
-                                  final endItem = filtered.isEmpty
-                                      ? 0
-                                      : (_currentPage * _itemsPerPage).clamp(
-                                          0,
-                                          filtered.length,
-                                        );
+                            : selectedEngine?.appId.contains('mongodb') == true
+                                ? _buildMongoGuidance(
+                                    mongoCompass: mongoCompass.appId.isNotEmpty
+                                        ? mongoCompass
+                                        : null,
+                                  )
+                                : databasesAsync.when(
+                                    data: (dbs) {
+                                      final filtered = dbs
+                                          .where(
+                                            (d) => d.name.toLowerCase().contains(
+                                                  _searchQuery,
+                                                ),
+                                          )
+                                          .toList();
+                                      final paginated = _paginateDatabases(
+                                        filtered,
+                                      );
+                                      final totalPages = filtered.isEmpty
+                                          ? 1
+                                          : (filtered.length / _itemsPerPage)
+                                              .ceil();
+                                      final startItem = filtered.isEmpty
+                                          ? 0
+                                          : (_currentPage - 1) * _itemsPerPage +
+                                              1;
+                                      final endItem = filtered.isEmpty
+                                          ? 0
+                                          : (_currentPage * _itemsPerPage)
+                                              .clamp(
+                                              0,
+                                              filtered.length,
+                                            );
 
-                                  return Column(
-                                    children: [
-                                      Expanded(
-                                        child: DatabaseTable(
-                                          databases: paginated,
-                                          engineId: selectedEngine?.appId ?? '',
-                                          onDelete: (record) =>
-                                              _handleDelete(record),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      CompactPagination(
-                                        currentPage: _currentPage,
-                                        totalPages: totalPages,
-                                        startItem: startItem,
-                                        endItem: endItem,
-                                        totalItems: filtered.length,
-                                        onPageChanged: (page) =>
-                                            setState(() => _currentPage = page),
-                                      ),
-                                    ],
-                                  );
-                                },
-                                loading: () => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                                error: (e, s) =>
-                                    Center(child: Text('Error: $e')),
-                              ),
+                                      return Column(
+                                        children: [
+                                          Expanded(
+                                            child: DatabaseTable(
+                                              databases: paginated,
+                                              engineId:
+                                                  selectedEngine?.appId ?? '',
+                                              onDelete: (record) =>
+                                                  _handleDelete(record),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          CompactPagination(
+                                            currentPage: _currentPage,
+                                            totalPages: totalPages,
+                                            startItem: startItem,
+                                            endItem: endItem,
+                                            totalItems: filtered.length,
+                                            onPageChanged: (page) => setState(
+                                                () => _currentPage = page),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                    loading: () => const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                    error: (e, s) =>
+                                        Center(child: Text('Error: $e')),
+                                  ),
                       ),
                     ],
                   ),
@@ -205,6 +231,113 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           .read(databasesNotifierProvider.notifier)
           .deleteDatabase(selectedEngine!, record);
     }
+  }
+
+  Widget _buildMongoGuidance({AppModel? mongoCompass}) {
+    final isInstalled = mongoCompass != null;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Column(
+              children: [
+                Icon(
+                  LucideIcons.info,
+                  size: 48,
+                  color: isInstalled ? AppColors.primary : AppColors.warning,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  isInstalled
+                      ? 'MongoDB management is handled via Compass'
+                      : 'MongoDB Compass is recommended',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  isInstalled
+                      ? 'You have MongoDB Compass installed. For advanced data exploration, schema visualization, and management, please use the official GUI.'
+                      : 'To manage your MongoDB databases visually, we recommend installing MongoDB Compass from the Apps section.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                if (isInstalled)
+                  ElevatedButton.icon(
+                    onPressed: () => ref
+                        .read(appsNotifierProvider.notifier)
+                        .openApp(mongoCompass),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF13AA52),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(LucideIcons.externalLink, size: 18),
+                    label: const Text(
+                      'Open MongoDB Compass',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      ref.read(navigationProvider.notifier).setTab(
+                            NavigationTab.apps,
+                          );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(LucideIcons.download, size: 18),
+                    label: const Text(
+                      'Go to Apps to Install',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEmptyState() {
@@ -277,10 +410,15 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     );
   }
 
-  Widget _buildActionHeader(bool isRedis) {
+  Widget _buildActionHeader(
+    bool isRedis, {
+    bool isMongo = false,
+    AppModel? heidiSql,
+    AppModel? mongoCompass,
+  }) {
     return Row(
       children: [
-        if (!isRedis) ...[
+        if (!isRedis && !isMongo) ...[
           _buildActionButton(
             'Add DB',
             LucideIcons.plus,
@@ -304,42 +442,56 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           ),
           const SizedBox(width: 12),
         ],
-        _buildActionButton(
-          'Sync DB',
-          LucideIcons.refreshCw,
-          color: AppColors.accent,
-          onTap: () {
-            if (selectedEngine != null) {
-              if (isRedis) {
-                ref.invalidate(redisDbStatsProvider(selectedEngine!));
-                ref
-                    .read(redisNotifierProvider.notifier)
-                    .fetchKeys(
-                      selectedEngine!,
-                      _selectedRedisDb,
-                      query: _searchQuery,
-                    );
-              } else {
-                ref
-                    .read(databasesNotifierProvider.notifier)
-                    .syncDatabases(selectedEngine!);
-              }
-            }
-          },
-        ),
-        if (isRedis) ...[
-          const SizedBox(width: 12),
+        if (heidiSql != null &&
+            (selectedEngine?.appId.contains('mysql') == true ||
+                selectedEngine?.appId.contains('mariadb') == true)) ...[
           _buildActionButton(
-            'Clear DB',
-            LucideIcons.trash2,
-            color: AppColors.error,
-            onTap: _handleClearRedisDb,
+            'HeidiSQL',
+            LucideIcons.externalLink,
+            color: const Color(0xFFE26B0A),
+            onTap: () =>
+                ref.read(appsNotifierProvider.notifier).openApp(heidiSql),
           ),
+          const SizedBox(width: 12),
         ],
-        const SizedBox(width: 12),
+        if (mongoCompass != null &&
+            selectedEngine?.appId.contains('mongodb') == true) ...[
+          _buildActionButton(
+            'Compass',
+            LucideIcons.externalLink,
+            color: const Color(0xFF13AA52),
+            onTap: () =>
+                ref.read(appsNotifierProvider.notifier).openApp(mongoCompass),
+          ),
+          const SizedBox(width: 12),
+        ],
+        if (!isMongo) ...[
+          _buildActionButton(
+            'Sync DB',
+            LucideIcons.refreshCw,
+            color: AppColors.accent,
+            onTap: () {
+              if (selectedEngine != null) {
+                if (isRedis) {
+                  ref.invalidate(redisDbStatsProvider(selectedEngine!));
+                  ref.read(redisNotifierProvider.notifier).fetchKeys(
+                        selectedEngine!,
+                        _selectedRedisDb,
+                        query: _searchQuery,
+                      );
+                } else {
+                  ref
+                      .read(databasesNotifierProvider.notifier)
+                      .syncDatabases(selectedEngine!);
+                }
+              }
+            },
+          ),
+          const SizedBox(width: 12),
+        ],
         _buildServiceStatusButton(),
         const Spacer(),
-        _buildSearchField(isRedis),
+        if (!isMongo) _buildSearchField(isRedis),
       ],
     );
   }
