@@ -6,6 +6,7 @@ import '../../domain/redis_key.dart';
 import '../../../apps/domain/app_model.dart';
 import '../../data/redis_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'package:dev_stack/shared/utils/app_dialogs.dart';
 
 class RedisExplorer extends ConsumerStatefulWidget {
   final AppModel app;
@@ -334,35 +335,16 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
   }
 
   void _handleDeleteKey(String key) {
-    showDialog(
+    AppDialogs.showConfirm(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(
-          'Delete Key',
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        content: Text(
-          'Are you sure you want to delete key "$key"?',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await ref
-                  .read(redisNotifierProvider.notifier)
-                  .deleteKey(widget.app, widget.selectedDb, key);
-              if (mounted) Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete Key',
+      text: 'Are you sure you want to delete key "$key"?',
+      confirmBtnText: 'DELETE',
+      onConfirm: () async {
+        await ref
+            .read(redisNotifierProvider.notifier)
+            .deleteKey(widget.app, widget.selectedDb, key);
+      },
     );
   }
 }

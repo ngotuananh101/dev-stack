@@ -79,24 +79,37 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     String? note,
   }) async {
     final cliPath = app.cliFilePath;
-    if (cliPath == null || !File(cliPath).existsSync()) throw Exception('CLI not found');
+    if (cliPath == null || !File(cliPath).existsSync()) {
+      throw Exception('CLI not found');
+    }
 
-    // 1. Run CLI Command
-    ProcessResult result;
     if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
-      result = await Process.run(cliPath, [
+      // 1. Create Database
+      final createDb = await Process.run(cliPath, [
         '-u', 'root',
         '-e', 'CREATE DATABASE `$name`;',
       ]);
+      if (createDb.exitCode != 0) throw Exception('Create DB error: ${createDb.stderr}');
+
+      // 2. Create User if not exists and Grant Permissions
+      // We use a single command block to handle user logic
+      final sql = """
+        CREATE USER IF NOT EXISTS '$user'@'%' IDENTIFIED BY '$password';
+        GRANT ALL PRIVILEGES ON `$name`.* TO '$user'@'%';
+        FLUSH PRIVILEGES;
+      """;
+      
+      final grantRes = await Process.run(cliPath, [
+        '-u', 'root',
+        '-e', sql,
+      ]);
+      if (grantRes.exitCode != 0) throw Exception('Grant error: ${grantRes.stderr}');
+      
     } else {
       throw Exception('Engine ${app.appId} not supported for creation yet');
     }
 
-    if (result.exitCode != 0) {
-      throw Exception('CLI Error: ${result.stderr}');
-    }
-
-    // 2. Save to Isar
+    // Save to Isar
     final isar = await ref.read(isarProvider.future);
     final record = DatabaseRecord()
       ..name = name

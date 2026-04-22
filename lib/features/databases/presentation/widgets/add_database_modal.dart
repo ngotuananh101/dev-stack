@@ -29,7 +29,21 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
   bool _isCreating = false;
 
   @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(_onNameChanged);
+  }
+
+  void _onNameChanged() {
+    if (_userController.text.isEmpty ||
+        _userController.text == _nameController.text.substring(0, _nameController.text.length > 0 ? _nameController.text.length - 1 : 0)) {
+      _userController.text = _nameController.text;
+    }
+  }
+
+  @override
   void dispose() {
+    _nameController.removeListener(_onNameChanged);
     _nameController.dispose();
     _userController.dispose();
     _passController.dispose();
@@ -42,10 +56,13 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
 
     setState(() => _isCreating = true);
     try {
+      final dbName = _nameController.text.trim();
+      final userName = _userController.text.trim().isEmpty ? dbName : _userController.text.trim();
+      
       await ref.read(databasesNotifierProvider.notifier).addDatabase(
             app: widget.engine,
-            name: _nameController.text.trim(),
-            user: _userController.text.trim(),
+            name: dbName,
+            user: userName,
             password: _passController.text,
             note: _noteController.text.trim(),
           );
@@ -162,7 +179,7 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                             _buildLabel('Username'),
                             _buildTextField(
                               controller: _userController,
-                              hint: 'root',
+                              hint: 'Same as DB name',
                               icon: LucideIcons.user,
                             ),
                           ],

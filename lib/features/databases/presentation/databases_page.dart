@@ -14,6 +14,7 @@ import '../../apps/presentation/widgets/compact_pagination.dart';
 import '../../../shared/providers/navigation_provider.dart';
 import 'widgets/add_database_modal.dart';
 import 'widgets/add_redis_key_modal.dart';
+import 'package:dev_stack/shared/utils/app_dialogs.dart';
 
 class DatabasesPage extends ConsumerStatefulWidget {
   const DatabasesPage({super.key});
@@ -205,34 +206,20 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     );
   }
 
-  void _handleDelete(DatabaseRecord record) async {
+  void _handleDelete(DatabaseRecord record) {
     if (selectedEngine == null) return;
-    final confirmed = await showDialog<bool>(
+    AppDialogs.showConfirm(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Database'),
-        content: Text(
+      title: 'Delete Database',
+      text:
           'Are you sure you want to delete "${record.name}"? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      confirmBtnText: 'DELETE',
+      onConfirm: () async {
+        await ref
+            .read(databasesNotifierProvider.notifier)
+            .deleteDatabase(selectedEngine!, record);
+      },
     );
-
-    if (confirmed == true) {
-      await ref
-          .read(databasesNotifierProvider.notifier)
-          .deleteDatabase(selectedEngine!, record);
-    }
   }
 
   Widget _buildMongoGuidance({AppModel? mongoCompass}) {
