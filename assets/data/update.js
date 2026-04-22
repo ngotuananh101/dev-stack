@@ -333,7 +333,7 @@ let baseDataObject = {
       category: "database",
       group_name: "database",
       exec_file: "mongod.exe",
-      cli_file: "mongo.exe",
+      cli_file: "mongos.exe",
     },
     {
       id: "mongodb-compass",
