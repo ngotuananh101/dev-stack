@@ -155,7 +155,7 @@ class AppInstallerService {
       }
 
       // 8. Post-installation: Configure MongoDB
-      if (app.appId.toLowerCase().contains('mongodb')) {
+      if (app.appId == 'mongodb') {
         await _configureMongodb(app, installPath, logInfo);
       }
 
