@@ -4,16 +4,19 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../data/databases_provider.dart';
+import '../../domain/database_record.dart';
 import '../../../apps/domain/app_model.dart';
 
 class AddDatabaseModal extends ConsumerStatefulWidget {
   final AppModel engine;
   final VoidCallback onClose;
+  final DatabaseRecord? initialData;
 
   const AddDatabaseModal({
     super.key,
     required this.engine,
     required this.onClose,
+    this.initialData,
   });
 
   @override
@@ -27,11 +30,19 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
   final _passController = TextEditingController();
   final _noteController = TextEditingController();
   bool _isCreating = false;
+  bool get isEdit => widget.initialData != null;
 
   @override
   void initState() {
     super.initState();
-    _nameController.addListener(_onNameChanged);
+    if (isEdit) {
+      _nameController.text = widget.initialData!.name;
+      _userController.text = widget.initialData!.username;
+      _passController.text = widget.initialData!.password;
+      _noteController.text = widget.initialData!.note ?? '';
+    } else {
+      _nameController.addListener(_onNameChanged);
+    }
   }
 
   void _onNameChanged() {
@@ -58,14 +69,24 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
     try {
       final dbName = _nameController.text.trim();
       final userName = _userController.text.trim().isEmpty ? dbName : _userController.text.trim();
-      
-      await ref.read(databasesNotifierProvider.notifier).addDatabase(
-            app: widget.engine,
-            name: dbName,
-            user: userName,
-            password: _passController.text,
-            note: _noteController.text.trim(),
-          );
+
+      if (isEdit) {
+        await ref.read(databasesNotifierProvider.notifier).updateDatabase(
+          app: widget.engine,
+          record: widget.initialData!,
+          newUser: userName,
+          newPassword: _passController.text,
+          newNote: _noteController.text.trim(),
+        );
+      } else {
+        await ref.read(databasesNotifierProvider.notifier).addDatabase(
+          app: widget.engine,
+          name: dbName,
+          user: userName,
+          password: _passController.text,
+          note: _noteController.text.trim(),
+        );
+      }
       widget.onClose();
     } catch (e) {
       if (mounted) {
@@ -111,21 +132,23 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                   const Icon(LucideIcons.database,
                       size: 20, color: AppColors.primary),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Create New Database',
-                          style: TextStyle(
+                          isEdit ? 'Edit Database' : 'Create New Database',
+                          style: const TextStyle(
                             fontSize: AppTextSize.sm,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),
                         ),
                         Text(
-                          'Configure your new database instance',
-                          style: TextStyle(
+                          isEdit
+                              ? 'Update database configuration'
+                              : 'Configure your new database instance',
+                          style: const TextStyle(
                             fontSize: AppTextSize.xxs,
                             color: AppColors.textMuted,
                           ),
@@ -159,6 +182,7 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                     controller: _nameController,
                     hint: 'e.g. my_project_db',
                     icon: LucideIcons.tag,
+                    enabled: !isEdit,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter a database name';
@@ -249,7 +273,9 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                         horizontal: 32, vertical: 12),
                   ),
                   child: Text(
-                    _isCreating ? 'Creating...' : 'Create Database',
+                    _isCreating
+                        ? (isEdit ? 'Updating...' : 'Creating...')
+                        : (isEdit ? 'Update Database' : 'Create Database'),
                     style: const TextStyle(
                       fontSize: AppTextSize.xs,
                       fontWeight: FontWeight.w500,
@@ -284,6 +310,7 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
     required String hint,
     required IconData icon,
     bool isPassword = false,
+    bool enabled = true,
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
@@ -291,8 +318,12 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
       controller: controller,
       obscureText: isPassword,
       maxLines: maxLines,
+      enabled: enabled,
       validator: validator,
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+      style: TextStyle(
+        color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+        fontSize: 14,
+      ),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),

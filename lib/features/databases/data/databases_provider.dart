@@ -123,16 +123,55 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     await fetchByEngine(app.appId);
   }
 
+  Future<void> updateDatabase({
+    required AppModel app,
+    required DatabaseRecord record,
+    required String newUser,
+    required String newPassword,
+    String? newNote,
+  }) async {
+    final cliPath = app.cliFilePath;
+    if (cliPath == null || !File(cliPath).existsSync()) {
+      throw Exception('CLI not found');
+    }
+
+    // Update user password if changed and engine supports it
+    if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
+      if (newPassword.isNotEmpty) {
+        final sql = "ALTER USER '$newUser'@'%' IDENTIFIED BY '$newPassword'; FLUSH PRIVILEGES;";
+        final res = await Process.run(cliPath, ['-u', 'root', '-e', sql]);
+        if (res.exitCode != 0) throw Exception('Update password error: ${res.stderr}');
+      }
+    }
+
+    // Update Isar record
+    record
+      ..username = newUser
+      ..password = newPassword
+      ..note = newNote;
+
+    final isar = await ref.read(isarProvider.future);
+    await isar.writeTxn(() => isar.databaseRecords.put(record));
+    await fetchByEngine(app.appId);
+  }
+
   Future<void> deleteDatabase(AppModel app, DatabaseRecord record) async {
     final cliPath = app.cliFilePath;
     if (cliPath == null) throw Exception('CLI not found');
 
     // 1. Run CLI Command
     if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
+      // Drop the database first
       await Process.run(cliPath, [
         '-u', 'root',
         '-e', 'DROP DATABASE `${record.name}`;',
       ]);
+
+      // Drop the associated user if they only had access to this one database
+      final username = record.username;
+      if (username.isNotEmpty && username != 'root') {
+        await _dropUserIfExclusive(cliPath, username, record.name);
+      }
     } else if (app.appId.contains('redis')) {
       // Extract DB index from name (e.g., "db0" -> "0")
       final dbIndex = record.name.replaceAll('db', '');
@@ -143,6 +182,39 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     final isar = await ref.read(isarProvider.future);
     await isar.writeTxn(() => isar.databaseRecords.delete(record.id));
     await fetchByEngine(app.appId);
+  }
+
+  /// Drops a MySQL/MariaDB user if they only have GRANT on [dbName] and nothing else.
+  Future<void> _dropUserIfExclusive(
+      String cliPath, String username, String dbName) async {
+    // SHOW GRANTS returns lines like:
+    //   GRANT ALL PRIVILEGES ON `mydb`.* TO 'user'@'%'
+    //   GRANT USAGE ON *.* TO 'user'@'%'   <- baseline, always present
+    final grantsRes = await Process.run(cliPath, [
+      '-u', 'root',
+      '-se', "SHOW GRANTS FOR '$username'@'%';",
+    ]);
+    if (grantsRes.exitCode != 0) return; // user may not exist
+
+    final grants = grantsRes.stdout
+        .toString()
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        // Exclude the baseline USAGE ON *.* grant that every user has
+        .where((l) => !RegExp(r"^GRANT USAGE ON \*\.\*").hasMatch(l))
+        .toList();
+
+    // Check if the only remaining grant is for our database
+    final onlyThisDb = grants.every((g) =>
+        g.contains('`$dbName`') || g.contains("'$dbName'"));
+
+    if (onlyThisDb) {
+      await Process.run(cliPath, [
+        '-u', 'root',
+        '-e', "DROP USER IF EXISTS '$username'@'%'; FLUSH PRIVILEGES;",
+      ]);
+    }
   }
 
   Future<List<String>> _getMysqlNames(String cliPath) async {

@@ -171,6 +171,8 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                                                   selectedEngine?.appId ?? '',
                                               onDelete: (record) =>
                                                   _handleDelete(record),
+                                              onEdit: (record) =>
+                                                  _handleEditDatabase(record),
                                             ),
                                           ),
                                           const SizedBox(height: 16),
@@ -717,4 +719,19 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     );
   }
 
+  void _handleEditDatabase(DatabaseRecord record) {
+    if (selectedEngine == null) return;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) => Center(
+        child: AddDatabaseModal(
+          engine: selectedEngine!,
+          initialData: record,
+          onClose: () => Navigator.pop(context),
+        ),
+      ),
+    );
+  }
 }

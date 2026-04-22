@@ -9,12 +9,14 @@ class DatabaseTable extends StatelessWidget {
   final List<DatabaseRecord> databases;
   final String engineId;
   final Function(DatabaseRecord) onDelete;
+  final Function(DatabaseRecord) onEdit;
 
   const DatabaseTable({
     super.key, 
     required this.databases,
     required this.engineId,
     required this.onDelete,
+    required this.onEdit,
   });
 
   bool get isRedis => engineId.contains('redis');
@@ -228,10 +230,10 @@ class DatabaseTable extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   _buildActionIconButton(
-                    icon: Icons.tune_rounded,
-                    onPressed: () {},
+                    icon: Icons.edit_outlined,
+                    onPressed: () => onEdit(db),
                     color: AppColors.textSecondary,
-                    tooltip: 'Manage',
+                    tooltip: 'Edit Database',
                   ),
                   const SizedBox(width: 8),
                   _buildActionIconButton(
