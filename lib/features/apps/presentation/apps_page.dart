@@ -182,6 +182,11 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                           if (!context.mounted) return;
                           AppDialogs.showToast(context, 'Set as Default PHP successful');
                         },
+                        onOpen: (app) async {
+                          await ref
+                              .read(appsNotifierProvider.notifier)
+                              .openApp(app);
+                        },
                       ),
                     ),
                     const SizedBox(height: 16),

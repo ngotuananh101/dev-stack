@@ -11,6 +11,9 @@ import '../../../core/services/path_service.dart';
 import '../../../shared/providers/error_provider.dart';
 import '../../../shared/utils/app_dialogs.dart';
 
+import 'dart:io';
+import 'package:process_run/shell.dart';
+
 part 'apps_provider.g.dart';
 
 @riverpod
@@ -456,6 +459,23 @@ class AppsNotifier extends _$AppsNotifier {
     } catch (e) {
       debugPrint('Error changing default PHP: $e');
       ref.read(errorNotifierProvider.notifier).setError('Failed to change default PHP: $e');
+    }
+  }
+
+  Future<void> openApp(AppModel app) async {
+    if (!app.isInstalled || app.execFilePath == null) return;
+    
+    try {
+      final file = File(app.execFilePath!);
+      if (await file.exists()) {
+        final shell = Shell();
+        await shell.run('start "" "${app.execFilePath}"');
+      } else {
+        throw Exception('Executable not found at ${app.execFilePath}');
+      }
+    } catch (e) {
+      debugPrint('Error opening app: $e');
+      ref.read(errorNotifierProvider.notifier).setError('Failed to open ${app.name}: $e');
     }
   }
 }

@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "lastUpdated": "2026-04-22T15:09:31.951Z",
+  "lastUpdated": "2026-04-22T15:46:56.223Z",
   "apps": [
     {
       "id": "pyenv",
@@ -523,7 +523,7 @@
       "category": "database",
       "group_name": "database",
       "exec_file": "mongod.exe",
-      "cli_file": "mongo.exe",
+      "cli_file": "mongos.exe",
       "versions": {
         "8.2.7": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.2.7.zip",
         "8.0.20": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.0.20.zip",
@@ -554,9 +554,32 @@
       "cli_file": "heidisql.exe",
       "repo": "HeidiSQL/HeidiSQL",
       "versions": {
-        "12.8": "https://github.com/HeidiSQL/HeidiSQL/releases/download/v12.8/HeidiSQL_12.8.0.6908_Portable.zip",
-        "12.7": "https://github.com/HeidiSQL/HeidiSQL/releases/download/v12.7/HeidiSQL_12.7.0.6850_Portable.zip",
-        "12.6": "https://github.com/HeidiSQL/HeidiSQL/releases/download/v12.6/HeidiSQL_12.6.0.6765_Portable.zip"
+        "12.17": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.17.zip",
+        "12.16": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/v12.16.zip",
+        "12.15.1.1": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/v12.15.1.1.zip",
+        "12.14.1.1": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/v12.14.1.1.zip",
+        "12.13.1.1": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/v12.13.1.1.zip",
+        "12.12-Linux": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.12-Linux.zip",
+        "12.12": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.12.zip",
+        "12.11.1.167": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.11.1.167.zip",
+        "12.10": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.10.zip",
+        "12.9": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.9.zip",
+        "12.8": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.8.zip",
+        "12.7": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.7.zip",
+        "12.6": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.6.zip",
+        "12.5": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.5.zip",
+        "12.4": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.4.zip",
+        "12.3": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.3.zip",
+        "12.2": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.2.zip",
+        "12.1": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.1.zip",
+        "12.0": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/12.0.zip",
+        "11.3": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/11.3.zip",
+        "11.2": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/11.2.zip",
+        "11.1": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/11.1.zip",
+        "11.0": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/11.0.zip",
+        "10.3": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/10.3.zip",
+        "10.2": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/10.2.zip",
+        "10.1": "https://github.com/HeidiSQL/HeidiSQL/archive/refs/tags/10.1.zip"
       }
     },
     {

@@ -16,6 +16,7 @@ class CompactAppsTable extends StatelessWidget {
   final Future<void> Function(AppModel) onStopService;
   final Future<void> Function(AppModel) onRestartService;
   final Future<void> Function(String) onChangeDefault;
+  final Future<void> Function(AppModel) onOpen;
 
   const CompactAppsTable({
     super.key,
@@ -27,6 +28,7 @@ class CompactAppsTable extends StatelessWidget {
     required this.onStopService,
     required this.onRestartService,
     required this.onChangeDefault,
+    required this.onOpen,
   });
 
   IconData _getAppIcon(String appId) {
@@ -62,6 +64,8 @@ class CompactAppsTable extends StatelessWidget {
     if (id.contains('apache')) return 'apache';
     if (id.contains('redis')) return 'redis';
     if (id.contains('python') || id.contains('pyenv')) return 'python';
+    if (id.contains('heidisql')) return 'heidisql';
+    if (id.contains('compass')) return 'mongodb';
 
     // Fallback to group name if id doesn't match
     return group;
@@ -588,6 +592,16 @@ class CompactAppsTable extends StatelessWidget {
             color: AppColors.primary,
             tooltip: 'Install',
           ),
+        if (app.isInstalled &&
+            (app.appId == 'mongodb-compass' || app.appId == 'heidisql')) ...[
+          const SizedBox(width: 8),
+          _buildIconButton(
+            icon: Icons.open_in_new_rounded,
+            onPressed: () => onOpen(app),
+            color: AppColors.success,
+            tooltip: 'Open Application',
+          ),
+        ],
       ],
     );
   }

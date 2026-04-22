@@ -185,6 +185,7 @@ const fetchers = {
       if (r.assets?.length > 0) {
         let asset;
         if (repoPath === "mongodb-js/compass") {
+          url = null;
           asset = r.assets.find(
             (a) =>
               a.name.toLowerCase().includes("win32-x64") &&
@@ -193,6 +194,7 @@ const fetchers = {
               !a.name.toLowerCase().includes("readonly"),
           );
         } else if (repoPath === "HeidiSQL/HeidiSQL") {
+          url = null;
           asset = r.assets.find((a) =>
             a.name.toLowerCase().endsWith("_64_Portable.zip"),
           );
@@ -213,7 +215,9 @@ const fetchers = {
         }
         if (asset) url = asset.browser_download_url;
       }
-      versions[ver] = url;
+      if (url) {
+        versions[ver] = url;
+      }
     });
     return versions;
   },
