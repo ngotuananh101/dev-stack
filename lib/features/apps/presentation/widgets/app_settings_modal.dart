@@ -63,7 +63,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       widget.app.groupName == 'redis' ||
       widget.app.appId.toLowerCase().contains('redis');
 
-  bool get _isMongodb => widget.app.appId.toLowerCase().contains('mongodb');
+  bool get _isMongodb => widget.app.appId == 'mongodb';
 
   int get _tabCount {
     if (_isPma) return 2;
