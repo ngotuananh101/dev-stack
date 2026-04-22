@@ -531,6 +531,21 @@
       }
     },
     {
+      "id": "mongodb-compass",
+      "name": "MongoDB Compass",
+      "description": "The GUI for MongoDB.",
+      "category": "tool",
+      "group_name": "database",
+      "exec_file": "MongoDB Compass.exe",
+      "cli_file": "MongoDB Compass.exe",
+      "repo": "mongodb-js/compass",
+      "versions": {
+        "1.49.4": "https://github.com/mongodb-js/compass/releases/download/v1.49.4/mongodb-compass-1.49.4-win32-x64.zip",
+        "1.49.3": "https://github.com/mongodb-js/compass/releases/download/v1.49.3/mongodb-compass-1.49.3-win32-x64.zip",
+        "1.49.2": "https://github.com/mongodb-js/compass/releases/download/v1.49.2/mongodb-compass-1.49.2-win32-x64.zip"
+      }
+    },
+    {
       "id": "phpMyAdmin",
       "name": "phpMyAdmin",
       "description": "Web interface for MySQL and MariaDB.",

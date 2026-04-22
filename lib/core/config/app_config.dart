@@ -16,7 +16,4 @@ class AppConfig {
 
   /// The base directory for all tools and binaries
   static const String baseBinDir = 'assets/bin';
-
-  // HeidiSQL path
-  static const String heidiSqlPath = 'assets/bin/HeidiSQL/heidisql.exe';
 }

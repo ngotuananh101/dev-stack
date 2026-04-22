@@ -324,6 +324,16 @@ let baseDataObject = {
       cli_file: "mongo.exe",
     },
     {
+      id: "mongodb-compass",
+      name: "MongoDB Compass",
+      description: "The GUI for MongoDB.",
+      category: "tool",
+      group_name: "database",
+      exec_file: "MongoDB Compass.exe",
+      cli_file: "MongoDB Compass.exe",
+      repo: "mongodb-js/compass",
+    },
+    {
       id: "phpMyAdmin",
       name: "phpMyAdmin",
       description: "Web interface for MySQL and MariaDB.",
