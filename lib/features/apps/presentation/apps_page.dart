@@ -133,9 +133,18 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                       child: CompactAppsTable(
                         apps: paginatedApps,
                         onToggleInstall: (app) async {
-                          await ref
-                              .read(appsNotifierProvider.notifier)
-                              .toggleInstallation(app);
+                          try {
+                            await ref
+                                .read(appsNotifierProvider.notifier)
+                                .toggleInstallation(app);
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            AppDialogs.showError(
+                              context,
+                              title: 'Action Failed',
+                              message: e.toString().replaceFirst('Exception: ', ''),
+                            );
+                          }
                         },
                         onToggleDashboard: (app) async {
                           final repository = await ref.read(
