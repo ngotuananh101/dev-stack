@@ -12,6 +12,8 @@ import '../data/redis_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../apps/presentation/widgets/compact_pagination.dart';
 import '../../../shared/providers/navigation_provider.dart';
+import 'widgets/add_database_modal.dart';
+import 'widgets/add_redis_key_modal.dart';
 
 class DatabasesPage extends ConsumerStatefulWidget {
   const DatabasesPage({super.key});
@@ -700,49 +702,15 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
   void _showAddRedisKeyDialog() {
     if (selectedEngine == null) return;
 
-    final keyController = TextEditingController();
-    final valueController = TextEditingController();
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(
-          'Add Key (DB$_selectedRedisDb)',
-          style: const TextStyle(color: AppColors.textPrimary),
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) => Center(
+        child: AddRedisKeyModal(
+          engine: selectedEngine!,
+          dbIndex: _selectedRedisDb,
+          onClose: () => Navigator.pop(context),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDialogField('Key Name', keyController),
-            const SizedBox(height: 12),
-            _buildDialogField('Value (String)', valueController),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final key = keyController.text.trim();
-              if (key.isNotEmpty) {
-                await ref
-                    .read(redisNotifierProvider.notifier)
-                    .setKey(
-                      selectedEngine!,
-                      _selectedRedisDb,
-                      key,
-                      valueController.text,
-                    );
-                if (mounted) Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent),
-            child: const Text('Add'),
-          ),
-        ],
       ),
     );
   }
@@ -750,76 +718,16 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
   void _showAddDatabaseDialog() {
     if (selectedEngine == null) return;
 
-    final nameController = TextEditingController();
-    final userController = TextEditingController(text: 'root');
-    final passController = TextEditingController();
-    final noteController = TextEditingController();
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text(
-          'Add New Database',
-          style: TextStyle(color: AppColors.textPrimary),
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) => Center(
+        child: AddDatabaseModal(
+          engine: selectedEngine!,
+          onClose: () => Navigator.pop(context),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDialogField('Database Name', nameController),
-            const SizedBox(height: 12),
-            _buildDialogField('Username', userController),
-            const SizedBox(height: 12),
-            _buildDialogField('Password', passController, isPassword: true),
-            const SizedBox(height: 12),
-            _buildDialogField('Note', noteController),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final name = nameController.text.trim();
-              if (name.isNotEmpty) {
-                await ref
-                    .read(databasesNotifierProvider.notifier)
-                    .addDatabase(
-                      app: selectedEngine!,
-                      name: name,
-                      user: userController.text,
-                      password: passController.text,
-                      note: noteController.text,
-                    );
-                if (mounted) Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent),
-            child: const Text('Create'),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildDialogField(
-    String label,
-    TextEditingController controller, {
-    bool isPassword = false,
-  }) {
-    return TextField(
-      controller: controller,
-      obscureText: isPassword,
-      style: const TextStyle(color: AppColors.textPrimary),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textSecondary),
-        enabledBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppColors.border),
-        ),
-      ),
-    );
-  }
 }
