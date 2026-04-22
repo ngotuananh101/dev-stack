@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/core/theme/app_text_size.dart';
+import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import '../../domain/database_record.dart';
 
 class DatabaseTable extends StatelessWidget {
@@ -35,7 +37,7 @@ class DatabaseTable extends StatelessWidget {
             ...databases.asMap().entries.map((entry) {
               final index = entry.key;
               final db = entry.value;
-              return _buildTableRow(db, index == databases.length - 1);
+              return _buildTableRow(context, db, index == databases.length - 1);
             }),
         ],
       ),
@@ -100,7 +102,7 @@ class DatabaseTable extends StatelessWidget {
     );
   }
 
-  Widget _buildTableRow(DatabaseRecord db, bool isLast) {
+  Widget _buildTableRow(BuildContext context, DatabaseRecord db, bool isLast) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -179,10 +181,37 @@ class DatabaseTable extends StatelessWidget {
             ),
             Expanded(
               flex: 1,
-              child: Text(
-                db.password.isEmpty ? '-' : '********',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
-                overflow: TextOverflow.ellipsis,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      db.password.isEmpty ? '-' : '********',
+                      style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: AppTextSize.xs),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (db.password.isNotEmpty)
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: db.password));
+                          AppDialogs.showToast(context, 'Password copied!');
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4.0),
+                          child: Icon(
+                            Icons.copy_rounded,
+                            size: 14,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             Expanded(
