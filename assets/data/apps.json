@@ -545,6 +545,21 @@
       }
     },
     {
+      "id": "heidisql",
+      "name": "HeidiSQL",
+      "description": "A powerful and easy-to-use tool for managing MySQL, MariaDB and PostgreSQL.",
+      "category": "tool",
+      "group_name": "database",
+      "exec_file": "heidisql.exe",
+      "cli_file": "heidisql.exe",
+      "repo": "HeidiSQL/HeidiSQL",
+      "versions": {
+        "12.8": "https://github.com/HeidiSQL/HeidiSQL/releases/download/v12.8/HeidiSQL_12.8.0.6908_Portable.zip",
+        "12.7": "https://github.com/HeidiSQL/HeidiSQL/releases/download/v12.7/HeidiSQL_12.7.0.6850_Portable.zip",
+        "12.6": "https://github.com/HeidiSQL/HeidiSQL/releases/download/v12.6/HeidiSQL_12.6.0.6765_Portable.zip"
+      }
+    },
+    {
       "id": "phpMyAdmin",
       "name": "phpMyAdmin",
       "description": "Web interface for MySQL and MariaDB.",

@@ -346,6 +346,16 @@ let baseDataObject = {
       repo: "mongodb-js/compass",
     },
     {
+      id: "heidisql",
+      name: "HeidiSQL",
+      description: "A powerful and easy-to-use tool for managing MySQL, MariaDB and PostgreSQL.",
+      category: "tool",
+      group_name: "database",
+      exec_file: "heidisql.exe",
+      cli_file: "heidisql.exe",
+      repo: "HeidiSQL/HeidiSQL",
+    },
+    {
       id: "phpMyAdmin",
       name: "phpMyAdmin",
       description: "Web interface for MySQL and MariaDB.",
