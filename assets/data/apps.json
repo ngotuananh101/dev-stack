@@ -536,8 +536,8 @@
       "description": "The GUI for MongoDB.",
       "category": "tool",
       "group_name": "database",
-      "exec_file": "MongoDB Compass.exe",
-      "cli_file": "MongoDB Compass.exe",
+      "exec_file": "MongoDBCompass.exe",
+      "cli_file": "MongoDBCompass.exe",
       "repo": "mongodb-js/compass",
       "versions": {
         "1.49.4": "https://github.com/mongodb-js/compass/releases/download/v1.49.4/mongodb-compass-1.49.4-win32-x64.zip",
