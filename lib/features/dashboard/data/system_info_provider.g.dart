@@ -1,26 +1,27 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'settings_provider.dart';
+part of 'system_info_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$settingsNotifierHash() => r'c391b984258259a524531f59ed0a8a47aa0a1a6b';
+String _$systemInfoNotifierHash() =>
+    r'5ef4a40d8a877d84a449245d7fa3a589380d1859';
 
-/// See also [SettingsNotifier].
-@ProviderFor(SettingsNotifier)
-final settingsNotifierProvider =
-    AsyncNotifierProvider<SettingsNotifier, AppSettings>.internal(
-  SettingsNotifier.new,
-  name: r'settingsNotifierProvider',
+/// See also [SystemInfoNotifier].
+@ProviderFor(SystemInfoNotifier)
+final systemInfoNotifierProvider =
+    AutoDisposeAsyncNotifierProvider<SystemInfoNotifier, SystemInfo>.internal(
+  SystemInfoNotifier.new,
+  name: r'systemInfoNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$settingsNotifierHash,
+      : _$systemInfoNotifierHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$SettingsNotifier = AsyncNotifier<AppSettings>;
+typedef _$SystemInfoNotifier = AutoDisposeAsyncNotifier<SystemInfo>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
