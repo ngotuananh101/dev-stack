@@ -25,11 +25,16 @@ class AppSettingsModal extends ConsumerStatefulWidget {
 
 class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     with SingleTickerProviderStateMixin {
+  // ─── Constants ───────────────────────────────────────────────────────────────
+  static const int _codeEditorLineThreshold = 500;
+
+  // ─── Controllers ─────────────────────────────────────────────────────────────
   late TabController _tabController;
   CodeController? _codeController;
   final TextEditingController _fallbackController = TextEditingController();
+
+  // ─── State ────────────────────────────────────────────────────────────────────
   String? _iniContent;
-  bool _isLoading = true;
   bool _isEditorReady = false;
   bool _useCodeEditor = false;
   List<PhpExtension> _extensions = [];
@@ -41,6 +46,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   bool _isConfigLoading = false;
   bool _isExtensionsLoading = false;
 
+  // ─── App type getters ─────────────────────────────────────────────────────────
   bool get _isPma => widget.app.appId.toLowerCase() == 'phpmyadmin';
 
   bool get _isPhp =>
@@ -65,6 +71,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
 
   bool get _isMongodb => widget.app.appId == 'mongodb';
 
+  bool get _hasConfigTab =>
+      _isPhp || _isDb || _isWebserver || _isRedis || _isMongodb;
+
   int get _tabCount {
     if (_isPma) return 2;
     if (_isPhp) return 3;
@@ -72,27 +81,13 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     return 1;
   }
 
+  // ─── Lifecycle ────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabCount, vsync: this);
     _tabController.addListener(_handleTabSelection);
-
-    // Set loading to false immediately to show Service tab info instantly
-    _isLoading = false;
-  }
-
-  void _handleTabSelection() {
-    if (_tabController.indexIsChanging) return;
-
-    final index = _tabController.index;
-    if (index == 1 &&
-        (_isPhp || _isDb || _isWebserver || _isRedis || _isMongodb) &&
-        !_isConfigLoaded) {
-      _loadConfig();
-    } else if (index == 2 && _isPhp && !_isExtensionsLoaded) {
-      _loadExtensions();
-    }
+    // ✅ Không preload config ở đây — Service tab hiển thị tức thì
   }
 
   @override
@@ -103,6 +98,22 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     super.dispose();
   }
 
+  // ─── Tab handling ─────────────────────────────────────────────────────────────
+  void _handleTabSelection() {
+    if (_tabController.indexIsChanging) return;
+    final index = _tabController.index;
+
+    // ✅ Lazy load config chỉ khi user thực sự vào tab Config
+    if (index == 1 && _hasConfigTab && !_isConfigLoaded && !_isConfigLoading) {
+      _loadConfig();
+    }
+
+    if (index == 2 && _isPhp && !_isExtensionsLoaded && !_isExtensionsLoading) {
+      _loadExtensions();
+    }
+  }
+
+  // ─── Data loading ─────────────────────────────────────────────────────────────
   Future<void> _loadConfig() async {
     if (_isConfigLoading) return;
     setState(() => _isConfigLoading = true);
@@ -130,20 +141,26 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           .readConfig(widget.app);
     }
 
-    if (mounted) {
-      setState(() {
-        _iniContent = content;
-        _fallbackController.text = content;
-        _isConfigLoaded = true;
-        _isConfigLoading = false;
+    if (!mounted) return;
 
-        // Use CodeEditor for all configs to maintain consistent UI
-        _useCodeEditor = true;
-      });
+    // ✅ Đếm dòng để quyết định dùng CodeEditor hay TextField
+    final lineCount = '\n'.allMatches(content).length;
+    final useCodeEditor = lineCount <= _codeEditorLineThreshold;
 
-      if (_useCodeEditor) {
-        _initCodeControllerLazily();
-      }
+    setState(() {
+      _iniContent = content;
+      _fallbackController.text = content;
+      _isConfigLoaded = true;
+      _isConfigLoading = false;
+      _useCodeEditor = useCodeEditor;
+      // Reset editor state khi load lại
+      _isEditorReady = false;
+      _codeController?.dispose();
+      _codeController = null;
+    });
+
+    if (_useCodeEditor) {
+      _initCodeControllerLazily();
     }
   }
 
@@ -154,6 +171,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     final content =
         _iniContent ??
         await ref.read(phpSettingsProvider.notifier).readPhpIni(widget.app);
+
     final exts = await ref
         .read(phpSettingsProvider.notifier)
         .getExtensions(widget.app, content);
@@ -167,29 +185,29 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     }
   }
 
+  // ─── Editor init ──────────────────────────────────────────────────────────────
   void _initCodeControllerLazily() {
-    // Wait for modal transition to finish completely
-    Future.delayed(const Duration(milliseconds: 500), () {
+    // Delay nhỏ để frame hiện tại (loading indicator) render xong trước
+    Future.delayed(const Duration(milliseconds: 150), () {
       if (!mounted || _iniContent == null) return;
 
-      // Step 1: Create controller WITHOUT language (much faster)
-      final controller = CodeController(text: _iniContent!);
+      // ✅ Gộp tạo controller + apply language trong 1 bước, 1 setState duy nhất
+      // File nhỏ (≤ 500 dòng) nên highlight không gây jank đáng kể
+      final controller = CodeController(
+        text: _iniContent!,
+        language: properties,
+      );
+
       if (mounted) {
         setState(() {
           _codeController = controller;
           _isEditorReady = true;
         });
       }
-
-      // Step 2: Apply highlighting after another delay to avoid micro-stutter
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted && _codeController != null) {
-          _codeController!.language = properties;
-        }
-      });
     });
   }
 
+  // ─── Save ─────────────────────────────────────────────────────────────────────
   Future<void> _saveConfig() async {
     final text = _useCodeEditor && _codeController != null
         ? _codeController!.text
@@ -213,8 +231,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           .saveConfig(widget.app, text);
     }
 
-    _isConfigLoaded = false; // Force reload after save
+    // Force reload sau khi save
+    _isConfigLoaded = false;
     await _loadConfig();
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -233,6 +253,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     await _loadExtensions();
   }
 
+  // ─── Build ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -255,28 +276,21 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           _buildHeader(),
           _buildTabBar(),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      KeepAliveWrapper(child: _buildServiceTab()),
-                      if (_isPhp ||
-                          _isDb ||
-                          _isWebserver ||
-                          _isRedis ||
-                          _isMongodb)
-                        KeepAliveWrapper(child: _buildConfigTab()),
-                      if (_isPhp)
-                        KeepAliveWrapper(child: _buildExtensionsTab()),
-                    ],
-                  ),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                KeepAliveWrapper(child: _buildServiceTab()),
+                if (_hasConfigTab) KeepAliveWrapper(child: _buildConfigTab()),
+                if (_isPhp) KeepAliveWrapper(child: _buildExtensionsTab()),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
+  // ─── Header ───────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -366,6 +380,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     );
   }
 
+  // ─── Tab bar ──────────────────────────────────────────────────────────────────
   Widget _buildTabBar() {
     return Container(
       decoration: BoxDecoration(
@@ -375,38 +390,24 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       child: TabBar(
         controller: _tabController,
         tabs: [
-          Tab(
+          const Tab(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.info_outline_rounded, size: 16),
-                const SizedBox(width: 8),
-                const Text('Service'),
+                Icon(Icons.info_outline_rounded, size: 16),
+                SizedBox(width: 8),
+                Text('Service'),
               ],
             ),
           ),
-          if (_isPhp || _isDb || _isWebserver || _isRedis || _isMongodb)
+          if (_hasConfigTab)
             Tab(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.tune_rounded, size: 16),
                   const SizedBox(width: 8),
-                  Text(
-                    _isPma
-                        ? 'config.inc.php'
-                        : _isDb
-                        ? 'my.ini'
-                        : _isWebserver
-                        ? (widget.app.appId.contains('nginx')
-                              ? 'nginx.conf'
-                              : 'httpd.conf')
-                        : _isRedis
-                        ? 'redis.conf'
-                        : _isMongodb
-                        ? 'mongod.cfg'
-                        : 'Config',
-                  ),
+                  Text(_configTabLabel),
                 ],
               ),
             ),
@@ -434,6 +435,19 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     );
   }
 
+  /// Label cho config tab — tách ra để dùng ở cả TabBar lẫn ConfigTab header
+  String get _configTabLabel {
+    if (_isPma) return 'config.inc.php';
+    if (_isDb) return 'my.ini';
+    if (_isWebserver) {
+      return widget.app.appId.contains('nginx') ? 'nginx.conf' : 'httpd.conf';
+    }
+    if (_isRedis) return 'redis.conf';
+    if (_isMongodb) return 'mongod.cfg';
+    return 'php.ini';
+  }
+
+  // ─── Service tab ──────────────────────────────────────────────────────────────
   Widget _buildServiceTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -463,7 +477,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           _buildInfoSection('Executable Paths', [
             _buildInfoRow(
               Icons.terminal,
-              'CLI  File Path',
+              'CLI File Path',
               widget.app.cliFilePath ?? 'Not found',
             ),
             _buildInfoRow(
@@ -563,119 +577,179 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     );
   }
 
+  // ─── Config tab ───────────────────────────────────────────────────────────────
   Widget _buildConfigTab() {
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.description_outlined,
-                size: 16,
-                color: AppColors.textSecondary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _isPma
-                    ? 'config.inc.php'
-                    : _isDb
-                    ? 'my.ini'
-                    : _isWebserver
-                    ? (widget.app.appId.contains('nginx')
-                          ? 'nginx.conf'
-                          : 'httpd.conf')
-                    : _isRedis
-                    ? 'redis.conf'
-                    : _isMongodb
-                    ? 'mongod.cfg'
-                    : 'php.ini',
-                style: const TextStyle(
-                  fontSize: AppTextSize.xs,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const Spacer(),
-              if (_isConfigLoading)
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else
-                ElevatedButton.icon(
-                  onPressed: _saveConfig,
-                  icon: const Icon(Icons.save_rounded, size: 16),
-                  label: const Text('Save Changes'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.background,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          _buildConfigTabHeader(),
           const SizedBox(height: 16),
-          Expanded(
-            child: _isConfigLoading
-                ? const Center(child: CircularProgressIndicator())
-                : Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child:
-                        !_useCodeEditor ||
-                            !_isEditorReady ||
-                            _codeController == null
-                        ? TextField(
-                            controller: _fallbackController,
-                            maxLines: null,
-                            expands: true,
-                            readOnly: false,
-                            textAlignVertical: TextAlignVertical.top,
-                            style: const TextStyle(
-                              fontFamily: 'Consolas',
-                              fontSize: AppTextSize.xs,
-                              color: Color(0xFFD4D4D4),
-                              height: 1.5,
-                            ),
-                            decoration: const InputDecoration(
-                              contentPadding: EdgeInsets.all(20),
-                              border: InputBorder.none,
-                              hintText: 'Configuration content...',
-                              hintStyle: TextStyle(color: AppColors.textMuted),
-                            ),
-                          )
-                        : CodeTheme(
-                            data: CodeThemeData(styles: monokaiSublimeTheme),
-                            child: CodeField(
-                              controller: _codeController!,
-                              textStyle: const TextStyle(
-                                fontFamily: 'Consolas',
-                                fontSize: AppTextSize.xs,
-                                height: 1.5,
-                              ),
-                              expands: true,
-                            ),
-                          ),
-                  ),
-          ),
+          Expanded(child: _buildConfigEditor()),
         ],
       ),
     );
   }
 
+  Widget _buildConfigTabHeader() {
+    return Row(
+      children: [
+        const Icon(
+          Icons.description_outlined,
+          size: 16,
+          color: AppColors.textSecondary,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          _configTabLabel,
+          style: const TextStyle(
+            fontSize: AppTextSize.xs,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        // ✅ Badge thông báo nếu file quá lớn để dùng syntax highlight
+        if (_isConfigLoaded && !_useCodeEditor) ...[
+          const SizedBox(width: 8),
+          Tooltip(
+            message:
+                'File has more than $_codeEditorLineThreshold lines.\n'
+                'Using plain text editor for better performance.',
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.flash_on_rounded,
+                    size: 10,
+                    color: AppColors.warning,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Performance mode',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.warning,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        const Spacer(),
+        if (_isConfigLoading)
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else if (_isConfigLoaded)
+          ElevatedButton.icon(
+            onPressed: _saveConfig,
+            icon: const Icon(Icons.save_rounded, size: 16),
+            label: const Text('Save Changes'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.background,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildConfigEditor() {
+    // ✅ State 1: Đang load
+    if (_isConfigLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // ✅ State 2: Chưa load (user chưa vào tab này lần nào — không xảy ra vì
+    //    _handleTabSelection đã trigger _loadConfig, nhưng guard phòng hờ)
+    if (!_isConfigLoaded) {
+      return const Center(
+        child: Text(
+          'Loading configuration...',
+          style: TextStyle(color: AppColors.textMuted),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: _buildEditorContent(),
+    );
+  }
+
+  Widget _buildEditorContent() {
+    // ✅ File lớn: dùng TextField — render tức thì, không jank
+    if (!_useCodeEditor) {
+      return TextField(
+        controller: _fallbackController,
+        maxLines: null,
+        expands: true,
+        textAlignVertical: TextAlignVertical.top,
+        style: const TextStyle(
+          fontFamily: 'Consolas',
+          fontSize: AppTextSize.xs,
+          color: Color(0xFFD4D4D4),
+          height: 1.5,
+        ),
+        decoration: const InputDecoration(
+          contentPadding: EdgeInsets.all(20),
+          border: InputBorder.none,
+          hintText: 'Configuration content...',
+          hintStyle: TextStyle(color: AppColors.textMuted),
+        ),
+      );
+    }
+
+    // ✅ File nhỏ: chờ CodeController khởi tạo xong (150ms delay)
+    if (!_isEditorReady || _codeController == null) {
+      return const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    // ✅ CodeEditor với syntax highlight
+    return CodeTheme(
+      data: CodeThemeData(styles: monokaiSublimeTheme),
+      child: CodeField(
+        controller: _codeController!,
+        textStyle: const TextStyle(
+          fontFamily: 'Consolas',
+          fontSize: AppTextSize.xs,
+          height: 1.5,
+        ),
+        expands: true,
+      ),
+    );
+  }
+
+  // ─── Extensions tab ───────────────────────────────────────────────────────────
   Widget _buildExtensionsTab() {
     final filteredExtensions = _extensions.where((ext) {
       return ext.name.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -738,8 +812,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                         ),
                     itemCount: filteredExtensions.length,
                     itemBuilder: (context, index) {
-                      final ext = filteredExtensions[index];
-                      return _buildExtensionCard(ext);
+                      return _buildExtensionCard(filteredExtensions[index]);
                     },
                   ),
           ),
@@ -825,6 +898,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   }
 }
 
+// ─── KeepAliveWrapper ─────────────────────────────────────────────────────────
 class KeepAliveWrapper extends StatefulWidget {
   final Widget child;
   const KeepAliveWrapper({super.key, required this.child});
