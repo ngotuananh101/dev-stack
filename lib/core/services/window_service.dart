@@ -107,7 +107,6 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
 
       List<MenuItem> items = [
         MenuItem(key: 'show_app', label: 'Show App'),
-        MenuItem(key: 'quit_app', label: 'Quit'),
         MenuItem.separator(),
       ];
 
@@ -144,6 +143,8 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
           disabled: runningApps.isEmpty,
         ),
       );
+      items.add(MenuItem.separator());
+      items.add(MenuItem(key: 'quit_app', label: 'Quit'));
 
       await trayManager.setContextMenu(Menu(items: items));
     });
