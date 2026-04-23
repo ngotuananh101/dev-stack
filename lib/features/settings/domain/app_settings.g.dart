@@ -1,0 +1,828 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'app_settings.dart';
+
+// **************************************************************************
+// IsarCollectionGenerator
+// **************************************************************************
+
+// coverage:ignore-file
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+
+extension GetAppSettingsCollection on Isar {
+  IsarCollection<AppSettings> get appSettings => this.collection();
+}
+
+const AppSettingsSchema = CollectionSchema(
+  name: r'AppSettings',
+  id: -5633561779022347008,
+  properties: {
+    r'autoCreateSite': PropertySchema(
+      id: 0,
+      name: r'autoCreateSite',
+      type: IsarType.bool,
+    ),
+    r'autoStartWithWindows': PropertySchema(
+      id: 1,
+      name: r'autoStartWithWindows',
+      type: IsarType.bool,
+    ),
+    r'defaultPhpVersion': PropertySchema(
+      id: 2,
+      name: r'defaultPhpVersion',
+      type: IsarType.string,
+    ),
+    r'minimizeToTray': PropertySchema(
+      id: 3,
+      name: r'minimizeToTray',
+      type: IsarType.bool,
+    ),
+    r'siteTemplate': PropertySchema(
+      id: 4,
+      name: r'siteTemplate',
+      type: IsarType.string,
+    )
+  },
+  estimateSize: _appSettingsEstimateSize,
+  serialize: _appSettingsSerialize,
+  deserialize: _appSettingsDeserialize,
+  deserializeProp: _appSettingsDeserializeProp,
+  idName: r'id',
+  indexes: {},
+  links: {},
+  embeddedSchemas: {},
+  getId: _appSettingsGetId,
+  getLinks: _appSettingsGetLinks,
+  attach: _appSettingsAttach,
+  version: '3.1.0+1',
+);
+
+int _appSettingsEstimateSize(
+  AppSettings object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  var bytesCount = offsets.last;
+  {
+    final value = object.defaultPhpVersion;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.siteTemplate.length * 3;
+  return bytesCount;
+}
+
+void _appSettingsSerialize(
+  AppSettings object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  writer.writeBool(offsets[0], object.autoCreateSite);
+  writer.writeBool(offsets[1], object.autoStartWithWindows);
+  writer.writeString(offsets[2], object.defaultPhpVersion);
+  writer.writeBool(offsets[3], object.minimizeToTray);
+  writer.writeString(offsets[4], object.siteTemplate);
+}
+
+AppSettings _appSettingsDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  final object = AppSettings();
+  object.autoCreateSite = reader.readBool(offsets[0]);
+  object.autoStartWithWindows = reader.readBool(offsets[1]);
+  object.defaultPhpVersion = reader.readStringOrNull(offsets[2]);
+  object.id = id;
+  object.minimizeToTray = reader.readBool(offsets[3]);
+  object.siteTemplate = reader.readString(offsets[4]);
+  return object;
+}
+
+P _appSettingsDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
+  switch (propertyId) {
+    case 0:
+      return (reader.readBool(offset)) as P;
+    case 1:
+      return (reader.readBool(offset)) as P;
+    case 2:
+      return (reader.readStringOrNull(offset)) as P;
+    case 3:
+      return (reader.readBool(offset)) as P;
+    case 4:
+      return (reader.readString(offset)) as P;
+    default:
+      throw IsarError('Unknown property with id $propertyId');
+  }
+}
+
+Id _appSettingsGetId(AppSettings object) {
+  return object.id;
+}
+
+List<IsarLinkBase<dynamic>> _appSettingsGetLinks(AppSettings object) {
+  return [];
+}
+
+void _appSettingsAttach(
+    IsarCollection<dynamic> col, Id id, AppSettings object) {
+  object.id = id;
+}
+
+extension AppSettingsQueryWhereSort
+    on QueryBuilder<AppSettings, AppSettings, QWhere> {
+  QueryBuilder<AppSettings, AppSettings, QAfterWhere> anyId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(const IdWhereClause.any());
+    });
+  }
+}
+
+extension AppSettingsQueryWhere
+    on QueryBuilder<AppSettings, AppSettings, QWhereClause> {
+  QueryBuilder<AppSettings, AppSettings, QAfterWhereClause> idEqualTo(Id id) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IdWhereClause.between(
+        lower: id,
+        upper: id,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterWhereClause> idNotEqualTo(
+      Id id) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(
+              IdWhereClause.lessThan(upper: id, includeUpper: false),
+            )
+            .addWhereClause(
+              IdWhereClause.greaterThan(lower: id, includeLower: false),
+            );
+      } else {
+        return query
+            .addWhereClause(
+              IdWhereClause.greaterThan(lower: id, includeLower: false),
+            )
+            .addWhereClause(
+              IdWhereClause.lessThan(upper: id, includeUpper: false),
+            );
+      }
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterWhereClause> idGreaterThan(Id id,
+      {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IdWhereClause.greaterThan(lower: id, includeLower: include),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterWhereClause> idLessThan(Id id,
+      {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IdWhereClause.lessThan(upper: id, includeUpper: include),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterWhereClause> idBetween(
+    Id lowerId,
+    Id upperId, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IdWhereClause.between(
+        lower: lowerId,
+        includeLower: includeLower,
+        upper: upperId,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+}
+
+extension AppSettingsQueryFilter
+    on QueryBuilder<AppSettings, AppSettings, QFilterCondition> {
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      autoCreateSiteEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'autoCreateSite',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      autoStartWithWindowsEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'autoStartWithWindows',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'defaultPhpVersion',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'defaultPhpVersion',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'defaultPhpVersion',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'defaultPhpVersion',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'defaultPhpVersion',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'defaultPhpVersion',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'defaultPhpVersion',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'defaultPhpVersion',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'defaultPhpVersion',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'defaultPhpVersion',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'defaultPhpVersion',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      defaultPhpVersionIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'defaultPhpVersion',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> idEqualTo(
+      Id value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> idGreaterThan(
+    Id value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> idLessThan(
+    Id value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> idBetween(
+    Id lower,
+    Id upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'id',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      minimizeToTrayEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'minimizeToTray',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      siteTemplateEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'siteTemplate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      siteTemplateGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'siteTemplate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      siteTemplateLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'siteTemplate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      siteTemplateBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'siteTemplate',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      siteTemplateStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'siteTemplate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      siteTemplateEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'siteTemplate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      siteTemplateContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'siteTemplate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      siteTemplateMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'siteTemplate',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      siteTemplateIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'siteTemplate',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      siteTemplateIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'siteTemplate',
+        value: '',
+      ));
+    });
+  }
+}
+
+extension AppSettingsQueryObject
+    on QueryBuilder<AppSettings, AppSettings, QFilterCondition> {}
+
+extension AppSettingsQueryLinks
+    on QueryBuilder<AppSettings, AppSettings, QFilterCondition> {}
+
+extension AppSettingsQuerySortBy
+    on QueryBuilder<AppSettings, AppSettings, QSortBy> {
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByAutoCreateSite() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoCreateSite', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByAutoCreateSiteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoCreateSite', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByAutoStartWithWindows() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStartWithWindows', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByAutoStartWithWindowsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStartWithWindows', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByDefaultPhpVersion() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'defaultPhpVersion', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByDefaultPhpVersionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'defaultPhpVersion', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByMinimizeToTray() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'minimizeToTray', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByMinimizeToTrayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'minimizeToTray', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortBySiteTemplate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'siteTemplate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortBySiteTemplateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'siteTemplate', Sort.desc);
+    });
+  }
+}
+
+extension AppSettingsQuerySortThenBy
+    on QueryBuilder<AppSettings, AppSettings, QSortThenBy> {
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByAutoCreateSite() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoCreateSite', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByAutoCreateSiteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoCreateSite', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByAutoStartWithWindows() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStartWithWindows', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByAutoStartWithWindowsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStartWithWindows', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByDefaultPhpVersion() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'defaultPhpVersion', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByDefaultPhpVersionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'defaultPhpVersion', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenById() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'id', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'id', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByMinimizeToTray() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'minimizeToTray', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByMinimizeToTrayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'minimizeToTray', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenBySiteTemplate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'siteTemplate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenBySiteTemplateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'siteTemplate', Sort.desc);
+    });
+  }
+}
+
+extension AppSettingsQueryWhereDistinct
+    on QueryBuilder<AppSettings, AppSettings, QDistinct> {
+  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByAutoCreateSite() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'autoCreateSite');
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QDistinct>
+      distinctByAutoStartWithWindows() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'autoStartWithWindows');
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByDefaultPhpVersion(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'defaultPhpVersion',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByMinimizeToTray() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'minimizeToTray');
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctBySiteTemplate(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'siteTemplate', caseSensitive: caseSensitive);
+    });
+  }
+}
+
+extension AppSettingsQueryProperty
+    on QueryBuilder<AppSettings, AppSettings, QQueryProperty> {
+  QueryBuilder<AppSettings, int, QQueryOperations> idProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<AppSettings, bool, QQueryOperations> autoCreateSiteProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'autoCreateSite');
+    });
+  }
+
+  QueryBuilder<AppSettings, bool, QQueryOperations>
+      autoStartWithWindowsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'autoStartWithWindows');
+    });
+  }
+
+  QueryBuilder<AppSettings, String?, QQueryOperations>
+      defaultPhpVersionProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'defaultPhpVersion');
+    });
+  }
+
+  QueryBuilder<AppSettings, bool, QQueryOperations> minimizeToTrayProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'minimizeToTray');
+    });
+  }
+
+  QueryBuilder<AppSettings, String, QQueryOperations> siteTemplateProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'siteTemplate');
+    });
+  }
+}

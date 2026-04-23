@@ -11,6 +11,8 @@ import 'features/apps/presentation/apps_page.dart';
 import 'features/apps/data/apps_provider.dart';
 import 'features/logs/presentation/logs_page.dart';
 import 'features/databases/presentation/databases_page.dart';
+import 'features/settings/presentation/settings_page.dart';
+import 'core/services/window_service.dart';
 import 'core/theme/app_text_size.dart';
 
 void main() async {
@@ -52,6 +54,9 @@ class MainScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize Window Service (Tray, Auto-start, etc.)
+    ref.watch(windowServiceProvider);
+    
     // Eagerly initialize apps provider for background services auto-start
     ref.watch(appsNotifierProvider.future);
     
@@ -79,6 +84,8 @@ class MainScreen extends ConsumerWidget {
         return const LogsPage();
       case NavigationTab.databases:
         return const DatabasesPage();
+      case NavigationTab.settings:
+        return const SettingsPage();
       default:
         return Center(
           child: Text(

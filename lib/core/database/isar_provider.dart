@@ -6,6 +6,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/dashboard/domain/environment_model.dart';
 import '../../features/apps/domain/installed_app.dart';
 import '../../features/databases/domain/database_record.dart';
+import '../../features/settings/domain/app_settings.dart';
+
 
 part 'isar_provider.g.dart';
 
@@ -25,6 +27,7 @@ class IsarInstance {
           EnvironmentModelSchema,
           InstalledAppSchema,
           DatabaseRecordSchema,
+          AppSettingsSchema,
         ],
         directory: dir.path,
       );
@@ -40,6 +43,7 @@ class IsarInstance {
           EnvironmentModelSchema,
           InstalledAppSchema,
           DatabaseRecordSchema,
+          AppSettingsSchema,
         ],
         directory: dir.path,
       );
