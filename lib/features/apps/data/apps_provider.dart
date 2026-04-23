@@ -495,4 +495,28 @@ class AppsNotifier extends _$AppsNotifier {
           .setError('Failed to open ${app.name}: $e');
     }
   }
+
+  Future<void> stopAllServices() async {
+    final apps = state.valueOrNull ?? [];
+    final manager = ref.read(appServiceManagerProvider);
+    
+    // Lọc ra các app đang chạy
+    final runningApps = apps.where((app) => 
+      app.isInstalled && app.isService && manager.isRunning(app.appId)
+    ).toList();
+
+    debugPrint('Tray: Stopping ${runningApps.length} services...');
+
+    // Dừng tất cả song song để tăng tốc độ
+    await Future.wait(runningApps.map((app) async {
+      try {
+        await manager.stop(app);
+        app.serviceStatus = 'stopped';
+      } catch (e) {
+        debugPrint('Error stopping ${app.name}: $e');
+      }
+    }));
+
+    notifyUpdate(force: true);
+  }
 }

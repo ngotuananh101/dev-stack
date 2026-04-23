@@ -133,29 +133,21 @@ class AppServiceManager {
   }
 
   Future<void> stop(AppModel app) async {
-    if (!isRunning(app.appId)) return;
-
     _logger.info('Stopping service: ${app.name}');
     app.serviceStatus = 'stopping';
 
     final process = _processes[app.appId];
     if (process != null) {
-      // Try graceful kill
-      final success = process.kill();
-      if (!success) {
-        _logger.warning(
-          'Failed to kill process gracefully, trying force kill...',
-        );
-        // On Windows, taskkill might be better for some apps
-        await Process.run('taskkill', ['/F', '/PID', process.pid.toString()]);
+      if (Platform.isWindows) {
+        // Dùng /T để giết toàn bộ cây tiến trình (tránh sót worker processes)
+        await Process.run('taskkill', ['/F', '/T', '/PID', process.pid.toString()]);
+      } else {
+        process.kill();
       }
       
-      // Wait for process to actually exit
       try {
-        await process.exitCode.timeout(const Duration(seconds: 5));
-      } catch (e) {
-        _logger.warning('Timeout waiting for service ${app.name} to stop: $e');
-      }
+        await process.exitCode.timeout(const Duration(seconds: 3));
+      } catch (_) {}
     }
 
     _processes.remove(app.appId);
