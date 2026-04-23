@@ -102,10 +102,10 @@ class Sidebar extends ConsumerWidget {
               color: AppColors.accent.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
-              LucideIcons.component,
-              color: AppColors.accent,
-              size: 20,
+            child: Image.asset(
+              'assets/images/icon.png',
+              width: 24,
+              height: 24,
             ),
           ),
           const SizedBox(width: 12),

@@ -415,6 +415,18 @@ class AppsNotifier extends _$AppsNotifier {
     }
   }
 
+  Future<void> stopAllServicesQuietly() async {
+    final manager = ref.read(appServiceManagerProvider);
+    final apps = state.valueOrNull ?? [];
+    
+    for (final app in apps) {
+      if (manager.isRunning(app.appId)) {
+        await manager.stop(app);
+      }
+    }
+    // Không gọi notifyUpdate vì app sắp tắt
+  }
+
   Future<void> restartService(AppModel app) async {
     final manager = ref.read(appServiceManagerProvider);
     try {

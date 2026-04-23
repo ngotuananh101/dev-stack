@@ -14,8 +14,9 @@ import 'features/databases/presentation/databases_page.dart';
 import 'features/settings/presentation/settings_page.dart';
 import 'core/services/window_service.dart';
 import 'core/theme/app_text_size.dart';
+import 'dart:io';
 
-void main() async {
+void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
@@ -27,9 +28,17 @@ void main() async {
     titleBarStyle: TitleBarStyle.normal,
     title: 'DevStack Dashboard',
   );
+
+  final isMinimized = args.contains('--minimized');
+
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
+    // Set icon for the window taskbar
+    await windowManager.setIcon('assets/images/icon.png');
+    
+    if (!isMinimized) {
+      await windowManager.show();
+      await windowManager.focus();
+    }
   });
 
   runApp(const ProviderScope(child: MyApp()));

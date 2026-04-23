@@ -35,11 +35,19 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
       }
     });
 
-    // Khởi tạo menu lần đầu
+    // Lắng nghe thay đổi của settings để cập nhật Auto-start
+    ref.listen(settingsNotifierProvider, (previous, next) {
+      if (next.hasValue) {
+        _initAutoStart();
+      }
+    });
+
+    // Khởi tạo menu và auto-start lần đầu
     final initialApps = ref.read(appsNotifierProvider).valueOrNull;
     if (initialApps != null) {
       _updateTrayMenu(initialApps);
     }
+    _initAutoStart();
   }
 
   // --- Tray Events ---
@@ -55,14 +63,16 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
   }
 
   @override
-  void onTrayMenuItemClick(MenuItem menuItem) {
+  void onTrayMenuItemClick(MenuItem menuItem) async {
     final key = menuItem.key;
     if (key == null) return;
 
     if (key == 'show_app') {
       windowManager.show();
     } else if (key == 'quit_app') {
-      exit(0);
+      // Dừng tất cả dịch vụ nhưng không lưu trạng thái (giữ nguyên auto-start)
+      await ref.read(appsNotifierProvider.notifier).stopAllServicesQuietly();
+      await windowManager.destroy();
     } else if (key == 'stop_all') {
       ref.read(appsNotifierProvider.notifier).stopAllServices();
     } else if (key.startsWith('stop:')) {
@@ -153,23 +163,22 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
   Future<void> _initAutoStart() async {
     try {
       PackageInfo packageInfo = await PackageInfo.fromPlatform();
-      // Nếu appName trống (thường gặp khi debug), dùng tên mặc định
-      String appName = packageInfo.appName.isNotEmpty
-          ? packageInfo.appName
-          : "DevStack";
-
+      String appName = packageInfo.appName.isNotEmpty ? packageInfo.appName : "DevStack";
+      
       launchAtStartup.setup(
         appName: appName,
         appPath: Platform.resolvedExecutable,
+        args: ['--minimized'],
       );
-
+      
       final settings = await ref.read(settingsNotifierProvider.future);
       if (settings.autoStartWithWindows) {
         await launchAtStartup.enable();
+        debugPrint('Auto-start enabled with --minimized');
       } else {
-        // Chỉ gọi disable nếu cần thiết để tránh lỗi Noop
         if (await launchAtStartup.isEnabled()) {
           await launchAtStartup.disable();
+          debugPrint('Auto-start disabled');
         }
       }
     } catch (e) {
@@ -183,7 +192,9 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
     if (settings.minimizeToTray) {
       await windowManager.hide();
     } else {
-      exit(0);
+      // Dừng tất cả dịch vụ nhưng không lưu trạng thái (giữ nguyên auto-start)
+      await ref.read(appsNotifierProvider.notifier).stopAllServicesQuietly();
+      await windowManager.destroy();
     }
   }
 
