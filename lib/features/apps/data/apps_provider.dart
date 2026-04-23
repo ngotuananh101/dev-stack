@@ -386,11 +386,6 @@ class AppsNotifier extends _$AppsNotifier {
       app.autoStartService = true;
       await repository.save(app);
 
-      // Force kill any existing processes with the same name to free up ports
-      await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
-      // Brief delay to let the OS release the socket
-      await Future.delayed(const Duration(milliseconds: 500));
-
       await manager.start(app, onStatusChange: () => notifyUpdate(force: true));
 
       // Sync configs if it's a webserver starting
