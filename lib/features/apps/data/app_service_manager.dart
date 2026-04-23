@@ -65,6 +65,9 @@ class AppServiceManager {
         
         // Optional: Support custom port if 6379 is busy (later improvement)
         // args.addAll(['--port', '6379']);
+      } else if (fileName == 'mysqld.exe' || fileName == 'mariadbd.exe') {
+        // Force output to console for capturing logs
+        args = ['--console'];
       } else if (fileName == 'mongod.exe') {
         // Look for mongod.cfg in the same directory as mongod.exe or its parent
         final confFile = File(p.join(workingDir, 'mongod.cfg'));
@@ -90,15 +93,17 @@ class AppServiceManager {
       app.servicePid = process.pid;
       app.serviceStatus = 'running';
       app.serviceLogs = []; // Clear old logs on start
-      app.addServiceLog(
-        'Service started (PID: ${process.pid}) with command ${exeFile.path} ${args.join(' ')}',
-      );
+      
+      final startLog = 'Service started (PID: ${process.pid}) with command $execPath ${args.join(' ')}';
+      app.addServiceLog(startLog);
+      debugPrint('[${app.name}] $startLog');
+      
       onStatusChange?.call();
 
       // Listen for exit
       process.exitCode.then((code) {
         _logger.info('Service ${app.name} exited with code $code');
-        app.addServiceLog('Service exited with code $code');
+        debugPrint('[${app.name}] Exited with code $code');
         _processes.remove(app.appId);
         app.serviceStatus = 'stopped';
         app.servicePid = null;
@@ -110,7 +115,9 @@ class AppServiceManager {
         final lines = data.split('\n');
         for (final line in lines) {
           if (line.trim().isNotEmpty) {
-            app.addServiceLog(line.trim());
+            final cleanLine = line.trim();
+            app.addServiceLog(cleanLine);
+            debugPrint('[${app.name}] $cleanLine');
             onStatusChange?.call();
           }
         }
@@ -120,13 +127,25 @@ class AppServiceManager {
         final lines = data.split('\n');
         for (final line in lines) {
           if (line.trim().isNotEmpty) {
-            app.addServiceLog('[ERROR] ${line.trim()}');
+            final cleanLine = line.trim();
+            String prefix = 'LOG';
+            if (cleanLine.contains('[ERROR]')) {
+              prefix = 'ERROR';
+            } else if (cleanLine.contains('[Warning]')) {
+              prefix = 'WARN';
+            } else if (cleanLine.contains('[System]') || cleanLine.contains('[Note]')) {
+              prefix = 'INFO';
+            }
+            
+            app.addServiceLog('[$prefix] $cleanLine');
+            debugPrint('[${app.name}] $prefix: $cleanLine');
             onStatusChange?.call();
           }
         }
       });
     } catch (e) {
       _logger.error('Failed to start service ${app.name}: $e');
+      debugPrint('[${app.name}] CRITICAL ERROR: $e');
       app.serviceStatus = 'stopped';
       rethrow;
     }
