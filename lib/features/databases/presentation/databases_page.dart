@@ -79,6 +79,10 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       (a) => a.appId == 'mongodb-compass' && a.isInstalled,
       orElse: () => AppModel(appId: '', name: '', categories: []),
     );
+    final phpMyAdmin = allApps.firstWhere(
+      (a) => a.appId == 'phpMyAdmin' && a.isInstalled,
+      orElse: () => AppModel(appId: '', name: '', categories: []),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -116,6 +120,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                         heidiSql: heidiSql.appId.isNotEmpty ? heidiSql : null,
                         mongoCompass:
                             mongoCompass.appId.isNotEmpty ? mongoCompass : null,
+                        hasPhpMyAdmin: phpMyAdmin.appId.isNotEmpty,
                       ),
                       const SizedBox(height: 16),
                       Expanded(
@@ -406,6 +411,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     bool isMongo = false,
     AppModel? heidiSql,
     AppModel? mongoCompass,
+    bool hasPhpMyAdmin = false,
   }) {
     return Row(
       children: [
@@ -417,12 +423,14 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
             onTap: _showAddDatabaseDialog,
           ),
           const SizedBox(width: 12),
-          _buildActionButton(
-            'phpMyAdmin',
-            LucideIcons.externalLink,
-            onTap: _launchPhpMyAdmin,
-          ),
-          const SizedBox(width: 12),
+          if (hasPhpMyAdmin) ...[
+            _buildActionButton(
+              'phpMyAdmin',
+              LucideIcons.externalLink,
+              onTap: _launchPhpMyAdmin,
+            ),
+            const SizedBox(width: 12),
+          ],
         ],
         if (isRedis) ...[
           _buildActionButton(
