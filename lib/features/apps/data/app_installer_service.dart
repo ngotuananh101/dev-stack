@@ -495,62 +495,66 @@ class AppInstallerService {
 
     if (app.appId.contains('nginx')) {
       final confFile = File(p.join(installPath, 'conf', 'nginx.conf'));
-      if (confFile.existsSync()) {
-        logInfo('Configuring Nginx default root to $webRoot...');
-        String content = await confFile.readAsString();
+      logInfo('Generating fresh Nginx configuration...');
 
-        // Standard Nginx default root replacement
-        content = content.replaceFirst(
-          RegExp(r'root\s+html;'),
-          'root   "$webRoot";',
-        );
+      final certPath = sslNotifier.getSiteCertPath('localhost').replaceAll('\\', '/');
+      final keyPath = sslNotifier.getSiteKeyPath('localhost').replaceAll('\\', '/');
+      final cleanWebRoot = webRoot.replaceAll('\\', '/');
 
-        // Optimize worker_processes for Nginx
-        content = content.replaceFirst(
-          RegExp(r'worker_processes\s+\d+;'),
-          'worker_processes  auto;',
-        );
+      String sslBlock = '';
+      if (isSslInstalled) {
+        sslBlock = '''
+    # HTTPS server
+    server {
+        listen       443 ssl;
+        server_name  localhost;
+        root         "$cleanWebRoot";
 
-        // SSL Configuration
-        if (isSslInstalled) {
-          logInfo('Adding SSL block to Nginx...');
-          final certPath = sslNotifier.getSiteCertPath('localhost').replaceAll('\\', '/');
-          final keyPath = sslNotifier.getSiteKeyPath('localhost').replaceAll('\\', '/');
-          
-          final sslBlockMarker = '# Ponta SSL Block';
-          final sslBlock = '''
-    $sslBlockMarker
-    listen       443 ssl;
-    ssl_certificate      "$certPath";
-    ssl_certificate_key  "$keyPath";
+        ssl_certificate      "$certPath";
+        ssl_certificate_key  "$keyPath";
 
-    ssl_session_cache    shared:SSL:1m;
-    ssl_session_timeout  5m;
+        ssl_session_cache    shared:SSL:1m;
+        ssl_session_timeout  5m;
 
-    ssl_ciphers  HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers  on;
+        ssl_ciphers  HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers  on;
+
+        location / {
+            index  index.html index.htm index.php;
+        }
+    }''';
+      }
+
+      final nginxConfig = '''
+worker_processes  auto;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+
+    # HTTP server
+    server {
+        listen       80;
+        server_name  localhost;
+        root         "$cleanWebRoot";
+
+        location / {
+            index  index.html index.htm index.php;
+        }
+    }
+
+$sslBlock
+}
 ''';
 
-          // Remove existing block if any
-          final existingRegex = RegExp(r'\s*' + RegExp.escape(sslBlockMarker) + r'.*?ssl_prefer_server_ciphers\s+on;', dotAll: true);
-          content = content.replaceAll(existingRegex, '');
-
-          if (content.contains('listen       80;')) {
-             content = content.replaceFirst('listen       80;', 'listen       80;\n$sslBlock');
-          }
-        } else {
-          // Remove SSL block if SSL is uninstalled
-          final sslBlockMarker = '# Ponta SSL Block';
-          final existingRegex = RegExp(r'\s*' + RegExp.escape(sslBlockMarker) + r'.*?ssl_prefer_server_ciphers\s+on;', dotAll: true);
-          if (content.contains(sslBlockMarker)) {
-            logInfo('Removing SSL block from Nginx...');
-            content = content.replaceAll(existingRegex, '');
-          }
-        }
-
-        await confFile.writeAsString(content);
-        logInfo('Nginx configuration updated (root, worker_processes, SSL).');
-      }
+      await confFile.writeAsString(nginxConfig);
+      logInfo('Nginx configuration generated successfully.');
     } else if (app.appId.contains('apache')) {
       // Apache Lounge zips often contain an 'Apache24' subfolder
       String apacheRoot = installPath;
