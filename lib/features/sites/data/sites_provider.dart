@@ -8,11 +8,14 @@ import 'package:isar/isar.dart';
 import '../../apps/data/apps_provider.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/config/app_config.dart';
+import '../../hosts/data/hosts_repository.dart';
 
 part 'sites_provider.g.dart';
 
 @riverpod
 class SitesNotifier extends _$SitesNotifier {
+  final _hostsRepo = HostsRepository();
+
   @override
   Future<List<SiteModel>> build() async {
     final isar = await ref.watch(isarProvider.future);
@@ -52,6 +55,9 @@ class SitesNotifier extends _$SitesNotifier {
     // Generate Vhost files
     await _generateVhostFiles(site);
 
+    // Update hosts file
+    await _updateHostsFile();
+
     // Refresh state
     state = AsyncValue.data(await isar.siteModels.where().sortByCreatedAtDesc().findAll());
 
@@ -71,11 +77,44 @@ class SitesNotifier extends _$SitesNotifier {
         await isar.siteModels.delete(id);
       });
       
+      // Update hosts file
+      await _updateHostsFile();
+      
       state = AsyncValue.data(await isar.siteModels.where().sortByCreatedAtDesc().findAll());
       
       // Restart webservers
       await _restartWebservers();
     }
+  }
+
+  Future<void> _updateHostsFile() async {
+    final isar = await ref.read(isarProvider.future);
+    final allSites = await isar.siteModels.where().findAll();
+    
+    String hostsContent = await _hostsRepo.readHostsRaw();
+    const startMarker = '# [PONTA-START]';
+    const endMarker = '# [PONTA-END]';
+    
+    // Generate new lines
+    final newLines = [
+      startMarker,
+      ...allSites.map((s) => '127.0.0.1 ${s.domain}'),
+      endMarker,
+    ];
+    final newBlock = newLines.join('\n');
+
+    if (hostsContent.contains(startMarker) && hostsContent.contains(endMarker)) {
+      // Replace existing block
+      final startIndex = hostsContent.indexOf(startMarker);
+      final endIndex = hostsContent.indexOf(endMarker) + endMarker.length;
+      
+      hostsContent = hostsContent.replaceRange(startIndex, endIndex, newBlock);
+    } else {
+      // Append new block
+      hostsContent = hostsContent.trim() + '\n\n' + newBlock + '\n';
+    }
+
+    await _hostsRepo.saveHostsRaw(hostsContent);
   }
 
   Future<void> _generateVhostFiles(SiteModel site) async {
