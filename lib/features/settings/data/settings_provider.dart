@@ -39,6 +39,7 @@ class SettingsNotifier extends _$SettingsNotifier {
     bool? autoCreateSite,
     bool? minimizeToTray,
     bool? autoStartWithWindows,
+    bool? isSslInstalled,
   }) async {
     final currentSettings = state.value;
     if (currentSettings == null) return;
@@ -60,6 +61,7 @@ class SettingsNotifier extends _$SettingsNotifier {
         debugPrint('Failed to toggle auto-start: $e');
       }
     }
+    if (isSslInstalled != null) currentSettings.isSslInstalled = isSslInstalled;
 
     await updateSettings(currentSettings);
   }

@@ -14,5 +14,8 @@ class AppSettings {
   bool minimizeToTray = false;
   bool autoStartWithWindows = false;
 
+  // SSL Configuration
+  bool isSslInstalled = false;
+
   AppSettings();
 }

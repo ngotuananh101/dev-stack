@@ -27,13 +27,18 @@ const AppSettingsSchema = CollectionSchema(
       name: r'autoStartWithWindows',
       type: IsarType.bool,
     ),
-    r'minimizeToTray': PropertySchema(
+    r'isSslInstalled': PropertySchema(
       id: 2,
+      name: r'isSslInstalled',
+      type: IsarType.bool,
+    ),
+    r'minimizeToTray': PropertySchema(
+      id: 3,
       name: r'minimizeToTray',
       type: IsarType.bool,
     ),
     r'siteTemplate': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'siteTemplate',
       type: IsarType.string,
     )
@@ -70,8 +75,9 @@ void _appSettingsSerialize(
 ) {
   writer.writeBool(offsets[0], object.autoCreateSite);
   writer.writeBool(offsets[1], object.autoStartWithWindows);
-  writer.writeBool(offsets[2], object.minimizeToTray);
-  writer.writeString(offsets[3], object.siteTemplate);
+  writer.writeBool(offsets[2], object.isSslInstalled);
+  writer.writeBool(offsets[3], object.minimizeToTray);
+  writer.writeString(offsets[4], object.siteTemplate);
 }
 
 AppSettings _appSettingsDeserialize(
@@ -84,8 +90,9 @@ AppSettings _appSettingsDeserialize(
   object.autoCreateSite = reader.readBool(offsets[0]);
   object.autoStartWithWindows = reader.readBool(offsets[1]);
   object.id = id;
-  object.minimizeToTray = reader.readBool(offsets[2]);
-  object.siteTemplate = reader.readString(offsets[3]);
+  object.isSslInstalled = reader.readBool(offsets[2]);
+  object.minimizeToTray = reader.readBool(offsets[3]);
+  object.siteTemplate = reader.readString(offsets[4]);
   return object;
 }
 
@@ -103,6 +110,8 @@ P _appSettingsDeserializeProp<P>(
     case 2:
       return (reader.readBool(offset)) as P;
     case 3:
+      return (reader.readBool(offset)) as P;
+    case 4:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -271,6 +280,16 @@ extension AppSettingsQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      isSslInstalledEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isSslInstalled',
+        value: value,
       ));
     });
   }
@@ -457,6 +476,19 @@ extension AppSettingsQuerySortBy
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByIsSslInstalled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isSslInstalled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByIsSslInstalledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isSslInstalled', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByMinimizeToTray() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'minimizeToTray', Sort.asc);
@@ -525,6 +557,19 @@ extension AppSettingsQuerySortThenBy
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByIsSslInstalled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isSslInstalled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByIsSslInstalledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isSslInstalled', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByMinimizeToTray() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'minimizeToTray', Sort.asc);
@@ -567,6 +612,12 @@ extension AppSettingsQueryWhereDistinct
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByIsSslInstalled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isSslInstalled');
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByMinimizeToTray() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'minimizeToTray');
@@ -599,6 +650,12 @@ extension AppSettingsQueryProperty
       autoStartWithWindowsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'autoStartWithWindows');
+    });
+  }
+
+  QueryBuilder<AppSettings, bool, QQueryOperations> isSslInstalledProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isSslInstalled');
     });
   }
 

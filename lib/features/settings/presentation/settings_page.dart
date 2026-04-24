@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
+import '../../../shared/utils/app_dialogs.dart';
 import '../../apps/data/apps_provider.dart';
+import '../../../core/services/ssl_service.dart';
 import '../data/settings_provider.dart';
 import 'widgets/system_info_modal.dart';
 
@@ -14,6 +16,7 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsAsync = ref.watch(settingsNotifierProvider);
     final appsAsync = ref.watch(appsNotifierProvider);
+    final sslAsync = ref.watch(sslServiceProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -108,6 +111,42 @@ class SettingsPage extends ConsumerWidget {
                       subtitle: 'OS, Hardware, and environment configuration',
                       icon: LucideIcons.externalLink,
                       onTap: () => _showSystemInfo(context),
+                    ),
+                    const Divider(color: AppColors.border, height: 32),
+                    _buildStatusSetting(
+                      title: 'Root Certificate',
+                      subtitle: 'Status of custom SSL root certificate (mkcert)',
+                      status: sslAsync.when(
+                        data: (installed) =>
+                            installed ? 'Installed' : 'Not Installed',
+                        loading: () => 'Checking...',
+                        error: (e, s) => 'Error',
+                      ),
+                      isSuccess: sslAsync.valueOrNull == true,
+                      actions: sslAsync.valueOrNull == true
+                          ? [
+                              _StatusAction(
+                                label: 'Reinstall',
+                                color: AppColors.accent,
+                                onTap: () => ref
+                                    .read(sslServiceProvider.notifier)
+                                    .initializeRootCA(),
+                              ),
+                              _StatusAction(
+                                label: 'Uninstall',
+                                color: AppColors.error,
+                                onTap: () => _confirmUninstall(context, ref),
+                              ),
+                            ]
+                          : [
+                              _StatusAction(
+                                label: 'Install',
+                                color: AppColors.accent,
+                                onTap: () => ref
+                                    .read(sslServiceProvider.notifier)
+                                    .initializeRootCA(),
+                              ),
+                            ],
                     ),
                   ],
                 ),
@@ -413,10 +452,115 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
+  Widget _buildStatusSetting({
+    required String title,
+    required String subtitle,
+    required String status,
+    required bool isSuccess,
+    List<_StatusAction> actions = const [],
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: AppTextSize.sm,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: AppTextSize.xs,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 24),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSuccess
+                ? AppColors.success.withValues(alpha: 0.1)
+                : AppColors.error.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSuccess
+                  ? AppColors.success.withValues(alpha: 0.3)
+                  : AppColors.error.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Text(
+            status,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isSuccess ? AppColors.success : AppColors.error,
+            ),
+          ),
+        ),
+        if (actions.isNotEmpty) ...[
+          const SizedBox(width: 12),
+          ...actions.map((action) => Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: ElevatedButton(
+                  onPressed: action.onTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: action.color,
+                    foregroundColor: Colors.white,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    minimumSize: const Size(0, 32),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    action.label,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ),
+              )),
+        ],
+      ],
+    );
+  }
+
+  void _confirmUninstall(BuildContext context, WidgetRef ref) {
+    AppDialogs.showConfirm(
+      context: context,
+      title: 'Uninstall Root Certificate?',
+      text:
+          'Warning: Uninstalling the root certificate will cause SSL errors for all local .test sites. Use this only if you know what you are doing.',
+      confirmBtnText: 'UNINSTALL ANYWAY',
+      onConfirm: () => ref.read(sslServiceProvider.notifier).uninstallRootCA(),
+    );
+  }
+
   void _showSystemInfo(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => const SystemInfoModal(),
     );
   }
+}
+
+class _StatusAction {
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  _StatusAction({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 }
