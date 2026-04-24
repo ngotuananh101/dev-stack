@@ -12,18 +12,31 @@ class SettingsNotifier extends _$SettingsNotifier {
   @override
   Future<AppSettings> build() async {
     final isar = await ref.watch(isarProvider.future);
-    final settings = await isar.appSettings.where().findFirst();
     
-    if (settings == null) {
-      // Initialize default settings
-      final defaultSettings = AppSettings();
+    try {
+      final settings = await isar.appSettings.where().findFirst();
+      
+      if (settings == null) {
+        // Initialize default settings
+        final defaultSettings = AppSettings();
+        await isar.writeTxn(() async {
+          await isar.appSettings.put(defaultSettings);
+        });
+        return defaultSettings;
+      }
+      
+      return settings;
+    } catch (e) {
+      debugPrint('Error reading AppSettings, resetting to default: $e');
+      // If reading fails (e.g. RangeError due to schema mismatch), clear and reset
       await isar.writeTxn(() async {
+        await isar.appSettings.clear();
+        final defaultSettings = AppSettings();
         await isar.appSettings.put(defaultSettings);
+        return defaultSettings;
       });
-      return defaultSettings;
+      return AppSettings();
     }
-    
-    return settings;
   }
 
   Future<void> updateSettings(AppSettings newSettings) async {

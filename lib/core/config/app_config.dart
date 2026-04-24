@@ -14,6 +14,9 @@ class AppConfig {
   /// Directory for webserver roots.
   static const String webserverRoot = '$baseDir\\www';
 
+  /// Certificates directory.
+  static const String certsDir = '$baseDir\\certs';
+
   /// The base directory for all tools and binaries
   static const String baseBinDir = 'assets/bin';
 }

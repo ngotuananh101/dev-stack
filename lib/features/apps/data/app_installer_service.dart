@@ -7,13 +7,14 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/services/ssl_service.dart';
 
 part 'app_installer_service.g.dart';
 
 @riverpod
 AppInstallerService appInstallerService(Ref ref) {
   final logger = ref.read(logServiceProvider);
-  return AppInstallerService(logger);
+  return AppInstallerService(logger, ref);
 }
 
 typedef InstallationProgressCallback =
@@ -27,10 +28,11 @@ typedef InstallationLogCallback = void Function(String message);
 
 class AppInstallerService {
   final LogService _logger;
+  final Ref _ref;
   static const String defaultBaseDir = AppConfig.appsDir;
   final _dio = Dio();
 
-  AppInstallerService(this._logger);
+  AppInstallerService(this._logger, this._ref);
 
   Future<String> install(
     AppModel app,
@@ -484,6 +486,13 @@ class AppInstallerService {
 
     final webRoot = AppConfig.webserverRoot.replaceAll('\\', '/');
 
+    final isSslInstalled = _ref.read(sslServiceProvider).value ?? false;
+    final sslNotifier = _ref.read(sslServiceProvider.notifier);
+    
+    if (isSslInstalled) {
+      await sslNotifier.generateSiteCert('localhost');
+    }
+
     if (app.appId.contains('nginx')) {
       final confFile = File(p.join(installPath, 'conf', 'nginx.conf'));
       if (confFile.existsSync()) {
@@ -502,8 +511,45 @@ class AppInstallerService {
           'worker_processes  auto;',
         );
 
+        // SSL Configuration
+        if (isSslInstalled) {
+          logInfo('Adding SSL block to Nginx...');
+          final certPath = sslNotifier.getSiteCertPath('localhost').replaceAll('\\', '/');
+          final keyPath = sslNotifier.getSiteKeyPath('localhost').replaceAll('\\', '/');
+          
+          final sslBlockMarker = '# Ponta SSL Block';
+          final sslBlock = '''
+    $sslBlockMarker
+    listen       443 ssl;
+    ssl_certificate      "$certPath";
+    ssl_certificate_key  "$keyPath";
+
+    ssl_session_cache    shared:SSL:1m;
+    ssl_session_timeout  5m;
+
+    ssl_ciphers  HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers  on;
+''';
+
+          // Remove existing block if any
+          final existingRegex = RegExp(r'\s*' + RegExp.escape(sslBlockMarker) + r'.*?ssl_prefer_server_ciphers\s+on;', dotAll: true);
+          content = content.replaceAll(existingRegex, '');
+
+          if (content.contains('listen       80;')) {
+             content = content.replaceFirst('listen       80;', 'listen       80;\n$sslBlock');
+          }
+        } else {
+          // Remove SSL block if SSL is uninstalled
+          final sslBlockMarker = '# Ponta SSL Block';
+          final existingRegex = RegExp(r'\s*' + RegExp.escape(sslBlockMarker) + r'.*?ssl_prefer_server_ciphers\s+on;', dotAll: true);
+          if (content.contains(sslBlockMarker)) {
+            logInfo('Removing SSL block from Nginx...');
+            content = content.replaceAll(existingRegex, '');
+          }
+        }
+
         await confFile.writeAsString(content);
-        logInfo('Nginx configuration updated (root and worker_processes).');
+        logInfo('Nginx configuration updated (root, worker_processes, SSL).');
       }
     } else if (app.appId.contains('apache')) {
       // Apache Lounge zips often contain an 'Apache24' subfolder
@@ -532,14 +578,13 @@ class AppInstallerService {
           'Define SRVROOT "$srvRoot"',
         );
 
-        // 2. Replace DocumentRoot (handle with or without quotes, and ${SRVROOT} variable)
+        // 2. Replace DocumentRoot
         content = content.replaceFirst(
           RegExp(r'^DocumentRoot\s+.*$', multiLine: true),
           'DocumentRoot "$webRoot"',
         );
 
-        // 3. Replace the corresponding <Directory> block and grant permissions
-        // We avoid the global <Directory /> block by requiring a path-like string
+        // 3. Replace the corresponding <Directory> block
         content = content.replaceFirst(
           RegExp(r'^<Directory\s+"[^/].*?">', multiLine: true),
           '<Directory "$webRoot">',
@@ -559,9 +604,54 @@ class AppInstallerService {
           );
         }
 
+        // SSL Configuration for Apache
+        final sslVhostMarker = '# Ponta SSL Virtual Host';
+        if (isSslInstalled) {
+          logInfo('Configuring SSL for Apache...');
+          // Enable mod_ssl and socache_shmcb
+          content = content.replaceFirst('#LoadModule ssl_module modules/mod_ssl.so', 'LoadModule ssl_module modules/mod_ssl.so');
+          content = content.replaceFirst('#LoadModule socache_shmcb_module modules/mod_socache_shmcb.so', 'LoadModule socache_shmcb_module modules/mod_socache_shmcb.so');
+          
+          if (!content.contains('Listen 443')) {
+            content = content.replaceFirst('Listen 80', 'Listen 80\nListen 443');
+          }
+
+          final certPath = sslNotifier.getSiteCertPath('localhost').replaceAll('\\', '/');
+          final keyPath = sslNotifier.getSiteKeyPath('localhost').replaceAll('\\', '/');
+          
+          final sslVhost = '''
+$sslVhostMarker
+<VirtualHost *:443>
+    DocumentRoot "$webRoot"
+    ServerName localhost:443
+    SSLEngine on
+    SSLCertificateFile "$certPath"
+    SSLCertificateKeyFile "$keyPath"
+    <Directory "$webRoot">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+''';
+          // Remove existing vhost if any
+          final existingRegex = RegExp(r'\s*' + RegExp.escape(sslVhostMarker) + r'.*?<\/VirtualHost>', dotAll: true);
+          content = content.replaceAll(existingRegex, '');
+
+          content += '\n$sslVhost\n';
+        } else {
+          // Remove SSL config if uninstalled
+          if (content.contains(sslVhostMarker)) {
+            logInfo('Removing SSL config from Apache...');
+            final existingRegex = RegExp(r'\s*' + RegExp.escape(sslVhostMarker) + r'.*?<\/VirtualHost>', dotAll: true);
+            content = content.replaceAll(existingRegex, '');
+            // Optionally disable modules but keep it simple for now
+          }
+        }
+
         await confFile.writeAsString(content);
         logInfo(
-          'Apache configuration updated (SRVROOT, DocumentRoot and Permissions set).',
+          'Apache configuration updated (SRVROOT, DocumentRoot, Permissions, SSL).',
         );
       } else {
         logInfo('Warning: Could not find Apache httpd.conf to configure.');
@@ -607,6 +697,17 @@ net:
 ''';
       await confFile.writeAsString(configContent);
       logInfo('Created MongoDB configuration at ${confFile.path}');
+    }
+  }
+
+  Future<void> reconfigureWebservers(List<AppModel> allApps, Function(String) logInfo) async {
+    final webServers = allApps.where((a) => a.isInstalled && (a.appId.contains('nginx') || a.appId.contains('apache'))).toList();
+    
+    for (final ws in webServers) {
+      if (ws.location != null) {
+        logInfo('Reconfiguring ${ws.name} at ${ws.location}...');
+        await _configureWebserver(ws, ws.location!, logInfo);
+      }
     }
   }
 

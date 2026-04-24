@@ -7,7 +7,7 @@ part of 'app_installer_service.dart';
 // **************************************************************************
 
 String _$appInstallerServiceHash() =>
-    r'c6a14caea48cb63a839c4b1c674d16e7c81cf29b';
+    r'0570e774d61995b57c3e7e61c0ee78e36eb9ca36';
 
 /// See also [appInstallerService].
 @ProviderFor(appInstallerService)

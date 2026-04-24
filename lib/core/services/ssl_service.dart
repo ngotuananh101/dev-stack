@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:process_run/shell.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:path/path.dart' as p;
 import '../../features/settings/data/settings_provider.dart';
 import '../config/app_config.dart';
 
@@ -11,19 +12,24 @@ part 'ssl_service.g.dart';
 class SslService extends _$SslService {
   @override
   Future<bool> build() async {
-    final settings = await ref.watch(settingsNotifierProvider.future);
+    // Safely listen to settings changes and update state manually
+    ref.listen(settingsNotifierProvider, (previous, next) {
+      next.whenData((settings) {
+        state = AsyncValue.data(settings.isSslInstalled);
+      });
+    });
+
+    final settings = await ref.read(settingsNotifierProvider.future);
     return settings.isSslInstalled;
   }
 
-  String get _mkcertPath {
-    // In production, we might need to use a different path
-    // For now, assume it's in the binDir or baseBinDir
+  bool get isInstalled => state.value ?? false;
+
+  String get mkcertPath {
     final binPath = '${AppConfig.binDir}\\mkcert.exe';
     if (File(binPath).existsSync()) {
       return binPath;
     }
-    
-    // Fallback to absolute path from assets/bin if it exists in current working dir
     final localBinPath = '${Directory.current.path}\\assets\\bin\\mkcert.exe';
     return localBinPath;
   }
@@ -31,7 +37,7 @@ class SslService extends _$SslService {
   Future<bool> checkStatus() async {
     try {
       final shell = Shell();
-      final results = await shell.run('"$_mkcertPath" -CAROOT');
+      final results = await shell.run('"$mkcertPath" -CAROOT');
       return results.isNotEmpty && results.first.stdout.toString().trim().isNotEmpty;
     } catch (e) {
       debugPrint('SSL status check failed: $e');
@@ -39,25 +45,76 @@ class SslService extends _$SslService {
     }
   }
 
-  Future<void> initializeRootCA() async {
+  String getSiteCertDir(String domain) => p.join(AppConfig.certsDir, domain);
+  String getSiteCertPath(String domain) => p.join(getSiteCertDir(domain), 'cert.pem');
+  String getSiteKeyPath(String domain) => p.join(getSiteCertDir(domain), 'key.pem');
+
+  Future<void> generateSiteCert(String domain, {bool force = false}) async {
+    if (!isInstalled) return;
+
+    final certPath = getSiteCertPath(domain);
+    final keyPath = getSiteKeyPath(domain);
+
+    if (!force && File(certPath).existsSync() && File(keyPath).existsSync()) {
+      debugPrint('Certificate for $domain already exists, skipping generation.');
+      return;
+    }
+
+    final dir = Directory(getSiteCertDir(domain));
+    if (!dir.existsSync()) {
+      await dir.create(recursive: true);
+    }
+
     try {
-      // Ensure the binary exists first
-      if (!File(_mkcertPath).existsSync()) {
-        debugPrint('mkcert.exe not found at $_mkcertPath');
+      final shell = Shell(workingDirectory: dir.path);
+      await shell.run(
+        '"$mkcertPath" -cert-file cert.pem -key-file key.pem "$domain" localhost 127.0.0.1 ::1',
+      );
+      debugPrint('Successfully generated certificate for $domain');
+    } catch (e) {
+      debugPrint('Failed to generate certificate for $domain: $e');
+    }
+  }
+
+  Future<void> initializeRootCA() async {
+    // Wait for the build process to finish so we have the correct state
+    await future;
+
+    if (state.value == true) {
+      // Already marked as installed in DB, just ensure localhost cert exists
+      await generateSiteCert('localhost');
+      return;
+    }
+
+    // Double check actual system status before running expensive install command
+    final isActuallyInstalled = await checkStatus();
+    if (isActuallyInstalled) {
+      debugPrint('SSL is already installed in system, updating database status...');
+      await ref.read(settingsNotifierProvider.notifier).updateField(isSslInstalled: true);
+      state = const AsyncValue.data(true);
+      await generateSiteCert('localhost');
+      return;
+    }
+    
+    try {
+      if (!File(mkcertPath).existsSync()) {
+        debugPrint('mkcert.exe not found at $mkcertPath');
         return;
       }
 
+      debugPrint('SSL not found, running mkcert -install...');
       final shell = Shell();
-      // Use PowerShell to run as administrator to handle trust store and key saving
-      final command = 'Start-Process -FilePath "$_mkcertPath" -ArgumentList "-install" -Verb RunAs -Wait';
-      await shell.run('powershell -Command "$command"');
-      
-      // Refresh status and update settings
-      final isInstalled = await checkStatus();
-      if (isInstalled) {
-        await ref.read(settingsNotifierProvider.notifier).updateField(isSslInstalled: true);
+      final installCmd =
+          'Start-Process -FilePath "$mkcertPath" -ArgumentList "-install" -Verb RunAs -Wait';
+      await shell.run('powershell -Command "$installCmd"');
+
+      final isInstalledNow = await checkStatus();
+      if (isInstalledNow) {
+        final settingsNotifier = ref.read(settingsNotifierProvider.notifier);
+        await settingsNotifier.updateField(isSslInstalled: true);
+        await generateSiteCert('localhost');
       }
-      state = AsyncValue.data(isInstalled);
+      state = AsyncValue.data(isInstalledNow);
     } catch (e) {
       debugPrint('Failed to initialize Root CA: $e');
       state = AsyncValue.error(e, StackTrace.current);
@@ -66,13 +123,12 @@ class SslService extends _$SslService {
 
   Future<void> uninstallRootCA() async {
     try {
-      if (!File(_mkcertPath).existsSync()) return;
+      if (!File(mkcertPath).existsSync()) return;
 
       final shell = Shell();
-      final command = 'Start-Process -FilePath "$_mkcertPath" -ArgumentList "-uninstall" -Verb RunAs -Wait';
+      final command = 'Start-Process -FilePath "$mkcertPath" -ArgumentList "-uninstall" -Verb RunAs -Wait';
       await shell.run('powershell -Command "$command"');
       
-      // Update settings
       await ref.read(settingsNotifierProvider.notifier).updateField(isSslInstalled: false);
       state = const AsyncValue.data(false);
     } catch (e) {

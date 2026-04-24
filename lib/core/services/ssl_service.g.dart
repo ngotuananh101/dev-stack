@@ -6,7 +6,7 @@ part of 'ssl_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sslServiceHash() => r'cde090381daaf71b596d4da3957277364aa3a2e9';
+String _$sslServiceHash() => r'c1359a6b228d171e8f55aab8a6704a693a26f738';
 
 /// See also [SslService].
 @ProviderFor(SslService)

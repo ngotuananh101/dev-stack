@@ -15,6 +15,7 @@ import 'features/settings/presentation/settings_page.dart';
 import 'features/sites/presentation/sites_page.dart';
 import 'core/services/window_service.dart';
 import 'core/services/ssl_service.dart';
+import 'features/apps/data/app_installer_service.dart';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,22 +59,40 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MainScreen extends ConsumerWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends ConsumerState<MainScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize SSL Root CA if not already installed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(sslServiceProvider.notifier).initializeRootCA();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Initialize Window Service (Tray, Auto-start, etc.)
     ref.watch(windowServiceProvider);
     
     // Eagerly initialize apps provider for background services auto-start
     ref.watch(appsNotifierProvider.future);
     
-    // Initialize SSL Root CA if not already installed
-    Future.microtask(() async {
-      final isInstalled = await ref.read(sslServiceProvider.future);
-      if (!isInstalled) {
-        ref.read(sslServiceProvider.notifier).initializeRootCA();
+    // Listen to SSL changes to reconfigure web servers
+    ref.listen(sslServiceProvider, (previous, next) async {
+      final nextValue = next.asData?.value;
+      final prevValue = previous?.asData?.value;
+      
+      if (nextValue != null && prevValue != null && nextValue != prevValue) {
+        final apps = await ref.read(appsNotifierProvider.future);
+        final installer = ref.read(appInstallerServiceProvider);
+        await installer.reconfigureWebservers(apps, (msg) => debugPrint('SSL Sync: $msg'));
       }
     });
     
