@@ -461,11 +461,9 @@ class AppInstallerService {
       await wwwDir.create(recursive: true);
     }
 
-    // Add default index.html if empty
-    final entities = await wwwDir.list().toList();
-    if (entities.isEmpty) {
-      final indexHtml = File(p.join(wwwDir.path, 'index.html'));
-      await indexHtml.writeAsString('''<!DOCTYPE html>
+    // Add default index.html
+    final indexHtml = File(p.join(wwwDir.path, 'index.html'));
+    await indexHtml.writeAsString('''<!DOCTYPE html>
 <html>
 <head>
     <title>Welcome to Ponta</title>
@@ -473,22 +471,23 @@ class AppInstallerService {
         body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f4f7f6; color: #333; }
         .container { text-align: center; padding: 40px; background: white; border-radius: 12px; shadow: 0 4px 20px rgba(0,0,0,0.08); }
         h1 { color: #007bff; }
+        code { background: #f4f7f6; padding: 2px 4px; border-radius: 4px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Welcome to Ponta Web Server</h1>
-        <p>This is the default root directory at <code>${wwwDir.path}</code></p>
+        <p>Web server: <code>${app.name}</code></p>
+        <p>Root directory: <code>${wwwDir.path}</code></p>
     </div>
 </body>
 </html>''');
-    }
 
     final webRoot = AppConfig.webserverRoot.replaceAll('\\', '/');
 
     final isSslInstalled = _ref.read(sslServiceProvider).value ?? false;
     final sslNotifier = _ref.read(sslServiceProvider.notifier);
-    
+
     if (isSslInstalled) {
       await sslNotifier.generateSiteCert('localhost');
     }
@@ -497,61 +496,20 @@ class AppInstallerService {
       final confFile = File(p.join(installPath, 'conf', 'nginx.conf'));
       logInfo('Generating fresh Nginx configuration...');
 
-      final certPath = sslNotifier.getSiteCertPath('localhost').replaceAll('\\', '/');
-      final keyPath = sslNotifier.getSiteKeyPath('localhost').replaceAll('\\', '/');
+      final certPath = sslNotifier
+          .getSiteCertPath('localhost')
+          .replaceAll('\\', '/');
+      final keyPath = sslNotifier
+          .getSiteKeyPath('localhost')
+          .replaceAll('\\', '/');
       final cleanWebRoot = webRoot.replaceAll('\\', '/');
 
-      String sslBlock = '';
-      if (isSslInstalled) {
-        sslBlock = '''
-    # HTTPS server
-    server {
-        listen       443 ssl;
-        server_name  localhost;
-        root         "$cleanWebRoot";
-
-        ssl_certificate      "$certPath";
-        ssl_certificate_key  "$keyPath";
-
-        ssl_session_cache    shared:SSL:1m;
-        ssl_session_timeout  5m;
-
-        ssl_ciphers  HIGH:!aNULL:!MD5;
-        ssl_prefer_server_ciphers  on;
-
-        location / {
-            index  index.html index.htm index.php;
-        }
-    }''';
-      }
-
-      final nginxConfig = '''
-worker_processes  auto;
-
-events {
-    worker_connections  1024;
-}
-
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-    sendfile        on;
-    keepalive_timeout  65;
-
-    # HTTP server
-    server {
-        listen       80;
-        server_name  localhost;
-        root         "$cleanWebRoot";
-
-        location / {
-            index  index.html index.htm index.php;
-        }
-    }
-
-$sslBlock
-}
-''';
+      final nginxConfig = _getNginxConfigTemplate(
+        webRoot: cleanWebRoot,
+        isSslInstalled: isSslInstalled,
+        certPath: certPath,
+        keyPath: keyPath,
+      );
 
       await confFile.writeAsString(nginxConfig);
       logInfo('Nginx configuration generated successfully.');
@@ -612,19 +570,37 @@ $sslBlock
         final sslVhostMarker = '# Ponta SSL Virtual Host';
         if (isSslInstalled) {
           logInfo('Configuring SSL for Apache...');
-          // Enable mod_ssl and socache_shmcb
-          content = content.replaceFirst('#LoadModule ssl_module modules/mod_ssl.so', 'LoadModule ssl_module modules/mod_ssl.so');
-          content = content.replaceFirst('#LoadModule socache_shmcb_module modules/mod_socache_shmcb.so', 'LoadModule socache_shmcb_module modules/mod_socache_shmcb.so');
-          
+
+          // Enable mod_ssl and socache_shmcb using flexible regex
+          content = content.replaceFirst(
+            RegExp(r'#\s*LoadModule\s+ssl_module\s+modules/mod_ssl.so'),
+            'LoadModule ssl_module modules/mod_ssl.so',
+          );
+          content = content.replaceFirst(
+            RegExp(
+              r'#\s*LoadModule\s+socache_shmcb_module\s+modules/mod_socache_shmcb.so',
+            ),
+            'LoadModule socache_shmcb_module modules/mod_socache_shmcb.so',
+          );
+
           if (!content.contains('Listen 443')) {
-            content = content.replaceFirst('Listen 80', 'Listen 80\nListen 443');
+            content = content.replaceFirst(
+              'Listen 80',
+              'Listen 80\nListen 443',
+            );
           }
 
-          final certPath = sslNotifier.getSiteCertPath('localhost').replaceAll('\\', '/');
-          final keyPath = sslNotifier.getSiteKeyPath('localhost').replaceAll('\\', '/');
-          
-          final sslVhost = '''
+          final certPath = sslNotifier
+              .getSiteCertPath('localhost')
+              .replaceAll('\\', '/');
+          final keyPath = sslNotifier
+              .getSiteKeyPath('localhost')
+              .replaceAll('\\', '/');
+
+          final sslVhost =
+              '''
 $sslVhostMarker
+<IfModule mod_ssl.c>
 <VirtualHost *:443>
     DocumentRoot "$webRoot"
     ServerName localhost:443
@@ -637,9 +613,13 @@ $sslVhostMarker
         Require all granted
     </Directory>
 </VirtualHost>
+</IfModule>
 ''';
           // Remove existing vhost if any
-          final existingRegex = RegExp(r'\s*' + RegExp.escape(sslVhostMarker) + r'.*?<\/VirtualHost>', dotAll: true);
+          final existingRegex = RegExp(
+            r'\s*' + RegExp.escape(sslVhostMarker) + r'.*?<\/IfModule>',
+            dotAll: true,
+          );
           content = content.replaceAll(existingRegex, '');
 
           content += '\n$sslVhost\n';
@@ -647,7 +627,10 @@ $sslVhostMarker
           // Remove SSL config if uninstalled
           if (content.contains(sslVhostMarker)) {
             logInfo('Removing SSL config from Apache...');
-            final existingRegex = RegExp(r'\s*' + RegExp.escape(sslVhostMarker) + r'.*?<\/VirtualHost>', dotAll: true);
+            final existingRegex = RegExp(
+              r'\s*' + RegExp.escape(sslVhostMarker) + r'.*?<\/IfModule>',
+              dotAll: true,
+            );
             content = content.replaceAll(existingRegex, '');
             // Optionally disable modules but keep it simple for now
           }
@@ -661,6 +644,66 @@ $sslVhostMarker
         logInfo('Warning: Could not find Apache httpd.conf to configure.');
       }
     }
+  }
+
+  String _getNginxConfigTemplate({
+    required String webRoot,
+    required bool isSslInstalled,
+    required String certPath,
+    required String keyPath,
+  }) {
+    String sslBlock = '';
+    if (isSslInstalled) {
+      sslBlock =
+          '''
+    # HTTPS server
+    server {
+        listen       443 ssl;
+        server_name  localhost;
+        root         "$webRoot";
+
+        ssl_certificate      "$certPath";
+        ssl_certificate_key  "$keyPath";
+
+        ssl_session_cache    shared:SSL:1m;
+        ssl_session_timeout  5m;
+
+        ssl_ciphers  HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers  on;
+
+        location / {
+            index  index.html index.htm index.php;
+        }
+    }''';
+    }
+
+    return '''
+worker_processes  auto;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+
+    # HTTP server
+    server {
+        listen       80;
+        server_name  localhost;
+        root         "$webRoot";
+
+        location / {
+            index  index.html index.htm index.php;
+        }
+    }
+
+$sslBlock
+}
+''';
   }
 
   Future<void> _configureMongodb(
@@ -704,9 +747,18 @@ net:
     }
   }
 
-  Future<void> reconfigureWebservers(List<AppModel> allApps, Function(String) logInfo) async {
-    final webServers = allApps.where((a) => a.isInstalled && (a.appId.contains('nginx') || a.appId.contains('apache'))).toList();
-    
+  Future<void> reconfigureWebservers(
+    List<AppModel> allApps,
+    Function(String) logInfo,
+  ) async {
+    final webServers = allApps
+        .where(
+          (a) =>
+              a.isInstalled &&
+              (a.appId.contains('nginx') || a.appId.contains('apache')),
+        )
+        .toList();
+
     for (final ws in webServers) {
       if (ws.location != null) {
         logInfo('Reconfiguring ${ws.name} at ${ws.location}...');
@@ -974,8 +1026,10 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
       // 1. Set Blowfish secret (required for cookies, must be 32 chars)
       final random = DateTime.now().microsecondsSinceEpoch.toString();
-      final secret = '${random}ponta_secret_key_for_cookie_32_chars'
-          .substring(0, 32);
+      final secret = '${random}ponta_secret_key_for_cookie_32_chars'.substring(
+        0,
+        32,
+      );
       content = content.replaceFirstMapped(
         RegExp(r"(\$cfg\['blowfish_secret'\]\s*=\s*').*?(';)"),
         (match) => "${match.group(1)}$secret${match.group(2)}",
