@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/site_model.dart';
+import '../../data/sites_provider.dart';
 
-class SiteTable extends StatelessWidget {
+class SiteTable extends ConsumerWidget {
   final List<SiteModel> sites;
 
   const SiteTable({
@@ -12,7 +14,7 @@ class SiteTable extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -30,7 +32,7 @@ class SiteTable extends StatelessWidget {
               child: ListView.builder(
                 itemCount: sites.length,
                 itemBuilder: (context, index) =>
-                    _buildRow(sites[index], index == sites.length - 1),
+                    _buildRow(context, ref, sites[index], index == sites.length - 1),
               ),
             ),
         ],
@@ -78,7 +80,7 @@ class SiteTable extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(SiteModel site, bool isLast) {
+  Widget _buildRow(BuildContext context, WidgetRef ref, SiteModel site, bool isLast) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -91,7 +93,7 @@ class SiteTable extends StatelessWidget {
           Expanded(
             flex: 3,
             child: Text(
-              site.name,
+              site.domain,
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 13,
@@ -103,7 +105,7 @@ class SiteTable extends StatelessWidget {
           Expanded(
             flex: 4,
             child: Text(
-              site.path,
+              site.rootDir,
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
               overflow: TextOverflow.ellipsis,
             ),
@@ -112,7 +114,7 @@ class SiteTable extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Text(
-              site.phpVersion,
+              'PHP ${site.phpVersion}',
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           ),
@@ -120,9 +122,9 @@ class SiteTable extends StatelessWidget {
           Expanded(
             flex: 1,
             child: Icon(
-              site.hasSsl ? LucideIcons.lock : LucideIcons.unlock,
+              site.useSsl ? LucideIcons.lock : LucideIcons.unlock,
               size: 14,
-              color: site.hasSsl ? AppColors.success : AppColors.textMuted,
+              color: site.useSsl ? AppColors.success : AppColors.textMuted,
             ),
           ),
           const SizedBox(width: 12),
@@ -139,10 +141,10 @@ class SiteTable extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 _buildActionButton(
-                  icon: LucideIcons.fileText,
-                  onPressed: () {},
-                  color: AppColors.textSecondary,
-                  tooltip: 'Log',
+                  icon: LucideIcons.trash2,
+                  onPressed: () => ref.read(sitesNotifierProvider.notifier).deleteSite(site.id),
+                  color: AppColors.error,
+                  tooltip: 'Delete',
                 ),
               ],
             ),

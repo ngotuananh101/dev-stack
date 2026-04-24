@@ -7,7 +7,7 @@ import '../../features/dashboard/domain/environment_model.dart';
 import '../../features/apps/domain/installed_app.dart';
 import '../../features/databases/domain/database_record.dart';
 import '../../features/settings/domain/app_settings.dart';
-
+import '../../features/sites/domain/site_model.dart';
 
 part 'isar_provider.g.dart';
 
@@ -28,6 +28,7 @@ class IsarInstance {
           InstalledAppSchema,
           DatabaseRecordSchema,
           AppSettingsSchema,
+          SiteModelSchema,
         ],
         directory: dir.path,
       );
@@ -44,6 +45,7 @@ class IsarInstance {
           InstalledAppSchema,
           DatabaseRecordSchema,
           AppSettingsSchema,
+          SiteModelSchema,
         ],
         directory: dir.path,
       );

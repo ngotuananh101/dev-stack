@@ -17,6 +17,9 @@ class AppConfig {
   /// Certificates directory.
   static const String certsDir = '$baseDir\\certs';
 
+  /// Vhosts directory.
+  static const String vhostsDir = '$baseDir\\vhosts';
+
   /// The base directory for all tools and binaries
   static const String baseBinDir = 'assets/bin';
 }

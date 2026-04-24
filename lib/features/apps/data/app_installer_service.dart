@@ -461,6 +461,18 @@ class AppInstallerService {
       await wwwDir.create(recursive: true);
     }
 
+    // Create vhosts directories
+    final nginxVhosts = Directory(p.join(AppConfig.vhostsDir, 'nginx'));
+    if (!nginxVhosts.existsSync()) {
+      logInfo('Creating Nginx vhosts directory: ${nginxVhosts.path}');
+      await nginxVhosts.create(recursive: true);
+    }
+    final apacheVhosts = Directory(p.join(AppConfig.vhostsDir, 'apache'));
+    if (!apacheVhosts.existsSync()) {
+      logInfo('Creating Apache vhosts directory: ${apacheVhosts.path}');
+      await apacheVhosts.create(recursive: true);
+    }
+
     // Add default index.html
     final indexHtml = File(p.join(wwwDir.path, 'index.html'));
     await indexHtml.writeAsString('''<!DOCTYPE html>
@@ -583,6 +595,16 @@ class AppInstallerService {
             'LoadModule socache_shmcb_module modules/mod_socache_shmcb.so',
           );
 
+          // Enable proxy modules for PHP-CGI
+          content = content.replaceFirst(
+            RegExp(r'#\s*LoadModule\s+proxy_module\s+modules/mod_proxy.so'),
+            'LoadModule proxy_module modules/mod_proxy.so',
+          );
+          content = content.replaceFirst(
+            RegExp(r'#\s*LoadModule\s+proxy_fcgi_module\s+modules/mod_proxy_fcgi.so'),
+            'LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so',
+          );
+
           if (!content.contains('Listen 443')) {
             content = content.replaceFirst(
               'Listen 80',
@@ -640,6 +662,15 @@ $sslVhostMarker
         logInfo(
           'Apache configuration updated (SRVROOT, DocumentRoot, Permissions, SSL).',
         );
+
+        // Include global vhosts
+        String httpdContent = await confFile.readAsString();
+        final vhostsPath = p.join(AppConfig.vhostsDir, 'apache', '*.conf').replaceAll('\\', '/');
+        if (!httpdContent.contains('IncludeOptional "$vhostsPath"')) {
+          logInfo('Adding global vhosts include to Apache...');
+          httpdContent += '\n# Global Vhosts\nIncludeOptional "$vhostsPath"\n';
+          await confFile.writeAsString(httpdContent);
+        }
       } else {
         logInfo('Warning: Could not find Apache httpd.conf to configure.');
       }
@@ -702,6 +733,9 @@ http {
     }
 
 $sslBlock
+
+    # Global Vhosts
+    include "${p.join(AppConfig.vhostsDir, 'nginx', '*.conf').replaceAll('\\', '/')}";
 }
 ''';
   }
@@ -881,13 +915,7 @@ net:
     final pmaPath = pma.location;
     if (wsPath == null || pmaPath == null) return;
 
-    final confDir = Directory(p.join(wsPath, 'conf', 'ponta_apps'));
-    if (!confDir.existsSync()) {
-      log('Creating Nginx ponta_apps directory: ${confDir.path}');
-      confDir.createSync(recursive: true);
-    }
-
-    final pmaConfFile = File(p.join(confDir.path, 'phpmyadmin.conf'));
+    final pmaConfFile = File(p.join(AppConfig.vhostsDir, 'nginx', 'phpmyadmin.conf'));
 
     // Determine PHP port
     String phpPort = '9000'; // Default
@@ -903,6 +931,7 @@ net:
 
     final pmaConfig =
         '''
+# phpMyAdmin Integration
 location /phpmyadmin {
     alias "$pmaPathUnix/";
     index index.php;
@@ -922,35 +951,6 @@ location /phpmyadmin {
     log(
       'Created Nginx config for phpMyAdmin at ${pmaConfFile.path} (PHP Port: $phpPort)',
     );
-
-    // Ensure nginx.conf includes this
-    final nginxConf = File(p.join(wsPath, 'conf', 'nginx.conf'));
-    if (nginxConf.existsSync()) {
-      String content = await nginxConf.readAsString();
-      if (!content.contains('ponta_apps/*.conf')) {
-        log('Injecting ponta_apps include into nginx.conf...');
-
-        // 1. Try to find the default server block with listen 80
-        if (content.contains('listen       80;')) {
-          content = content.replaceFirst(
-            'listen       80;',
-            'listen       80;\n        include ponta_apps/*.conf;',
-          );
-        } else if (content.contains('server {')) {
-          // 2. Fallback to first server block
-          content = content.replaceFirst(
-            'server {',
-            'server {\n        include ponta_apps/*.conf;',
-          );
-        } else {
-          // 3. Last resort: append at the end (might not work well if outside http/server)
-          content += '\n# Ponta Apps\ninclude ponta_apps/*.conf;\n';
-        }
-
-        await nginxConf.writeAsString(content);
-        log('Successfully added include to nginx.conf');
-      }
-    }
   }
 
   Future<void> _configurePhpMyAdminInApache(
@@ -962,28 +962,7 @@ location /phpmyadmin {
     final pmaPath = pma.location;
     if (wsPath == null || pmaPath == null) return;
 
-    // Apache root might be nested in Apache24
-    String apacheRoot = wsPath;
-    File httpdConf = File(p.join(wsPath, 'conf', 'httpd.conf'));
-    if (!httpdConf.existsSync()) {
-      final nestedConf = File(p.join(wsPath, 'Apache24', 'conf', 'httpd.conf'));
-      if (nestedConf.existsSync()) {
-        httpdConf = nestedConf;
-        apacheRoot = p.join(wsPath, 'Apache24');
-      }
-    }
-
-    if (!httpdConf.existsSync()) {
-      log('Apache httpd.conf not found, skipping integration.');
-      return;
-    }
-
-    final confDir = Directory(p.join(apacheRoot, 'conf', 'ponta_apps'));
-    if (!confDir.existsSync()) {
-      log('Creating Apache ponta_apps directory: ${confDir.path}');
-      confDir.createSync(recursive: true);
-    }
-    final pmaConfFile = File(p.join(confDir.path, 'phpmyadmin.conf'));
+    final pmaConfFile = File(p.join(AppConfig.vhostsDir, 'apache', 'phpmyadmin.conf'));
     final pmaWebRoot = _resolvePmaWebRoot(pmaPath);
     final pmaPathUnix = pmaWebRoot.replaceAll('\\', '/');
 
@@ -1000,16 +979,6 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
     await pmaConfFile.writeAsString(pmaConfig);
     log('Created Apache config for phpMyAdmin at ${pmaConfFile.path}');
-
-    // Ensure httpd.conf includes this
-    String content = await httpdConf.readAsString();
-    if (!content.contains('ponta_apps/*.conf')) {
-      log('Injecting ponta_apps include into httpd.conf...');
-      // Append at the end of the file
-      content += '\n# Ponta Apps Integration\nInclude conf/ponta_apps/*.conf\n';
-      await httpdConf.writeAsString(content);
-      log('Successfully added include to httpd.conf');
-    }
   }
 
   Future<void> _configurePhpMyAdmin(

@@ -4,6 +4,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'widgets/site_table.dart';
 import '../domain/site_model.dart';
+import '../data/sites_provider.dart';
+import 'widgets/add_site_modal.dart';
 
 class SitesPage extends ConsumerStatefulWidget {
   const SitesPage({super.key});
@@ -23,24 +25,6 @@ class _SitesPageState extends ConsumerState<SitesPage> {
     'Proxy Project',
   ];
 
-  // Mock data for PHP Projects
-  final List<SiteModel> mockPhpSites = [
-    SiteModel(
-      id: '1',
-      name: 'ponta-app.local',
-      path: 'C:/www/ponta-app',
-      phpVersion: '8.2',
-      hasSsl: true,
-    ),
-    SiteModel(
-      id: '2',
-      name: 'test-site.dev',
-      path: 'C:/www/test-site',
-      phpVersion: '7.4',
-      hasSsl: false,
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -55,6 +39,18 @@ class _SitesPageState extends ConsumerState<SitesPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _showAddSiteModal() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (context) => Center(
+        child: AddSiteModal(
+          onClose: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
   }
 
   @override
@@ -135,7 +131,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
     return Row(
       children: [
         ElevatedButton.icon(
-          onPressed: () {},
+          onPressed: _showAddSiteModal,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.success,
             foregroundColor: Colors.white,
@@ -215,11 +211,19 @@ class _SitesPageState extends ConsumerState<SitesPage> {
       );
     }
 
-    final filteredSites = mockPhpSites.where((site) {
-      return site.name.toLowerCase().contains(_searchQuery) ||
-          site.path.toLowerCase().contains(_searchQuery);
-    }).toList();
+    final sitesAsync = ref.watch(sitesNotifierProvider);
 
-    return SiteTable(sites: filteredSites);
+    return sitesAsync.when(
+      data: (sites) {
+        final filteredSites = sites.where((site) {
+          return site.domain.toLowerCase().contains(_searchQuery) ||
+              site.rootDir.toLowerCase().contains(_searchQuery);
+        }).toList();
+
+        return SiteTable(sites: filteredSites);
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Error loading sites: $e')),
+    );
   }
 }
