@@ -82,8 +82,15 @@ class SitesNotifier extends _$SitesNotifier {
     final rootDirUnix = site.rootDir.replaceAll('\\', '/');
     final sslNotifier = ref.read(sslServiceProvider.notifier);
     
+    // Ensure directories exist
+    final nginxDir = Directory(p.join(AppConfig.vhostsDir, 'nginx'));
+    if (!nginxDir.existsSync()) await nginxDir.create(recursive: true);
+    
+    final apacheDir = Directory(p.join(AppConfig.vhostsDir, 'apache'));
+    if (!apacheDir.existsSync()) await apacheDir.create(recursive: true);
+
     // 1. Nginx Vhost
-    final nginxVhostFile = File(p.join(AppConfig.vhostsDir, 'nginx', '${site.domain}.conf'));
+    final nginxVhostFile = File(p.join(nginxDir.path, '${site.domain}.conf'));
     String nginxConfig = '''
 server {
     listen 80;
@@ -139,7 +146,7 @@ server {
     await nginxVhostFile.writeAsString(nginxConfig);
 
     // 2. Apache Vhost
-    final apacheVhostFile = File(p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'));
+    final apacheVhostFile = File(p.join(apacheDir.path, '${site.domain}.conf'));
     String apacheConfig = '''
 <VirtualHost *:80>
     ServerName ${site.domain}

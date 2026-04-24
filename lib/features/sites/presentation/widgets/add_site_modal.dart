@@ -14,11 +14,7 @@ class AddSiteModal extends ConsumerStatefulWidget {
   final VoidCallback onClose;
   final SiteModel? initialData;
 
-  const AddSiteModal({
-    super.key,
-    required this.onClose,
-    this.initialData,
-  });
+  const AddSiteModal({super.key, required this.onClose, this.initialData});
 
   @override
   ConsumerState<AddSiteModal> createState() => _AddSiteModalState();
@@ -28,7 +24,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
   final _formKey = GlobalKey<FormState>();
   final _domainController = TextEditingController();
   final _rootDirController = TextEditingController();
-  
+
   String? _selectedPhpAppId;
   bool _useSsl = false;
   bool _isSaving = false;
@@ -54,7 +50,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
   }
 
   Future<void> _pickDirectory() async {
-    String? result = await FilePicker.platform.getDirectoryPath();
+    String? result = await FilePicker.getDirectoryPath();
     if (result != null) {
       setState(() {
         _rootDirController.text = result;
@@ -73,17 +69,22 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
 
     setState(() => _isSaving = true);
     try {
-      await ref.read(sitesNotifierProvider.notifier).addSite(
-        domain: _domainController.text.trim(),
-        rootDir: _rootDirController.text.trim(),
-        phpAppId: _selectedPhpAppId!,
-        useSsl: _useSsl,
-      );
+      await ref
+          .read(sitesNotifierProvider.notifier)
+          .addSite(
+            domain: _domainController.text.trim(),
+            rootDir: _rootDirController.text.trim(),
+            phpAppId: _selectedPhpAppId!,
+            useSsl: _useSsl,
+          );
       widget.onClose();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -94,18 +95,22 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
   @override
   Widget build(BuildContext context) {
     final appsAsync = ref.watch(appsNotifierProvider);
-    
+
     return appsAsync.when(
       data: (apps) {
-        final phpApps = apps.where((a) => a.isInstalled && a.groupName == 'php').toList();
-        
+        final phpApps = apps
+            .where((a) => a.isInstalled && a.groupName == 'php')
+            .toList();
+
         // Auto select first PHP or match existing
         if (_selectedPhpAppId == null && phpApps.isNotEmpty) {
           if (isEdit) {
-             final match = phpApps.indexWhere((a) => a.appId.contains(widget.initialData!.phpVersion));
-             if (match != -1) _selectedPhpAppId = phpApps[match].appId;
+            final match = phpApps.indexWhere(
+              (a) => a.appId.contains(widget.initialData!.phpVersion),
+            );
+            if (match != -1) _selectedPhpAppId = phpApps[match].appId;
           } else {
-             _selectedPhpAppId = phpApps.first.appId;
+            _selectedPhpAppId = phpApps.first.appId;
           }
         }
 
@@ -138,10 +143,17 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 12.0,
+              ),
               child: Row(
                 children: [
-                  const Icon(LucideIcons.globe, size: 20, color: AppColors.primary),
+                  const Icon(
+                    LucideIcons.globe,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -167,7 +179,11 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                   ),
                   IconButton(
                     onPressed: widget.onClose,
-                    icon: const Icon(LucideIcons.x, size: 18, color: AppColors.textMuted),
+                    icon: const Icon(
+                      LucideIcons.x,
+                      size: 18,
+                      color: AppColors.textMuted,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -190,15 +206,18 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                       hint: 'e.g. my-project.test',
                       icon: LucideIcons.atSign,
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'Please enter a domain';
-                        if (!RegExp(r'^[a-zA-Z0-9][-a-zA-Z0-9.]+$').hasMatch(value)) {
+                        if (value == null || value.isEmpty)
+                          return 'Please enter a domain';
+                        if (!RegExp(
+                          r'^[a-zA-Z0-9][-a-zA-Z0-9.]+$',
+                        ).hasMatch(value)) {
                           return 'Invalid domain format';
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 20),
-                    
+
                     _buildLabel('Root Directory'),
                     Row(
                       children: [
@@ -208,8 +227,10 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                             hint: 'C:\\Projects\\my-project',
                             icon: LucideIcons.folder,
                             validator: (value) {
-                              if (value == null || value.isEmpty) return 'Please select a directory';
-                              if (!Directory(value).existsSync()) return 'Directory does not exist';
+                              if (value == null || value.isEmpty)
+                                return 'Please select a directory';
+                              if (!Directory(value).existsSync())
+                                return 'Directory does not exist';
                               return null;
                             },
                           ),
@@ -222,7 +243,10 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                             foregroundColor: AppColors.textPrimary,
                             side: const BorderSide(color: AppColors.border),
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
                           ),
                           child: const Icon(LucideIcons.folderOpen, size: 18),
                         ),
@@ -239,7 +263,9 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                             children: [
                               _buildLabel('PHP Version'),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.surface,
                                   borderRadius: BorderRadius.circular(8),
@@ -249,17 +275,24 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                                   child: DropdownButton<String>(
                                     value: _selectedPhpAppId,
                                     isExpanded: true,
-                                    icon: const Icon(LucideIcons.chevronDown, size: 16),
+                                    icon: const Icon(
+                                      LucideIcons.chevronDown,
+                                      size: 16,
+                                    ),
                                     items: phpApps.map((app) {
                                       return DropdownMenuItem(
                                         value: app.appId,
                                         child: Text(
                                           app.name,
-                                          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: AppColors.textPrimary,
+                                          ),
                                         ),
                                       );
                                     }).toList(),
-                                    onChanged: (val) => setState(() => _selectedPhpAppId = val),
+                                    onChanged: (val) =>
+                                        setState(() => _selectedPhpAppId = val),
                                   ),
                                 ),
                               ),
@@ -275,29 +308,44 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                               onTap: () => setState(() => _useSsl = !_useSsl),
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: _useSsl ? AppColors.success.withValues(alpha: 0.1) : AppColors.surface,
+                                  color: _useSsl
+                                      ? AppColors.success.withValues(alpha: 0.1)
+                                      : AppColors.surface,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: _useSsl ? AppColors.success : AppColors.border,
+                                    color: _useSsl
+                                        ? AppColors.success
+                                        : AppColors.border,
                                   ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      _useSsl ? LucideIcons.shieldCheck : LucideIcons.shieldAlert,
+                                      _useSsl
+                                          ? LucideIcons.shieldCheck
+                                          : LucideIcons.shieldAlert,
                                       size: 16,
-                                      color: _useSsl ? AppColors.success : AppColors.textMuted,
+                                      color: _useSsl
+                                          ? AppColors.success
+                                          : AppColors.textMuted,
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Apply SSL',
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: _useSsl ? AppColors.success : AppColors.textSecondary,
-                                        fontWeight: _useSsl ? FontWeight.bold : FontWeight.normal,
+                                        color: _useSsl
+                                            ? AppColors.success
+                                            : AppColors.textSecondary,
+                                        fontWeight: _useSsl
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -306,9 +354,15 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                                       height: 20,
                                       child: Checkbox(
                                         value: _useSsl,
-                                        onChanged: (val) => setState(() => _useSsl = val ?? false),
+                                        onChanged: (val) => setState(
+                                          () => _useSsl = val ?? false,
+                                        ),
                                         activeColor: AppColors.success,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -327,15 +381,24 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
 
             // Footer
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 12.0,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
                     onPressed: widget.onClose,
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      side: const BorderSide(color: AppColors.border, width: 0.5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      side: const BorderSide(
+                        color: AppColors.border,
+                        width: 0.5,
+                      ),
                     ),
                     child: const Text(
                       'Cancel',
@@ -352,10 +415,15 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
                     ),
                     child: Text(
-                      _isSaving ? 'Saving...' : (isEdit ? 'Update Site' : 'Add Site'),
+                      _isSaving
+                          ? 'Saving...'
+                          : (isEdit ? 'Update Site' : 'Add Site'),
                       style: const TextStyle(
                         fontSize: AppTextSize.xs,
                         fontWeight: FontWeight.w500,
@@ -406,7 +474,10 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
         prefixIcon: Icon(icon, size: 16, color: AppColors.textMuted),
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.border),

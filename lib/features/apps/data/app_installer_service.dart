@@ -915,7 +915,12 @@ net:
     final pmaPath = pma.location;
     if (wsPath == null || pmaPath == null) return;
 
-    final pmaConfFile = File(p.join(AppConfig.vhostsDir, 'nginx', 'phpmyadmin.conf'));
+    final nginxVhostsDir = Directory(p.join(AppConfig.vhostsDir, 'nginx'));
+    if (!nginxVhostsDir.existsSync()) {
+      await nginxVhostsDir.create(recursive: true);
+    }
+
+    final pmaConfFile = File(p.join(nginxVhostsDir.path, 'phpmyadmin.conf'));
 
     // Determine PHP port
     String phpPort = '9000'; // Default
@@ -962,7 +967,12 @@ location /phpmyadmin {
     final pmaPath = pma.location;
     if (wsPath == null || pmaPath == null) return;
 
-    final pmaConfFile = File(p.join(AppConfig.vhostsDir, 'apache', 'phpmyadmin.conf'));
+    final apacheVhostsDir = Directory(p.join(AppConfig.vhostsDir, 'apache'));
+    if (!apacheVhostsDir.existsSync()) {
+      await apacheVhostsDir.create(recursive: true);
+    }
+
+    final pmaConfFile = File(p.join(apacheVhostsDir.path, 'phpmyadmin.conf'));
     final pmaWebRoot = _resolvePmaWebRoot(pmaPath);
     final pmaPathUnix = pmaWebRoot.replaceAll('\\', '/');
 
