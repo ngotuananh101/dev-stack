@@ -24,6 +24,11 @@ class SettingsPage extends ConsumerWidget {
                   .toList() ??
               [];
 
+          final currentDefaultPhp = installedPhps
+              .where((a) => a.isDefault)
+              .map((a) => a.appId)
+              .firstOrNull;
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(32.0),
             child: Column(
@@ -38,11 +43,15 @@ class SettingsPage extends ConsumerWidget {
                     _buildDropdownSetting(
                       title: 'Default PHP Version',
                       subtitle: 'Choose which PHP version to use as system default',
-                      value: settings.defaultPhpVersion,
+                      value: currentDefaultPhp,
                       items: installedPhps.map((a) => a.appId).toList(),
-                      onChanged: (val) => ref
-                          .read(settingsNotifierProvider.notifier)
-                          .updateField(defaultPhpVersion: val),
+                      onChanged: (val) {
+                        if (val != null) {
+                          ref
+                              .read(appsNotifierProvider.notifier)
+                              .changeDefaultPhp(val);
+                        }
+                      },
                       placeholder: 'No PHP version installed',
                     ),
                     const Divider(color: AppColors.border, height: 32),
