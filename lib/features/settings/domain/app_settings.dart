@@ -7,7 +7,6 @@ class AppSettings {
   Id id = Isar.autoIncrement;
 
   // Site Configuration
-  String? defaultPhpVersion;
   String siteTemplate = '[site-name].test';
   bool autoCreateSite = false;
 

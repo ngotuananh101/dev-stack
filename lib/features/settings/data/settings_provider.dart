@@ -35,7 +35,6 @@ class SettingsNotifier extends _$SettingsNotifier {
   }
 
   Future<void> updateField({
-    String? defaultPhpVersion,
     String? siteTemplate,
     bool? autoCreateSite,
     bool? minimizeToTray,
@@ -44,7 +43,6 @@ class SettingsNotifier extends _$SettingsNotifier {
     final currentSettings = state.value;
     if (currentSettings == null) return;
 
-    if (defaultPhpVersion != null) currentSettings.defaultPhpVersion = defaultPhpVersion;
     if (siteTemplate != null) currentSettings.siteTemplate = siteTemplate;
     if (autoCreateSite != null) currentSettings.autoCreateSite = autoCreateSite;
     if (minimizeToTray != null) currentSettings.minimizeToTray = minimizeToTray;

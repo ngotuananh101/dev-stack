@@ -27,18 +27,13 @@ const AppSettingsSchema = CollectionSchema(
       name: r'autoStartWithWindows',
       type: IsarType.bool,
     ),
-    r'defaultPhpVersion': PropertySchema(
-      id: 2,
-      name: r'defaultPhpVersion',
-      type: IsarType.string,
-    ),
     r'minimizeToTray': PropertySchema(
-      id: 3,
+      id: 2,
       name: r'minimizeToTray',
       type: IsarType.bool,
     ),
     r'siteTemplate': PropertySchema(
-      id: 4,
+      id: 3,
       name: r'siteTemplate',
       type: IsarType.string,
     )
@@ -63,12 +58,6 @@ int _appSettingsEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  {
-    final value = object.defaultPhpVersion;
-    if (value != null) {
-      bytesCount += 3 + value.length * 3;
-    }
-  }
   bytesCount += 3 + object.siteTemplate.length * 3;
   return bytesCount;
 }
@@ -81,9 +70,8 @@ void _appSettingsSerialize(
 ) {
   writer.writeBool(offsets[0], object.autoCreateSite);
   writer.writeBool(offsets[1], object.autoStartWithWindows);
-  writer.writeString(offsets[2], object.defaultPhpVersion);
-  writer.writeBool(offsets[3], object.minimizeToTray);
-  writer.writeString(offsets[4], object.siteTemplate);
+  writer.writeBool(offsets[2], object.minimizeToTray);
+  writer.writeString(offsets[3], object.siteTemplate);
 }
 
 AppSettings _appSettingsDeserialize(
@@ -95,10 +83,9 @@ AppSettings _appSettingsDeserialize(
   final object = AppSettings();
   object.autoCreateSite = reader.readBool(offsets[0]);
   object.autoStartWithWindows = reader.readBool(offsets[1]);
-  object.defaultPhpVersion = reader.readStringOrNull(offsets[2]);
   object.id = id;
-  object.minimizeToTray = reader.readBool(offsets[3]);
-  object.siteTemplate = reader.readString(offsets[4]);
+  object.minimizeToTray = reader.readBool(offsets[2]);
+  object.siteTemplate = reader.readString(offsets[3]);
   return object;
 }
 
@@ -114,10 +101,8 @@ P _appSettingsDeserializeProp<P>(
     case 1:
       return (reader.readBool(offset)) as P;
     case 2:
-      return (reader.readStringOrNull(offset)) as P;
-    case 3:
       return (reader.readBool(offset)) as P;
-    case 4:
+    case 3:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -233,160 +218,6 @@ extension AppSettingsQueryFilter
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'autoStartWithWindows',
         value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'defaultPhpVersion',
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'defaultPhpVersion',
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionEqualTo(
-    String? value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'defaultPhpVersion',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionGreaterThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'defaultPhpVersion',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionLessThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'defaultPhpVersion',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionBetween(
-    String? lower,
-    String? upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'defaultPhpVersion',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'defaultPhpVersion',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'defaultPhpVersion',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'defaultPhpVersion',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'defaultPhpVersion',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'defaultPhpVersion',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
-      defaultPhpVersionIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'defaultPhpVersion',
-        value: '',
       ));
     });
   }
@@ -626,20 +457,6 @@ extension AppSettingsQuerySortBy
     });
   }
 
-  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
-      sortByDefaultPhpVersion() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'defaultPhpVersion', Sort.asc);
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
-      sortByDefaultPhpVersionDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'defaultPhpVersion', Sort.desc);
-    });
-  }
-
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByMinimizeToTray() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'minimizeToTray', Sort.asc);
@@ -693,20 +510,6 @@ extension AppSettingsQuerySortThenBy
       thenByAutoStartWithWindowsDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'autoStartWithWindows', Sort.desc);
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
-      thenByDefaultPhpVersion() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'defaultPhpVersion', Sort.asc);
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
-      thenByDefaultPhpVersionDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'defaultPhpVersion', Sort.desc);
     });
   }
 
@@ -764,14 +567,6 @@ extension AppSettingsQueryWhereDistinct
     });
   }
 
-  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByDefaultPhpVersion(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'defaultPhpVersion',
-          caseSensitive: caseSensitive);
-    });
-  }
-
   QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByMinimizeToTray() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'minimizeToTray');
@@ -804,13 +599,6 @@ extension AppSettingsQueryProperty
       autoStartWithWindowsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'autoStartWithWindows');
-    });
-  }
-
-  QueryBuilder<AppSettings, String?, QQueryOperations>
-      defaultPhpVersionProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'defaultPhpVersion');
     });
   }
 
