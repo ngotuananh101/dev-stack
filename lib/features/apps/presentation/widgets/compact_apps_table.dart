@@ -456,7 +456,7 @@ class CompactAppsTable extends StatelessWidget {
       child: Switch(
         value: app.isAddedToPath,
         onChanged: (_) => onTogglePath(app),
-        activeColor: AppColors.success,
+        activeThumbColor: AppColors.success,
         activeTrackColor: AppColors.success.withValues(alpha: 0.2),
         inactiveThumbColor: AppColors.textMuted,
         inactiveTrackColor: AppColors.border,

@@ -220,8 +220,8 @@ class SettingsPage extends ConsumerWidget {
         Switch(
           value: value,
           onChanged: onChanged,
-          activeColor: AppColors.accent,
-          activeTrackColor: AppColors.accent.withOpacity(0.2),
+          activeThumbColor: AppColors.accent,
+          activeTrackColor: AppColors.accent.withValues(alpha: 0.2),
           inactiveThumbColor: AppColors.textSecondary,
           inactiveTrackColor: AppColors.surfaceLight,
         ),
@@ -335,7 +335,7 @@ class SettingsPage extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 24),
-        Container(
+        SizedBox(
           width: 200,
           child: TextField(
             controller: TextEditingController(text: value)

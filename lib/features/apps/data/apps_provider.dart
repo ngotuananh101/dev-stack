@@ -9,7 +9,6 @@ import 'app_service_manager.dart';
 import '../../../core/services/path_service.dart';
 
 import '../../../shared/providers/error_provider.dart';
-import '../../../shared/utils/app_dialogs.dart';
 
 import 'dart:io';
 import 'package:process_run/shell.dart';

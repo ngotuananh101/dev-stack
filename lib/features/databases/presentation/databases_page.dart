@@ -487,35 +487,6 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     );
   }
 
-  void _handleClearRedisDb() async {
-    if (selectedEngine == null) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear Redis DB'),
-        content: Text(
-          'Are you sure you want to clear all keys in DB$_selectedRedisDb?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Clear'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await ref
-          .read(redisNotifierProvider.notifier)
-          .clearDb(selectedEngine!, _selectedRedisDb);
-      ref.invalidate(redisDbStatsProvider(selectedEngine!));
-    }
-  }
 
   Widget _buildServiceStatusButton() {
     if (selectedEngine == null) return const SizedBox.shrink();
@@ -693,7 +664,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
 
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Center(
         child: AddRedisKeyModal(
           engine: selectedEngine!,
@@ -709,7 +680,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
 
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Center(
         child: AddDatabaseModal(
           engine: selectedEngine!,
@@ -724,7 +695,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
 
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Center(
         child: AddDatabaseModal(
           engine: selectedEngine!,

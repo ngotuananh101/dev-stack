@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import '../../domain/redis_key.dart';
 import '../../../apps/domain/app_model.dart';
 import '../../data/redis_provider.dart';
@@ -79,7 +78,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             height: 48,
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (_, __) => const SizedBox(height: 48),
+          error: (_, _) => const SizedBox(height: 48),
         ),
         const SizedBox(height: 16),
         Expanded(
@@ -352,7 +351,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
   void _handleEditKey(RedisKey item) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Center(
         child: AddRedisKeyModal(
           engine: widget.app,

@@ -199,8 +199,9 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                             fontFamily: 'Inter',
                           ),
                           onChanged: (value) {
-                            if (value == null || value.startsWith('header_'))
+                            if (value == null || value.startsWith('header_')) {
                               return;
+                            }
                             setState(() {
                               _selectedId = value;
                               _isService = serviceApps.any(

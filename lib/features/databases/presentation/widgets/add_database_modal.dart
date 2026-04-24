@@ -47,7 +47,7 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
 
   void _onNameChanged() {
     if (_userController.text.isEmpty ||
-        _userController.text == _nameController.text.substring(0, _nameController.text.length > 0 ? _nameController.text.length - 1 : 0)) {
+        _userController.text == _nameController.text.substring(0, _nameController.text.isNotEmpty ? _nameController.text.length - 1 : 0)) {
       _userController.text = _nameController.text;
     }
   }

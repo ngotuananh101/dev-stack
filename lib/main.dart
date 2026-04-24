@@ -14,7 +14,6 @@ import 'features/databases/presentation/databases_page.dart';
 import 'features/settings/presentation/settings_page.dart';
 import 'core/services/window_service.dart';
 import 'core/theme/app_text_size.dart';
-import 'dart:io';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -109,7 +109,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                     _currentPage = 1;
                   });
                 },
-                onUpdate: () => _handleUpdateList(context),
+                onUpdate: _handleUpdateList,
               ),
               const SizedBox(height: 24),
               // Category Bar
@@ -224,7 +224,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
     );
   }
 
-  Future<void> _handleUpdateList(BuildContext context) async {
+  Future<void> _handleUpdateList() async {
     try {
       final notifier = ref.read(appsNotifierProvider.notifier);
       await notifier.updateCatalog(
@@ -233,7 +233,6 @@ class _AppsPageState extends ConsumerState<AppsPage> {
       
       if (!mounted) return;
       
-      // ignore: use_build_context_synchronously
       AppDialogs.showSuccess(
         context: context,
         title: 'Success',
@@ -242,7 +241,6 @@ class _AppsPageState extends ConsumerState<AppsPage> {
     } catch (e) {
       if (!mounted) return;
       
-      // ignore: use_build_context_synchronously
       AppDialogs.showError(
         context,
         title: 'Update Failed',

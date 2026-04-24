@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
@@ -28,7 +27,7 @@ class SystemInfoModal extends ConsumerWidget {
           border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -96,7 +95,7 @@ class SystemInfoModal extends ConsumerWidget {
             onPressed: () => Navigator.pop(context),
             icon: const Icon(LucideIcons.x, size: 18),
             color: AppColors.textSecondary,
-            hoverColor: Colors.red.withOpacity(0.2),
+            hoverColor: Colors.red.withValues(alpha: 0.2),
           ),
         ],
       ),
@@ -113,7 +112,7 @@ class SystemInfoModal extends ConsumerWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF010409),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
       ),
       child: SelectableText(
         formattedText,

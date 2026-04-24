@@ -75,8 +75,9 @@ class AppModel {
   }
 
   bool get hasUpdateAvailable {
-    if (!isInstalled || installedVersion == null || versions.isEmpty)
+    if (!isInstalled || installedVersion == null || versions.isEmpty) {
       return false;
+    }
 
     // Split installed version to get Major.Minor (e.g., 8.2 from 8.2.1)
     final parts = installedVersion!.split('.');

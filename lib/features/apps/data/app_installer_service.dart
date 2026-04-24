@@ -624,10 +624,10 @@ net:
     List<AppModel> allApps, {
     Function(String)? onLog,
   }) async {
-    final log = (String m) {
+    void log(String m) {
       _logger.info(m);
       onLog?.call(m);
-    };
+    }
 
     final isPMA = currentApp.appId == 'phpMyAdmin';
     final isWebServer =
@@ -869,7 +869,7 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
       // 1. Set Blowfish secret (required for cookies, must be 32 chars)
       final random = DateTime.now().microsecondsSinceEpoch.toString();
-      final secret = (random + 'ponta_secret_key_for_cookie_32_chars')
+      final secret = '${random}ponta_secret_key_for_cookie_32_chars'
           .substring(0, 32);
       content = content.replaceFirstMapped(
         RegExp(r"(\$cfg\['blowfish_secret'\]\s*=\s*').*?(';)"),
