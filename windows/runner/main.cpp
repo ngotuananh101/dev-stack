@@ -13,14 +13,27 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
     // Another instance is already running
-    HWND hWnd = FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", L"dev_stack");
+    HWND hWnd = FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", nullptr);
+    if (!hWnd) {
+      hWnd = FindWindow(nullptr, L"DevStack Dashboard");
+    }
+    
     if (hWnd) {
       // Bring the existing window to front
-      ShowWindow(hWnd, SW_RESTORE);
+      if (IsIconic(hWnd)) {
+        ShowWindow(hWnd, SW_RESTORE);
+      } else {
+        ShowWindow(hWnd, SW_SHOW);
+      }
       SetForegroundWindow(hWnd);
+      SetFocus(hWnd);
+      BringWindowToTop(hWnd);
     }
+    ReleaseMutex(hMutex);
+    CloseHandle(hMutex);
     return 0; // Exit this instance
   }
+  (void)hMutex; // Suppress unused variable warning
 
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
