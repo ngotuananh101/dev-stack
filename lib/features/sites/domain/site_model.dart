@@ -20,6 +20,7 @@ class SiteModel {
   DateTime? createdAt;
 
   SiteModel({
+    this.id = Isar.autoIncrement,
     required this.domain,
     required this.rootDir,
     required this.phpVersion,

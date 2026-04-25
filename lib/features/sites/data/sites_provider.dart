@@ -65,6 +65,57 @@ class SitesNotifier extends _$SitesNotifier {
     await _restartWebservers();
   }
 
+  Future<void> updateSite({
+    required int id,
+    required String domain,
+    required String rootDir,
+    required String phpAppId,
+    required bool useSsl,
+  }) async {
+    final isar = await ref.read(isarProvider.future);
+    final oldSite = await isar.siteModels.get(id);
+    if (oldSite == null) return;
+
+    // Remove old vhost files if domain changed
+    if (oldSite.domain != domain) {
+      await _removeVhostFiles(oldSite);
+    }
+
+    final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
+    final phpVersion = versionMatch?.group(0) ?? '82';
+    final phpPort = int.parse('90$phpVersion');
+
+    final updatedSite = SiteModel(
+      id: id,
+      domain: domain,
+      rootDir: rootDir,
+      phpVersion: phpVersion,
+      phpPort: phpPort,
+      useSsl: useSsl,
+      createdAt: oldSite.createdAt,
+    );
+
+    await isar.writeTxn(() async {
+      await isar.siteModels.put(updatedSite);
+    });
+
+    if (useSsl) {
+      await ref.read(sslServiceProvider.notifier).generateSiteCert(domain);
+    }
+
+    // Generate/Update Vhost files
+    await _generateVhostFiles(updatedSite);
+
+    // Update hosts file
+    await _updateHostsFile();
+
+    // Refresh state
+    state = AsyncValue.data(await isar.siteModels.where().sortByCreatedAtDesc().findAll());
+
+    // Restart webservers to apply changes
+    await _restartWebservers();
+  }
+
   Future<void> deleteSite(int id) async {
     final isar = await ref.read(isarProvider.future);
     final site = await isar.siteModels.get(id);

@@ -69,14 +69,22 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
 
     setState(() => _isSaving = true);
     try {
-      await ref
-          .read(sitesNotifierProvider.notifier)
-          .addSite(
-            domain: _domainController.text.trim(),
-            rootDir: _rootDirController.text.trim(),
-            phpAppId: _selectedPhpAppId!,
-            useSsl: _useSsl,
-          );
+      if (isEdit) {
+        await ref.read(sitesNotifierProvider.notifier).updateSite(
+              id: widget.initialData!.id!,
+              domain: _domainController.text.trim(),
+              rootDir: _rootDirController.text.trim(),
+              phpAppId: _selectedPhpAppId!,
+              useSsl: _useSsl,
+            );
+      } else {
+        await ref.read(sitesNotifierProvider.notifier).addSite(
+              domain: _domainController.text.trim(),
+              rootDir: _rootDirController.text.trim(),
+              phpAppId: _selectedPhpAppId!,
+              useSsl: _useSsl,
+            );
+      }
       widget.onClose();
     } catch (e) {
       if (mounted) {

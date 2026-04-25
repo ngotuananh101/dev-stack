@@ -111,12 +111,12 @@ SiteModel _siteModelDeserialize(
   final object = SiteModel(
     createdAt: reader.readDateTimeOrNull(offsets[0]),
     domain: reader.readString(offsets[1]),
+    id: id,
     phpPort: reader.readLong(offsets[2]),
     phpVersion: reader.readString(offsets[3]),
     rootDir: reader.readString(offsets[4]),
     useSsl: reader.readBoolOrNull(offsets[5]) ?? false,
   );
-  object.id = id;
   return object;
 }
 

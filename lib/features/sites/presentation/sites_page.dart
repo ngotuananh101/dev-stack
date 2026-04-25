@@ -41,13 +41,14 @@ class _SitesPageState extends ConsumerState<SitesPage> {
     super.dispose();
   }
 
-  void _showAddSiteModal() {
+  void _showAddSiteModal([SiteModel? site]) {
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Center(
         child: AddSiteModal(
           onClose: () => Navigator.of(context).pop(),
+          initialData: site,
         ),
       ),
     );
@@ -220,7 +221,10 @@ class _SitesPageState extends ConsumerState<SitesPage> {
               site.rootDir.toLowerCase().contains(_searchQuery);
         }).toList();
 
-        return SiteTable(sites: filteredSites);
+        return SiteTable(
+          sites: filteredSites,
+          onEdit: (site) => _showAddSiteModal(site),
+        );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error loading sites: $e')),

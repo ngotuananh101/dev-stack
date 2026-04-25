@@ -7,10 +7,12 @@ import '../../data/sites_provider.dart';
 
 class SiteTable extends ConsumerWidget {
   final List<SiteModel> sites;
+  final Function(SiteModel) onEdit;
 
   const SiteTable({
     super.key,
     required this.sites,
+    required this.onEdit,
   });
 
   @override
@@ -135,7 +137,7 @@ class SiteTable extends ConsumerWidget {
               children: [
                 _buildActionButton(
                   icon: LucideIcons.settings,
-                  onPressed: () {},
+                  onPressed: () => onEdit(site),
                   color: AppColors.textSecondary,
                   tooltip: 'Config',
                 ),
