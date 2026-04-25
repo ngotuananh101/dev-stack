@@ -107,11 +107,6 @@ class _EditSiteModalState extends ConsumerState<EditSiteModal> {
         alignment: Alignment.centerLeft,
         child: TabBar(
           isScrollable: true,
-          indicatorColor: AppColors.accent,
-          labelColor: AppColors.accent,
-          unselectedLabelColor: AppColors.textMuted,
-          tabAlignment: TabAlignment.start,
-          dividerColor: AppColors.border,
           tabs: [
             Tab(text: 'General'),
             Tab(text: 'Config'),

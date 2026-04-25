@@ -71,6 +71,14 @@ class AppTheme {
           side: const BorderSide(color: AppColors.border, width: 0.5),
         ),
       ),
+      tabBarTheme: const TabBarThemeData(
+        indicatorColor: AppColors.accent,
+        labelColor: AppColors.accent,
+        unselectedLabelColor: AppColors.textMuted,
+        dividerColor: AppColors.border,
+        indicatorSize: TabBarIndicatorSize.tab,
+        tabAlignment: TabAlignment.start,
+      ),
     );
   }
 }

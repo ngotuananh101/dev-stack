@@ -383,53 +383,48 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   // ─── Tab bar ──────────────────────────────────────────────────────────────────
   Widget _buildTabBar() {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: const Border(bottom: BorderSide(color: AppColors.border)),
       ),
-      child: TabBar(
-        controller: _tabController,
-        tabs: [
-          const Tab(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.info_outline_rounded, size: 16),
-                SizedBox(width: 8),
-                Text('Service'),
-              ],
-            ),
-          ),
-          if (_hasConfigTab)
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.tune_rounded, size: 16),
-                  const SizedBox(width: 8),
-                  Text(_configTabLabel),
-                ],
-              ),
-            ),
-          if (_isPhp)
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabs: [
             const Tab(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.extension_rounded, size: 16),
+                  Icon(Icons.info_outline_rounded, size: 16),
                   SizedBox(width: 8),
-                  Text('Extensions'),
+                  Text('Service'),
                 ],
               ),
             ),
-        ],
-        labelColor: AppColors.primary,
-        unselectedLabelColor: AppColors.textMuted,
-        indicatorColor: AppColors.primary,
-        indicatorWeight: 3,
-        labelStyle: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: AppTextSize.xs,
+            if (_hasConfigTab)
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.tune_rounded, size: 16),
+                    const SizedBox(width: 8),
+                    Text(_configTabLabel),
+                  ],
+                ),
+              ),
+            if (_isPhp)
+              const Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.extension_rounded, size: 16),
+                    SizedBox(width: 8),
+                    Text('Extensions'),
+                  ],
+                ),
+              ),
+          ],
         ),
       ),
     );

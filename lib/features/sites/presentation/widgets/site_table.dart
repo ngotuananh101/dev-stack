@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/site_model.dart';
 import '../../data/sites_provider.dart';
+import '../../../../shared/utils/app_dialogs.dart';
 
 class SiteTable extends ConsumerWidget {
   final List<SiteModel> sites;
@@ -123,10 +124,13 @@ class SiteTable extends ConsumerWidget {
           const SizedBox(width: 12),
           Expanded(
             flex: 1,
-            child: Icon(
-              site.useSsl ? LucideIcons.lock : LucideIcons.unlock,
-              size: 14,
-              color: site.useSsl ? AppColors.success : AppColors.textMuted,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Icon(
+                site.useSsl ? LucideIcons.lock : LucideIcons.unlock,
+                size: 14,
+                color: site.useSsl ? AppColors.success : AppColors.textMuted,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -144,7 +148,17 @@ class SiteTable extends ConsumerWidget {
                 const SizedBox(width: 8),
                 _buildActionButton(
                   icon: LucideIcons.trash2,
-                  onPressed: () => ref.read(sitesNotifierProvider.notifier).deleteSite(site.id),
+                  onPressed: () {
+                    AppDialogs.showConfirm(
+                      context: context,
+                      title: 'Delete Site',
+                      text: 'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
+                      confirmBtnText: 'DELETE',
+                      onConfirm: () {
+                        ref.read(sitesNotifierProvider.notifier).deleteSite(site.id);
+                      },
+                    );
+                  },
                   color: AppColors.error,
                   tooltip: 'Delete',
                 ),
