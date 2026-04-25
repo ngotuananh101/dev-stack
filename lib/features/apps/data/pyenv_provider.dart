@@ -5,11 +5,40 @@ import 'apps_provider.dart';
 
 part 'pyenv_provider.g.dart';
 
+class PyenvState {
+  final List<String> installedVersions;
+  final String? activeVersion;
+
+  PyenvState({required this.installedVersions, this.activeVersion});
+}
+
 @riverpod
 class PyenvNotifier extends _$PyenvNotifier {
   @override
-  Future<List<String>> build() async {
-    return _getInstalledVersions();
+  Future<PyenvState> build() async {
+    final installed = await _getInstalledVersions();
+    final active = await _getActiveVersion();
+    return PyenvState(installedVersions: installed, activeVersion: active);
+  }
+
+  Future<String?> _getActiveVersion() async {
+    final pyenvPath = await _getPyenvPath();
+    if (pyenvPath == null) return null;
+
+    try {
+      final result = await Process.run(pyenvPath, ['versions']);
+      if (result.exitCode == 0) {
+        final lines = result.stdout.toString().split('\n');
+        for (var line in lines) {
+          final trimmed = line.trim();
+          if (trimmed.startsWith('*')) {
+            // Remove * and take only the first word (the version)
+            return trimmed.replaceAll('*', '').trim().split(' ').first;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   Future<String?> _getPyenvPath() async {
@@ -26,10 +55,13 @@ class PyenvNotifier extends _$PyenvNotifier {
       final result = await Process.run(pyenvPath, ['versions']);
       if (result.exitCode == 0) {
         final lines = result.stdout.toString().split('\n');
-        return lines
-            .map((l) => l.trim().replaceAll('*', '').trim())
-            .where((l) => l.isNotEmpty && !l.contains('current'))
-            .toList();
+        return lines.map((l) {
+          final line = l.trim();
+          if (line.isEmpty) return '';
+          // Remove * and take only the first word (the version)
+          final cleanLine = line.replaceAll('*', '').trim();
+          return cleanLine.split(' ').first;
+        }).where((v) => v.isNotEmpty && v != 'current').toList();
       }
     } catch (e) {
       debugPrint('Error listing pyenv versions: $e');

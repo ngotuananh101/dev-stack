@@ -44,7 +44,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
 
   @override
   Widget build(BuildContext context) {
-    final installedVersionsAsync = ref.watch(pyenvNotifierProvider);
+    final stateAsync = ref.watch(pyenvNotifierProvider);
 
     return Container(
       width: 700,
@@ -74,13 +74,13 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                     decoration: const BoxDecoration(
                       border: Border(right: BorderSide(color: AppColors.border)),
                     ),
-                    child: _buildInstalledSection(installedVersionsAsync),
+                    child: _buildInstalledSection(stateAsync),
                   ),
                 ),
                 // Right: Installable Versions
                 Expanded(
                   flex: 1,
-                  child: _buildInstallableSection(),
+                  child: _buildInstallableSection(stateAsync.value?.installedVersions ?? []),
                 ),
               ],
             ),
@@ -144,7 +144,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
     );
   }
 
-  Widget _buildInstalledSection(AsyncValue<List<String>> versionsAsync) {
+  Widget _buildInstalledSection(AsyncValue<PyenvState> stateAsync) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -161,9 +161,9 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
           ),
         ),
         Expanded(
-          child: versionsAsync.when(
-            data: (versions) {
-              if (versions.isEmpty) {
+          child: stateAsync.when(
+            data: (state) {
+              if (state.installedVersions.isEmpty) {
                 return const Center(
                   child: Text(
                     'No versions installed',
@@ -173,10 +173,11 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
               }
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: versions.length,
+                itemCount: state.installedVersions.length,
                 itemBuilder: (context, index) {
-                  final v = versions[index];
-                  return _buildVersionTile(v, isInstalled: true);
+                  final v = state.installedVersions[index];
+                  final isActive = v == state.activeVersion;
+                  return _buildVersionTile(v, isInstalled: true, isActive: isActive);
                 },
               );
             },
@@ -188,7 +189,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
     );
   }
 
-  Widget _buildInstallableSection() {
+  Widget _buildInstallableSection(List<String> installedVersions) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -232,7 +233,12 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                   itemCount: _installableVersions.length,
                   itemBuilder: (context, index) {
                     final v = _installableVersions[index];
-                    return _buildVersionTile(v, isInstalled: false);
+                    final isAlreadyInstalled = installedVersions.contains(v);
+                    return _buildVersionTile(
+                      v,
+                      isInstalled: false,
+                      isAlreadyInstalled: isAlreadyInstalled,
+                    );
                   },
                 ),
         ),
@@ -240,7 +246,12 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
     );
   }
 
-  Widget _buildVersionTile(String version, {required bool isInstalled}) {
+  Widget _buildVersionTile(
+    String version, {
+    required bool isInstalled,
+    bool isActive = false,
+    bool isAlreadyInstalled = false,
+  }) {
     final isInstalling = _installingVersion == version;
 
     return Container(
@@ -271,21 +282,32 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (isInstalled) ...[
-                    IconButton(
-                      icon: const Icon(Icons.check_circle, size: 16, color: AppColors.success),
-                      onPressed: () => _setGlobal(version),
-                      tooltip: 'Set as Global',
-                    ),
+                    if (isActive)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Icon(Icons.verified_rounded, size: 16, color: AppColors.success),
+                      )
+                    else
+                      IconButton(
+                        icon: const Icon(Icons.check_circle_outline, size: 16, color: AppColors.textMuted),
+                        onPressed: () => _setGlobal(version),
+                        tooltip: 'Set as Global',
+                      ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
                       onPressed: () => _uninstall(version),
                       tooltip: 'Uninstall',
                     ),
-                  ] else
+                  ] else if (!isAlreadyInstalled)
                     IconButton(
                       icon: const Icon(Icons.download, size: 16, color: AppColors.primary),
                       onPressed: () => _install(version),
                       tooltip: 'Install',
+                    )
+                  else
+                    const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Icon(Icons.check, size: 16, color: AppColors.textMuted),
                     ),
                 ],
               ),
