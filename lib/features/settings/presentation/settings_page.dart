@@ -5,10 +5,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
 import '../../../shared/utils/app_dialogs.dart';
 import '../../apps/data/apps_provider.dart';
-import '../../sites/data/sites_provider.dart';
 import '../../../core/services/ssl_service.dart';
 import '../data/settings_provider.dart';
-import '../domain/app_settings.dart';
 import 'widgets/system_info_modal.dart';
 
 class SettingsPage extends ConsumerWidget {

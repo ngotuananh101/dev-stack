@@ -118,7 +118,7 @@ class SiteTable extends ConsumerWidget {
             width: 32,
             child: Checkbox(
               value: isSelected,
-              onChanged: (_) => onToggleSelection(site.id!),
+              onChanged: (_) => onToggleSelection(site.id),
               side: const BorderSide(color: AppColors.border),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
@@ -186,7 +186,7 @@ class SiteTable extends ConsumerWidget {
                       text: 'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
                       confirmBtnText: 'DELETE',
                       onConfirm: () {
-                        ref.read(sitesNotifierProvider.notifier).deleteSite(site.id!);
+                        ref.read(sitesNotifierProvider.notifier).deleteSite(site.id);
                       },
                     );
                   },

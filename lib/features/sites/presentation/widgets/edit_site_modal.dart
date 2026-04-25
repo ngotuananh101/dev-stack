@@ -1,15 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_size.dart';
 import '../../domain/site_model.dart';
 import '../../../apps/data/apps_provider.dart';
-import '../../../apps/domain/app_model.dart';
 import '../../data/sites_provider.dart';
-import '../../../../core/config/app_config.dart';
 
 class EditSiteModal extends ConsumerStatefulWidget {
   final SiteModel site;
@@ -165,7 +161,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
       await ref
           .read(sitesNotifierProvider.notifier)
           .updateSite(
-            id: widget.site.id!,
+            id: widget.site.id,
             domain: _domainController.text.trim(),
             rootDir: _rootDirController.text.trim(),
             phpAppId: _selectedPhpAppId!,
@@ -318,7 +314,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                         Switch(
                           value: _useSsl,
                           onChanged: (v) => setState(() => _useSsl = v),
-                          activeColor: AppColors.success,
+                          activeThumbColor: AppColors.success,
                         ),
                       ],
                     ),

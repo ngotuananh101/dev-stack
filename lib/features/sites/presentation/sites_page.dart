@@ -289,7 +289,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
           onToggleAll: (isSelected) {
             setState(() {
               if (isSelected) {
-                _selectedSiteIds.addAll(filteredSites.map((s) => s.id!));
+                _selectedSiteIds.addAll(filteredSites.map((s) => s.id));
               } else {
                 _selectedSiteIds.clear();
               }

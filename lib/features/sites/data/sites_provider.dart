@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/database/isar_provider.dart';
 import '../domain/site_model.dart';
@@ -229,7 +228,7 @@ class SitesNotifier extends _$SitesNotifier {
       hostsContent = hostsContent.replaceRange(startIndex, endIndex, newBlock);
     } else {
       // Append new block
-      hostsContent = hostsContent.trim() + '\n\n' + newBlock + '\n';
+      hostsContent = '${hostsContent.trim()}\n\n$newBlock\n';
     }
 
     await _hostsRepo.saveHostsRaw(hostsContent);

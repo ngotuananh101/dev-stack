@@ -71,7 +71,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
     try {
       if (isEdit) {
         await ref.read(sitesNotifierProvider.notifier).updateSite(
-              id: widget.initialData!.id!,
+              id: widget.initialData!.id,
               domain: _domainController.text.trim(),
               rootDir: _rootDirController.text.trim(),
               phpAppId: _selectedPhpAppId!,
@@ -214,8 +214,9 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                       hint: 'e.g. my-project.test',
                       icon: LucideIcons.atSign,
                       validator: (value) {
-                        if (value == null || value.isEmpty)
+                        if (value == null || value.isEmpty) {
                           return 'Please enter a domain';
+                        }
                         if (!RegExp(
                           r'^[a-zA-Z0-9][-a-zA-Z0-9.]+$',
                         ).hasMatch(value)) {
@@ -235,10 +236,12 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                             hint: 'C:\\Projects\\my-project',
                             icon: LucideIcons.folder,
                             validator: (value) {
-                              if (value == null || value.isEmpty)
+                              if (value == null || value.isEmpty) {
                                 return 'Please select a directory';
-                              if (!Directory(value).existsSync())
+                              }
+                              if (!Directory(value).existsSync()) {
                                 return 'Directory does not exist';
+                              }
                               return null;
                             },
                           ),
