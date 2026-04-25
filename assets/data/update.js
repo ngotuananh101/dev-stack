@@ -235,8 +235,8 @@ let baseDataObject = {
       description: "Python version management tool.",
       category: "runtime",
       group_name: "python",
-      exec_file: "pyenv.exe",
-      cli_file: "pyenv.exe",
+      exec_file: null,
+      cli_file: "pyenv.bat",
       versions: {
         lastest: "https://github.com/pyenv-win/pyenv-win/archive/master.zip",
       },
