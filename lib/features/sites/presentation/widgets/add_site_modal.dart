@@ -106,19 +106,32 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
 
     return appsAsync.when(
       data: (apps) {
-        final phpApps = apps
-            .where((a) => a.isInstalled && a.groupName == 'php')
-            .toList();
+        final phpApps = [
+          AppModel(
+            appId: 'static',
+            name: 'Static (No PHP)',
+            developer: 'Official',
+            categories: ['php'],
+            isInstalled: true,
+          ),
+          ...apps.where((a) => a.isInstalled && a.groupName == 'php'),
+        ];
 
-        // Auto select first PHP or match existing
-        if (_selectedPhpAppId == null && phpApps.isNotEmpty) {
+        // Auto select static or match existing
+        if (_selectedPhpAppId == null) {
           if (isEdit) {
             final match = phpApps.indexWhere(
               (a) => a.appId.contains(widget.initialData!.phpVersion),
             );
-            if (match != -1) _selectedPhpAppId = phpApps[match].appId;
+            if (match != -1) {
+              _selectedPhpAppId = phpApps[match].appId;
+            } else if (widget.initialData!.phpVersion == 'static') {
+              _selectedPhpAppId = 'static';
+            } else {
+              _selectedPhpAppId = 'static';
+            }
           } else {
-            _selectedPhpAppId = phpApps.first.appId;
+            _selectedPhpAppId = 'static';
           }
         }
 
@@ -247,19 +260,24 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        ElevatedButton(
-                          onPressed: _pickDirectory,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.surface,
-                            foregroundColor: AppColors.textPrimary,
-                            side: const BorderSide(color: AppColors.border),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
+                        SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: _pickDirectory,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.surface,
+                              foregroundColor: AppColors.textPrimary,
+                              side: const BorderSide(color: AppColors.border),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
+                            child: const Icon(LucideIcons.folderOpen, size: 18),
                           ),
-                          child: const Icon(LucideIcons.folderOpen, size: 18),
                         ),
                       ],
                     ),
@@ -274,6 +292,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                             children: [
                               _buildLabel('PHP Version'),
                               Container(
+                                height: 48,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                 ),
@@ -319,9 +338,9 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                               onTap: () => setState(() => _useSsl = !_useSsl),
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
+                                height: 48,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
-                                  vertical: 10,
                                 ),
                                 decoration: BoxDecoration(
                                   color: _useSsl
