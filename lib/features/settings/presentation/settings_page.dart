@@ -22,7 +22,8 @@ class SettingsPage extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: settingsAsync.when(
         data: (settings) {
-          final installedPhps = appsAsync.valueOrNull
+          final installedPhps =
+              appsAsync.valueOrNull
                   ?.where((a) => a.isInstalled && a.groupName == 'php')
                   .toList() ??
               [];
@@ -45,7 +46,8 @@ class SettingsPage extends ConsumerWidget {
                   children: [
                     _buildDropdownSetting(
                       title: 'Default PHP Version',
-                      subtitle: 'Choose which PHP version to use as system default',
+                      subtitle:
+                          'Choose which PHP version to use as system default',
                       value: currentDefaultPhp,
                       items: installedPhps.map((a) => a.appId).toList(),
                       onChanged: (val) {
@@ -69,7 +71,8 @@ class SettingsPage extends ConsumerWidget {
                     const Divider(color: AppColors.border, height: 32),
                     _buildSwitchSetting(
                       title: 'Auto Create Site',
-                      subtitle: 'Automatically create site when a new app is installed',
+                      subtitle:
+                          'Allow to select folder and create site automatically',
                       value: settings.autoCreateSite,
                       onChanged: (val) => ref
                           .read(settingsNotifierProvider.notifier)
@@ -93,7 +96,8 @@ class SettingsPage extends ConsumerWidget {
                     const Divider(color: AppColors.border, height: 32),
                     _buildSwitchSetting(
                       title: 'Auto Start on Windows',
-                      subtitle: 'Launch DevStack automatically when you sign in',
+                      subtitle:
+                          'Launch DevStack automatically when you sign in',
                       value: settings.autoStartWithWindows,
                       onChanged: (val) => ref
                           .read(settingsNotifierProvider.notifier)
@@ -115,7 +119,8 @@ class SettingsPage extends ConsumerWidget {
                     const Divider(color: AppColors.border, height: 32),
                     _buildStatusSetting(
                       title: 'Root Certificate',
-                      subtitle: 'Status of custom SSL root certificate (mkcert)',
+                      subtitle:
+                          'Status of custom SSL root certificate (mkcert)',
                       status: sslAsync.when(
                         data: (installed) =>
                             installed ? 'Installed' : 'Not Installed',
@@ -314,16 +319,18 @@ class SettingsPage extends ConsumerWidget {
             child: DropdownButton<String>(
               value: items.contains(value) ? value : null,
               items: items
-                  .map((item) => DropdownMenuItem(
-                        value: item,
-                        child: Text(
-                          item,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: AppTextSize.xs,
-                          ),
+                  .map(
+                    (item) => DropdownMenuItem(
+                      value: item,
+                      child: Text(
+                        item,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: AppTextSize.xs,
                         ),
-                      ))
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: onChanged,
               dropdownColor: AppColors.surfaceLight,
@@ -379,7 +386,8 @@ class SettingsPage extends ConsumerWidget {
           child: TextField(
             controller: TextEditingController(text: value)
               ..selection = TextSelection.fromPosition(
-                  TextPosition(offset: value.length)),
+                TextPosition(offset: value.length),
+              ),
             onChanged: onChanged,
             style: const TextStyle(
               color: AppColors.textPrimary,
@@ -509,26 +517,27 @@ class SettingsPage extends ConsumerWidget {
         ),
         if (actions.isNotEmpty) ...[
           const SizedBox(width: 12),
-          ...actions.map((action) => Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: ElevatedButton(
-                  onPressed: action.onTap,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: action.color,
-                    foregroundColor: Colors.white,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                    minimumSize: const Size(0, 32),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+          ...actions.map(
+            (action) => Padding(
+              padding: const EdgeInsets.only(left: 8.0),
+              child: ElevatedButton(
+                onPressed: action.onTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: action.color,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 0,
                   ),
-                  child: Text(
-                    action.label,
-                    style: const TextStyle(fontSize: 11),
+                  minimumSize: const Size(0, 32),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-              )),
+                child: Text(action.label, style: const TextStyle(fontSize: 11)),
+              ),
+            ),
+          ),
         ],
       ],
     );
@@ -546,10 +555,7 @@ class SettingsPage extends ConsumerWidget {
   }
 
   void _showSystemInfo(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => const SystemInfoModal(),
-    );
+    showDialog(context: context, builder: (context) => const SystemInfoModal());
   }
 }
 
