@@ -75,9 +75,9 @@ class StatCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           SizedBox(
-            height: 100,
+            height: 60,
             child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,

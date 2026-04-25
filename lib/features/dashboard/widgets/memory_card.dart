@@ -34,7 +34,7 @@ class MemoryCard extends ConsumerWidget {
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           LinearProgressIndicator(
             value: metrics.memoryUsed / metrics.memoryTotal,
             backgroundColor: AppColors.surfaceLight,

@@ -34,7 +34,7 @@ class StorageCard extends ConsumerWidget {
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           LinearProgressIndicator(
             value: metrics.storageUsed / metrics.storageTotal,
             backgroundColor: AppColors.surfaceLight,

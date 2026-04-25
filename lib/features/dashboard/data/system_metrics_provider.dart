@@ -13,7 +13,7 @@ class SystemMetricsNotifier extends _$SystemMetricsNotifier {
 
   @override
   SystemMetrics build() {
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
       _updateMetrics();
     });
 
@@ -25,12 +25,16 @@ class SystemMetricsNotifier extends _$SystemMetricsNotifier {
 
     return SystemMetrics(
       cpuUsage: 24.2,
-      cpuHistory: List.generate(15, (index) => 20.0 + _random.nextDouble() * 30),
+      cpuHistory: List.generate(20, (index) => 20.0 + _random.nextDouble() * 30),
       memoryUsed: 6.8,
       memoryTotal: 16.0,
       storageUsed: 245.0,
       storageTotal: 512.0,
       ipAddress: 'SCANNING...',
+      diskReadHistory: List.generate(20, (index) => _random.nextDouble() * 10),
+      diskWriteHistory: List.generate(20, (index) => _random.nextDouble() * 5),
+      networkUploadHistory: List.generate(20, (index) => _random.nextDouble() * 2),
+      networkDownloadHistory: List.generate(20, (index) => _random.nextDouble() * 15),
     );
   }
 
@@ -56,13 +60,22 @@ class SystemMetricsNotifier extends _$SystemMetricsNotifier {
 
   void _updateMetrics() {
     final newCpu = 10.0 + _random.nextDouble() * 60;
-    final newHistory = List<double>.from(state.cpuHistory)..removeAt(0)..add(newCpu);
+    final newCpuHistory = List<double>.from(state.cpuHistory)..removeAt(0)..add(newCpu);
     
+    final newDiskRead = _random.nextDouble() * 25;
+    final newDiskWrite = _random.nextDouble() * 15;
+    final newNetUp = _random.nextDouble() * 5;
+    final newNetDown = _random.nextDouble() * 40;
+
     state = state.copyWith(
       cpuUsage: newCpu,
-      cpuHistory: newHistory,
+      cpuHistory: newCpuHistory,
       memoryUsed: 6.0 + _random.nextDouble() * 4,
-      storageUsed: state.storageUsed + _random.nextDouble() * 0.1, // Slight increase
+      storageUsed: state.storageUsed + _random.nextDouble() * 0.1,
+      diskReadHistory: List<double>.from(state.diskReadHistory)..removeAt(0)..add(newDiskRead),
+      diskWriteHistory: List<double>.from(state.diskWriteHistory)..removeAt(0)..add(newDiskWrite),
+      networkUploadHistory: List<double>.from(state.networkUploadHistory)..removeAt(0)..add(newNetUp),
+      networkDownloadHistory: List<double>.from(state.networkDownloadHistory)..removeAt(0)..add(newNetDown),
     );
   }
 }
