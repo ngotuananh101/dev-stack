@@ -238,7 +238,7 @@ let baseDataObject = {
       exec_file: null,
       cli_file: "pyenv.bat",
       versions: {
-        lastest: "https://github.com/pyenv-win/pyenv-win/archive/master.zip",
+        latest: "https://github.com/pyenv-win/pyenv-win/archive/master.zip",
       },
     },
     {

@@ -231,7 +231,9 @@ class CompactAppsTable extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  'v${app.installedVersion}',
+                                  app.installedVersion?.toLowerCase() == 'latest'
+                                      ? 'latest'
+                                      : 'v${app.installedVersion}',
                                   style: const TextStyle(
                                     fontSize: AppTextSize.xxs,
                                     fontWeight: FontWeight.w600,

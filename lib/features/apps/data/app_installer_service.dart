@@ -50,13 +50,6 @@ class AppInstallerService {
       onLog?.call('ERROR: $msg');
     }
 
-    if (app.appId == 'pyenv') {
-      logError(
-        'pyenv installation requested but not supported through this flow.',
-      );
-      throw Exception('pyenv installation is not supported through this flow.');
-    }
-
     final url = app.versionLinks[version];
     if (url == null || url.isEmpty) {
       _logger.error('Download URL for ${app.name} version $version not found.');
@@ -601,7 +594,9 @@ class AppInstallerService {
             'LoadModule proxy_module modules/mod_proxy.so',
           );
           content = content.replaceFirst(
-            RegExp(r'#\s*LoadModule\s+proxy_fcgi_module\s+modules/mod_proxy_fcgi.so'),
+            RegExp(
+              r'#\s*LoadModule\s+proxy_fcgi_module\s+modules/mod_proxy_fcgi.so',
+            ),
             'LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so',
           );
 
@@ -665,7 +660,9 @@ $sslVhostMarker
 
         // Include global vhosts
         String httpdContent = await confFile.readAsString();
-        final vhostsPath = p.join(AppConfig.vhostsDir, 'apache', '*.conf').replaceAll('\\', '/');
+        final vhostsPath = p
+            .join(AppConfig.vhostsDir, 'apache', '*.conf')
+            .replaceAll('\\', '/');
         if (!httpdContent.contains('IncludeOptional "$vhostsPath"')) {
           logInfo('Adding global vhosts include to Apache...');
           httpdContent += '\n# Global Vhosts\nIncludeOptional "$vhostsPath"\n';
