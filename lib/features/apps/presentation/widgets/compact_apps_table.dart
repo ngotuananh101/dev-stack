@@ -6,6 +6,8 @@ import '../../domain/app_model.dart';
 import 'app_version_modal.dart';
 import 'service_logs_modal.dart';
 import 'app_settings_modal.dart';
+import 'pyenv_manage_modal.dart';
+
 
 class CompactAppsTable extends StatelessWidget {
   final List<AppModel> apps;
@@ -527,6 +529,15 @@ class CompactAppsTable extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        if (app.appId == 'pyenv' && app.isInstalled) ...[
+          _buildIconButton(
+            icon: Icons.list_alt_rounded,
+            onPressed: () => _showPyenvModal(context, app),
+            color: AppColors.primary,
+            tooltip: 'Manage Python Versions',
+          ),
+          const SizedBox(width: 8),
+        ],
         if (app.isInstalled) ...[
           if (app.hasUpdateAvailable) ...[
             _buildIconButton(
@@ -667,6 +678,21 @@ class CompactAppsTable extends StatelessWidget {
         return Dialog(
           backgroundColor: Colors.transparent,
           child: AppSettingsModal(
+            app: app,
+            onClose: () => Navigator.of(dialogContext).pop(),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPyenvModal(BuildContext context, AppModel app) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: PyenvManageModal(
             app: app,
             onClose: () => Navigator.of(dialogContext).pop(),
           ),
