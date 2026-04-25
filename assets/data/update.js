@@ -237,6 +237,9 @@ let baseDataObject = {
       group_name: "python",
       exec_file: "pyenv.exe",
       cli_file: "pyenv.exe",
+      versions: {
+        lastest: "https://github.com/pyenv-win/pyenv-win/archive/master.zip",
+      },
     },
     {
       id: "nodejs",
