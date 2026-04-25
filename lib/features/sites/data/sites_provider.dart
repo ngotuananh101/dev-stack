@@ -391,12 +391,10 @@ server {
     final apacheVhostFile = File(p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'));
     if (apacheVhostFile.existsSync()) await apacheVhostFile.delete();
 
-    // Remove SSL files
+    // Remove SSL directory
     final sslNotifier = ref.read(sslServiceProvider.notifier);
-    final certFile = File(sslNotifier.getSiteCertPath(site.domain));
-    final keyFile = File(sslNotifier.getSiteKeyPath(site.domain));
-    if (certFile.existsSync()) await certFile.delete();
-    if (keyFile.existsSync()) await keyFile.delete();
+    final certDir = Directory(sslNotifier.getSiteCertDir(site.domain));
+    if (certDir.existsSync()) await certDir.delete(recursive: true);
 
     // Remove logs directory
     final logsDir = Directory(p.join(AppConfig.baseDir, 'logs', site.domain));
