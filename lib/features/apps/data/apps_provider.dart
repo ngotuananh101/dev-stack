@@ -298,6 +298,9 @@ class AppsNotifier extends _$AppsNotifier {
 
       if (app.location != null) {
         final installer = ref.read(appInstallerServiceProvider);
+        if (app.appId == 'pyenv') {
+          await installer.cleanupPyenv(app.location!, (m) => app.addLog(m));
+        }
         await installer.delete(app.location!);
       }
 

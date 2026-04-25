@@ -8,6 +8,7 @@ import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/services/ssl_service.dart';
+import '../../../core/services/path_service.dart';
 
 part 'app_installer_service.g.dart';
 
@@ -157,6 +158,11 @@ class AppInstallerService {
       // 9. Post-installation: Configure phpMyAdmin
       if (app.appId == 'phpMyAdmin') {
         await _configurePhpMyAdmin(installPath, logInfo);
+      }
+      
+      // 10. Post-installation: Configure pyenv
+      if (app.appId == 'pyenv') {
+        await _configurePyenv(installPath, logInfo);
       }
 
       // Cleanup
@@ -1069,5 +1075,57 @@ Alias /phpmyadmin "$pmaPathUnix/"
     }
 
     return pmaPath; // Fallback to original path
+  }
+
+  Future<void> _configurePyenv(
+    String installPath,
+    Function(String) logInfo,
+  ) async {
+    logInfo('Configuring pyenv-win environment variables and PATH...');
+
+    final pathService = _ref.read(pathServiceProvider);
+    final pyenvWinDir = p.join(installPath, 'pyenv-win');
+    
+    // Check if pyenv-win directory exists
+    if (!Directory(pyenvWinDir).existsSync()) {
+      logInfo('Warning: pyenv-win directory not found at $pyenvWinDir. Skipping detailed config.');
+      return;
+    }
+
+    final binDir = p.join(pyenvWinDir, 'bin');
+    final shimsDir = p.join(pyenvWinDir, 'shims');
+
+    // Set environment variables
+    await pathService.setUserEnvVar('PYENV', pyenvWinDir);
+    await pathService.setUserEnvVar('PYENV_HOME', pyenvWinDir);
+    await pathService.setUserEnvVar('PYENV_ROOT', pyenvWinDir);
+
+    // Add to PATH
+    await pathService.addRawPathToUserPath(binDir);
+    await pathService.addRawPathToUserPath(shimsDir);
+
+    logInfo(
+      'pyenv-win configuration completed. Please restart your terminal/IDE to apply changes.',
+    );
+  }
+
+  Future<void> cleanupPyenv(String installPath, Function(String) logInfo) async {
+    logInfo('Cleaning up pyenv-win environment variables and PATH...');
+
+    final pathService = _ref.read(pathServiceProvider);
+    final pyenvWinDir = p.join(installPath, 'pyenv-win');
+    final binDir = p.join(pyenvWinDir, 'bin');
+    final shimsDir = p.join(pyenvWinDir, 'shims');
+
+    // Remove environment variables
+    await pathService.removeUserEnvVar('PYENV');
+    await pathService.removeUserEnvVar('PYENV_HOME');
+    await pathService.removeUserEnvVar('PYENV_ROOT');
+
+    // Remove from PATH
+    await pathService.removeRawPathFromUserPath(binDir);
+    await pathService.removeRawPathFromUserPath(shimsDir);
+
+    logInfo('pyenv-win cleanup completed.');
   }
 }

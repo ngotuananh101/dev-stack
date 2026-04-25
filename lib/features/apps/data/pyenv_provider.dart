@@ -51,7 +51,29 @@ class PyenvNotifier extends _$PyenvNotifier {
               (l) => l.isNotEmpty && RegExp(r'^\d+\.\d+\.\d+$').hasMatch(l),
             )
             .toList();
-        return list.reversed.toList();
+
+        // Group by major.minor and keep latest patch
+        final latestVersions = <String, String>{};
+        for (final v in list) {
+          final parts = v.split('.');
+          if (parts.length >= 2) {
+            final key = '${parts[0]}.${parts[1]}';
+            final currentLatest = latestVersions[key];
+            if (currentLatest == null) {
+              latestVersions[key] = v;
+            } else {
+              // Compare patch versions
+              final currentPatch =
+                  int.tryParse(currentLatest.split('.')[2]) ?? 0;
+              final newPatch = int.tryParse(parts[2]) ?? 0;
+              if (newPatch > currentPatch) {
+                latestVersions[key] = v;
+              }
+            }
+          }
+        }
+
+        return latestVersions.values.toList().reversed.toList();
       }
     } catch (e) {
       debugPrint('Error listing installable versions: $e');

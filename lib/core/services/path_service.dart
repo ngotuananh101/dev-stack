@@ -68,6 +68,88 @@ class PathService {
     }
   }
 
+  /// Thêm một đường dẫn trực tiếp vào User PATH
+  Future<void> addRawPathToUserPath(String pathToAdd) async {
+    try {
+      final result = await Process.run('powershell', [
+        '-Command',
+        '[Environment]::GetEnvironmentVariable("PATH", "User")'
+      ]);
+
+      if (result.exitCode != 0) return;
+
+      final currentPath = result.stdout.toString().trim();
+      final paths = currentPath.split(';');
+      
+      if (!paths.any((p) => p.trim().toLowerCase() == pathToAdd.toLowerCase())) {
+        _logger.info('Adding $pathToAdd to User PATH...');
+        final newPath = currentPath.isEmpty ? pathToAdd : '$currentPath;$pathToAdd';
+        
+        await Process.run('powershell', [
+          '-Command',
+          "[Environment]::SetEnvironmentVariable(\"PATH\", \"$newPath\", \"User\")"
+        ]);
+      }
+    } catch (e) {
+      _logger.error('Error adding raw path to PATH: $e');
+    }
+  }
+
+  /// Thiết lập biến môi trường User
+  Future<void> setUserEnvVar(String name, String value) async {
+    try {
+      _logger.info('Setting User Environment Variable: $name = $value');
+      await Process.run('powershell', [
+        '-Command',
+        "[Environment]::SetEnvironmentVariable(\"$name\", \"$value\", \"User\")"
+      ]);
+    } catch (e) {
+      _logger.error('Error setting environment variable $name: $e');
+    }
+  }
+
+  /// Xóa một đường dẫn trực tiếp khỏi User PATH
+  Future<void> removeRawPathFromUserPath(String pathToRemove) async {
+    try {
+      final result = await Process.run('powershell', [
+        '-Command',
+        '[Environment]::GetEnvironmentVariable("PATH", "User")'
+      ]);
+
+      if (result.exitCode != 0) return;
+
+      final currentPath = result.stdout.toString().trim();
+      final paths = currentPath.split(';');
+      
+      final newPaths = paths.where((p) => p.trim().toLowerCase() != pathToRemove.toLowerCase()).toList();
+      
+      if (newPaths.length != paths.length) {
+        _logger.info('Removing $pathToRemove from User PATH...');
+        final newPathString = newPaths.join(';');
+        
+        await Process.run('powershell', [
+          '-Command',
+          "[Environment]::SetEnvironmentVariable(\"PATH\", \"$newPathString\", \"User\")"
+        ]);
+      }
+    } catch (e) {
+      _logger.error('Error removing raw path from PATH: $e');
+    }
+  }
+
+  /// Xóa biến môi trường User
+  Future<void> removeUserEnvVar(String name) async {
+    try {
+      _logger.info('Removing User Environment Variable: $name');
+      await Process.run('powershell', [
+        '-Command',
+        "[Environment]::SetEnvironmentVariable(\"$name\", \$null, \"User\")"
+      ]);
+    } catch (e) {
+      _logger.error('Error removing environment variable $name: $e');
+    }
+  }
+
   /// Tạo file shim (.bat) cho app
   Future<void> addAppToPath(AppModel app) async {
     if (app.cliFilePath == null) {
