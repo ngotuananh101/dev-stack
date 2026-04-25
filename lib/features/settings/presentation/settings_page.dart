@@ -5,8 +5,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
 import '../../../shared/utils/app_dialogs.dart';
 import '../../apps/data/apps_provider.dart';
+import '../../sites/data/sites_provider.dart';
 import '../../../core/services/ssl_service.dart';
 import '../data/settings_provider.dart';
+import '../domain/app_settings.dart';
 import 'widgets/system_info_modal.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -67,16 +69,6 @@ class SettingsPage extends ConsumerWidget {
                       onChanged: (val) => ref
                           .read(settingsNotifierProvider.notifier)
                           .updateField(siteTemplate: val),
-                    ),
-                    const Divider(color: AppColors.border, height: 32),
-                    _buildSwitchSetting(
-                      title: 'Auto Create Site',
-                      subtitle:
-                          'Allow to select folder and create site automatically',
-                      value: settings.autoCreateSite,
-                      onChanged: (val) => ref
-                          .read(settingsNotifierProvider.notifier)
-                          .updateField(autoCreateSite: val),
                     ),
                   ],
                 ),
@@ -425,37 +417,97 @@ class SettingsPage extends ConsumerWidget {
     required String subtitle,
     required IconData icon,
     required VoidCallback onTap,
+    String? actionLabel,
   }) {
+    if (actionLabel != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 20, color: AppColors.accent),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: AppTextSize.sm,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: AppTextSize.xs,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ElevatedButton(
+              onPressed: onTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                actionLabel,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: AppTextSize.sm,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: AppTextSize.sm,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: AppTextSize.xs,
-                    color: AppColors.textSecondary,
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: AppTextSize.xs,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Icon(icon, size: 18, color: AppColors.textSecondary),
-        ],
+            Icon(icon, size: 18, color: AppColors.textSecondary),
+          ],
+        ),
       ),
     );
   }
@@ -542,6 +594,8 @@ class SettingsPage extends ConsumerWidget {
       ],
     );
   }
+
+
 
   void _confirmUninstall(BuildContext context, WidgetRef ref) {
     AppDialogs.showConfirm(

@@ -30,10 +30,11 @@ class SitesNotifier extends _$SitesNotifier {
   }) async {
     final isar = await ref.read(isarProvider.future);
     
-    // Extract version number from appId (e.g. php82 -> 82)
+    // Handle static sites
+    final isStatic = phpAppId == 'static';
     final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
-    final phpVersion = versionMatch?.group(0) ?? '82';
-    final phpPort = int.parse('90$phpVersion');
+    final phpVersion = isStatic ? 'static' : (versionMatch?.group(0) ?? '82');
+    final phpPort = isStatic ? 0 : int.parse('90$phpVersion');
 
     final site = SiteModel(
       domain: domain,
@@ -81,9 +82,10 @@ class SitesNotifier extends _$SitesNotifier {
       await _removeVhostFiles(oldSite);
     }
 
+    final isStatic = phpAppId == 'static';
     final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
-    final phpVersion = versionMatch?.group(0) ?? '82';
-    final phpPort = int.parse('90$phpVersion');
+    final phpVersion = isStatic ? 'static' : (versionMatch?.group(0) ?? '82');
+    final phpPort = isStatic ? 0 : int.parse('90$phpVersion');
 
     final updatedSite = SiteModel(
       id: id,
@@ -264,15 +266,20 @@ server {
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
+''';
 
+    if (site.phpVersion != 'static') {
+      nginxConfig += '''
     location ~ \\.php\$ {
         fastcgi_pass 127.0.0.1:${site.phpPort};
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
     }
-}
 ''';
+    }
+
+    nginxConfig += '}\n';
 
     if (site.useSsl) {
       final certPath = sslNotifier.getSiteCertPath(site.domain).replaceAll('\\', '/');
@@ -299,15 +306,19 @@ server {
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
+''';
 
+      if (site.phpVersion != 'static') {
+        nginxConfig += '''
     location ~ \\.php\$ {
         fastcgi_pass 127.0.0.1:${site.phpPort};
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
     }
-}
 ''';
+      }
+      nginxConfig += '}\n';
     }
     await nginxVhostFile.writeAsString(nginxConfig);
 
@@ -326,12 +337,17 @@ server {
         AllowOverride All
         Require all granted
     </Directory>
-    
+''';
+
+    if (site.phpVersion != 'static') {
+      apacheConfig += '''
     <FilesMatch \\.php\$>
         SetHandler "proxy:fcgi://127.0.0.1:${site.phpPort}"
     </FilesMatch>
-</VirtualHost>
 ''';
+    }
+
+    apacheConfig += '</VirtualHost>\n';
 
     if (site.useSsl) {
       final certPath = sslNotifier.getSiteCertPath(site.domain).replaceAll('\\', '/');
@@ -354,13 +370,16 @@ server {
         AllowOverride All
         Require all granted
     </Directory>
-    
+''';
+
+      if (site.phpVersion != 'static') {
+        apacheConfig += '''
     <FilesMatch \\.php\$>
         SetHandler "proxy:fcgi://127.0.0.1:${site.phpPort}"
     </FilesMatch>
-</VirtualHost>
-</IfModule>
 ''';
+      }
+      apacheConfig += '</VirtualHost>\n</IfModule>\n';
     }
     await apacheVhostFile.writeAsString(apacheConfig);
   }
@@ -371,6 +390,13 @@ server {
     
     final apacheVhostFile = File(p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'));
     if (apacheVhostFile.existsSync()) await apacheVhostFile.delete();
+
+    // Remove SSL files
+    final sslNotifier = ref.read(sslServiceProvider.notifier);
+    final certFile = File(sslNotifier.getSiteCertPath(site.domain));
+    final keyFile = File(sslNotifier.getSiteKeyPath(site.domain));
+    if (certFile.existsSync()) await certFile.delete();
+    if (keyFile.existsSync()) await keyFile.delete();
 
     // Remove logs directory
     final logsDir = Directory(p.join(AppConfig.baseDir, 'logs', site.domain));

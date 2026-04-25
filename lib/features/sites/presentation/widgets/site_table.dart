@@ -8,12 +8,18 @@ import '../../../../shared/utils/app_dialogs.dart';
 
 class SiteTable extends ConsumerWidget {
   final List<SiteModel> sites;
+  final Set<int> selectedIds;
   final Function(SiteModel) onEdit;
+  final Function(int) onToggleSelection;
+  final Function(bool) onToggleAll;
 
   const SiteTable({
     super.key,
     required this.sites,
+    required this.selectedIds,
     required this.onEdit,
+    required this.onToggleSelection,
+    required this.onToggleAll,
   });
 
   @override
@@ -44,8 +50,10 @@ class SiteTable extends ConsumerWidget {
   }
 
   Widget _buildHeader() {
+    final allSelected = sites.isNotEmpty && sites.every((s) => selectedIds.contains(s.id));
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: const BoxDecoration(
         color: AppColors.surfaceLight,
         borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
@@ -53,6 +61,16 @@ class SiteTable extends ConsumerWidget {
       ),
       child: Row(
         children: [
+          SizedBox(
+            width: 32,
+            child: Checkbox(
+              value: allSelected,
+              onChanged: (val) => onToggleAll(val ?? false),
+              side: const BorderSide(color: AppColors.border),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+          ),
+          const SizedBox(width: 8),
           Expanded(flex: 3, child: _buildHeaderCell('SITE NAME')),
           const SizedBox(width: 12),
           Expanded(flex: 4, child: _buildHeaderCell('PATH')),
@@ -84,15 +102,28 @@ class SiteTable extends ConsumerWidget {
   }
 
   Widget _buildRow(BuildContext context, WidgetRef ref, SiteModel site, bool isLast) {
+    final isSelected = selectedIds.contains(site.id);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
+        color: isSelected ? AppColors.accent.withValues(alpha: 0.05) : null,
         border: isLast
             ? null
             : Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Row(
         children: [
+          SizedBox(
+            width: 32,
+            child: Checkbox(
+              value: isSelected,
+              onChanged: (_) => onToggleSelection(site.id!),
+              side: const BorderSide(color: AppColors.border),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             flex: 3,
             child: Text(
@@ -155,7 +186,7 @@ class SiteTable extends ConsumerWidget {
                       text: 'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
                       confirmBtnText: 'DELETE',
                       onConfirm: () {
-                        ref.read(sitesNotifierProvider.notifier).deleteSite(site.id);
+                        ref.read(sitesNotifierProvider.notifier).deleteSite(site.id!);
                       },
                     );
                   },
