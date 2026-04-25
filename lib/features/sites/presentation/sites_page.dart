@@ -6,6 +6,7 @@ import 'widgets/site_table.dart';
 import '../domain/site_model.dart';
 import '../data/sites_provider.dart';
 import 'widgets/add_site_modal.dart';
+import 'widgets/edit_site_modal.dart';
 
 class SitesPage extends ConsumerStatefulWidget {
   const SitesPage({super.key});
@@ -41,15 +42,19 @@ class _SitesPageState extends ConsumerState<SitesPage> {
     super.dispose();
   }
 
-  void _showAddSiteModal([SiteModel? site]) {
+  void _showSiteDialog([SiteModel? site]) {
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Center(
-        child: AddSiteModal(
-          onClose: () => Navigator.of(context).pop(),
-          initialData: site,
-        ),
+        child: site != null
+            ? EditSiteModal(
+                site: site,
+                onClose: () => Navigator.of(context).pop(),
+              )
+            : AddSiteModal(
+                onClose: () => Navigator.of(context).pop(),
+              ),
       ),
     );
   }
@@ -132,7 +137,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
     return Row(
       children: [
         ElevatedButton.icon(
-          onPressed: _showAddSiteModal,
+          onPressed: () => _showSiteDialog(),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.success,
             foregroundColor: Colors.white,
@@ -223,7 +228,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
 
         return SiteTable(
           sites: filteredSites,
-          onEdit: (site) => _showAddSiteModal(site),
+          onEdit: (site) => _showSiteDialog(site),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),

@@ -138,6 +138,71 @@ class SitesNotifier extends _$SitesNotifier {
     }
   }
 
+  // --- File Management for Edit Modal ---
+
+  Future<Map<String, String>> getConfigs(SiteModel site) async {
+    final nginxFile = File(p.join(AppConfig.vhostsDir, 'nginx', '${site.domain}.conf'));
+    final apacheFile = File(p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'));
+
+    return {
+      'nginx': await nginxFile.exists() ? await nginxFile.readAsString() : '',
+      'apache': await apacheFile.exists() ? await apacheFile.readAsString() : '',
+    };
+  }
+
+  Future<void> saveConfig(SiteModel site, String type, String content) async {
+    final dir = type == 'nginx' ? 'nginx' : 'apache';
+    final file = File(p.join(AppConfig.vhostsDir, dir, '${site.domain}.conf'));
+    await file.writeAsString(content);
+    await _restartWebservers();
+  }
+
+  Future<Map<String, String>> getSslFiles(SiteModel site) async {
+    final sslNotifier = ref.read(sslServiceProvider.notifier);
+    final certFile = File(sslNotifier.getSiteCertPath(site.domain));
+    final keyFile = File(sslNotifier.getSiteKeyPath(site.domain));
+
+    return {
+      'cert': await certFile.exists() ? await certFile.readAsString() : '',
+      'key': await keyFile.exists() ? await keyFile.readAsString() : '',
+    };
+  }
+
+  Future<void> saveSslFile(SiteModel site, String type, String content) async {
+    final sslNotifier = ref.read(sslServiceProvider.notifier);
+    final path = type == 'cert' ? sslNotifier.getSiteCertPath(site.domain) : sslNotifier.getSiteKeyPath(site.domain);
+    await File(path).writeAsString(content);
+    await _restartWebservers();
+  }
+
+  Future<Map<String, String>> getLogs(SiteModel site) async {
+    final logsDir = p.join(AppConfig.baseDir, 'logs', site.domain);
+    
+    final nAccess = File(p.join(logsDir, 'nginx_access.log'));
+    final nError = File(p.join(logsDir, 'nginx_error.log'));
+    final aAccess = File(p.join(logsDir, 'apache_access.log'));
+    final aError = File(p.join(logsDir, 'apache_error.log'));
+
+    Future<String> readLastLines(File file, [int lines = 100]) async {
+      if (!await file.exists()) return 'Log file not found';
+      final content = await file.readAsLines();
+      if (content.length <= lines) return content.join('\n');
+      return content.sublist(content.length - lines).join('\n');
+    }
+
+    return {
+      'nginx_access': await readLastLines(nAccess),
+      'nginx_error': await readLastLines(nError),
+      'apache_access': await readLastLines(aAccess),
+      'apache_error': await readLastLines(aError),
+    };
+  }
+
+  Future<void> regenerateSsl(SiteModel site) async {
+    await ref.read(sslServiceProvider.notifier).generateSiteCert(site.domain);
+    await _restartWebservers();
+  }
+
   Future<void> _updateHostsFile() async {
     final isar = await ref.read(isarProvider.future);
     final allSites = await isar.siteModels.where().findAll();
@@ -179,6 +244,11 @@ class SitesNotifier extends _$SitesNotifier {
     final apacheDir = Directory(p.join(AppConfig.vhostsDir, 'apache'));
     if (!apacheDir.existsSync()) await apacheDir.create(recursive: true);
 
+    // Ensure logs directory exists
+    final logsDir = Directory(p.join(AppConfig.baseDir, 'logs', site.domain));
+    if (!logsDir.existsSync()) await logsDir.create(recursive: true);
+    final logsPathUnix = logsDir.path.replaceAll('\\', '/');
+
     // 1. Nginx Vhost
     final nginxVhostFile = File(p.join(nginxDir.path, '${site.domain}.conf'));
     String nginxConfig = '''
@@ -187,6 +257,9 @@ server {
     server_name ${site.domain};
     root "$rootDirUnix";
     index index.php index.html;
+
+    access_log "$logsPathUnix/nginx_access.log";
+    error_log "$logsPathUnix/nginx_error.log";
 
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
@@ -220,6 +293,9 @@ server {
     ssl_ciphers  HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers  on;
 
+    access_log "$logsPathUnix/nginx_access.log";
+    error_log "$logsPathUnix/nginx_error.log";
+
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
@@ -241,6 +317,10 @@ server {
 <VirtualHost *:80>
     ServerName ${site.domain}
     DocumentRoot "$rootDirUnix"
+
+    CustomLog "$logsPathUnix/apache_access.log" combined
+    ErrorLog "$logsPathUnix/apache_error.log"
+
     <Directory "$rootDirUnix">
         Options Indexes FollowSymLinks
         AllowOverride All
@@ -265,6 +345,10 @@ server {
     SSLEngine on
     SSLCertificateFile "$certPath"
     SSLCertificateKeyFile "$keyPath"
+
+    CustomLog "$logsPathUnix/apache_access.log" combined
+    ErrorLog "$logsPathUnix/apache_error.log"
+
     <Directory "$rootDirUnix">
         Options Indexes FollowSymLinks
         AllowOverride All
@@ -287,6 +371,10 @@ server {
     
     final apacheVhostFile = File(p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'));
     if (apacheVhostFile.existsSync()) await apacheVhostFile.delete();
+
+    // Remove logs directory
+    final logsDir = Directory(p.join(AppConfig.baseDir, 'logs', site.domain));
+    if (logsDir.existsSync()) await logsDir.delete(recursive: true);
   }
 
   Future<void> _restartWebservers() async {
