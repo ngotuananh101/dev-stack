@@ -450,7 +450,7 @@ class CompactAppsTable extends StatelessWidget {
   }
 
   Widget _buildPathToggle(AppModel app) {
-    if (!app.isInstalled || app.cliFilePath == null) {
+    if (!app.isInstalled || app.cliFilePath == null || app.appId == 'pyenv') {
       return const SizedBox.shrink();
     }
 
