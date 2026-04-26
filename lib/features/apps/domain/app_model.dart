@@ -15,7 +15,6 @@ class AppModel {
 
   // UI/State properties
   String? selectedVersion;
-  bool displayOnDashboard;
 
   // Installation state (merged from DB)
   String? location;
@@ -123,7 +122,6 @@ class AppModel {
     this.versions = const ['latest'],
     this.versionLinksJson,
     this.selectedVersion,
-    this.displayOnDashboard = false,
     this.location,
     this.status,
     this.installedVersion,

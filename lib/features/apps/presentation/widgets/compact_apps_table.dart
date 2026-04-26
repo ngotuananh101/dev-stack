@@ -12,7 +12,6 @@ import 'pyenv_manage_modal.dart';
 class CompactAppsTable extends StatelessWidget {
   final List<AppModel> apps;
   final Future<void> Function(AppModel) onToggleInstall;
-  final Future<void> Function(AppModel) onToggleDashboard;
   final Future<void> Function(AppModel) onTogglePath;
   final Future<void> Function(AppModel) onStartService;
   final Future<void> Function(AppModel) onStopService;
@@ -24,7 +23,6 @@ class CompactAppsTable extends StatelessWidget {
     super.key,
     required this.apps,
     required this.onToggleInstall,
-    required this.onToggleDashboard,
     required this.onTogglePath,
     required this.onStartService,
     required this.onStopService,

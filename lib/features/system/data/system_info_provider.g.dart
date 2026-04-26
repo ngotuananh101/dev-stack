@@ -7,7 +7,7 @@ part of 'system_info_provider.dart';
 // **************************************************************************
 
 String _$systemInfoNotifierHash() =>
-    r'd8efccf16504e79a58e9368e4d8934ad1ef672e4';
+    r'aa835d6b8d7b1d813f09322e55dd9505cfdd10d0';
 
 /// See also [SystemInfoNotifier].
 @ProviderFor(SystemInfoNotifier)

@@ -39,7 +39,6 @@ dependencies:
   window_manager: any
   google_fonts: any
   lucide_icons: any
-  fl_chart: any
   isar: ^3.1.0
   isar_flutter_libs: ^3.1.0
   path_provider: any

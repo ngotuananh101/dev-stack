@@ -146,16 +146,6 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                             );
                           }
                         },
-                        onToggleDashboard: (app) async {
-                          final repository = await ref.read(
-                            appsRepositoryProvider.future,
-                          );
-                          app.displayOnDashboard = !app.displayOnDashboard;
-                          await repository.save(app);
-                          await ref
-                              .read(appsNotifierProvider.notifier)
-                              .refresh();
-                        },
                         onTogglePath: (app) async {
                           await ref
                               .read(appsNotifierProvider.notifier)
