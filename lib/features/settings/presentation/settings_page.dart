@@ -458,14 +458,20 @@ class SettingsPage extends ConsumerWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accent,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
               child: Text(
                 actionLabel,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -592,8 +598,6 @@ class SettingsPage extends ConsumerWidget {
       ],
     );
   }
-
-
 
   void _confirmUninstall(BuildContext context, WidgetRef ref) {
     AppDialogs.showConfirm(

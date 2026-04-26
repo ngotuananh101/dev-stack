@@ -28,14 +28,6 @@ class Sidebar extends ConsumerWidget {
               padding: EdgeInsets.symmetric(horizontal: 16),
               children: [
                 _buildNavItem(
-                  LucideIcons.layoutDashboard,
-                  'Dashboard',
-                  isActive: currentTab == NavigationTab.dashboard,
-                  onTap: () => ref
-                      .read(navigationProvider.notifier)
-                      .setTab(NavigationTab.dashboard),
-                ),
-                _buildNavItem(
                   LucideIcons.layoutGrid,
                   'Apps',
                   isActive: currentTab == NavigationTab.apps,

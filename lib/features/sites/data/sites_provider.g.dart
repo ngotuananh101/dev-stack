@@ -6,7 +6,7 @@ part of 'sites_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sitesNotifierHash() => r'0882e92c4fca54fd513c22e58d26ff1d53f568f3';
+String _$sitesNotifierHash() => r'6cc1003ff97544dc6889c0c5f3d942d30b4ffcc2';
 
 /// See also [SitesNotifier].
 @ProviderFor(SitesNotifier)

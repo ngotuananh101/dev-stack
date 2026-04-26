@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/theme/app_theme.dart';
-import 'features/dashboard/presentation/dashboard_page.dart';
 
 import 'shared/providers/navigation_provider.dart';
 import 'shared/layouts/sidebar.dart';
@@ -110,8 +109,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   Widget _buildPage(NavigationTab tab) {
     switch (tab) {
-      case NavigationTab.dashboard:
-        return const DashboardPage();
       case NavigationTab.apps:
         return const AppsPage();
       case NavigationTab.hosts:
