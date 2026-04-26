@@ -37,13 +37,23 @@ const SiteModelSchema = CollectionSchema(
       name: r'phpVersion',
       type: IsarType.string,
     ),
-    r'rootDir': PropertySchema(
+    r'proxyTarget': PropertySchema(
       id: 4,
+      name: r'proxyTarget',
+      type: IsarType.string,
+    ),
+    r'rootDir': PropertySchema(
+      id: 5,
       name: r'rootDir',
       type: IsarType.string,
     ),
+    r'siteType': PropertySchema(
+      id: 6,
+      name: r'siteType',
+      type: IsarType.string,
+    ),
     r'useSsl': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'useSsl',
       type: IsarType.bool,
     )
@@ -83,8 +93,20 @@ int _siteModelEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.domain.length * 3;
-  bytesCount += 3 + object.phpVersion.length * 3;
+  {
+    final value = object.phpVersion;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.proxyTarget;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.rootDir.length * 3;
+  bytesCount += 3 + object.siteType.length * 3;
   return bytesCount;
 }
 
@@ -98,8 +120,10 @@ void _siteModelSerialize(
   writer.writeString(offsets[1], object.domain);
   writer.writeLong(offsets[2], object.phpPort);
   writer.writeString(offsets[3], object.phpVersion);
-  writer.writeString(offsets[4], object.rootDir);
-  writer.writeBool(offsets[5], object.useSsl);
+  writer.writeString(offsets[4], object.proxyTarget);
+  writer.writeString(offsets[5], object.rootDir);
+  writer.writeString(offsets[6], object.siteType);
+  writer.writeBool(offsets[7], object.useSsl);
 }
 
 SiteModel _siteModelDeserialize(
@@ -112,10 +136,12 @@ SiteModel _siteModelDeserialize(
     createdAt: reader.readDateTimeOrNull(offsets[0]),
     domain: reader.readString(offsets[1]),
     id: id,
-    phpPort: reader.readLong(offsets[2]),
-    phpVersion: reader.readString(offsets[3]),
-    rootDir: reader.readString(offsets[4]),
-    useSsl: reader.readBoolOrNull(offsets[5]) ?? false,
+    phpPort: reader.readLongOrNull(offsets[2]),
+    phpVersion: reader.readStringOrNull(offsets[3]),
+    proxyTarget: reader.readStringOrNull(offsets[4]),
+    rootDir: reader.readString(offsets[5]),
+    siteType: reader.readStringOrNull(offsets[6]) ?? 'php',
+    useSsl: reader.readBoolOrNull(offsets[7]) ?? false,
   );
   return object;
 }
@@ -132,12 +158,16 @@ P _siteModelDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readLong(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 5:
+      return (reader.readString(offset)) as P;
+    case 6:
+      return (reader.readStringOrNull(offset) ?? 'php') as P;
+    case 7:
       return (reader.readBoolOrNull(offset) ?? false) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -589,8 +619,24 @@ extension SiteModelQueryFilter
     });
   }
 
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> phpPortIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'phpPort',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> phpPortIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'phpPort',
+      ));
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> phpPortEqualTo(
-      int value) {
+      int? value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'phpPort',
@@ -600,7 +646,7 @@ extension SiteModelQueryFilter
   }
 
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> phpPortGreaterThan(
-    int value, {
+    int? value, {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -613,7 +659,7 @@ extension SiteModelQueryFilter
   }
 
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> phpPortLessThan(
-    int value, {
+    int? value, {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -626,8 +672,8 @@ extension SiteModelQueryFilter
   }
 
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> phpPortBetween(
-    int lower,
-    int upper, {
+    int? lower,
+    int? upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
@@ -642,8 +688,25 @@ extension SiteModelQueryFilter
     });
   }
 
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> phpVersionIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'phpVersion',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
+      phpVersionIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'phpVersion',
+      ));
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> phpVersionEqualTo(
-    String value, {
+    String? value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -657,7 +720,7 @@ extension SiteModelQueryFilter
 
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
       phpVersionGreaterThan(
-    String value, {
+    String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -672,7 +735,7 @@ extension SiteModelQueryFilter
   }
 
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> phpVersionLessThan(
-    String value, {
+    String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -687,8 +750,8 @@ extension SiteModelQueryFilter
   }
 
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> phpVersionBetween(
-    String lower,
-    String upper, {
+    String? lower,
+    String? upper, {
     bool includeLower = true,
     bool includeUpper = true,
     bool caseSensitive = true,
@@ -771,6 +834,158 @@ extension SiteModelQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'phpVersion',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
+      proxyTargetIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'proxyTarget',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
+      proxyTargetIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'proxyTarget',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> proxyTargetEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'proxyTarget',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
+      proxyTargetGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'proxyTarget',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> proxyTargetLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'proxyTarget',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> proxyTargetBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'proxyTarget',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
+      proxyTargetStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'proxyTarget',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> proxyTargetEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'proxyTarget',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> proxyTargetContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'proxyTarget',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> proxyTargetMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'proxyTarget',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
+      proxyTargetIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'proxyTarget',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
+      proxyTargetIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'proxyTarget',
         value: '',
       ));
     });
@@ -907,6 +1122,137 @@ extension SiteModelQueryFilter
     });
   }
 
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> siteTypeEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'siteType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> siteTypeGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'siteType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> siteTypeLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'siteType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> siteTypeBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'siteType',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> siteTypeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'siteType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> siteTypeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'siteType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> siteTypeContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'siteType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> siteTypeMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'siteType',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> siteTypeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'siteType',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
+      siteTypeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'siteType',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> useSslEqualTo(
       bool value) {
     return QueryBuilder.apply(this, (query) {
@@ -973,6 +1319,18 @@ extension SiteModelQuerySortBy on QueryBuilder<SiteModel, SiteModel, QSortBy> {
     });
   }
 
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByProxyTarget() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxyTarget', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByProxyTargetDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxyTarget', Sort.desc);
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByRootDir() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'rootDir', Sort.asc);
@@ -982,6 +1340,18 @@ extension SiteModelQuerySortBy on QueryBuilder<SiteModel, SiteModel, QSortBy> {
   QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByRootDirDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'rootDir', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortBySiteType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'siteType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortBySiteTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'siteType', Sort.desc);
     });
   }
 
@@ -1060,6 +1430,18 @@ extension SiteModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByProxyTarget() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxyTarget', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByProxyTargetDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxyTarget', Sort.desc);
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByRootDir() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'rootDir', Sort.asc);
@@ -1069,6 +1451,18 @@ extension SiteModelQuerySortThenBy
   QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByRootDirDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'rootDir', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenBySiteType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'siteType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenBySiteTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'siteType', Sort.desc);
     });
   }
 
@@ -1113,10 +1507,24 @@ extension SiteModelQueryWhereDistinct
     });
   }
 
+  QueryBuilder<SiteModel, SiteModel, QDistinct> distinctByProxyTarget(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'proxyTarget', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QDistinct> distinctByRootDir(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'rootDir', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QDistinct> distinctBySiteType(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'siteType', caseSensitive: caseSensitive);
     });
   }
 
@@ -1147,21 +1555,33 @@ extension SiteModelQueryProperty
     });
   }
 
-  QueryBuilder<SiteModel, int, QQueryOperations> phpPortProperty() {
+  QueryBuilder<SiteModel, int?, QQueryOperations> phpPortProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'phpPort');
     });
   }
 
-  QueryBuilder<SiteModel, String, QQueryOperations> phpVersionProperty() {
+  QueryBuilder<SiteModel, String?, QQueryOperations> phpVersionProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'phpVersion');
+    });
+  }
+
+  QueryBuilder<SiteModel, String?, QQueryOperations> proxyTargetProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'proxyTarget');
     });
   }
 
   QueryBuilder<SiteModel, String, QQueryOperations> rootDirProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'rootDir');
+    });
+  }
+
+  QueryBuilder<SiteModel, String, QQueryOperations> siteTypeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'siteType');
     });
   }
 

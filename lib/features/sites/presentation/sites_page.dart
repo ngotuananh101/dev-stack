@@ -22,16 +22,9 @@ class SitesPage extends ConsumerStatefulWidget {
 }
 
 class _SitesPageState extends ConsumerState<SitesPage> {
-  String selectedTab = 'PHP Project';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   final Set<int> _selectedSiteIds = {};
-
-  final List<String> tabs = [
-    'PHP Project',
-    'NodeJs Project',
-    'Proxy Project',
-  ];
 
   @override
   void initState() {
@@ -72,7 +65,6 @@ class _SitesPageState extends ConsumerState<SitesPage> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          _buildTabs(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
@@ -93,52 +85,6 @@ class _SitesPageState extends ConsumerState<SitesPage> {
     );
   }
 
-  Widget _buildTabs() {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: tabs.length,
-        itemBuilder: (context, index) {
-          final tab = tabs[index];
-          final isSelected = selectedTab == tab;
-
-          return InkWell(
-            onTap: () {
-              setState(() {
-                selectedTab = tab;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: isSelected ? AppColors.accent : Colors.transparent,
-                    width: 3,
-                  ),
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                tab,
-                style: TextStyle(
-                  color: isSelected
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   Widget _buildHeader() {
     return Row(
@@ -239,38 +185,14 @@ class _SitesPageState extends ConsumerState<SitesPage> {
   }
 
   Widget _buildContent() {
-    if (selectedTab != 'PHP Project') {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              selectedTab == 'NodeJs Project'
-                  ? LucideIcons.box
-                  : LucideIcons.shuffle,
-              size: 48,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '$selectedTab is Under Development',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     final sitesAsync = ref.watch(sitesNotifierProvider);
 
     return sitesAsync.when(
       data: (sites) {
         final filteredSites = sites.where((site) {
           return site.domain.toLowerCase().contains(_searchQuery) ||
-              site.rootDir.toLowerCase().contains(_searchQuery);
+              site.rootDir.toLowerCase().contains(_searchQuery) ||
+              (site.proxyTarget?.toLowerCase().contains(_searchQuery) ?? false);
         }).toList();
 
         return SiteTable(
@@ -412,6 +334,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
               await sitesNotifier.addSite(
                 domain: domain,
                 rootDir: subdir.path,
+                siteType: 'php',
                 phpAppId: defaultPhp,
                 useSsl: true,
               );

@@ -127,6 +127,8 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _domainController;
   late TextEditingController _rootDirController;
+  late TextEditingController _proxyTargetController;
+  late String _siteType;
   String? _selectedPhpAppId;
   late bool _useSsl;
   bool _isSaving = false;
@@ -136,6 +138,8 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
     super.initState();
     _domainController = TextEditingController(text: widget.site.domain);
     _rootDirController = TextEditingController(text: widget.site.rootDir);
+    _proxyTargetController = TextEditingController(text: widget.site.proxyTarget ?? '');
+    _siteType = widget.site.siteType;
     _useSsl = widget.site.useSsl;
   }
 
@@ -143,6 +147,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
   void dispose() {
     _domainController.dispose();
     _rootDirController.dispose();
+    _proxyTargetController.dispose();
     super.dispose();
   }
 
@@ -154,7 +159,16 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
   }
 
   Future<void> _handleSave() async {
-    if (!_formKey.currentState!.validate() || _selectedPhpAppId == null) return;
+    if (!_formKey.currentState!.validate()) return;
+    if (_siteType == 'php' && _selectedPhpAppId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a PHP version'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isSaving = true);
     try {
@@ -164,7 +178,9 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
             id: widget.site.id,
             domain: _domainController.text.trim(),
             rootDir: _rootDirController.text.trim(),
-            phpAppId: _selectedPhpAppId!,
+            siteType: _siteType,
+            phpAppId: _siteType == 'php' ? _selectedPhpAppId : null,
+            proxyTarget: _siteType == 'proxy' ? _proxyTargetController.text.trim() : null,
             useSsl: _useSsl,
           );
       if (mounted) {
@@ -197,7 +213,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
             .toList();
         if (_selectedPhpAppId == null && phpApps.isNotEmpty) {
           final match = phpApps.indexWhere(
-            (a) => a.appId.contains(widget.site.phpVersion),
+            (a) => widget.site.phpVersion != null && a.appId.contains(widget.site.phpVersion!),
           );
           _selectedPhpAppId = match != -1
               ? phpApps[match].appId
@@ -221,91 +237,128 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                       (v == null || v.isEmpty) ? 'Required' : null,
                 ),
                 const SizedBox(height: 20),
-                _buildLabel('Root Directory'),
+                _buildLabel('Site Type'),
                 Row(
                   children: [
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _rootDirController,
-                        hint: 'Path to project',
-                        icon: LucideIcons.folder,
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? 'Required' : null,
-                      ),
-                    ),
+                    _buildTypeOption('PHP', 'php', LucideIcons.code),
                     const SizedBox(width: 12),
-                    SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _pickDirectory,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.surface,
-                          foregroundColor: AppColors.textPrimary,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: BorderSide(
-                              color: AppColors.border.withValues(alpha: 0.5),
-                            ),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Icon(LucideIcons.folderOpen, size: 18),
-                      ),
-                    ),
+                    _buildTypeOption('Static', 'static', LucideIcons.fileCode),
+                    const SizedBox(width: 12),
+                    _buildTypeOption('Proxy', 'proxy', LucideIcons.shuffle),
                   ],
                 ),
                 const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('PHP Version'),
-                          Container(
-                            height: 48,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
+
+                if (_siteType != 'proxy') ...[
+                  _buildLabel('Root Directory'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _rootDirController,
+                          hint: 'Path to project',
+                          icon: LucideIcons.folder,
+                          validator: (v) =>
+                              (v == null || v.isEmpty) ? 'Required' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _pickDirectory,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.surface,
+                            foregroundColor: AppColors.textPrimary,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
+                              side: BorderSide(
                                 color: AppColors.border.withValues(alpha: 0.5),
                               ),
                             ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _selectedPhpAppId,
-                                isExpanded: true,
-                                dropdownColor: AppColors.surface,
+                            elevation: 0,
+                          ),
+                          child: const Icon(LucideIcons.folderOpen, size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
+
+                if (_siteType == 'proxy') ...[
+                  _buildLabel('Proxy Target URL'),
+                  _buildTextField(
+                    controller: _proxyTargetController,
+                    hint: 'e.g. http://localhost:3000',
+                    icon: LucideIcons.link,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a target URL';
+                      }
+                      if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                        return 'Target must start with http:// or https://';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                ],
+
+                Row(
+                  children: [
+                    if (_siteType == 'php')
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('PHP Version'),
+                            Container(
+                              height: 48,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(8),
-                                icon: const Icon(
-                                  LucideIcons.chevronDown,
-                                  size: 16,
-                                  color: AppColors.textMuted,
+                                border: Border.all(
+                                  color: AppColors.border.withValues(alpha: 0.5),
                                 ),
-                                items: phpApps
-                                    .map(
-                                      (a) => DropdownMenuItem(
-                                        value: a.appId,
-                                        child: Text(
-                                          a.name,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: AppColors.textPrimary,
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _selectedPhpAppId,
+                                  isExpanded: true,
+                                  dropdownColor: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(8),
+                                  icon: const Icon(
+                                    LucideIcons.chevronDown,
+                                    size: 16,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  items: phpApps
+                                      .map(
+                                        (a) => DropdownMenuItem(
+                                          value: a.appId,
+                                          child: Text(
+                                            a.name,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: AppColors.textPrimary,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (v) =>
-                                    setState(() => _selectedPhpAppId = v),
+                                      )
+                                      .toList(),
+                                  onChanged: (v) =>
+                                      setState(() => _selectedPhpAppId = v),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
+                          ],
+                        ),
+                      )
+                    else
+                      const Spacer(),
                     const SizedBox(width: 24),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,6 +399,48 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
+    );
+  }
+
+  Widget _buildTypeOption(String label, String value, IconData icon) {
+    final isSelected = _siteType == value;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _siteType = value),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

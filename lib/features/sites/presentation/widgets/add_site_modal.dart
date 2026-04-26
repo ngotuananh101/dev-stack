@@ -24,7 +24,9 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
   final _formKey = GlobalKey<FormState>();
   final _domainController = TextEditingController();
   final _rootDirController = TextEditingController();
+  final _proxyTargetController = TextEditingController();
 
+  String _siteType = 'php'; // 'php', 'static', 'proxy'
   String? _selectedPhpAppId;
   bool _useSsl = false;
   bool _isSaving = false;
@@ -37,6 +39,8 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
     if (isEdit) {
       _domainController.text = widget.initialData!.domain;
       _rootDirController.text = widget.initialData!.rootDir;
+      _siteType = widget.initialData!.siteType;
+      _proxyTargetController.text = widget.initialData!.proxyTarget ?? '';
       _useSsl = widget.initialData!.useSsl;
       // We'll match PHP version later when apps are loaded
     }
@@ -46,6 +50,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
   void dispose() {
     _domainController.dispose();
     _rootDirController.dispose();
+    _proxyTargetController.dispose();
     super.dispose();
   }
 
@@ -60,9 +65,12 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
 
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedPhpAppId == null) {
+    if (_siteType == 'php' && _selectedPhpAppId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a PHP version')),
+        const SnackBar(
+          content: Text('Please select a PHP version'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
@@ -74,14 +82,18 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
               id: widget.initialData!.id,
               domain: _domainController.text.trim(),
               rootDir: _rootDirController.text.trim(),
-              phpAppId: _selectedPhpAppId!,
+              siteType: _siteType,
+              phpAppId: _siteType == 'php' ? _selectedPhpAppId : null,
+              proxyTarget: _siteType == 'proxy' ? _proxyTargetController.text.trim() : null,
               useSsl: _useSsl,
             );
       } else {
         await ref.read(sitesNotifierProvider.notifier).addSite(
               domain: _domainController.text.trim(),
               rootDir: _rootDirController.text.trim(),
-              phpAppId: _selectedPhpAppId!,
+              siteType: _siteType,
+              phpAppId: _siteType == 'php' ? _selectedPhpAppId : null,
+              proxyTarget: _siteType == 'proxy' ? _proxyTargetController.text.trim() : null,
               useSsl: _useSsl,
             );
       }
@@ -106,32 +118,23 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
 
     return appsAsync.when(
       data: (apps) {
-        final phpApps = [
-          AppModel(
-            appId: 'static',
-            name: 'Static (No PHP)',
-            developer: 'Official',
-            categories: ['php'],
-            isInstalled: true,
-          ),
-          ...apps.where((a) => a.isInstalled && a.groupName == 'php'),
-        ];
+        final phpApps = apps
+            .where((a) => a.isInstalled && a.groupName == 'php')
+            .toList();
 
         // Auto select static or match existing
-        if (_selectedPhpAppId == null) {
-          if (isEdit) {
+        if (_selectedPhpAppId == null && phpApps.isNotEmpty) {
+          if (isEdit && widget.initialData!.phpVersion != null) {
             final match = phpApps.indexWhere(
-              (a) => a.appId.contains(widget.initialData!.phpVersion),
+              (a) => a.appId.contains(widget.initialData!.phpVersion!),
             );
             if (match != -1) {
               _selectedPhpAppId = phpApps[match].appId;
-            } else if (widget.initialData!.phpVersion == 'static') {
-              _selectedPhpAppId = 'static';
             } else {
-              _selectedPhpAppId = 'static';
+              _selectedPhpAppId = phpApps.first.appId;
             }
           } else {
-            _selectedPhpAppId = 'static';
+            _selectedPhpAppId = phpApps.first.appId;
           }
         }
 
@@ -240,95 +243,131 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                     ),
                     const SizedBox(height: 20),
 
-                    _buildLabel('Root Directory'),
+                    _buildLabel('Site Type'),
                     Row(
                       children: [
-                        Expanded(
-                          child: _buildTextField(
-                            controller: _rootDirController,
-                            hint: 'C:\\Projects\\my-project',
-                            icon: LucideIcons.folder,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please select a directory';
-                              }
-                              if (!Directory(value).existsSync()) {
-                                return 'Directory does not exist';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
+                        _buildTypeOption('PHP', 'php', LucideIcons.code),
                         const SizedBox(width: 12),
-                        SizedBox(
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: _pickDirectory,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.surface,
-                              foregroundColor: AppColors.textPrimary,
-                              side: const BorderSide(color: AppColors.border),
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Icon(LucideIcons.folderOpen, size: 18),
-                          ),
-                        ),
+                        _buildTypeOption('Static', 'static', LucideIcons.fileCode),
+                        const SizedBox(width: 12),
+                        _buildTypeOption('Proxy', 'proxy', LucideIcons.shuffle),
                       ],
                     ),
                     const SizedBox(height: 20),
 
+                    if (_siteType != 'proxy') ...[
+                      _buildLabel('Root Directory'),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildTextField(
+                              controller: _rootDirController,
+                              hint: 'C:\\Projects\\my-project',
+                              icon: LucideIcons.folder,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please select a directory';
+                                }
+                                if (!Directory(value).existsSync()) {
+                                  return 'Directory does not exist';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: _pickDirectory,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.surface,
+                                foregroundColor: AppColors.textPrimary,
+                                side: const BorderSide(color: AppColors.border),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Icon(LucideIcons.folderOpen, size: 18),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
+                    if (_siteType == 'proxy') ...[
+                      _buildLabel('Proxy Target URL'),
+                      _buildTextField(
+                        controller: _proxyTargetController,
+                        hint: 'e.g. http://localhost:3000',
+                        icon: LucideIcons.link,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a target URL';
+                          }
+                          if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                            return 'Target must start with http:// or https://';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel('PHP Version'),
-                              Container(
-                                height: 48,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: _selectedPhpAppId,
-                                    isExpanded: true,
-                                    icon: const Icon(
-                                      LucideIcons.chevronDown,
-                                      size: 16,
-                                    ),
-                                    items: phpApps.map((app) {
-                                      return DropdownMenuItem(
-                                        value: app.appId,
-                                        child: Text(
-                                          app.name,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: AppColors.textPrimary,
+                        if (_siteType == 'php')
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('PHP Version'),
+                                Container(
+                                  height: 48,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _selectedPhpAppId,
+                                      isExpanded: true,
+                                      icon: const Icon(
+                                        LucideIcons.chevronDown,
+                                        size: 16,
+                                      ),
+                                      items: phpApps.map((app) {
+                                        return DropdownMenuItem(
+                                          value: app.appId,
+                                          child: Text(
+                                            app.name,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: AppColors.textPrimary,
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                    onChanged: (val) =>
-                                        setState(() => _selectedPhpAppId = val),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) =>
+                                          setState(() => _selectedPhpAppId = val),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
+                              ],
+                            ),
+                          )
+                        else
+                          const Spacer(),
                         const SizedBox(width: 24),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -464,6 +503,48 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeOption(String label, String value, IconData icon) {
+    final isSelected = _siteType == value;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _siteType = value),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

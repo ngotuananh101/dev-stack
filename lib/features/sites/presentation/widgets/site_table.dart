@@ -73,9 +73,9 @@ class SiteTable extends ConsumerWidget {
           const SizedBox(width: 8),
           Expanded(flex: 3, child: _buildHeaderCell('SITE NAME')),
           const SizedBox(width: 12),
-          Expanded(flex: 4, child: _buildHeaderCell('PATH')),
+          Expanded(flex: 4, child: _buildHeaderCell('PATH / TARGET')),
           const SizedBox(width: 12),
-          Expanded(flex: 2, child: _buildHeaderCell('PHP VERSION')),
+          Expanded(flex: 2, child: _buildHeaderCell('TYPE')),
           const SizedBox(width: 12),
           Expanded(flex: 1, child: _buildHeaderCell('SSL')),
           const SizedBox(width: 12),
@@ -139,7 +139,7 @@ class SiteTable extends ConsumerWidget {
           Expanded(
             flex: 4,
             child: Text(
-              site.rootDir,
+              site.siteType == 'proxy' ? (site.proxyTarget ?? '-') : site.rootDir,
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
               overflow: TextOverflow.ellipsis,
             ),
@@ -148,7 +148,7 @@ class SiteTable extends ConsumerWidget {
           Expanded(
             flex: 2,
             child: Text(
-              'PHP ${site.phpVersion}',
+              site.siteType == 'php' ? 'PHP ${site.phpVersion}' : site.siteType.toUpperCase(),
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           ),

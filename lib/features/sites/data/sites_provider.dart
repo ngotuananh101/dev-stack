@@ -24,22 +24,29 @@ class SitesNotifier extends _$SitesNotifier {
   Future<void> addSite({
     required String domain,
     required String rootDir,
-    required String phpAppId,
+    required String siteType,
+    String? phpAppId,
+    String? proxyTarget,
     required bool useSsl,
   }) async {
     final isar = await ref.read(isarProvider.future);
     
-    // Handle static sites
-    final isStatic = phpAppId == 'static';
-    final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
-    final phpVersion = isStatic ? 'static' : (versionMatch?.group(0) ?? '82');
-    final phpPort = isStatic ? 0 : int.parse('90$phpVersion');
+    String? phpVersion;
+    int? phpPort;
+
+    if (siteType == 'php' && phpAppId != null) {
+      final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
+      phpVersion = versionMatch?.group(0) ?? '82';
+      phpPort = int.parse('90$phpVersion');
+    }
 
     final site = SiteModel(
       domain: domain,
       rootDir: rootDir,
+      siteType: siteType,
       phpVersion: phpVersion,
       phpPort: phpPort,
+      proxyTarget: proxyTarget,
       useSsl: useSsl,
       createdAt: DateTime.now(),
     );
@@ -69,7 +76,9 @@ class SitesNotifier extends _$SitesNotifier {
     required int id,
     required String domain,
     required String rootDir,
-    required String phpAppId,
+    required String siteType,
+    String? phpAppId,
+    String? proxyTarget,
     required bool useSsl,
   }) async {
     final isar = await ref.read(isarProvider.future);
@@ -81,17 +90,23 @@ class SitesNotifier extends _$SitesNotifier {
       await _removeVhostFiles(oldSite);
     }
 
-    final isStatic = phpAppId == 'static';
-    final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
-    final phpVersion = isStatic ? 'static' : (versionMatch?.group(0) ?? '82');
-    final phpPort = isStatic ? 0 : int.parse('90$phpVersion');
+    String? phpVersion;
+    int? phpPort;
+
+    if (siteType == 'php' && phpAppId != null) {
+      final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
+      phpVersion = versionMatch?.group(0) ?? '82';
+      phpPort = int.parse('90$phpVersion');
+    }
 
     final updatedSite = SiteModel(
       id: id,
       domain: domain,
       rootDir: rootDir,
+      siteType: siteType,
       phpVersion: phpVersion,
       phpPort: phpPort,
+      proxyTarget: proxyTarget,
       useSsl: useSsl,
       createdAt: oldSite.createdAt,
     );
@@ -237,11 +252,11 @@ class SitesNotifier extends _$SitesNotifier {
   Future<void> _generateVhostFiles(SiteModel site) async {
     final rootDirUnix = site.rootDir.replaceAll('\\', '/');
     final sslNotifier = ref.read(sslServiceProvider.notifier);
-    
+
     // Ensure directories exist
     final nginxDir = Directory(p.join(AppConfig.vhostsDir, 'nginx'));
     if (!nginxDir.existsSync()) await nginxDir.create(recursive: true);
-    
+
     final apacheDir = Directory(p.join(AppConfig.vhostsDir, 'apache'));
     if (!apacheDir.existsSync()) await apacheDir.create(recursive: true);
 
@@ -250,135 +265,122 @@ class SitesNotifier extends _$SitesNotifier {
     if (!logsDir.existsSync()) await logsDir.create(recursive: true);
     final logsPathUnix = logsDir.path.replaceAll('\\', '/');
 
-    // 1. Nginx Vhost
+    // --- 1. Nginx Vhost ---
     final nginxVhostFile = File(p.join(nginxDir.path, '${site.domain}.conf'));
-    String nginxConfig = '''
-server {
-    listen 80;
-    server_name ${site.domain};
-    root "$rootDirUnix";
-    index index.php index.html;
-
-    access_log "$logsPathUnix/nginx_access.log";
-    error_log "$logsPathUnix/nginx_error.log";
-
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
-''';
-
-    if (site.phpVersion != 'static') {
-      nginxConfig += '''
-    location ~ \\.php\$ {
-        fastcgi_pass 127.0.0.1:${site.phpPort};
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-    }
-''';
-    }
-
-    nginxConfig += '}\n';
-
-    if (site.useSsl) {
-      final certPath = sslNotifier.getSiteCertPath(site.domain).replaceAll('\\', '/');
-      final keyPath = sslNotifier.getSiteKeyPath(site.domain).replaceAll('\\', '/');
+    
+    String buildNginxServer(int port, {bool ssl = false}) {
+      String config = 'server {\n';
+      config += '    listen $port${ssl ? " ssl" : ""};\n';
+      config += '    server_name ${site.domain};\n';
       
-      nginxConfig += '''
-server {
-    listen 443 ssl;
-    server_name ${site.domain};
-    root "$rootDirUnix";
-    index index.php index.html;
-
-    ssl_certificate      "$certPath";
-    ssl_certificate_key  "$keyPath";
-
-    ssl_session_cache    shared:SSL:1m;
-    ssl_session_timeout  5m;
-    ssl_ciphers  HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers  on;
-
-    access_log "$logsPathUnix/nginx_access.log";
-    error_log "$logsPathUnix/nginx_error.log";
-
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
-''';
-
-      if (site.phpVersion != 'static') {
-        nginxConfig += '''
-    location ~ \\.php\$ {
-        fastcgi_pass 127.0.0.1:${site.phpPort};
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-    }
-''';
+      if (site.siteType != 'proxy') {
+        config += '    root "$rootDirUnix";\n';
+        config += '    index index.php index.html;\n';
       }
-      nginxConfig += '}\n';
+
+      if (ssl) {
+        final certPath = sslNotifier.getSiteCertPath(site.domain).replaceAll('\\', '/');
+        final keyPath = sslNotifier.getSiteKeyPath(site.domain).replaceAll('\\', '/');
+        config += '\n';
+        config += '    ssl_certificate      "$certPath";\n';
+        config += '    ssl_certificate_key  "$keyPath";\n';
+        config += '    ssl_session_cache    shared:SSL:1m;\n';
+        config += '    ssl_session_timeout  5m;\n';
+        config += '    ssl_ciphers  HIGH:!aNULL:!MD5;\n';
+        config += '    ssl_prefer_server_ciphers  on;\n';
+      }
+
+      config += '\n';
+      config += '    access_log "$logsPathUnix/nginx_access.log";\n';
+      config += '    error_log "$logsPathUnix/nginx_error.log";\n';
+      config += '\n';
+
+      if (site.siteType == 'proxy') {
+        config += '    location / {\n';
+        config += '        proxy_pass ${site.proxyTarget};\n';
+        config += '        proxy_set_header Host \$host;\n';
+        config += '        proxy_set_header X-Real-IP \$remote_addr;\n';
+        config += '        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\n';
+        config += '        proxy_set_header X-Forwarded-Proto \$scheme;\n';
+        config += '    }\n';
+      } else {
+        config += '    location / {\n';
+        config += '        try_files \$uri \$uri/ /index.php?\$query_string;\n';
+        config += '    }\n';
+
+        if (site.siteType == 'php') {
+          config += '\n';
+          config += '    location ~ \\.php\$ {\n';
+          config += '        fastcgi_pass 127.0.0.1:${site.phpPort};\n';
+          config += '        fastcgi_index index.php;\n';
+          config += '        include fastcgi_params;\n';
+          config += '        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;\n';
+          config += '    }\n';
+        }
+      }
+
+      config += '}\n';
+      return config;
+    }
+
+    String nginxConfig = buildNginxServer(80);
+    if (site.useSsl) {
+      nginxConfig += '\n' + buildNginxServer(443, ssl: true);
     }
     await nginxVhostFile.writeAsString(nginxConfig);
 
-    // 2. Apache Vhost
+    // --- 2. Apache Vhost ---
     final apacheVhostFile = File(p.join(apacheDir.path, '${site.domain}.conf'));
-    String apacheConfig = '''
-<VirtualHost *:80>
-    ServerName ${site.domain}
-    DocumentRoot "$rootDirUnix"
 
-    CustomLog "$logsPathUnix/apache_access.log" combined
-    ErrorLog "$logsPathUnix/apache_error.log"
+    String buildApacheServer(int port, {bool ssl = false}) {
+      String config = '<VirtualHost *:$port>\n';
+      config += '    ServerName ${site.domain}\n';
+      
+      if (site.siteType != 'proxy') {
+        config += '    DocumentRoot "$rootDirUnix"\n';
+      }
 
-    <Directory "$rootDirUnix">
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-''';
+      if (ssl) {
+        final certPath = sslNotifier.getSiteCertPath(site.domain).replaceAll('\\', '/');
+        final keyPath = sslNotifier.getSiteKeyPath(site.domain).replaceAll('\\', '/');
+        config += '    SSLEngine on\n';
+        config += '    SSLCertificateFile "$certPath"\n';
+        config += '    SSLCertificateKeyFile "$keyPath"\n';
+      }
 
-    if (site.phpVersion != 'static') {
-      apacheConfig += '''
-    <FilesMatch \\.php\$>
-        SetHandler "proxy:fcgi://127.0.0.1:${site.phpPort}"
-    </FilesMatch>
-''';
+      config += '\n';
+      config += '    CustomLog "$logsPathUnix/apache_access.log" combined\n';
+      config += '    ErrorLog "$logsPathUnix/apache_error.log"\n';
+      config += '\n';
+
+      if (site.siteType == 'proxy') {
+        config += '    ProxyPreserveHost On\n';
+        config += '    ProxyPass / ${site.proxyTarget}/\n';
+        config += '    ProxyPassReverse / ${site.proxyTarget}/\n';
+      } else {
+        config += '    <Directory "$rootDirUnix">\n';
+        config += '        Options Indexes FollowSymLinks\n';
+        config += '        AllowOverride All\n';
+        config += '        Require all granted\n';
+        config += '    </Directory>\n';
+
+        if (site.siteType == 'php') {
+          config += '\n';
+          config += '    <FilesMatch \\.php\$>\n';
+          config += '        SetHandler "proxy:fcgi://127.0.0.1:${site.phpPort}"\n';
+          config += '    </FilesMatch>\n';
+        }
+      }
+
+      config += '</VirtualHost>\n';
+      return config;
     }
 
-    apacheConfig += '</VirtualHost>\n';
-
+    String apacheConfig = buildApacheServer(80);
     if (site.useSsl) {
-      final certPath = sslNotifier.getSiteCertPath(site.domain).replaceAll('\\', '/');
-      final keyPath = sslNotifier.getSiteKeyPath(site.domain).replaceAll('\\', '/');
-      
-      apacheConfig += '''
-<IfModule mod_ssl.c>
-<VirtualHost *:443>
-    ServerName ${site.domain}
-    DocumentRoot "$rootDirUnix"
-    SSLEngine on
-    SSLCertificateFile "$certPath"
-    SSLCertificateKeyFile "$keyPath"
-
-    CustomLog "$logsPathUnix/apache_access.log" combined
-    ErrorLog "$logsPathUnix/apache_error.log"
-
-    <Directory "$rootDirUnix">
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-''';
-
-      if (site.phpVersion != 'static') {
-        apacheConfig += '''
-    <FilesMatch \\.php\$>
-        SetHandler "proxy:fcgi://127.0.0.1:${site.phpPort}"
-    </FilesMatch>
-''';
-      }
-      apacheConfig += '</VirtualHost>\n</IfModule>\n';
+      apacheConfig += '\n<IfModule mod_ssl.c>\n';
+      apacheConfig += buildApacheServer(443, ssl: true);
+      apacheConfig += '</IfModule>\n';
     }
     await apacheVhostFile.writeAsString(apacheConfig);
   }

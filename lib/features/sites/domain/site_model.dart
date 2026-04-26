@@ -11,9 +11,13 @@ class SiteModel {
 
   late String rootDir; // Root directory path
   
-  late String phpVersion; // e.g. "8.2", "8.1"
+  String siteType = 'php'; // 'php', 'static', 'proxy'
   
-  late int phpPort; // The CGI port for this site
+  String? phpVersion; // e.g. "8.2", "8.1"
+  
+  int? phpPort; // The CGI port for this site
+  
+  String? proxyTarget; // e.g. "http://localhost:3000"
   
   bool useSsl = false;
   
@@ -23,8 +27,10 @@ class SiteModel {
     this.id = Isar.autoIncrement,
     required this.domain,
     required this.rootDir,
-    required this.phpVersion,
-    required this.phpPort,
+    this.siteType = 'php',
+    this.phpVersion,
+    this.phpPort,
+    this.proxyTarget,
     this.useSsl = false,
     this.createdAt,
   });
