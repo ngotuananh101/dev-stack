@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:isar/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
@@ -95,7 +96,8 @@ class SettingsNotifier extends _$SettingsNotifier {
 
   Future<void> _copyDirectory(Directory source, Directory target) async {
     await for (final entity in source.list(recursive: false)) {
-      final newPath = '${target.path}\\${entity.uri.pathSegments.last}';
+      final name = p.basename(entity.path);
+      final newPath = p.join(target.path, name);
       if (entity is File) {
         await entity.copy(newPath);
       } else if (entity is Directory) {
