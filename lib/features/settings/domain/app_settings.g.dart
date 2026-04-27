@@ -27,18 +27,23 @@ const AppSettingsSchema = CollectionSchema(
       name: r'autoStartWithWindows',
       type: IsarType.bool,
     ),
-    r'isSslInstalled': PropertySchema(
+    r'baseDir': PropertySchema(
       id: 2,
+      name: r'baseDir',
+      type: IsarType.string,
+    ),
+    r'isSslInstalled': PropertySchema(
+      id: 3,
       name: r'isSslInstalled',
       type: IsarType.bool,
     ),
     r'minimizeToTray': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'minimizeToTray',
       type: IsarType.bool,
     ),
     r'siteTemplate': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'siteTemplate',
       type: IsarType.string,
     )
@@ -63,6 +68,7 @@ int _appSettingsEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.baseDir.length * 3;
   bytesCount += 3 + object.siteTemplate.length * 3;
   return bytesCount;
 }
@@ -75,9 +81,10 @@ void _appSettingsSerialize(
 ) {
   writer.writeBool(offsets[0], object.autoCreateSite);
   writer.writeBool(offsets[1], object.autoStartWithWindows);
-  writer.writeBool(offsets[2], object.isSslInstalled);
-  writer.writeBool(offsets[3], object.minimizeToTray);
-  writer.writeString(offsets[4], object.siteTemplate);
+  writer.writeString(offsets[2], object.baseDir);
+  writer.writeBool(offsets[3], object.isSslInstalled);
+  writer.writeBool(offsets[4], object.minimizeToTray);
+  writer.writeString(offsets[5], object.siteTemplate);
 }
 
 AppSettings _appSettingsDeserialize(
@@ -89,10 +96,11 @@ AppSettings _appSettingsDeserialize(
   final object = AppSettings();
   object.autoCreateSite = reader.readBool(offsets[0]);
   object.autoStartWithWindows = reader.readBool(offsets[1]);
+  object.baseDir = reader.readString(offsets[2]);
   object.id = id;
-  object.isSslInstalled = reader.readBool(offsets[2]);
-  object.minimizeToTray = reader.readBool(offsets[3]);
-  object.siteTemplate = reader.readString(offsets[4]);
+  object.isSslInstalled = reader.readBool(offsets[3]);
+  object.minimizeToTray = reader.readBool(offsets[4]);
+  object.siteTemplate = reader.readString(offsets[5]);
   return object;
 }
 
@@ -108,10 +116,12 @@ P _appSettingsDeserializeProp<P>(
     case 1:
       return (reader.readBool(offset)) as P;
     case 2:
-      return (reader.readBool(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 3:
       return (reader.readBool(offset)) as P;
     case 4:
+      return (reader.readBool(offset)) as P;
+    case 5:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -227,6 +237,140 @@ extension AppSettingsQueryFilter
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'autoStartWithWindows',
         value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> baseDirEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'baseDir',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      baseDirGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'baseDir',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> baseDirLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'baseDir',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> baseDirBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'baseDir',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      baseDirStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'baseDir',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> baseDirEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'baseDir',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> baseDirContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'baseDir',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> baseDirMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'baseDir',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      baseDirIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'baseDir',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      baseDirIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'baseDir',
+        value: '',
       ));
     });
   }
@@ -476,6 +620,18 @@ extension AppSettingsQuerySortBy
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByBaseDir() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'baseDir', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByBaseDirDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'baseDir', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByIsSslInstalled() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isSslInstalled', Sort.asc);
@@ -542,6 +698,18 @@ extension AppSettingsQuerySortThenBy
       thenByAutoStartWithWindowsDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'autoStartWithWindows', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByBaseDir() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'baseDir', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByBaseDirDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'baseDir', Sort.desc);
     });
   }
 
@@ -612,6 +780,13 @@ extension AppSettingsQueryWhereDistinct
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByBaseDir(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'baseDir', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByIsSslInstalled() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isSslInstalled');
@@ -650,6 +825,12 @@ extension AppSettingsQueryProperty
       autoStartWithWindowsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'autoStartWithWindows');
+    });
+  }
+
+  QueryBuilder<AppSettings, String, QQueryOperations> baseDirProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'baseDir');
     });
   }
 

@@ -6,6 +6,9 @@ part 'app_settings.g.dart';
 class AppSettings {
   Id id = Isar.autoIncrement;
 
+  // Base Directory
+  String baseDir = 'C:\\Ponta';
+
   // Site Configuration
   String siteTemplate = '[site-name].test';
   bool autoCreateSite = false;

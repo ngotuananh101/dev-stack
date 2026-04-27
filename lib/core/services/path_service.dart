@@ -16,7 +16,7 @@ PathService pathService(Ref ref) {
 
 class PathService {
   final LogService _logger;
-  static const String binDir = AppConfig.binDir;
+  static String get binDir => AppConfig.binDir;
 
   PathService(this._logger);
 

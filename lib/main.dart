@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:isar/isar.dart';
 import 'package:window_manager/window_manager.dart';
+import 'core/config/app_config.dart';
+import 'core/database/isar_provider.dart';
 import 'core/theme/app_theme.dart';
 
 import 'shared/providers/navigation_provider.dart';
@@ -15,9 +18,18 @@ import 'features/sites/presentation/sites_page.dart';
 import 'core/services/window_service.dart';
 import 'core/services/ssl_service.dart';
 import 'features/apps/data/app_installer_service.dart';
+import 'features/settings/domain/app_settings.dart';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load persisted baseDir from Isar before anything else
+  final isar = await IsarInstance.getInstance();
+  final settings = await isar.appSettings.where().findFirst();
+  if (settings != null) {
+    AppConfig.initialize(baseDir: settings.baseDir);
+  }
+
   await windowManager.ensureInitialized();
 
   WindowOptions windowOptions = const WindowOptions(

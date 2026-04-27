@@ -14,7 +14,7 @@ LogService logService(Ref ref) {
 }
 
 class LogService {
-  static const String baseLogDir = AppConfig.logsDir;
+  static String get baseLogDir => AppConfig.logsDir;
 
   Future<void> info(String message) => _write('INFO', message);
   Future<void> error(String message) => _write('ERROR', message);

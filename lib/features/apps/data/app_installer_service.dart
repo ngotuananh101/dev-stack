@@ -30,7 +30,7 @@ typedef InstallationLogCallback = void Function(String message);
 class AppInstallerService {
   final LogService _logger;
   final Ref _ref;
-  static const String defaultBaseDir = AppConfig.appsDir;
+  static String get defaultBaseDir => AppConfig.appsDir;
   final _dio = Dio();
 
   AppInstallerService(this._logger, this._ref);
