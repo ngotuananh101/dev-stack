@@ -68,7 +68,7 @@ class AppInstallerService {
     onProgress?.call(0.1, 'Downloading...');
 
     final tempFile = File(
-      p.join(Directory.systemTemp.path, '${app.appId}_$version.tmp'),
+      p.join(Directory.systemTemp.path, '${app.appId}-$version.zip'),
     );
 
     try {
@@ -92,20 +92,10 @@ class AppInstallerService {
       onProgress?.call(0.8, 'Extracting...');
 
       final bytes = await tempFile.readAsBytes();
-      final extension = p.extension(url).toLowerCase();
 
-      // 3. Extract or Save
-      if (extension == '.zip') {
-        logInfo('Extracting ZIP for ${app.name}');
-        await _extractZip(bytes, installPath, onLog);
-      } else if (extension == '.gz' || url.contains('.tar.gz')) {
-        logInfo('Extracting TAR.GZ for ${app.name}');
-        await _extractTarGz(bytes, installPath, onLog);
-      } else {
-        final filename = p.basename(url).split('?').first;
-        final file = File(p.join(installPath, filename));
-        await file.writeAsBytes(bytes);
-      }
+      // Always treat as ZIP since we standardized the filename
+      logInfo('Extracting ZIP for ${app.name}');
+      await _extractZip(bytes, installPath, onLog);
 
       // 4. Flatten directory if needed
       await _flattenDirectory(installPath, logInfo);
@@ -182,27 +172,6 @@ class AppInstallerService {
     InstallationLogCallback? onLog,
   ) async {
     final archive = ZipDecoder().decodeBytes(bytes);
-    for (final file in archive) {
-      final filename = file.name;
-      if (onLog != null) onLog('Extracting: $filename');
-      if (file.isFile) {
-        final data = file.content as List<int>;
-        final f = File(p.join(targetPath, filename));
-        await f.create(recursive: true);
-        await f.writeAsBytes(data);
-      } else {
-        await Directory(p.join(targetPath, filename)).create(recursive: true);
-      }
-    }
-  }
-
-  Future<void> _extractTarGz(
-    List<int> bytes,
-    String targetPath,
-    InstallationLogCallback? onLog,
-  ) async {
-    final tarBytes = GZipDecoder().decodeBytes(bytes);
-    final archive = TarDecoder().decodeBytes(tarBytes);
     for (final file in archive) {
       final filename = file.name;
       if (onLog != null) onLog('Extracting: $filename');
