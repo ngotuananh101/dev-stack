@@ -439,6 +439,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   /// Label cho config tab — tách ra để dùng ở cả TabBar lẫn ConfigTab header
   String get _configTabLabel {
     if (_isPma) return 'config.inc.php';
+    if (_isPostgresql) return 'postgresql.conf';
     if (_isDb) return 'my.ini';
     if (_isWebserver) {
       return widget.app.appId.contains('nginx') ? 'nginx.conf' : 'httpd.conf';

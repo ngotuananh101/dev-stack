@@ -119,6 +119,11 @@ class AppInstallerService {
         await _initializeDatabase(app, installPath, logInfo);
       }
 
+      // 5b. Post-installation: Initialize PostgreSQL
+      if (app.appId.contains('postgresql')) {
+        await _initializePostgresql(app, installPath, logInfo);
+      }
+
       // 6. Post-installation: Handle PHP configuration
       if (app.groupName == 'php') {
         final phpIniDev = File(p.join(installPath, 'php.ini-development'));
@@ -415,6 +420,52 @@ class AppInstallerService {
       }
     } else {
       logInfo('Could not find database initialization executable.');
+    }
+  }
+
+  Future<void> _initializePostgresql(
+    AppModel app,
+    String installPath,
+    Function(String) logInfo,
+  ) async {
+    logInfo('Initializing PostgreSQL database cluster...');
+    final dataDir = Directory(p.join(installPath, 'data'));
+    if (!dataDir.existsSync()) {
+      await dataDir.create(recursive: true);
+    }
+
+    final binDir = Directory(p.join(installPath, 'bin'));
+    if (!binDir.existsSync()) {
+      logInfo('Bin directory not found, skipping initialization');
+      return;
+    }
+
+    final initdbExec = File(p.join(binDir.path, 'initdb.exe'));
+    if (!initdbExec.existsSync()) {
+      logInfo('initdb.exe not found, skipping initialization');
+      return;
+    }
+
+    final args = [
+      '-D', dataDir.path,
+      '-E', 'UTF8',
+      '-U', 'postgres',
+      '--locale=C',
+      '-A', 'trust',
+    ];
+
+    logInfo('Running: ${initdbExec.path} ${args.join(' ')}');
+    try {
+      final result = await Process.run(initdbExec.path, args);
+      if (result.exitCode == 0) {
+        logInfo('PostgreSQL database cluster initialized successfully.');
+      } else {
+        logInfo('Initialization returned non-zero code: ${result.exitCode}');
+        logInfo('Output: ${result.stdout}');
+        logInfo('Error: ${result.stderr}');
+      }
+    } catch (e) {
+      logInfo('Error during PostgreSQL initialization: $e');
     }
   }
 
