@@ -53,6 +53,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     if (id.contains('mysql')) return 'mysql';
     if (id.contains('mariadb')) return 'mariadb';
     if (id.contains('mongodb')) return 'mongodb';
+    if (id.contains('postgresql')) return 'postgre';
     if (id.contains('nginx')) return 'nginx';
     if (id.contains('apache')) return 'apache';
     if (id.contains('redis')) return 'redis';
@@ -71,6 +72,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
       return const Color(0xFF777BB4);
     } else if (widget.app.appId.contains('mysql')) {
       return const Color(0xFF4479A1);
+    } else if (widget.app.appId.contains('postgresql')) {
+      return const Color(0xFF336791);
     } else if (widget.app.appId.contains('nginx')) {
       return const Color(0xFF009639);
     }

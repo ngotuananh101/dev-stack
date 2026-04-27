@@ -56,8 +56,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   bool get _isDb =>
       widget.app.groupName == 'mysql' ||
       widget.app.groupName == 'mariadb' ||
+      widget.app.groupName == 'postgresql' ||
       widget.app.appId.toLowerCase().contains('mysql') ||
       widget.app.appId.toLowerCase().contains('mariadb') ||
+      widget.app.appId.toLowerCase().contains('postgresql') ||
       _isPma;
 
   bool get _isWebserver =>
@@ -71,8 +73,12 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
 
   bool get _isMongodb => widget.app.appId == 'mongodb';
 
+  bool get _isPostgresql =>
+      widget.app.groupName == 'postgresql' ||
+      widget.app.appId.toLowerCase().contains('postgresql');
+
   bool get _hasConfigTab =>
-      _isPhp || _isDb || _isWebserver || _isRedis || _isMongodb;
+      _isPhp || _isDb || _isWebserver || _isRedis || _isMongodb || _isPostgresql;
 
   int get _tabCount {
     if (_isPma) return 2;

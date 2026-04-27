@@ -151,6 +151,35 @@ const fetchers = {
     return versions;
   },
 
+  async postgresql() {
+    const res = await fetch("https://www.enterprisedb.com/download-postgresql-binaries");
+    const html = await res.text();
+    const versions = {};
+
+    // Pattern: Version <!-- -->17.9</span><div><div class="m-5"><a href="URL">
+    const versionRegex = /Version\s*<!--\s*-->([\d.]+)(?:<span[^>]*>.*?<\/span>)?<\/span>[\s\S]*?<a\s+href="([^"]+)"[^>]*>\s*<img\s+alt="Windows x86-64"/gi;
+    const matches = html.matchAll(versionRegex);
+
+    for (const match of matches) {
+      const version = match[1];
+      let url = match[2];
+
+      // Skip unsupported versions
+      if (html.substring(match.index, match.index + 500).includes('Not supported')) {
+        continue;
+      }
+
+      // Ensure absolute URL
+      if (url.startsWith('/') || !url.startsWith('http')) {
+        url = 'https://www.enterprisedb.com' + url;
+      }
+
+      versions[version] = url;
+    }
+
+    return versions;
+  },
+
   async apache() {
     const res = await fetch("https://www.apachelounge.com/download/");
     const html = await res.text();
@@ -345,6 +374,15 @@ let baseDataObject = {
       group_name: "database",
       exec_file: "mongod.exe",
       cli_file: "mongos.exe",
+    },
+    {
+      id: "postgresql",
+      name: "PostgreSQL",
+      description: "Advanced open source relational database.",
+      category: "database",
+      group_name: "database",
+      exec_file: "postgres.exe",
+      cli_file: "psql.exe",
     },
     {
       id: "phpMyAdmin",

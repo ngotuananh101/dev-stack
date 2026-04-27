@@ -60,6 +60,7 @@ class CompactAppsTable extends StatelessWidget {
     if (id.contains('mysql')) return 'mysql';
     if (id.contains('mariadb')) return 'mariadb';
     if (id.contains('mongodb')) return 'mongodb';
+    if (id.contains('postgresql')) return 'postgre';
     if (id.contains('nginx')) return 'nginx';
     if (id.contains('apache')) return 'apache';
     if (id.contains('redis')) return 'redis';
@@ -83,6 +84,9 @@ class CompactAppsTable extends StatelessWidget {
     }
     if (appId.contains('mysql')) {
       return const Color(0xFF20B2AA);
+    }
+    if (appId.contains('postgresql')) {
+      return const Color(0xFF336791);
     }
     if (appId.contains('cloud')) {
       return const Color(0xFF58A6FF);

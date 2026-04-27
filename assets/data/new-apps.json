@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "lastUpdated": "2026-04-22T16:25:00.723Z",
+  "lastUpdated": "2026-04-27T04:37:12.315Z",
   "apps": [
     {
       "id": "pyenv",
@@ -8,8 +8,11 @@
       "description": "Python version management tool.",
       "category": "runtime",
       "group_name": "python",
-      "exec_file": "pyenv.exe",
-      "cli_file": "pyenv.exe"
+      "exec_file": null,
+      "cli_file": "pyenv.bat",
+      "versions": {
+        "latest": "https://github.com/pyenv-win/pyenv-win/archive/master.zip"
+      }
     },
     {
       "id": "nodejs",
@@ -462,6 +465,7 @@
       "exec_file": "mysqld.exe",
       "cli_file": "mysql.exe",
       "versions": {
+        "9.7.0": "https://cdn.mysql.com/Downloads/MySQL-9.7/mysql-9.7.0-winx64.zip",
         "9.6.0": "https://cdn.mysql.com/Downloads/MySQL-9.6/mysql-9.6.0-winx64.zip",
         "9.5.0": "https://cdn.mysql.com/Downloads/MySQL-9.5/mysql-9.5.0-winx64.zip",
         "9.4.0": "https://cdn.mysql.com/Downloads/MySQL-9.4/mysql-9.4.0-winx64.zip",
@@ -531,6 +535,23 @@
       }
     },
     {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Advanced open source relational database.",
+      "category": "database",
+      "group_name": "database",
+      "exec_file": "postgres.exe",
+      "cli_file": "psql.exe",
+      "versions": {
+        "18.3": "https://sbp.enterprisedb.com/getfile.jsp?fileid=1260146",
+        "17.9": "https://sbp.enterprisedb.com/getfile.jsp?fileid=1260148",
+        "16.13": "https://sbp.enterprisedb.com/getfile.jsp?fileid=1260153",
+        "15.17": "https://sbp.enterprisedb.com/getfile.jsp?fileid=1260156",
+        "14.22": "https://sbp.enterprisedb.com/getfile.jsp?fileid=1260157",
+        "13.23": "https://sbp.enterprisedb.com/getfile.jsp?fileid=1259854"
+      }
+    },
+    {
       "id": "phpMyAdmin",
       "name": "phpMyAdmin",
       "description": "Web interface for MySQL and MariaDB.",
@@ -591,7 +612,7 @@
       "cli_file": "MongoDBCompass.exe",
       "repo": "mongodb-js/compass",
       "versions": {
-        "1.49.4": "https://github.com/mongodb-js/compass/releases/download/v1.49.4/mongodb-compass-1.49.4-win32-x64.zip",
+        "1.49.5": "https://github.com/mongodb-js/compass/releases/download/v1.49.5/mongodb-compass-1.49.5-win32-x64.zip",
         "1.48.2": "https://github.com/mongodb-js/compass/releases/download/v1.48.2/mongodb-compass-1.48.2-win32-x64.zip"
       }
     }

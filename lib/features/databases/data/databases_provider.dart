@@ -43,6 +43,8 @@ class DatabasesNotifier extends _$DatabasesNotifier {
       actualNames = await _getMongoNames(cliPath);
     } else if (app.appId.contains('redis')) {
       actualNames = await _getRedisNames(cliPath);
+    } else if (app.appId.contains('postgresql')) {
+      actualNames = await _getPostgresNames(cliPath);
     }
 
     final isar = await ref.read(isarProvider.future);
@@ -56,9 +58,15 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     await isar.writeTxn(() async {
       for (final name in actualNames) {
         if (!existingNames.contains(name)) {
+          // Set default username based on engine
+          String defaultUser = 'root';
+          if (app.appId.contains('postgresql')) {
+            defaultUser = 'postgres';
+          }
+
           final record = DatabaseRecord()
             ..name = name
-            ..username = 'root' // Default for sync
+            ..username = defaultUser
             ..password = ''
             ..engineAppId = app.appId
             ..note = 'Synced from system'
@@ -104,7 +112,21 @@ class DatabasesNotifier extends _$DatabasesNotifier {
         '-e', sql,
       ]);
       if (grantRes.exitCode != 0) throw Exception('Grant error: ${grantRes.stderr}');
-      
+
+    } else if (app.appId.contains('postgresql')) {
+      // CREATE DATABASE
+      final createDb = await Process.run(cliPath, [
+        '-U', 'postgres',
+        '-c', 'CREATE DATABASE "$name";',
+      ]);
+      if (createDb.exitCode != 0) throw Exception('Create DB error: ${createDb.stderr}');
+
+      // CREATE USER and GRANT
+      final grantRes = await Process.run(cliPath, [
+        '-U', 'postgres',
+        '-c', 'CREATE USER "$user" WITH PASSWORD \'$password\'; GRANT ALL PRIVILEGES ON DATABASE "$name" TO "$user";',
+      ]);
+      if (grantRes.exitCode != 0) throw Exception('Grant error: ${grantRes.stderr}');
     } else {
       throw Exception('Engine ${app.appId} not supported for creation yet');
     }
@@ -142,6 +164,12 @@ class DatabasesNotifier extends _$DatabasesNotifier {
         final res = await Process.run(cliPath, ['-u', 'root', '-e', sql]);
         if (res.exitCode != 0) throw Exception('Update password error: ${res.stderr}');
       }
+    } else if (app.appId.contains('postgresql')) {
+      if (newPassword.isNotEmpty) {
+        final sql = "ALTER USER \"$newUser\" WITH PASSWORD '$newPassword';";
+        final res = await Process.run(cliPath, ['-U', 'postgres', '-c', sql]);
+        if (res.exitCode != 0) throw Exception('Update password error: ${res.stderr}');
+      }
     }
 
     // Update Isar record
@@ -171,6 +199,21 @@ class DatabasesNotifier extends _$DatabasesNotifier {
       final username = record.username;
       if (username.isNotEmpty && username != 'root') {
         await _dropUserIfExclusive(cliPath, username, record.name);
+      }
+    } else if (app.appId.contains('postgresql')) {
+      // Drop the database first
+      await Process.run(cliPath, [
+        '-U', 'postgres',
+        '-c', 'DROP DATABASE IF EXISTS "${record.name}";',
+      ]);
+
+      // Drop the associated user
+      final username = record.username;
+      if (username.isNotEmpty && username != 'postgres') {
+        await Process.run(cliPath, [
+          '-U', 'postgres',
+          '-c', 'DROP USER IF EXISTS "$username";',
+        ]);
       }
     } else if (app.appId.contains('redis')) {
       // Extract DB index from name (e.g., "db0" -> "0")
@@ -236,13 +279,28 @@ class DatabasesNotifier extends _$DatabasesNotifier {
       // If server is not running or other error, return default 0-15
       return List.generate(16, (i) => 'db$i');
     }
-    
+
     final List<String> dbs = [];
     // Standard Redis has 16 DBs, let's just return all of them
     for (int i = 0; i < 16; i++) {
       dbs.add('db$i');
     }
     return dbs;
+  }
+
+  Future<List<String>> _getPostgresNames(String cliPath) async {
+    final result = await Process.run(cliPath, [
+      '-U', 'postgres',
+      '-l',  // list databases
+      '-t',  // tuples only
+    ]);
+    if (result.exitCode != 0) return [];
+
+    final lines = result.stdout.toString().split('\n');
+    return lines
+      .map((l) => l.trim().split('|')[0].trim())
+      .where((l) => l.isNotEmpty && l != 'template0' && l != 'template1')
+      .toList();
   }
 }
 

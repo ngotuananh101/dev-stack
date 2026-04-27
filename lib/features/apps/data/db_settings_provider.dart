@@ -30,6 +30,17 @@ class DbSettings extends _$DbSettings {
       );
     }
 
+    final isPostgresql =
+        app.groupName == 'postgresql' ||
+        app.appId.toLowerCase().contains('postgresql');
+
+    // PostgreSQL puts postgresql.conf in data directory
+    if (isPostgresql) {
+      return File(
+        '${app.location}${Platform.pathSeparator}data${Platform.pathSeparator}postgresql.conf',
+      );
+    }
+
     // MySQL (and others) usually put it in the root directory
     return File('${app.location}${Platform.pathSeparator}my.ini');
   }
