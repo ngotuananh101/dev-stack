@@ -179,6 +179,7 @@ class AppsNotifier extends _$AppsNotifier {
           app.selectedVersion != app.installedVersion) {
         try {
           final oldPath = app.location;
+          final oldVersion = app.installedVersion;
           final wasInPath = app.isAddedToPath;
           final newVersion = app.selectedVersion!;
           final installer = ref.read(appInstallerServiceProvider);
@@ -234,7 +235,7 @@ class AppsNotifier extends _$AppsNotifier {
 
           // 3. Delete old version folder
           if (oldPath != null) {
-            await installer.delete(oldPath);
+            await installer.delete(oldPath, app.appId, oldVersion);
           }
 
           // 4. Update state
@@ -301,7 +302,7 @@ class AppsNotifier extends _$AppsNotifier {
         if (app.appId == 'pyenv') {
           await installer.cleanupPyenv(app.location!, (m) => app.addLog(m));
         }
-        await installer.delete(app.location!);
+        await installer.delete(app.location!, app.appId, app.installedVersion);
       }
 
       app.isInstalled = false;

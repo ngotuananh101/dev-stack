@@ -116,12 +116,12 @@ class AppInstallerService {
 
       // 5. Post-installation: Initialize database
       if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
-        await _initializeDatabase(app, installPath, logInfo);
+        await _initializeDatabase(app, version, installPath, logInfo);
       }
 
       // 5b. Post-installation: Initialize PostgreSQL
       if (app.appId.contains('postgresql')) {
-        await _initializePostgresql(app, installPath, logInfo);
+        await _initializePostgresql(app, version, installPath, logInfo);
       }
 
       // 6. Post-installation: Handle PHP configuration
@@ -366,11 +366,12 @@ class AppInstallerService {
 
   Future<void> _initializeDatabase(
     AppModel app,
+    String version,
     String installPath,
     Function(String) logInfo,
   ) async {
     logInfo('Initializing database system tables...');
-    final dataDir = Directory(p.join(installPath, 'data'));
+    final dataDir = Directory(p.join(AppConfig.dataDir, '${app.appId}-$version'));
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
     }
@@ -425,11 +426,12 @@ class AppInstallerService {
 
   Future<void> _initializePostgresql(
     AppModel app,
+    String version,
     String installPath,
     Function(String) logInfo,
   ) async {
     logInfo('Initializing PostgreSQL database cluster...');
-    final dataDir = Directory(p.join(installPath, 'data'));
+    final dataDir = Directory(p.join(AppConfig.dataDir, '${app.appId}-$version'));
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
     }
@@ -824,11 +826,23 @@ net:
     }
   }
 
-  Future<void> delete(String path) async {
+  Future<void> delete(String path, String appId, String? version) async {
     final directory = Directory(path);
     if (directory.existsSync()) {
       _logger.info('Deleting directory: $path');
       await directory.delete(recursive: true);
+    }
+
+    // Delete data directory for databases
+    if (version != null &&
+        (appId.contains('mysql') ||
+         appId.contains('mariadb') ||
+         appId.contains('postgresql'))) {
+      final dataDir = Directory(p.join(AppConfig.dataDir, '$appId-$version'));
+      if (dataDir.existsSync()) {
+        _logger.info('Deleting data directory: ${dataDir.path}');
+        await dataDir.delete(recursive: true);
+      }
     }
   }
 

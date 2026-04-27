@@ -20,6 +20,6 @@ class AppConfig {
   /// Vhosts directory.
   static const String vhostsDir = '$baseDir\\vhosts';
 
-  /// The base directory for all tools and binaries
-  static const String baseBinDir = 'assets/bin';
+  /// SQL databases directory.
+  static const String dataDir = '$baseDir\\data';
 }
