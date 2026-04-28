@@ -21,8 +21,8 @@ class RustFSSettings extends _$RustFSSettings {
       return {
         'address': ':9000',
         'console_address': ':9001',
-        'access_key': 'admin',
-        'secret_key': 'password123',
+        'access_key': 'rustfsadmin',
+        'secret_key': 'rustfsadmin',
         'console_enable': true,
       };
     }
