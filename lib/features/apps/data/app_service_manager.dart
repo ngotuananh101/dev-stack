@@ -63,7 +63,7 @@ class AppServiceManager {
       } else if (fileName == 'redis-server.exe') {
         // Force bind to 127.0.0.1 to avoid common bind errors on Windows
         args = ['--bind', '127.0.0.1'];
-        
+
         // Optional: Support custom port if 6379 is busy (later improvement)
         // args.addAll(['--port', '6379']);
       } else if (fileName == 'mysqld.exe' || fileName == 'mariadbd.exe') {
@@ -76,7 +76,9 @@ class AppServiceManager {
           args = ['--config', confFile.path];
         } else {
           // Try parent directory
-          final parentConf = File(p.join(Directory(workingDir).parent.path, 'mongod.cfg'));
+          final parentConf = File(
+            p.join(Directory(workingDir).parent.path, 'mongod.cfg'),
+          );
           if (parentConf.existsSync()) {
             args = ['--config', parentConf.path];
           }
@@ -84,11 +86,11 @@ class AppServiceManager {
       } else if (fileName == 'rustfs.exe') {
         final dataDir = p.join(AppConfig.dataDir, 'rustfs');
         final confFile = File(p.join(dataDir, 'config.json'));
-        
+
         String address = ':9000';
         String consoleAddress = ':9001';
-        String accessKey = 'admin';
-        String secretKey = 'password123';
+        String accessKey = 'rustfsadmin';
+        String secretKey = 'rustfsadmin';
         bool consoleEnable = true;
 
         if (confFile.existsSync()) {
@@ -128,11 +130,12 @@ class AppServiceManager {
       app.servicePid = process.pid;
       app.serviceStatus = 'running';
       app.serviceLogs = []; // Clear old logs on start
-      
-      final startLog = 'Service started (PID: ${process.pid}) with command $execPath ${args.join(' ')}';
+
+      final startLog =
+          'Service started (PID: ${process.pid}) with command $execPath ${args.join(' ')}';
       app.addServiceLog(startLog);
       debugPrint('[${app.name}] $startLog');
-      
+
       onStatusChange?.call();
 
       // Listen for exit
@@ -168,10 +171,11 @@ class AppServiceManager {
               prefix = 'ERROR';
             } else if (cleanLine.contains('[Warning]')) {
               prefix = 'WARN';
-            } else if (cleanLine.contains('[System]') || cleanLine.contains('[Note]')) {
+            } else if (cleanLine.contains('[System]') ||
+                cleanLine.contains('[Note]')) {
               prefix = 'INFO';
             }
-            
+
             app.addServiceLog('[$prefix] $cleanLine');
             debugPrint('[${app.name}] $prefix: $cleanLine');
             onStatusChange?.call();
@@ -194,11 +198,16 @@ class AppServiceManager {
     if (process != null) {
       if (Platform.isWindows) {
         // Dùng /T để giết toàn bộ cây tiến trình (tránh sót worker processes)
-        await Process.run('taskkill', ['/F', '/T', '/PID', process.pid.toString()]);
+        await Process.run('taskkill', [
+          '/F',
+          '/T',
+          '/PID',
+          process.pid.toString(),
+        ]);
       } else {
         process.kill();
       }
-      
+
       try {
         await process.exitCode.timeout(const Duration(seconds: 3));
       } catch (_) {}

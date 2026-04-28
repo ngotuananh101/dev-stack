@@ -82,7 +82,13 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   bool get _isRustFS => widget.app.appId == 'rustfs';
 
   bool get _hasConfigTab =>
-      _isPhp || _isDb || _isWebserver || _isRedis || _isMongodb || _isPostgresql || _isRustFS;
+      _isPhp ||
+      _isDb ||
+      _isWebserver ||
+      _isRedis ||
+      _isMongodb ||
+      _isPostgresql ||
+      _isRustFS;
 
   int get _tabCount {
     if (_isPma) return 2;
@@ -150,7 +156,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           .read(mongodbSettingsProvider.notifier)
           .readConfig(widget.app);
     } else if (_isRustFS) {
-      final config = await ref.read(rustFSSettingsProvider.notifier).readConfig();
+      final config = await ref
+          .read(rustFSSettingsProvider.notifier)
+          .readConfig();
       content = json.encode(config);
     }
 
@@ -242,6 +250,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       await ref
           .read(mongodbSettingsProvider.notifier)
           .saveConfig(widget.app, text);
+    } else if (_isRustFS) {
+      final config = json.decode(text);
+      await ref.read(rustFSSettingsProvider.notifier).saveConfig(config);
     }
 
     // Force reload sau khi save
@@ -396,9 +407,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   // ─── Tab bar ──────────────────────────────────────────────────────────────────
   Widget _buildTabBar() {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-      ),
+      decoration: const BoxDecoration(color: AppColors.surface),
       child: Align(
         alignment: Alignment.centerLeft,
         child: TabBar(
@@ -620,13 +629,19 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               'API Address',
               'address',
               config['address'] ?? ':9000',
-              (val) => config['address'] = val,
+              (val) {
+                config['address'] = val;
+                _iniContent = json.encode(config);
+              },
             ),
             _buildSettingField(
               'Console Address',
               'console_address',
               config['console_address'] ?? ':9001',
-              (val) => config['console_address'] = val,
+              (val) {
+                config['console_address'] = val;
+                _iniContent = json.encode(config);
+              },
             ),
             SwitchListTile(
               title: const Text(
@@ -652,45 +667,23 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             _buildSettingField(
               'Access Key',
               'access_key',
-              config['access_key'] ?? 'admin',
-              (val) => config['access_key'] = val,
+              config['access_key'] ?? 'rustfsadmin',
+              (val) {
+                config['access_key'] = val;
+                _iniContent = json.encode(config);
+              },
             ),
             _buildSettingField(
               'Secret Key',
               'secret_key',
-              config['secret_key'] ?? 'password123',
-              (val) => config['secret_key'] = val,
+              config['secret_key'] ?? 'rustfsadmin',
+              (val) {
+                config['secret_key'] = val;
+                _iniContent = json.encode(config);
+              },
               obscureText: true,
             ),
           ]),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            height: 40,
-            child: ElevatedButton(
-              onPressed: () async {
-                await ref
-                    .read(rustFSSettingsProvider.notifier)
-                    .saveConfig(config);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Configuration saved successfully'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Save Configuration'),
-            ),
-          ),
         ],
       ),
     );
@@ -729,42 +722,47 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           Text(
             label,
             style: const TextStyle(
-              fontSize: 10,
+              fontSize: 12,
               color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           TextField(
             onChanged: (val) {
               onChanged(val);
-              _iniContent = json.encode(json.decode(_iniContent ?? '{}'));
             },
             controller: TextEditingController(text: value)
               ..selection = TextSelection.collapsed(offset: value.length),
             obscureText: obscureText,
-            style: const TextStyle(
-              fontSize: AppTextSize.xxs,
-              color: AppColors.textPrimary,
-            ),
+            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
             decoration: InputDecoration(
               isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.primary),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.5,
+                ),
               ),
               filled: true,
-              fillColor: AppColors.surfaceLight,
+              fillColor: AppColors.surface,
             ),
           ),
         ],
