@@ -233,13 +233,17 @@ const fetchers = {
               (a.name.toLowerCase().includes("win") ||
                 a.name.toLowerCase().includes("x64")) &&
               (a.name.toLowerCase().endsWith(".zip") ||
-                a.name.toLowerCase().endsWith(".msi")),
+                a.name.toLowerCase().endsWith(".msi") ||
+                a.name.toLowerCase().endsWith(".exe")) &&
+              (repoPath !== "meilisearch/meilisearch" ||
+                !a.name.toLowerCase().includes("enterprise")),
           );
           if (!asset)
             asset = r.assets.find(
               (a) =>
                 a.name.toLowerCase().endsWith(".zip") ||
-                a.name.toLowerCase().endsWith(".msi"),
+                a.name.toLowerCase().endsWith(".msi") ||
+                a.name.toLowerCase().endsWith(".exe"),
             );
         }
         if (asset) url = asset.browser_download_url;
@@ -432,6 +436,16 @@ let baseDataObject = {
       cli_file: "rustfs.exe",
       repo: "rustfs/rustfs",
       includePrereleases: true,
+    },
+    {
+      id: "meilisearch",
+      name: "Meilisearch",
+      description: "A lightning-fast, open-source search engine.",
+      category: "database",
+      group_name: "meilisearch",
+      exec_file: "meilisearch.exe",
+      cli_file: "meilisearch.exe",
+      repo: "meilisearch/meilisearch",
     },
   ],
 };

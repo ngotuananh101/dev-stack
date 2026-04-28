@@ -68,6 +68,7 @@ class CompactAppsTable extends StatelessWidget {
     if (id.contains('heidisql')) return 'heidisql';
     if (id.contains('compass')) return 'mongodb';
     if (id.contains('rustfs')) return 'rustfs';
+    if (id.contains('meilisearch')) return 'meilisearch';
 
     // Fallback to group name if id doesn't match
     return group;
@@ -94,6 +95,9 @@ class CompactAppsTable extends StatelessWidget {
     }
     if (appId.contains('rustfs')) {
       return const Color(0xFFE67E22); // Orange/Rust color
+    }
+    if (appId.contains('meilisearch')) {
+      return const Color(0xFFFF5E5E); // Meilisearch Pink/Red
     }
     return AppColors.primary;
   }

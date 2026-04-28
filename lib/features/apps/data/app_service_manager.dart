@@ -117,6 +117,16 @@ class AppServiceManager {
           '--secret-key',
           secretKey,
         ];
+      } else if (fileName == 'meilisearch.exe') {
+        final dataDir = p.join(AppConfig.dataDir, 'meilisearch');
+        final confFile = File(p.join(dataDir, 'config.toml'));
+        if (confFile.existsSync()) {
+          args = ['--config-file-path', confFile.path];
+        }
+        
+        // Ensure db-path is set to our managed data directory if not in config
+        // Actually, Meilisearch defaults to ./data.ms, better to be explicit or let config handle it.
+        // For now, if config exists, we use it. If not, we might want to pass --db-path.
       }
 
       final process = await Process.start(

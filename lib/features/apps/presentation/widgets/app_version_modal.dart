@@ -58,6 +58,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     if (id.contains('apache')) return 'apache';
     if (id.contains('redis')) return 'redis';
     if (id.contains('python') || id.contains('pyenv')) return 'python';
+    if (id.contains('meilisearch')) return 'meilisearch';
 
     return group;
   }
@@ -76,6 +77,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
       return const Color(0xFF336791);
     } else if (widget.app.appId.contains('nginx')) {
       return const Color(0xFF009639);
+    } else if (widget.app.appId.contains('meilisearch')) {
+      return const Color(0xFFFF5E5E);
     }
     return AppColors.primary;
   }

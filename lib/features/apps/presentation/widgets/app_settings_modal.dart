@@ -10,6 +10,7 @@ import '../../data/webserver_settings_provider.dart';
 import '../../data/redis_settings_provider.dart';
 import '../../data/mongodb_settings_provider.dart';
 import '../../data/rustfs_settings_provider.dart';
+import '../../data/meilisearch_settings_provider.dart';
 import '../../data/app_service_manager.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
@@ -81,6 +82,8 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
 
   bool get _isRustFS => widget.app.appId == 'rustfs';
 
+  bool get _isMeilisearch => widget.app.appId == 'meilisearch';
+
   bool get _hasConfigTab =>
       _isPhp ||
       _isDb ||
@@ -88,12 +91,13 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       _isRedis ||
       _isMongodb ||
       _isPostgresql ||
-      _isRustFS;
+      _isRustFS ||
+      _isMeilisearch;
 
   int get _tabCount {
     if (_isPma) return 2;
     if (_isPhp) return 3;
-    if (_isDb || _isWebserver || _isRedis || _isMongodb || _isRustFS) return 2;
+    if (_isDb || _isWebserver || _isRedis || _isMongodb || _isRustFS || _isMeilisearch) return 2;
     return 1;
   }
 
@@ -158,6 +162,11 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     } else if (_isRustFS) {
       final config = await ref
           .read(rustFSSettingsProvider.notifier)
+          .readConfig();
+      content = json.encode(config);
+    } else if (_isMeilisearch) {
+      final config = await ref
+          .read(meilisearchSettingsProvider.notifier)
           .readConfig();
       content = json.encode(config);
     }
@@ -253,6 +262,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     } else if (_isRustFS) {
       final config = json.decode(text);
       await ref.read(rustFSSettingsProvider.notifier).saveConfig(config);
+    } else if (_isMeilisearch) {
+      final config = json.decode(text);
+      await ref.read(meilisearchSettingsProvider.notifier).saveConfig(config);
     }
 
     // Force reload sau khi save
@@ -606,7 +618,11 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           _buildConfigTabHeader(),
           const SizedBox(height: 16),
           Expanded(
-            child: _isRustFS ? _buildRustFSConfig() : _buildConfigEditor(),
+            child: _isRustFS
+                ? _buildRustFSConfig()
+                : _isMeilisearch
+                    ? _buildMeilisearchConfig()
+                    : _buildConfigEditor(),
           ),
         ],
       ),
@@ -689,6 +705,83 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     );
   }
 
+  Widget _buildMeilisearchConfig() {
+    if (!_isConfigLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final config = json.decode(_iniContent ?? '{}');
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildConfigGroup('Server Settings', [
+            _buildSettingField(
+              'HTTP Address',
+              'http_addr',
+              config['http_addr'] ?? '127.0.0.1:7700',
+              (val) {
+                config['http_addr'] = val;
+                _iniContent = json.encode(config);
+              },
+            ),
+            _buildSettingField(
+              'Master Key',
+              'master_key',
+              config['master_key'] ?? '',
+              (val) {
+                config['master_key'] = val;
+                _iniContent = json.encode(config);
+              },
+              obscureText: true,
+            ),
+          ]),
+          const SizedBox(height: 24),
+          _buildConfigGroup('Advanced', [
+            _buildDropdownField(
+              'Environment',
+              'env',
+              config['env'] ?? 'development',
+              ['development', 'production'],
+              (val) {
+                if (val != null) {
+                  config['env'] = val;
+                  _iniContent = json.encode(config);
+                }
+              },
+            ),
+            SwitchListTile(
+              title: const Text(
+                'Disable Analytics',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: AppTextSize.sm,
+                ),
+              ),
+              subtitle: const Text(
+                'Prevent Meilisearch from sending usage data',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: AppTextSize.xxs,
+                ),
+              ),
+              value: config['no_analytics'] ?? true,
+              onChanged: (val) {
+                setState(() {
+                  config['no_analytics'] = val;
+                  _iniContent = json.encode(config);
+                });
+              },
+              activeThumbColor: AppColors.primary,
+              activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+
   Widget _buildConfigGroup(String title, List<Widget> children) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -763,6 +856,68 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               ),
               filled: true,
               fillColor: AppColors.surface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdownField(
+    String label,
+    String key,
+    String value,
+    List<String> options,
+    Function(String?) onChanged,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.5),
+              ),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: value,
+                isExpanded: true,
+                dropdownColor: AppColors.surfaceLight,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.textSecondary,
+                ),
+                items: options.map((String val) {
+                  return DropdownMenuItem<String>(
+                    value: val,
+                    child: Text(val),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    onChanged(val);
+                  });
+                },
+              ),
             ),
           ),
         ],

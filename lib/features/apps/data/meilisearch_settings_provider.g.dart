@@ -1,26 +1,27 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'rustfs_settings_provider.dart';
+part of 'meilisearch_settings_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$rustFSSettingsHash() => r'af818cf9355a329203e639b6ce465882061b73e5';
+String _$meilisearchSettingsHash() =>
+    r'cf61bce1d68caa16e852796757c06b2cc848af1a';
 
-/// See also [RustFSSettings].
-@ProviderFor(RustFSSettings)
-final rustFSSettingsProvider =
-    AutoDisposeNotifierProvider<RustFSSettings, void>.internal(
-  RustFSSettings.new,
-  name: r'rustFSSettingsProvider',
+/// See also [MeilisearchSettings].
+@ProviderFor(MeilisearchSettings)
+final meilisearchSettingsProvider =
+    AutoDisposeNotifierProvider<MeilisearchSettings, void>.internal(
+  MeilisearchSettings.new,
+  name: r'meilisearchSettingsProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$rustFSSettingsHash,
+      : _$meilisearchSettingsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$RustFSSettings = AutoDisposeNotifier<void>;
+typedef _$MeilisearchSettings = AutoDisposeNotifier<void>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

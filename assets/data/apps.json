@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "lastUpdated": "2026-04-27T04:37:12.315Z",
+  "lastUpdated": "2026-04-28T16:47:37.131Z",
   "apps": [
     {
       "id": "pyenv",
@@ -624,8 +624,39 @@
       "group_name": "storage",
       "exec_file": "rustfs.exe",
       "cli_file": "rustfs.exe",
+      "repo": "rustfs/rustfs",
+      "includePrereleases": true,
       "versions": {
         "1.0.0-alpha.99": "https://github.com/rustfs/rustfs/releases/download/1.0.0-alpha.99/rustfs-windows-x86_64-latest.zip"
+      }
+    },
+    {
+      "id": "meilisearch",
+      "name": "Meilisearch",
+      "description": "A lightning-fast, open-source search engine.",
+      "category": "database",
+      "group_name": "meilisearch",
+      "exec_file": "meilisearch.exe",
+      "cli_file": "meilisearch.exe",
+      "repo": "meilisearch/meilisearch",
+      "versions": {
+        "1.42.1": "https://github.com/meilisearch/meilisearch/releases/download/v1.42.1/meilisearch-windows-amd64.exe",
+        "1.41.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.41.0/meilisearch-windows-amd64.exe",
+        "1.40.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.40.0/meilisearch-windows-amd64.exe",
+        "1.39.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.39.0/meilisearch-windows-amd64.exe",
+        "1.38.2": "https://github.com/meilisearch/meilisearch/releases/download/v1.38.2/meilisearch-windows-amd64.exe",
+        "1.37.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.37.0/meilisearch-windows-amd64.exe",
+        "1.36.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.36.0/meilisearch-windows-amd64.exe",
+        "1.35.1": "https://github.com/meilisearch/meilisearch/releases/download/v1.35.1/meilisearch-windows-amd64.exe",
+        "1.34.3": "https://github.com/meilisearch/meilisearch/releases/download/v1.34.3/meilisearch-windows-amd64.exe",
+        "1.33.1": "https://github.com/meilisearch/meilisearch/releases/download/v1.33.1/meilisearch-windows-amd64.exe",
+        "1.32.2": "https://github.com/meilisearch/meilisearch/releases/download/v1.32.2/meilisearch-windows-amd64.exe",
+        "1.31.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.31.0/meilisearch-windows-amd64.exe",
+        "1.30.1": "https://github.com/meilisearch/meilisearch/releases/download/v1.30.1/meilisearch-windows-amd64.exe",
+        "1.29.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.29.0/meilisearch-windows-amd64.exe",
+        "1.28.2": "https://github.com/meilisearch/meilisearch/releases/download/v1.28.2/meilisearch-windows-amd64.exe",
+        "1.27.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.27.0/meilisearch-windows-amd64.exe",
+        "1.26.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.26.0/meilisearch-windows-amd64.exe"
       }
     }
   ]

@@ -12,8 +12,9 @@ import '../../../shared/providers/error_provider.dart';
 
 import 'dart:io';
 import 'package:process_run/shell.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 import 'rustfs_settings_provider.dart';
+import 'meilisearch_settings_provider.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 part 'apps_provider.g.dart';
 
@@ -509,6 +510,33 @@ class AppsNotifier extends _$AppsNotifier {
       } catch (e) {
         debugPrint('Error opening RustFS dashboard: $e');
         ref.read(errorNotifierProvider.notifier).setError('Failed to open RustFS Dashboard: $e');
+        return;
+      }
+    }
+
+    // Special handling for Meilisearch Dashboard
+    if (app.appId == 'meilisearch') {
+      try {
+        final settings = await ref.read(meilisearchSettingsProvider.notifier).readConfig();
+        final httpAddr = settings['http_addr'] ?? '127.0.0.1:7700';
+        
+        // Handle both "127.0.0.1:7700" and ":7700" formats
+        String url;
+        if (httpAddr.startsWith(':')) {
+          url = 'http://localhost$httpAddr';
+        } else {
+          url = 'http://$httpAddr';
+        }
+        
+        if (await canLaunchUrlString(url)) {
+          await launchUrlString(url);
+        } else {
+          throw Exception('Could not launch $url');
+        }
+        return;
+      } catch (e) {
+        debugPrint('Error opening Meilisearch dashboard: $e');
+        ref.read(errorNotifierProvider.notifier).setError('Failed to open Meilisearch Dashboard: $e');
         return;
       }
     }
