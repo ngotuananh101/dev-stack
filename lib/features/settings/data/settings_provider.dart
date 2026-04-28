@@ -119,6 +119,8 @@ class SettingsNotifier extends _$SettingsNotifier {
     '.html',  // index.html with paths
     '.yaml',  // possible config files
     '.yml',   // possible config files
+    '.toml',  // meilisearch config
+    '.json',  // rustfs config
   ];
 
   /// Scan all config files in [dir] and replace old paths with new paths.
