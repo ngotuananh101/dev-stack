@@ -22,6 +22,7 @@ class MeilisearchSettings extends _$MeilisearchSettings {
         'master_key': 'meilisearch_master_key',
         'env': 'development',
         'no_analytics': true,
+        'db_path': p.join(AppConfig.dataDir, 'meilisearch', 'data.ms').replaceAll('\\', '/'),
       };
       await saveConfig(defaultConfig);
       return defaultConfig;

@@ -740,6 +740,15 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               },
               obscureText: true,
             ),
+            _buildSettingField(
+              'Database Path',
+              'db_path',
+              config['db_path'] ?? '',
+              (val) {
+                config['db_path'] = val;
+                _iniContent = json.encode(config);
+              },
+            ),
           ]),
           const SizedBox(height: 24),
           _buildConfigGroup('Advanced', [
