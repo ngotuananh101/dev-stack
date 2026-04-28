@@ -174,6 +174,11 @@ class AppInstallerService {
         await _configureMongodb(app, installPath, logInfo);
       }
 
+      // 10. Post-installation: Configure Meilisearch
+      if (app.appId == 'meilisearch') {
+        await _configureMeilisearch(logInfo);
+      }
+
       // 9. Post-installation: Configure phpMyAdmin
       if (app.appId == 'phpMyAdmin') {
         await _configurePhpMyAdmin(installPath, logInfo);
@@ -1206,5 +1211,26 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
     // Default configuration can be done via environment or arguments,
     // so here we just ensure the data path exists.
+  }
+
+  Future<void> _configureMeilisearch(Function(String) logInfo) async {
+    logInfo('Configuring Meilisearch data directory and default config...');
+    final dataDir = Directory(p.join(AppConfig.dataDir, 'meilisearch'));
+    if (!dataDir.existsSync()) {
+      await dataDir.create(recursive: true);
+    }
+
+    final confFile = File(p.join(dataDir.path, 'config.toml'));
+    if (!confFile.existsSync()) {
+      final buffer = StringBuffer();
+      buffer.writeln('http_addr = "127.0.0.1:7700"');
+      buffer.writeln('master_key = "meilisearch_master_key"');
+      buffer.writeln('env = "development"');
+      buffer.writeln('no_analytics = true');
+      buffer.writeln('db_path = "${p.join(dataDir.path, 'data.ms').replaceAll('\\', '/')}"');
+      
+      await confFile.writeAsString(buffer.toString());
+      logInfo('Created default Meilisearch config at ${confFile.path}');
+    }
   }
 }

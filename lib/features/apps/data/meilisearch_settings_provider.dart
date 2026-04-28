@@ -17,12 +17,14 @@ class MeilisearchSettings extends _$MeilisearchSettings {
   Future<Map<String, dynamic>> readConfig() async {
     final file = _getConfigFile();
     if (!await file.exists()) {
-      return {
+      final defaultConfig = {
         'http_addr': '127.0.0.1:7700',
         'master_key': 'meilisearch_master_key',
         'env': 'development',
         'no_analytics': true,
       };
+      await saveConfig(defaultConfig);
+      return defaultConfig;
     }
 
     try {
