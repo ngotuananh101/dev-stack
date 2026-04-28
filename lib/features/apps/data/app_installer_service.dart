@@ -878,6 +878,24 @@ net:
         await dataDir.delete(recursive: true);
       }
     }
+
+    // Delete data directory for Meilisearch
+    if (appId == 'meilisearch') {
+      final dataDir = Directory(p.join(AppConfig.dataDir, 'meilisearch'));
+      if (dataDir.existsSync()) {
+        _logger.info('Deleting Meilisearch data directory: ${dataDir.path}');
+        await dataDir.delete(recursive: true);
+      }
+    }
+
+    // Delete data directory for RustFS
+    if (appId == 'rustfs') {
+      final dataDir = Directory(p.join(AppConfig.dataDir, 'rustfs'));
+      if (dataDir.existsSync()) {
+        _logger.info('Deleting RustFS data directory: ${dataDir.path}');
+        await dataDir.delete(recursive: true);
+      }
+    }
   }
 
   /// Syncs configurations between different apps (e.g., phpMyAdmin with Web Servers)
