@@ -30,7 +30,13 @@ class MeilisearchSettings extends _$MeilisearchSettings {
 
     try {
       final content = await file.readAsString();
-      final Map<String, dynamic> config = {};
+      final Map<String, dynamic> config = {
+        'http_addr': '127.0.0.1:7700',
+        'master_key': 'meilisearch_master_key',
+        'env': 'development',
+        'no_analytics': true,
+        'db_path': p.join(AppConfig.dataDir, 'meilisearch', 'data.ms').replaceAll('\\', '/'),
+      };
       
       final lines = content.split('\n');
       for (var line in lines) {
