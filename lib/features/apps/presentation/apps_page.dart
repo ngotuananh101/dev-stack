@@ -18,22 +18,12 @@ class AppsPage extends ConsumerStatefulWidget {
 }
 
 class _AppsPageState extends ConsumerState<AppsPage> {
-  String? _selectedTab;
   String? _selectedCategory;
   int _currentPage = 1;
-  final int _itemsPerPage = 8;
+  final int _itemsPerPage = 9;
 
   List<AppModel> _filterApps(List<AppModel> apps) {
     var filtered = apps;
-
-    // Filter by tab
-    if (_selectedTab == 'installed') {
-      filtered = filtered.where((app) => app.isInstalled).toList();
-    } else if (_selectedTab == 'third-party') {
-      filtered = filtered
-          .where((app) => app.developer.toLowerCase() != 'official')
-          .toList();
-    }
 
     // Filter by category
     if (_selectedCategory != null) {
@@ -57,16 +47,15 @@ class _AppsPageState extends ConsumerState<AppsPage> {
   Map<String, int> _getCategoryCounts(List<AppModel> apps) {
     final counts = <String, int>{'all': apps.length};
 
-    final categories = ['tools', 'runtime', 'database', 'security', 'plugins'];
-    for (final cat in categories) {
-      counts[cat] = apps.where((app) {
-        return app.categories.any((c) => c.toLowerCase() == cat);
-      }).length;
+    for (final app in apps) {
+      for (final cat in app.categories) {
+        final normalizedCat = cat.toLowerCase();
+        counts[normalizedCat] = (counts[normalizedCat] ?? 0) + 1;
+      }
     }
 
     return counts;
   }
-
   @override
   Widget build(BuildContext context) {
     final appsAsync = ref.watch(appsNotifierProvider);
@@ -102,26 +91,17 @@ class _AppsPageState extends ConsumerState<AppsPage> {
             children: [
               // Header
               MarketplaceHeader(
-                selectedTab: _selectedTab,
-                onTabChanged: (value) {
-                  setState(() {
-                    _selectedTab = value;
-                    _currentPage = 1;
-                  });
-                },
                 onUpdate: _handleUpdateList,
-              ),
-              const SizedBox(height: 24),
-              // Category Bar
-              CategoryBar(
-                selectedCategory: _selectedCategory,
-                onCategoryChanged: (value) {
-                  setState(() {
-                    _selectedCategory = value;
-                    _currentPage = 1;
-                  });
-                },
-                categoryCounts: categoryCounts,
+                actions: CategoryBar(
+                  selectedCategory: _selectedCategory,
+                  onCategoryChanged: (value) {
+                    setState(() {
+                      _selectedCategory = value;
+                      _currentPage = 1;
+                    });
+                  },
+                  categoryCounts: categoryCounts,
+                ),
               ),
               const SizedBox(height: 24),
               // Main content: Table

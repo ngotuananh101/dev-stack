@@ -4,15 +4,13 @@ import '../../../../core/theme/app_text_size.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class MarketplaceHeader extends StatelessWidget {
-  final String? selectedTab;
-  final Function(String?) onTabChanged;
   final VoidCallback onUpdate;
+  final Widget? actions;
 
   const MarketplaceHeader({
     super.key,
-    this.selectedTab,
-    required this.onTabChanged,
     required this.onUpdate,
+    this.actions,
   });
 
   @override
@@ -44,6 +42,9 @@ class MarketplaceHeader extends StatelessWidget {
           ],
         ),
         const Spacer(),
+        // Actions (e.g. Category Bar)
+        actions ?? const SizedBox.shrink(),
+        const SizedBox(width: 16),
         // Update Button
         IconButton(
           onPressed: onUpdate,
@@ -55,46 +56,7 @@ class MarketplaceHeader extends StatelessWidget {
           tooltip: 'Update App List',
           splashRadius: 20,
         ),
-        const SizedBox(width: 8),
-        // Right: Filter tabs
-        Container(
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            children: [
-              _buildTab('All Software', null),
-              _buildTab('Installed', 'installed'),
-              _buildTab('Professional', 'professional'),
-              _buildTab('Third-party', 'third-party'),
-            ],
-          ),
-        ),
       ],
-    );
-  }
-
-  Widget _buildTab(String label, String? value) {
-    final isSelected = selectedTab == value;
-    return GestureDetector(
-      onTap: () => onTabChanged(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: AppTextSize.xxs,
-            fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : AppColors.textSecondary,
-          ),
-        ),
-      ),
     );
   }
 }
