@@ -12,6 +12,8 @@ import '../../../shared/providers/error_provider.dart';
 
 import 'dart:io';
 import 'package:process_run/shell.dart';
+import 'package:url_launcher/url_launcher_string.dart';
+import 'rustfs_settings_provider.dart';
 
 part 'apps_provider.g.dart';
 
@@ -488,7 +490,30 @@ class AppsNotifier extends _$AppsNotifier {
   }
 
   Future<void> openApp(AppModel app) async {
-    if (!app.isInstalled || app.execFilePath == null) return;
+    if (!app.isInstalled) return;
+
+    // Special handling for RustFS Dashboard
+    if (app.appId == 'rustfs') {
+      try {
+        final settings = await ref.read(rustFSSettingsProvider.notifier).readConfig();
+        final consoleAddress = settings['console_address'] ?? ':9001';
+        final port = consoleAddress.split(':').last;
+        final url = 'http://localhost:$port';
+        
+        if (await canLaunchUrlString(url)) {
+          await launchUrlString(url);
+        } else {
+          throw Exception('Could not launch $url');
+        }
+        return;
+      } catch (e) {
+        debugPrint('Error opening RustFS dashboard: $e');
+        ref.read(errorNotifierProvider.notifier).setError('Failed to open RustFS Dashboard: $e');
+        return;
+      }
+    }
+
+    if (app.execFilePath == null) return;
 
     try {
       final file = File(app.execFilePath!);

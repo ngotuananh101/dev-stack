@@ -67,6 +67,7 @@ class CompactAppsTable extends StatelessWidget {
     if (id.contains('python') || id.contains('pyenv')) return 'python';
     if (id.contains('heidisql')) return 'heidisql';
     if (id.contains('compass')) return 'mongodb';
+    if (id.contains('rustfs')) return 'rustfs';
 
     // Fallback to group name if id doesn't match
     return group;
@@ -90,6 +91,9 @@ class CompactAppsTable extends StatelessWidget {
     }
     if (appId.contains('cloud')) {
       return const Color(0xFF58A6FF);
+    }
+    if (appId.contains('rustfs')) {
+      return const Color(0xFFE67E22); // Orange/Rust color
     }
     return AppColors.primary;
   }
@@ -618,7 +622,9 @@ class CompactAppsTable extends StatelessWidget {
             tooltip: 'Install',
           ),
         if (app.isInstalled &&
-            (app.appId == 'mongodb-compass' || app.appId == 'heidisql')) ...[
+            (app.appId == 'mongodb-compass' ||
+                app.appId == 'heidisql' ||
+                app.appId == 'rustfs')) ...[
           const SizedBox(width: 8),
           _buildIconButton(
             icon: Icons.open_in_new_rounded,
