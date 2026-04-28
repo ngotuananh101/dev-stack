@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import 'package:window_manager/window_manager.dart';
@@ -31,14 +32,16 @@ void main(List<String> args) async {
   }
 
   await windowManager.ensureInitialized();
+  final packageInfo = await PackageInfo.fromPlatform();
+  final appVersion = packageInfo.version;
 
-  WindowOptions windowOptions = const WindowOptions(
-    size: Size(1200, 800),
+  WindowOptions windowOptions = WindowOptions(
+    size: const Size(1200, 800),
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.normal,
-    title: 'DevStack Dashboard',
+    title: 'DevStack v$appVersion',
   );
 
   final isMinimized = args.contains('--minimized');
@@ -46,23 +49,24 @@ void main(List<String> args) async {
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     // Set icon for the window taskbar
     await windowManager.setIcon('assets/images/icon.png');
-    
+
     if (!isMinimized) {
       await windowManager.show();
       await windowManager.focus();
     }
   });
 
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(ProviderScope(child: MyApp(appVersion: appVersion)));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String appVersion;
+  const MyApp({super.key, required this.appVersion});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DevStack Dashboard',
+      title: 'DevStack v$appVersion',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: const MainScreen(),
@@ -91,22 +95,25 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   Widget build(BuildContext context) {
     // Initialize Window Service (Tray, Auto-start, etc.)
     ref.watch(windowServiceProvider);
-    
+
     // Eagerly initialize apps provider for background services auto-start
     ref.watch(appsNotifierProvider.future);
-    
+
     // Listen to SSL changes to reconfigure web servers
     ref.listen(sslServiceProvider, (previous, next) async {
       final nextValue = next.asData?.value;
       final prevValue = previous?.asData?.value;
-      
+
       if (nextValue != null && prevValue != null && nextValue != prevValue) {
         final apps = await ref.read(appsNotifierProvider.future);
         final installer = ref.read(appInstallerServiceProvider);
-        await installer.reconfigureWebservers(apps, (msg) => debugPrint('SSL Sync: $msg'));
+        await installer.reconfigureWebservers(
+          apps,
+          (msg) => debugPrint('SSL Sync: $msg'),
+        );
       }
     });
-    
+
     final currentTab = ref.watch(navigationProvider);
 
     return Scaffold(
