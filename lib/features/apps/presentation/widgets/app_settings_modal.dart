@@ -239,9 +239,12 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
 
   // ─── Save ─────────────────────────────────────────────────────────────────────
   Future<void> _saveConfig() async {
-    final text = _useCodeEditor && _codeController != null
-        ? _codeController!.text
-        : _fallbackController.text;
+    // Use _iniContent directly for UI-based configs (Meilisearch, RustFS)
+    final text = (_isMeilisearch || _isRustFS)
+        ? (_iniContent ?? '')
+        : (_useCodeEditor && _codeController != null
+            ? _codeController!.text
+            : _fallbackController.text);
 
     if (_isPhp) {
       await ref.read(phpSettingsProvider.notifier).savePhpIni(widget.app, text);
@@ -475,6 +478,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (_isRedis) return 'redis.conf';
     if (_isMongodb) return 'mongod.cfg';
     if (_isRustFS) return 'Configuration';
+    if (_isMeilisearch) return 'config.toml';
     return 'php.ini';
   }
 

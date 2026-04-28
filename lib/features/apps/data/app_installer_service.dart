@@ -67,8 +67,13 @@ class AppInstallerService {
     logInfo('Starting installation for ${app.name} ($version)');
     onProgress?.call(0.1, 'Downloading...');
 
+    final uri = Uri.parse(url);
+    final extension = p.extension(uri.path).toLowerCase();
+    final isZip = extension == '.zip';
+    final isExe = extension == '.exe';
+
     final tempFile = File(
-      p.join(Directory.systemTemp.path, '${app.appId}-$version.zip'),
+      p.join(Directory.systemTemp.path, '${app.appId}-$version$extension'),
     );
 
     try {
@@ -89,13 +94,32 @@ class AppInstallerService {
       );
 
       logInfo('Download completed for ${app.name}');
-      onProgress?.call(0.8, 'Extracting...');
-
-      final bytes = await tempFile.readAsBytes();
-
-      // Always treat as ZIP since we standardized the filename
-      logInfo('Extracting ZIP for ${app.name}');
-      await _extractZip(bytes, installPath, onLog);
+      if (isZip) {
+        logInfo('Extracting ZIP for ${app.name}');
+        final bytes = await tempFile.readAsBytes();
+        await _extractZip(bytes, installPath, onLog);
+      } else if (isExe) {
+        logInfo('Handling executable binary for ${app.name}');
+        onProgress?.call(0.8, 'Moving binary...');
+        
+        // Use the specified exec_file name if available, otherwise keep original
+        final fileName = app.execFile ?? p.basename(uri.path);
+        final targetFile = File(p.join(installPath, fileName));
+        
+        logInfo('Copying binary to: ${targetFile.path}');
+        await tempFile.copy(targetFile.path);
+      } else {
+        // Fallback for other formats or if extension is missing
+        // For now, assume ZIP if unknown to maintain backward compatibility
+        logInfo('Format $extension not explicitly handled, attempting ZIP extraction...');
+        try {
+          final bytes = await tempFile.readAsBytes();
+          await _extractZip(bytes, installPath, onLog);
+        } catch (e) {
+          logError('Failed to extract as ZIP: $e');
+          rethrow;
+        }
+      }
 
       // 4. Flatten directory if needed
       await _flattenDirectory(installPath, logInfo);
