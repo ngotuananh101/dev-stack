@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
+import '../../../core/config/app_config.dart';
 
 part 'app_service_manager.g.dart';
 
@@ -80,6 +81,40 @@ class AppServiceManager {
             args = ['--config', parentConf.path];
           }
         }
+      } else if (fileName == 'rustfs.exe') {
+        final dataDir = p.join(AppConfig.dataDir, 'rustfs');
+        final confFile = File(p.join(dataDir, 'config.json'));
+        
+        String address = ':9000';
+        String consoleAddress = ':9001';
+        String accessKey = 'admin';
+        String secretKey = 'password123';
+        bool consoleEnable = true;
+
+        if (confFile.existsSync()) {
+          try {
+            final config = json.decode(confFile.readAsStringSync());
+            address = config['address'] ?? address;
+            consoleAddress = config['console_address'] ?? consoleAddress;
+            accessKey = config['access_key'] ?? accessKey;
+            secretKey = config['secret_key'] ?? secretKey;
+            consoleEnable = config['console_enable'] ?? consoleEnable;
+          } catch (_) {}
+        }
+
+        args = [
+          'server',
+          dataDir,
+          if (consoleEnable) '--console-enable',
+          '--address',
+          address,
+          '--console-address',
+          consoleAddress,
+          '--access-key',
+          accessKey,
+          '--secret-key',
+          secretKey,
+        ];
       }
 
       final process = await Process.start(

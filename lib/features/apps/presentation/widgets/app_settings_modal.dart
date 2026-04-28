@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -8,6 +9,7 @@ import '../../data/db_settings_provider.dart';
 import '../../data/webserver_settings_provider.dart';
 import '../../data/redis_settings_provider.dart';
 import '../../data/mongodb_settings_provider.dart';
+import '../../data/rustfs_settings_provider.dart';
 import '../../data/app_service_manager.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
@@ -77,13 +79,15 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       widget.app.groupName == 'postgresql' ||
       widget.app.appId.toLowerCase().contains('postgresql');
 
+  bool get _isRustFS => widget.app.appId == 'rustfs';
+
   bool get _hasConfigTab =>
-      _isPhp || _isDb || _isWebserver || _isRedis || _isMongodb || _isPostgresql;
+      _isPhp || _isDb || _isWebserver || _isRedis || _isMongodb || _isPostgresql || _isRustFS;
 
   int get _tabCount {
     if (_isPma) return 2;
     if (_isPhp) return 3;
-    if (_isDb || _isWebserver || _isRedis || _isMongodb) return 2;
+    if (_isDb || _isWebserver || _isRedis || _isMongodb || _isRustFS) return 2;
     return 1;
   }
 
@@ -145,6 +149,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       content = await ref
           .read(mongodbSettingsProvider.notifier)
           .readConfig(widget.app);
+    } else if (_isRustFS) {
+      final config = await ref.read(rustFSSettingsProvider.notifier).readConfig();
+      content = json.encode(config);
     }
 
     if (!mounted) return;
@@ -446,6 +453,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     }
     if (_isRedis) return 'redis.conf';
     if (_isMongodb) return 'mongod.cfg';
+    if (_isRustFS) return 'Configuration';
     return 'php.ini';
   }
 
@@ -588,7 +596,177 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
         children: [
           _buildConfigTabHeader(),
           const SizedBox(height: 16),
-          Expanded(child: _buildConfigEditor()),
+          Expanded(
+            child: _isRustFS ? _buildRustFSConfig() : _buildConfigEditor(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRustFSConfig() {
+    if (!_isConfigLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final config = json.decode(_iniContent ?? '{}');
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildConfigGroup('Networking', [
+            _buildSettingField(
+              'API Address',
+              'address',
+              config['address'] ?? ':9000',
+              (val) => config['address'] = val,
+            ),
+            _buildSettingField(
+              'Console Address',
+              'console_address',
+              config['console_address'] ?? ':9001',
+              (val) => config['console_address'] = val,
+            ),
+            SwitchListTile(
+              title: const Text(
+                'Enable Console',
+                style: TextStyle(
+                  fontSize: AppTextSize.xxs,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              value: config['console_enable'] ?? true,
+              onChanged: (val) {
+                setState(() {
+                  config['console_enable'] = val;
+                  _iniContent = json.encode(config);
+                });
+              },
+              activeThumbColor: AppColors.primary,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ]),
+          const SizedBox(height: 24),
+          _buildConfigGroup('Security', [
+            _buildSettingField(
+              'Access Key',
+              'access_key',
+              config['access_key'] ?? 'admin',
+              (val) => config['access_key'] = val,
+            ),
+            _buildSettingField(
+              'Secret Key',
+              'secret_key',
+              config['secret_key'] ?? 'password123',
+              (val) => config['secret_key'] = val,
+              obscureText: true,
+            ),
+          ]),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 40,
+            child: ElevatedButton(
+              onPressed: () async {
+                await ref
+                    .read(rustFSSettingsProvider.notifier)
+                    .saveConfig(config);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Configuration saved successfully'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Save Configuration'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfigGroup(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: AppTextSize.xs,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...children,
+      ],
+    );
+  }
+
+  Widget _buildSettingField(
+    String label,
+    String key,
+    String value,
+    Function(String) onChanged, {
+    bool obscureText = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            onChanged: (val) {
+              onChanged(val);
+              _iniContent = json.encode(json.decode(_iniContent ?? '{}'));
+            },
+            controller: TextEditingController(text: value)
+              ..selection = TextSelection.collapsed(offset: value.length),
+            obscureText: obscureText,
+            style: const TextStyle(
+              fontSize: AppTextSize.xxs,
+              color: AppColors.textPrimary,
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.primary),
+              ),
+              filled: true,
+              fillColor: AppColors.surfaceLight,
+            ),
+          ),
         ],
       ),
     );

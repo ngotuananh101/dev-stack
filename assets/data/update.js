@@ -194,7 +194,7 @@ const fetchers = {
     return versions;
   },
 
-  async github(repoPath) {
+  async github(repoPath, options = {}) {
     const res = await fetch(
       `https://api.github.com/repos/${repoPath}/releases`,
       {
@@ -208,7 +208,7 @@ const fetchers = {
     const versions = {};
     if (!Array.isArray(data)) return {};
     data.forEach((r) => {
-      if (r.prerelease) return;
+      if (r.prerelease && !options.includePrereleases) return;
       const ver = r.tag_name.replace(/^(v|release-|redis-|redis|r(?=\d))/i, "");
       let url = `https://github.com/${repoPath}/archive/refs/tags/${r.tag_name}.zip`;
       if (r.assets?.length > 0) {
@@ -422,6 +422,17 @@ let baseDataObject = {
       cli_file: "MongoDBCompass.exe",
       repo: "mongodb-js/compass",
     },
+    {
+      id: "rustfs",
+      name: "RustFS",
+      description: "High-performance S3-compatible object storage server.",
+      category: "storage",
+      group_name: "storage",
+      exec_file: "rustfs.exe",
+      cli_file: "rustfs.exe",
+      repo: "rustfs/rustfs",
+      includePrereleases: true,
+    },
   ],
 };
 
@@ -444,7 +455,10 @@ async function updateAppsJson() {
         let v;
         if (app.id === "nodejs") v = await fetchers.nodejs();
         else if (app.prefix) v = await fetchers.php(app.prefix);
-        else if (app.repo) v = await fetchers.github(app.repo);
+        else if (app.repo)
+          v = await fetchers.github(app.repo, {
+            includePrereleases: app.includePrereleases,
+          });
         else if (fetchers[app.id]) v = await fetchers[app.id]();
 
         if (v) app.versions = sortVersionsObject(v);

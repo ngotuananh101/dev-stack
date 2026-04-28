@@ -31,7 +31,7 @@ class AppModel {
 
   // Service management (non-persistent)
   bool get isService {
-    final serviceCategories = ['database', 'webserver'];
+    final serviceCategories = ['database', 'webserver', 'storage'];
     return (serviceCategories.contains(categories.firstOrNull) ||
             appId.startsWith('php')) &&
         appId.toLowerCase() != 'phpmyadmin';

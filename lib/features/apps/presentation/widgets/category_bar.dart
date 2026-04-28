@@ -16,11 +16,9 @@ class CategoryBar extends StatelessWidget {
 
   final List<Map<String, String?>> _categories = const [
     {'label': 'All', 'value': null},
-    {'label': 'System Tools', 'value': 'tools'},
     {'label': 'Runtime', 'value': 'runtime'},
     {'label': 'Database', 'value': 'database'},
-    {'label': 'Security', 'value': 'security'},
-    {'label': 'Plugins', 'value': 'plugins'},
+    {'label': 'Storage', 'value': 'storage'},
   ];
 
   @override

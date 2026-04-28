@@ -159,6 +159,11 @@ class AppInstallerService {
       if (app.appId == 'pyenv') {
         await _configurePyenv(installPath, logInfo);
       }
+      
+      // 11. Post-installation: Configure RustFS
+      if (app.appId == 'rustfs') {
+        await _configureRustFS(app, installPath, logInfo);
+      }
 
       // Cleanup
       if (tempFile.existsSync()) await tempFile.delete();
@@ -1161,5 +1166,21 @@ Alias /phpmyadmin "$pmaPathUnix/"
     await pathService.removeRawPathFromUserPath(shimsDir);
 
     logInfo('pyenv-win cleanup completed.');
+  }
+
+  Future<void> _configureRustFS(
+    AppModel app,
+    String installPath,
+    Function(String) logInfo,
+  ) async {
+    logInfo('Configuring RustFS storage directory...');
+    final dataDir = Directory(p.join(AppConfig.dataDir, 'rustfs'));
+    if (!dataDir.existsSync()) {
+      await dataDir.create(recursive: true);
+      logInfo('Created RustFS storage directory at ${dataDir.path}');
+    }
+
+    // Default configuration can be done via environment or arguments,
+    // so here we just ensure the data path exists.
   }
 }

@@ -615,6 +615,18 @@
         "1.49.5": "https://github.com/mongodb-js/compass/releases/download/v1.49.5/mongodb-compass-1.49.5-win32-x64.zip",
         "1.48.2": "https://github.com/mongodb-js/compass/releases/download/v1.48.2/mongodb-compass-1.48.2-win32-x64.zip"
       }
+    },
+    {
+      "id": "rustfs",
+      "name": "RustFS",
+      "description": "High-performance S3-compatible object storage server.",
+      "category": "storage",
+      "group_name": "storage",
+      "exec_file": "rustfs.exe",
+      "cli_file": "rustfs.exe",
+      "versions": {
+        "1.0.0-alpha.99": "https://github.com/rustfs/rustfs/releases/download/1.0.0-alpha.99/rustfs-windows-x86_64-latest.zip"
+      }
     }
   ]
 }
