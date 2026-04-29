@@ -47,6 +47,7 @@ class AppServiceManager {
           .last
           .toLowerCase();
 
+      Map<String, String>? env;
       if (fileName == 'php-cgi.exe' || fileName == 'php.exe') {
         // Dynamic port based on version: php82 -> 9082
         String port = '9000';
@@ -118,8 +119,7 @@ class AppServiceManager {
           secretKey,
         ];
       } else if (fileName == 'meilisearch.exe') {
-        final dataDir = p.join(AppConfig.dataDir, 'meilisearch');
-        final confFile = File(p.join(dataDir, 'config.toml'));
+        final confFile = File(p.join(workingDir, 'config.toml'));
         if (confFile.existsSync()) {
           args = ['--config-file-path', confFile.path];
         }
@@ -128,18 +128,15 @@ class AppServiceManager {
         // Actually, Meilisearch defaults to ./data.ms, better to be explicit or let config handle it.
         // For now, if config exists, we use it. If not, we might want to pass --db-path.
       } else if (fileName == 'elasticsearch.bat') {
-        final esDataDir = p.join(AppConfig.dataDir, 'elasticsearch');
-        final confFile = File(p.join(esDataDir, 'elasticsearch.yml'));
-        if (confFile.existsSync()) {
-          // Elasticsearch 8.x can take config file path via -E path.conf
-          args = ['-E', 'path.conf=$esDataDir'];
-        }
+        // No special environment or args needed anymore as we edit the config in the app dir
+        // but still point data to our managed data dir inside the yml.
       }
 
       final process = await Process.start(
         execPath,
         args,
         workingDirectory: workingDir,
+        environment: env,
         mode: ProcessStartMode.normal,
       );
 

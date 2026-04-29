@@ -7,7 +7,7 @@ part of 'meilisearch_settings_provider.dart';
 // **************************************************************************
 
 String _$meilisearchSettingsHash() =>
-    r'c94763813e27beea217989563dfc1993b6c4d2f0';
+    r'9731c8e531517d079a978771dce5e26d0cf3b853';
 
 /// See also [MeilisearchSettings].
 @ProviderFor(MeilisearchSettings)

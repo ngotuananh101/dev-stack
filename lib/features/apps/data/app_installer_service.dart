@@ -176,12 +176,12 @@ class AppInstallerService {
 
       // 10. Post-installation: Configure Meilisearch
       if (app.appId == 'meilisearch') {
-        await _configureMeilisearch(logInfo);
+        await _configureMeilisearch(installPath, logInfo);
       }
 
       // 11. Post-installation: Configure Elasticsearch
       if (app.appId == 'elasticsearch') {
-        await _configureElasticsearch(logInfo);
+        await _configureElasticsearch(installPath, logInfo);
       }
 
       // 9. Post-installation: Configure phpMyAdmin
@@ -1236,16 +1236,17 @@ Alias /phpmyadmin "$pmaPathUnix/"
     // so here we just ensure the data path exists.
   }
 
-  Future<void> _configureMeilisearch(Function(String) logInfo) async {
-    logInfo('Configuring Meilisearch data directory and default config...');
+  Future<void> _configureMeilisearch(String installPath, Function(String) logInfo) async {
+    logInfo('Configuring Meilisearch (Hybrid: Config in App, Data in Ponta Data)...');
     final dataDir = Directory(p.join(AppConfig.dataDir, 'meilisearch'));
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
     }
 
-    final confFile = File(p.join(dataDir.path, 'config.toml'));
-    if (!confFile.existsSync()) {
+    final confFile = File(p.join(installPath, 'config.toml'));
+    if (!confFile.existsSync() || true) { // Always update or create
       final buffer = StringBuffer();
+      buffer.writeln('# ======================== Ponta Managed Configuration =========================');
       buffer.writeln('http_addr = "127.0.0.1:7700"');
       buffer.writeln('master_key = "meilisearch_master_key"');
       buffer.writeln('env = "development"');
@@ -1253,22 +1254,26 @@ Alias /phpmyadmin "$pmaPathUnix/"
       buffer.writeln('db_path = "${p.join(dataDir.path, 'data.ms').replaceAll('\\', '/')}"');
       
       await confFile.writeAsString(buffer.toString());
-      logInfo('Created default Meilisearch config at ${confFile.path}');
+      logInfo('Applied managed configuration to ${confFile.path}');
     }
   }
 
-  Future<void> _configureElasticsearch(Function(String) logInfo) async {
-    logInfo('Configuring Elasticsearch data/logs directory and default config...');
+  Future<void> _configureElasticsearch(String installPath, Function(String) logInfo) async {
+    logInfo('Configuring Elasticsearch (Hybrid: Config in App, Data in Ponta Data)...');
     final esDataDir = Directory(p.join(AppConfig.dataDir, 'elasticsearch'));
     final dataPath = Directory(p.join(esDataDir.path, 'data'));
     final logsPath = Directory(p.join(esDataDir.path, 'logs'));
 
+    if (!esDataDir.existsSync()) await esDataDir.create(recursive: true);
     if (!dataPath.existsSync()) await dataPath.create(recursive: true);
     if (!logsPath.existsSync()) await logsPath.create(recursive: true);
 
-    final confFile = File(p.join(esDataDir.path, 'elasticsearch.yml'));
-    if (!confFile.existsSync()) {
+    // Edit config directly in the installPath/config directory
+    final confFile = File(p.join(installPath, 'config', 'elasticsearch.yml'));
+    
+    if (confFile.existsSync()) {
       final buffer = StringBuffer();
+      buffer.writeln('# ======================== Ponta Managed Configuration =========================');
       buffer.writeln('cluster.name: "ponta-cluster"');
       buffer.writeln('node.name: "ponta-node-1"');
       buffer.writeln('network.host: 127.0.0.1');
@@ -1277,12 +1282,12 @@ Alias /phpmyadmin "$pmaPathUnix/"
       buffer.writeln('xpack.security.enabled: false');
       buffer.writeln('ingest.geoip.downloader.enabled: false');
       
-      // Paths
+      // Points data and logs to the managed Ponta data directory
       buffer.writeln('path.data: "${dataPath.path.replaceAll('\\', '/')}"');
       buffer.writeln('path.logs: "${logsPath.path.replaceAll('\\', '/')}"');
       
       await confFile.writeAsString(buffer.toString());
-      logInfo('Created default Elasticsearch config at ${confFile.path}');
+      logInfo('Applied managed configuration to ${confFile.path}');
     }
   }
 }

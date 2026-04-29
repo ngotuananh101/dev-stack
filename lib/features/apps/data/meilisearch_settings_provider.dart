@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
+import '../domain/app_model.dart';
 import '../../../core/config/app_config.dart';
 
 part 'meilisearch_settings_provider.g.dart';
@@ -10,33 +11,30 @@ class MeilisearchSettings extends _$MeilisearchSettings {
   @override
   void build() {}
 
-  File _getConfigFile() {
-    return File(p.join(AppConfig.dataDir, 'meilisearch', 'config.toml'));
+  File? _getConfigFile(AppModel app) {
+    if (app.location == null) return null;
+    return File(p.join(app.location!, 'config.toml'));
   }
 
-  Future<Map<String, dynamic>> readConfig() async {
-    final file = _getConfigFile();
-    if (!await file.exists()) {
-      final defaultConfig = {
-        'http_addr': '127.0.0.1:7700',
-        'master_key': 'meilisearch_master_key',
-        'env': 'development',
-        'no_analytics': true,
-        'db_path': p.join(AppConfig.dataDir, 'meilisearch', 'data.ms').replaceAll('\\', '/'),
-      };
-      await saveConfig(defaultConfig);
+  Future<Map<String, dynamic>> readConfig(AppModel app) async {
+    final file = _getConfigFile(app);
+    
+    // Default values
+    final defaultConfig = {
+      'http_addr': '127.0.0.1:7700',
+      'master_key': 'meilisearch_master_key',
+      'env': 'development',
+      'no_analytics': true,
+      'db_path': p.join(AppConfig.dataDir, 'meilisearch', 'data.ms').replaceAll('\\', '/'),
+    };
+
+    if (file == null || !await file.exists()) {
       return defaultConfig;
     }
 
     try {
       final content = await file.readAsString();
-      final Map<String, dynamic> config = {
-        'http_addr': '127.0.0.1:7700',
-        'master_key': 'meilisearch_master_key',
-        'env': 'development',
-        'no_analytics': true,
-        'db_path': p.join(AppConfig.dataDir, 'meilisearch', 'data.ms').replaceAll('\\', '/'),
-      };
+      final Map<String, dynamic> config = Map.from(defaultConfig);
       
       final lines = content.split('\n');
       for (var line in lines) {
@@ -68,12 +66,14 @@ class MeilisearchSettings extends _$MeilisearchSettings {
       }
       return config;
     } catch (_) {
-      return {};
+      return defaultConfig;
     }
   }
 
-  Future<void> saveConfig(Map<String, dynamic> config) async {
-    final file = _getConfigFile();
+  Future<void> saveConfig(AppModel app, Map<String, dynamic> config) async {
+    final file = _getConfigFile(app);
+    if (file == null) return;
+
     if (!await file.parent.exists()) {
       await file.parent.create(recursive: true);
     }

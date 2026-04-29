@@ -170,12 +170,12 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     } else if (_isMeilisearch) {
       final config = await ref
           .read(meilisearchSettingsProvider.notifier)
-          .readConfig();
+          .readConfig(widget.app);
       content = json.encode(config);
     } else if (_isElasticsearch) {
       final config = await ref
           .read(elasticsearchSettingsProvider.notifier)
-          .readConfig();
+          .readConfig(widget.app);
       content = json.encode(config);
     }
 
@@ -275,10 +275,14 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       await ref.read(rustFSSettingsProvider.notifier).saveConfig(config);
     } else if (_isMeilisearch) {
       final config = json.decode(text);
-      await ref.read(meilisearchSettingsProvider.notifier).saveConfig(config);
+      await ref
+          .read(meilisearchSettingsProvider.notifier)
+          .saveConfig(widget.app, config);
     } else if (_isElasticsearch) {
       final config = json.decode(text);
-      await ref.read(elasticsearchSettingsProvider.notifier).saveConfig(config);
+      await ref
+          .read(elasticsearchSettingsProvider.notifier)
+          .saveConfig(widget.app, config);
     }
 
     // Force reload sau khi save

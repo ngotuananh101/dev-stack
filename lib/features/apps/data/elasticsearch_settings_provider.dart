@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
 import '../../../core/config/app_config.dart';
@@ -10,13 +11,14 @@ class ElasticsearchSettings extends _$ElasticsearchSettings {
   @override
   void build() {}
 
-  File _getConfigFile() {
-    return File(p.join(AppConfig.dataDir, 'elasticsearch', 'elasticsearch.yml'));
+  File? _getConfigFile(AppModel app) {
+    if (app.location == null) return null;
+    return File(p.join(app.location!, 'config', 'elasticsearch.yml'));
   }
 
-  Future<Map<String, dynamic>> readConfig() async {
-    final file = _getConfigFile();
-    
+  Future<Map<String, dynamic>> readConfig(AppModel app) async {
+    final file = _getConfigFile(app);
+
     // Default values
     final Map<String, dynamic> config = {
       'cluster.name': 'ponta-cluster',
@@ -28,30 +30,30 @@ class ElasticsearchSettings extends _$ElasticsearchSettings {
       'ingest.geoip.downloader.enabled': false,
     };
 
-    if (!await file.exists()) {
+    if (file == null || !await file.exists()) {
       return config;
     }
 
     try {
       final content = await file.readAsString();
-      
+
       final lines = content.split('\n');
       for (var line in lines) {
         line = line.trim();
         if (line.isEmpty || line.startsWith('#')) continue;
-        
+
         final parts = line.split(':');
         if (parts.length >= 2) {
           final key = parts[0].trim();
           var value = parts.sublist(1).join(':').trim();
-          
+
           // Remove quotes for strings
           if (value.startsWith('"') && value.endsWith('"')) {
             value = value.substring(1, value.length - 1);
           } else if (value.startsWith("'") && value.endsWith("'")) {
             value = value.substring(1, value.length - 1);
           }
-          
+
           // Parse boolean/number
           if (value.toLowerCase() == 'true') {
             config[key] = true;
@@ -69,14 +71,16 @@ class ElasticsearchSettings extends _$ElasticsearchSettings {
     }
   }
 
-  Future<void> saveConfig(Map<String, dynamic> config) async {
-    final file = _getConfigFile();
+  Future<void> saveConfig(AppModel app, Map<String, dynamic> config) async {
+    final file = _getConfigFile(app);
+    if (file == null) return;
+
     if (!await file.parent.exists()) {
       await file.parent.create(recursive: true);
     }
 
     // Read existing to preserve paths
-    final currentConfig = await readConfig();
+    final currentConfig = await readConfig(app);
     final mergedConfig = {...currentConfig, ...config};
 
     final buffer = StringBuffer();
