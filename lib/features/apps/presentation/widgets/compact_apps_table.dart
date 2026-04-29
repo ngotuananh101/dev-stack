@@ -180,15 +180,14 @@ class CompactAppsTable extends StatelessWidget {
   }
 
   Widget _buildAppRow(BuildContext context, AppModel app, bool isLast) {
-    return SizedBox(
-      height: 56,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          border: isLast
-              ? const Border()
-              : Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
-        ),
+    return Container(
+      height: 55,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        border: isLast
+            ? const Border()
+            : Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+      ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -333,46 +332,6 @@ class CompactAppsTable extends StatelessWidget {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  if (app.defaultUsername != null) ...[
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(
-                          LucideIcons.user,
-                          size: AppTextSize.xxs,
-                          color: AppColors.textPrimary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          app.defaultUsername!,
-                          style: const TextStyle(
-                            fontSize: AppTextSize.xxs,
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (app.defaultPassword != null) ...[
-                          const SizedBox(width: 8),
-                          Icon(
-                            LucideIcons.key,
-                            size: AppTextSize.xxs,
-                            color: AppColors.textPrimary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            app.defaultPassword!.isEmpty
-                                ? '(empty)'
-                                : app.defaultPassword!,
-                            style: const TextStyle(
-                              fontSize: AppTextSize.xxs,
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -387,8 +346,7 @@ class CompactAppsTable extends StatelessWidget {
             SizedBox(width: 140, child: _buildOperateButtons(context, app)),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildStatusIndicator(AppModel app) {

@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
@@ -100,7 +103,14 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   int get _tabCount {
     if (_isPma) return 2;
     if (_isPhp) return 3;
-    if (_isDb || _isWebserver || _isRedis || _isMongodb || _isRustFS || _isMeilisearch || _isElasticsearch) return 2;
+    if (_isDb ||
+        _isWebserver ||
+        _isRedis ||
+        _isMongodb ||
+        _isRustFS ||
+        _isMeilisearch ||
+        _isElasticsearch)
+      return 2;
     return 1;
   }
 
@@ -251,8 +261,8 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     final text = (_isMeilisearch || _isRustFS || _isElasticsearch)
         ? (_iniContent ?? '')
         : (_useCodeEditor && _codeController != null
-            ? _codeController!.text
-            : _fallbackController.text);
+              ? _codeController!.text
+              : _fallbackController.text);
 
     if (_isPhp) {
       await ref.read(phpSettingsProvider.notifier).savePhpIni(widget.app, text);
@@ -557,6 +567,23 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               widget.app.autoStartService ? 'Enabled' : 'Disabled',
             ),
           ]),
+          if (widget.app.defaultUsername != null) ...[
+            const SizedBox(height: 24),
+            _buildInfoSection('Default Credentials', [
+              _buildCredentialRow(
+                LucideIcons.user,
+                'Username',
+                widget.app.defaultUsername!,
+              ),
+              if (widget.app.defaultPassword != null)
+                _buildCredentialRow(
+                  LucideIcons.key,
+                  'Password',
+                  widget.app.defaultPassword!,
+                  isPassword: true,
+                ),
+            ]),
+          ],
         ],
       ),
     );
@@ -641,10 +668,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             child: _isRustFS
                 ? _buildRustFSConfig()
                 : _isMeilisearch
-                    ? _buildMeilisearchConfig()
-                    : _isElasticsearch
-                        ? _buildElasticsearchConfig()
-                        : _buildConfigEditor(),
+                ? _buildMeilisearchConfig()
+                : _isElasticsearch
+                ? _buildElasticsearchConfig()
+                : _buildConfigEditor(),
           ),
         ],
       ),
@@ -1048,10 +1075,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                   color: AppColors.textSecondary,
                 ),
                 items: options.map((String val) {
-                  return DropdownMenuItem<String>(
-                    value: val,
-                    child: Text(val),
-                  );
+                  return DropdownMenuItem<String>(value: val, child: Text(val));
                 }).toList(),
                 onChanged: (val) {
                   setState(() {
@@ -1367,6 +1391,80 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             style: const TextStyle(color: AppColors.textSecondary),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCredentialRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool isPassword = false,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textMuted),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: AppTextSize.xxs,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const Spacer(),
+        _buildCredentialChip(context, icon, value, isPassword: isPassword),
+      ],
+    );
+  }
+
+  Widget _buildCredentialChip(
+    BuildContext context,
+    IconData icon,
+    String value, {
+    bool isPassword = false,
+  }) {
+    final displayValue = isPassword && value.isEmpty ? '(empty)' : value;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          if (value.isNotEmpty) {
+            Clipboard.setData(ClipboardData(text: value));
+            AppDialogs.showToast(context, 'Copied: $value');
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              width: 0.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                displayValue,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'JetBrainsMono',
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                LucideIcons.copy,
+                size: 12,
+                color: AppColors.textMuted,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
