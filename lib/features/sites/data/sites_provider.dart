@@ -325,7 +325,7 @@ class SitesNotifier extends _$SitesNotifier {
 
     String nginxConfig = buildNginxServer(80);
     if (site.useSsl) {
-      nginxConfig += '\n' + buildNginxServer(443, ssl: true);
+      nginxConfig += '\n${buildNginxServer(443, ssl: true)}';
     }
     await nginxVhostFile.writeAsString(nginxConfig);
 

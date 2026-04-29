@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
-import '../../../core/config/app_config.dart';
+
 
 part 'elasticsearch_settings_provider.g.dart';
 

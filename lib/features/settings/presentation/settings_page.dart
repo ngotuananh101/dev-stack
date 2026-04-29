@@ -332,7 +332,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       final sourceExists = Directory(oldDir).existsSync();
       if (sourceExists) {
         final success = await notifier.migrateBaseDir(oldDir, newDir);
-        if (!success && mounted) {
+        if (!success && context.mounted) {
           AppDialogs.showToast(
             context,
             'Migration failed. Base directory was NOT changed.',
@@ -348,7 +348,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
       setState(() => _isMigrating = false);
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       // Show restart required dialog
       await showDialog(
@@ -404,7 +404,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
       );
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         AppDialogs.showToast(context, 'Error: $e', isError: true);
         setState(() => _isMigrating = false);
       }

@@ -517,7 +517,7 @@ class AppsNotifier extends _$AppsNotifier {
     // Special handling for Meilisearch Dashboard
     if (app.appId == 'meilisearch') {
       try {
-        final settings = await ref.read(meilisearchSettingsProvider.notifier).readConfig();
+        final settings = await ref.read(meilisearchSettingsProvider.notifier).readConfig(app);
         final httpAddr = settings['http_addr'] ?? '127.0.0.1:7700';
         
         // Handle both "127.0.0.1:7700" and ":7700" formats
