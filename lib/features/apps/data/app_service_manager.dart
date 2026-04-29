@@ -69,7 +69,12 @@ class AppServiceManager {
         // args.addAll(['--port', '6379']);
       } else if (fileName == 'mysqld.exe' || fileName == 'mariadbd.exe') {
         // Force output to console for capturing logs
-        args = ['--console'];
+        final version = app.installedVersion ?? 'unknown';
+        final dataDir = p.join(AppConfig.dataDir, '${app.appId}-$version');
+        args = [
+          '--console',
+          '--datadir=${dataDir.replaceAll('\\', '/')}',
+        ];
       } else if (fileName == 'mongod.exe') {
         // Look for mongod.cfg in the same directory as mongod.exe or its parent
         final confFile = File(p.join(workingDir, 'mongod.cfg'));

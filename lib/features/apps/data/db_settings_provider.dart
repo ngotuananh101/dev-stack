@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
+import 'package:path/path.dart' as p;
+import '../../../core/config/app_config.dart';
 
 part 'db_settings_provider.g.dart';
 
@@ -20,14 +22,13 @@ class DbSettings extends _$DbSettings {
     }
 
     final isMariaDb =
-        app.groupName == 'mariadb' ||
-        app.appId.toLowerCase().contains('mariadb');
+        app.groupName == 'mariadb' || id.contains('mariadb');
 
-    // MariaDB puts my.ini in data directory
-    if (isMariaDb) {
-      return File(
-        '${app.location}${Platform.pathSeparator}data${Platform.pathSeparator}my.ini',
-      );
+    // MariaDB/MySQL put my.ini in the managed data directory
+    if (isMariaDb || id.contains('mysql')) {
+      final version = app.installedVersion ?? 'unknown';
+      final dataDir = p.join(AppConfig.dataDir, '${app.appId}-$version');
+      return File(p.join(dataDir, 'my.ini'));
     }
 
     final isPostgresql =
@@ -36,13 +37,13 @@ class DbSettings extends _$DbSettings {
 
     // PostgreSQL puts postgresql.conf in data directory
     if (isPostgresql) {
-      return File(
-        '${app.location}${Platform.pathSeparator}data${Platform.pathSeparator}postgresql.conf',
-      );
+      final version = app.installedVersion ?? 'unknown';
+      final dataDir = p.join(AppConfig.dataDir, '${app.appId}-$version');
+      return File(p.join(dataDir, 'postgresql.conf'));
     }
 
-    // MySQL (and others) usually put it in the root directory
-    return File('${app.location}${Platform.pathSeparator}my.ini');
+    // Default fallback
+    return File(p.join(app.location!, 'my.ini'));
   }
 
   Future<String> readConfig(AppModel app) async {
