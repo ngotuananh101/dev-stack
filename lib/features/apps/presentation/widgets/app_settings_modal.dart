@@ -11,6 +11,7 @@ import '../../data/redis_settings_provider.dart';
 import '../../data/mongodb_settings_provider.dart';
 import '../../data/rustfs_settings_provider.dart';
 import '../../data/meilisearch_settings_provider.dart';
+import '../../data/elasticsearch_settings_provider.dart';
 import '../../data/app_service_manager.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
@@ -83,6 +84,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   bool get _isRustFS => widget.app.appId == 'rustfs';
 
   bool get _isMeilisearch => widget.app.appId == 'meilisearch';
+  bool get _isElasticsearch => widget.app.appId == 'elasticsearch';
 
   bool get _hasConfigTab =>
       _isPhp ||
@@ -92,12 +94,13 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       _isMongodb ||
       _isPostgresql ||
       _isRustFS ||
-      _isMeilisearch;
+      _isMeilisearch ||
+      _isElasticsearch;
 
   int get _tabCount {
     if (_isPma) return 2;
     if (_isPhp) return 3;
-    if (_isDb || _isWebserver || _isRedis || _isMongodb || _isRustFS || _isMeilisearch) return 2;
+    if (_isDb || _isWebserver || _isRedis || _isMongodb || _isRustFS || _isMeilisearch || _isElasticsearch) return 2;
     return 1;
   }
 
@@ -167,6 +170,11 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     } else if (_isMeilisearch) {
       final config = await ref
           .read(meilisearchSettingsProvider.notifier)
+          .readConfig();
+      content = json.encode(config);
+    } else if (_isElasticsearch) {
+      final config = await ref
+          .read(elasticsearchSettingsProvider.notifier)
           .readConfig();
       content = json.encode(config);
     }
@@ -239,8 +247,8 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
 
   // ─── Save ─────────────────────────────────────────────────────────────────────
   Future<void> _saveConfig() async {
-    // Use _iniContent directly for UI-based configs (Meilisearch, RustFS)
-    final text = (_isMeilisearch || _isRustFS)
+    // Use _iniContent directly for UI-based configs (Meilisearch, RustFS, Elasticsearch)
+    final text = (_isMeilisearch || _isRustFS || _isElasticsearch)
         ? (_iniContent ?? '')
         : (_useCodeEditor && _codeController != null
             ? _codeController!.text
@@ -268,6 +276,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     } else if (_isMeilisearch) {
       final config = json.decode(text);
       await ref.read(meilisearchSettingsProvider.notifier).saveConfig(config);
+    } else if (_isElasticsearch) {
+      final config = json.decode(text);
+      await ref.read(elasticsearchSettingsProvider.notifier).saveConfig(config);
     }
 
     // Force reload sau khi save
@@ -479,6 +490,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (_isMongodb) return 'mongod.cfg';
     if (_isRustFS) return 'Configuration';
     if (_isMeilisearch) return 'config.toml';
+    if (_isElasticsearch) return 'elasticsearch.yml';
     return 'php.ini';
   }
 
@@ -626,7 +638,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                 ? _buildRustFSConfig()
                 : _isMeilisearch
                     ? _buildMeilisearchConfig()
-                    : _buildConfigEditor(),
+                    : _isElasticsearch
+                        ? _buildElasticsearchConfig()
+                        : _buildConfigEditor(),
           ),
         ],
       ),
@@ -783,6 +797,116 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               onChanged: (val) {
                 setState(() {
                   config['no_analytics'] = val;
+                  _iniContent = json.encode(config);
+                });
+              },
+              activeThumbColor: AppColors.primary,
+              activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildElasticsearchConfig() {
+    if (!_isConfigLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final config = json.decode(_iniContent ?? '{}');
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildConfigGroup('Cluster Settings', [
+            _buildSettingField(
+              'Cluster Name',
+              'cluster.name',
+              config['cluster.name'] ?? 'ponta-cluster',
+              (val) {
+                config['cluster.name'] = val;
+                _iniContent = json.encode(config);
+              },
+            ),
+            _buildSettingField(
+              'Node Name',
+              'node.name',
+              config['node.name'] ?? 'ponta-node-1',
+              (val) {
+                config['node.name'] = val;
+                _iniContent = json.encode(config);
+              },
+            ),
+          ]),
+          const SizedBox(height: 24),
+          _buildConfigGroup('Network Settings', [
+            _buildSettingField(
+              'HTTP Address',
+              'network.host',
+              config['network.host'] ?? '127.0.0.1',
+              (val) {
+                config['network.host'] = val;
+                _iniContent = json.encode(config);
+              },
+            ),
+            _buildSettingField(
+              'HTTP Port',
+              'http.port',
+              (config['http.port'] ?? 9200).toString(),
+              (val) {
+                config['http.port'] = int.tryParse(val) ?? 9200;
+                _iniContent = json.encode(config);
+              },
+            ),
+          ]),
+          const SizedBox(height: 24),
+          _buildConfigGroup('Security & Features', [
+            SwitchListTile(
+              title: const Text(
+                'Enable X-Pack Security',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: AppTextSize.sm,
+                ),
+              ),
+              subtitle: const Text(
+                'Requires authentication for all requests',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: AppTextSize.xxs,
+                ),
+              ),
+              value: config['xpack.security.enabled'] ?? false,
+              onChanged: (val) {
+                setState(() {
+                  config['xpack.security.enabled'] = val;
+                  _iniContent = json.encode(config);
+                });
+              },
+              activeThumbColor: AppColors.primary,
+              activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+            ),
+            SwitchListTile(
+              title: const Text(
+                'Enable GeoIP Downloader',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: AppTextSize.sm,
+                ),
+              ),
+              subtitle: const Text(
+                'Automatically update GeoIP databases',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: AppTextSize.xxs,
+                ),
+              ),
+              value: config['ingest.geoip.downloader.enabled'] ?? false,
+              onChanged: (val) {
+                setState(() {
+                  config['ingest.geoip.downloader.enabled'] = val;
                   _iniContent = json.encode(config);
                 });
               },

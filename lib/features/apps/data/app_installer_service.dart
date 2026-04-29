@@ -179,6 +179,11 @@ class AppInstallerService {
         await _configureMeilisearch(logInfo);
       }
 
+      // 11. Post-installation: Configure Elasticsearch
+      if (app.appId == 'elasticsearch') {
+        await _configureElasticsearch(logInfo);
+      }
+
       // 9. Post-installation: Configure phpMyAdmin
       if (app.appId == 'phpMyAdmin') {
         await _configurePhpMyAdmin(installPath, logInfo);
@@ -1249,6 +1254,35 @@ Alias /phpmyadmin "$pmaPathUnix/"
       
       await confFile.writeAsString(buffer.toString());
       logInfo('Created default Meilisearch config at ${confFile.path}');
+    }
+  }
+
+  Future<void> _configureElasticsearch(Function(String) logInfo) async {
+    logInfo('Configuring Elasticsearch data/logs directory and default config...');
+    final esDataDir = Directory(p.join(AppConfig.dataDir, 'elasticsearch'));
+    final dataPath = Directory(p.join(esDataDir.path, 'data'));
+    final logsPath = Directory(p.join(esDataDir.path, 'logs'));
+
+    if (!dataPath.existsSync()) await dataPath.create(recursive: true);
+    if (!logsPath.existsSync()) await logsPath.create(recursive: true);
+
+    final confFile = File(p.join(esDataDir.path, 'elasticsearch.yml'));
+    if (!confFile.existsSync()) {
+      final buffer = StringBuffer();
+      buffer.writeln('cluster.name: "ponta-cluster"');
+      buffer.writeln('node.name: "ponta-node-1"');
+      buffer.writeln('network.host: 127.0.0.1');
+      buffer.writeln('http.port: 9200');
+      buffer.writeln('discovery.type: single-node');
+      buffer.writeln('xpack.security.enabled: false');
+      buffer.writeln('ingest.geoip.downloader.enabled: false');
+      
+      // Paths
+      buffer.writeln('path.data: "${dataPath.path.replaceAll('\\', '/')}"');
+      buffer.writeln('path.logs: "${logsPath.path.replaceAll('\\', '/')}"');
+      
+      await confFile.writeAsString(buffer.toString());
+      logInfo('Created default Elasticsearch config at ${confFile.path}');
     }
   }
 }

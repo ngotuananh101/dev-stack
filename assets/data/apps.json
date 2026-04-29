@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "lastUpdated": "2026-04-28T16:47:37.131Z",
+  "lastUpdated": "2026-04-29T17:56:07.986Z",
   "apps": [
     {
       "id": "pyenv",
@@ -530,8 +530,8 @@
       "cli_file": "mongos.exe",
       "versions": {
         "8.2.7": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.2.7.zip",
-        "8.0.20": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.0.20.zip",
-        "7.0.31": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.31.zip"
+        "8.0.21": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.0.21.zip",
+        "7.0.32": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.32.zip"
       }
     },
     {
@@ -657,6 +657,21 @@
         "1.28.2": "https://github.com/meilisearch/meilisearch/releases/download/v1.28.2/meilisearch-windows-amd64.exe",
         "1.27.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.27.0/meilisearch-windows-amd64.exe",
         "1.26.0": "https://github.com/meilisearch/meilisearch/releases/download/v1.26.0/meilisearch-windows-amd64.exe"
+      }
+    },
+    {
+      "id": "elasticsearch",
+      "name": "Elasticsearch",
+      "description": "Distributed, RESTful search and analytics engine.",
+      "category": "database",
+      "group_name": "elasticsearch",
+      "exec_file": "elasticsearch.bat",
+      "cli_file": "elasticsearch.bat",
+      "versions": {
+        "9.3.3": "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-9.3.3-windows-x86_64.zip",
+        "9.2.8": "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-9.2.8-windows-x86_64.zip",
+        "9.1.10": "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-9.1.10-windows-x86_64.zip",
+        "9.0.8": "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-9.0.8-windows-x86_64.zip"
       }
     }
   ]

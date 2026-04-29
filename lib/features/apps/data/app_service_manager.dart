@@ -127,6 +127,13 @@ class AppServiceManager {
         // Ensure db-path is set to our managed data directory if not in config
         // Actually, Meilisearch defaults to ./data.ms, better to be explicit or let config handle it.
         // For now, if config exists, we use it. If not, we might want to pass --db-path.
+      } else if (fileName == 'elasticsearch.bat') {
+        final esDataDir = p.join(AppConfig.dataDir, 'elasticsearch');
+        final confFile = File(p.join(esDataDir, 'elasticsearch.yml'));
+        if (confFile.existsSync()) {
+          // Elasticsearch 8.x can take config file path via -E path.conf
+          args = ['-E', 'path.conf=$esDataDir'];
+        }
       }
 
       final process = await Process.start(

@@ -1,27 +1,27 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'meilisearch_settings_provider.dart';
+part of 'elasticsearch_settings_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$meilisearchSettingsHash() =>
-    r'c94763813e27beea217989563dfc1993b6c4d2f0';
+String _$elasticsearchSettingsHash() =>
+    r'f08efe9c14f3b9e129114f94d91be55f162e3244';
 
-/// See also [MeilisearchSettings].
-@ProviderFor(MeilisearchSettings)
-final meilisearchSettingsProvider =
-    AutoDisposeNotifierProvider<MeilisearchSettings, void>.internal(
-  MeilisearchSettings.new,
-  name: r'meilisearchSettingsProvider',
+/// See also [ElasticsearchSettings].
+@ProviderFor(ElasticsearchSettings)
+final elasticsearchSettingsProvider =
+    AutoDisposeNotifierProvider<ElasticsearchSettings, void>.internal(
+  ElasticsearchSettings.new,
+  name: r'elasticsearchSettingsProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$meilisearchSettingsHash,
+      : _$elasticsearchSettingsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$MeilisearchSettings = AutoDisposeNotifier<void>;
+typedef _$ElasticsearchSettings = AutoDisposeNotifier<void>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

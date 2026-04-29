@@ -254,6 +254,30 @@ const fetchers = {
     });
     return versions;
   },
+
+  async elasticsearch() {
+    const res = await fetch(
+      `https://api.github.com/repos/elastic/elasticsearch/tags`,
+      {
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "Ponta-Update",
+        },
+      },
+    );
+    const data = await res.json();
+    const versions = {};
+    if (!Array.isArray(data)) return {};
+
+    data.forEach((t) => {
+      const ver = t.name.replace(/^v/i, "");
+      const parts = ver.split(".").map(Number);
+      if (parts[0] >= 8) {
+        versions[ver] = `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-windows-x86_64.zip`;
+      }
+    });
+    return versions;
+  },
 };
 
 // === CẤU TRÚC DỮ LIỆU GỐC ===
@@ -446,6 +470,15 @@ let baseDataObject = {
       exec_file: "meilisearch.exe",
       cli_file: "meilisearch.exe",
       repo: "meilisearch/meilisearch",
+    },
+    {
+      id: "elasticsearch",
+      name: "Elasticsearch",
+      description: "Distributed, RESTful search and analytics engine.",
+      category: "database",
+      group_name: "elasticsearch",
+      exec_file: "elasticsearch.bat",
+      cli_file: "elasticsearch.bat",
     },
   ],
 };
