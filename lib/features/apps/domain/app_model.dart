@@ -12,6 +12,8 @@ class AppModel {
   String? cliFile;
   List<String> versions;
   String? versionLinksJson;
+  String? defaultUsername;
+  String? defaultPassword;
 
   // UI/State properties
   String? selectedVersion;
@@ -135,5 +137,7 @@ class AppModel {
     this.isDefault = false,
     this.installProgress,
     this.installStatus,
+    this.defaultUsername,
+    this.defaultPassword,
   });
 }

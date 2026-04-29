@@ -464,6 +464,8 @@
       "group_name": "database",
       "exec_file": "mysqld.exe",
       "cli_file": "mysql.exe",
+      "default_username": "root",
+      "default_password": "",
       "versions": {
         "9.7.0": "https://cdn.mysql.com/Downloads/MySQL-9.7/mysql-9.7.0-winx64.zip",
         "9.6.0": "https://cdn.mysql.com/Downloads/MySQL-9.6/mysql-9.6.0-winx64.zip",
@@ -491,6 +493,8 @@
       "group_name": "database",
       "exec_file": "mariadbd.exe",
       "cli_file": "mariadb.exe",
+      "default_username": "root",
+      "default_password": "",
       "versions": {
         "12.3.1": "http://downloads.mariadb.org/rest-api/mariadb/12.3.1/mariadb-12.3.1-winx64.zip",
         "12.2.2": "http://downloads.mariadb.org/rest-api/mariadb/12.2.2/mariadb-12.2.2-winx64.zip",
@@ -624,6 +628,8 @@
       "group_name": "storage",
       "exec_file": "rustfs.exe",
       "cli_file": "rustfs.exe",
+      "default_username": "rustfsadmin",
+      "default_password": "rustfsadmin",
       "repo": "rustfs/rustfs",
       "includePrereleases": true,
       "versions": {
@@ -667,6 +673,7 @@
       "group_name": "elasticsearch",
       "exec_file": "elasticsearch.bat",
       "cli_file": "elasticsearch.bat",
+      "default_username": "elastic",
       "versions": {
         "9.3.3": "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-9.3.3-windows-x86_64.zip",
         "9.2.8": "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-9.2.8-windows-x86_64.zip",

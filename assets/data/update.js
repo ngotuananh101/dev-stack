@@ -374,6 +374,8 @@ let baseDataObject = {
       group_name: "database",
       exec_file: "mysqld.exe",
       cli_file: "mysql.exe",
+      default_username: "root",
+      default_password: "",
     },
     {
       id: "mariadb",
@@ -383,6 +385,8 @@ let baseDataObject = {
       group_name: "database",
       exec_file: "mariadbd.exe",
       cli_file: "mariadb.exe",
+      default_username: "root",
+      default_password: "",
     },
     {
       id: "redis",
@@ -458,6 +462,8 @@ let baseDataObject = {
       group_name: "storage",
       exec_file: "rustfs.exe",
       cli_file: "rustfs.exe",
+      default_username: "rustfsadmin",
+      default_password: "rustfsadmin",
       repo: "rustfs/rustfs",
       includePrereleases: true,
     },
@@ -479,6 +485,7 @@ let baseDataObject = {
       group_name: "elasticsearch",
       exec_file: "elasticsearch.bat",
       cli_file: "elasticsearch.bat",
+      default_username: "elastic",
     },
   ],
 };

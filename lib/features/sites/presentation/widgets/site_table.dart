@@ -75,12 +75,12 @@ class SiteTable extends ConsumerWidget {
           const SizedBox(width: 12),
           Expanded(flex: 4, child: _buildHeaderCell('PATH / TARGET')),
           const SizedBox(width: 12),
-          Expanded(flex: 2, child: _buildHeaderCell('TYPE')),
+          SizedBox(width: 100, child: _buildHeaderCell('TYPE')),
           const SizedBox(width: 12),
-          Expanded(flex: 1, child: _buildHeaderCell('SSL')),
+          SizedBox(width: 50, child: _buildHeaderCell('SSL')),
           const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 80,
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
@@ -145,16 +145,16 @@ class SiteTable extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 100,
             child: Text(
               site.siteType == 'php' ? 'PHP ${site.phpVersion}' : site.siteType.toUpperCase(),
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            flex: 1,
+          SizedBox(
+            width: 50,
             child: Align(
               alignment: Alignment.centerLeft,
               child: Icon(
@@ -165,8 +165,8 @@ class SiteTable extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 80,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [

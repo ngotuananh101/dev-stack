@@ -62,6 +62,8 @@ class AppsRepository {
           cliFile: json['cli_file'],
           versions: versionKeys.isNotEmpty ? versionKeys : ['latest'],
           versionLinksJson: jsonEncode(versionsMap),
+          defaultUsername: json['default_username'],
+          defaultPassword: json['default_password'],
           // Merge state from DB
           isInstalled: installed != null,
           location: installed?.location,

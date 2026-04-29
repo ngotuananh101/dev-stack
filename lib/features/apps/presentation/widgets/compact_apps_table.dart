@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/utils/app_dialogs.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_model.dart';
@@ -7,7 +8,6 @@ import 'app_version_modal.dart';
 import 'service_logs_modal.dart';
 import 'app_settings_modal.dart';
 import 'pyenv_manage_modal.dart';
-
 
 class CompactAppsTable extends StatelessWidget {
   final List<AppModel> apps;
@@ -124,18 +124,18 @@ class CompactAppsTable extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Expanded(flex: 4, child: _buildHeaderCell('SOFTWARE NAME')),
+                Expanded(flex: 7, child: _buildHeaderCell('SOFTWARE NAME')),
                 const SizedBox(width: 12),
-                Expanded(flex: 2, child: _buildHeaderCell('DEVELOPER')),
+                SizedBox(width: 80, child: _buildHeaderCell('DEVELOPER')),
                 const SizedBox(width: 12),
-                Expanded(flex: 4, child: _buildHeaderCell('DESCRIPTION')),
+                Expanded(flex: 5, child: _buildHeaderCell('DESCRIPTION')),
                 const SizedBox(width: 12),
-                Expanded(flex: 2, child: _buildHeaderCell('STATUS')),
+                SizedBox(width: 120, child: _buildHeaderCell('STATUS')),
                 const SizedBox(width: 12),
-                Expanded(flex: 1, child: _buildHeaderCell('PATH')),
+                SizedBox(width: 50, child: _buildHeaderCell('PATH')),
                 const SizedBox(width: 12),
-                Expanded(
-                  flex: 4,
+                SizedBox(
+                  width: 140,
                   child: _buildHeaderCell(
                     'OPERATE',
                     alignment: TextAlign.right,
@@ -151,7 +151,10 @@ class CompactAppsTable extends StatelessWidget {
               itemCount: apps.length,
               itemBuilder: (context, index) {
                 return _buildAppRow(
-                    context, apps[index], index == apps.length - 1);
+                  context,
+                  apps[index],
+                  index == apps.length - 1,
+                );
               },
             ),
           ),
@@ -191,7 +194,7 @@ class CompactAppsTable extends StatelessWidget {
           children: [
             // Software name with icon
             Expanded(
-              flex: 4,
+              flex: 7,
               child: Row(
                 children: [
                   SizedBox(
@@ -243,7 +246,8 @@ class CompactAppsTable extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  app.installedVersion?.toLowerCase() == 'latest'
+                                  app.installedVersion?.toLowerCase() ==
+                                          'latest'
                                       ? 'latest'
                                       : 'v${app.installedVersion}',
                                   style: const TextStyle(
@@ -275,12 +279,15 @@ class CompactAppsTable extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             // Developer
-            Expanded(
-              flex: 2,
+            SizedBox(
+              width: 80,
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: app.developer.toLowerCase() == 'official'
                         ? AppColors.primary.withValues(alpha: 0.1)
@@ -312,26 +319,72 @@ class CompactAppsTable extends StatelessWidget {
             const SizedBox(width: 12),
             // Description
             Expanded(
-              flex: 4,
-              child: Text(
-                app.description ?? 'No description',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: AppTextSize.xxs,
-                  color: AppColors.textSecondary,
-                ),
+              flex: 5,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    app.description ?? 'No description',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: AppTextSize.xxs,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  if (app.defaultUsername != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(
+                          LucideIcons.user,
+                          size: AppTextSize.xxs,
+                          color: AppColors.textPrimary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          app.defaultUsername!,
+                          style: const TextStyle(
+                            fontSize: AppTextSize.xxs,
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (app.defaultPassword != null) ...[
+                          const SizedBox(width: 8),
+                          Icon(
+                            LucideIcons.key,
+                            size: AppTextSize.xxs,
+                            color: AppColors.textPrimary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            app.defaultPassword!.isEmpty
+                                ? '(empty)'
+                                : app.defaultPassword!,
+                            style: const TextStyle(
+                              fontSize: AppTextSize.xxs,
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(width: 12),
             // Status
-            Expanded(flex: 2, child: _buildStatusIndicator(app)),
+            SizedBox(width: 120, child: _buildStatusIndicator(app)),
             const SizedBox(width: 12),
             // PATH toggle
-            Expanded(flex: 1, child: _buildPathToggle(app)),
+            SizedBox(width: 50, child: _buildPathToggle(app)),
             const SizedBox(width: 12),
             // Operate buttons
-            Expanded(flex: 4, child: _buildOperateButtons(context, app)),
+            SizedBox(width: 140, child: _buildOperateButtons(context, app)),
           ],
         ),
       ),
