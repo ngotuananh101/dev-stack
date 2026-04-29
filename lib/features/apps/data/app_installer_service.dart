@@ -769,6 +769,9 @@ $sslVhostMarker
         location / {
             index  index.html index.htm index.php;
         }
+
+        # Global Integrations
+        include "${p.join(AppConfig.vhostsDir, 'nginx', 'integrations', '*.conf').replaceAll('\\', '/')}";
     }''';
     }
 
@@ -794,6 +797,9 @@ http {
         location / {
             index  index.html index.htm index.php;
         }
+
+        # Global Integrations
+        include "${p.join(AppConfig.vhostsDir, 'nginx', 'integrations', '*.conf').replaceAll('\\', '/')}";
     }
 
 $sslBlock
@@ -1009,9 +1015,16 @@ net:
     final pmaPath = pma.location;
     if (wsPath == null || pmaPath == null) return;
 
-    final nginxVhostsDir = Directory(p.join(AppConfig.vhostsDir, 'nginx'));
+    final nginxVhostsDir = Directory(p.join(AppConfig.vhostsDir, 'nginx', 'integrations'));
     if (!nginxVhostsDir.existsSync()) {
       await nginxVhostsDir.create(recursive: true);
+    }
+
+    // Cleanup legacy config if exists
+    final legacyConf = File(p.join(AppConfig.vhostsDir, 'nginx', 'phpmyadmin.conf'));
+    if (legacyConf.existsSync()) {
+      await legacyConf.delete();
+      log('Removed legacy phpmyadmin.conf from vhosts root');
     }
 
     final pmaConfFile = File(p.join(nginxVhostsDir.path, 'phpmyadmin.conf'));
