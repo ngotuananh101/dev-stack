@@ -47,6 +47,9 @@ class CompactAppsTable extends StatelessWidget {
     if (appId.contains('cloud')) {
       return Icons.cloud;
     }
+    if (appId.contains('elasticsearch')) {
+      return Icons.search_rounded;
+    }
     return Icons.apps;
   }
 
@@ -69,6 +72,7 @@ class CompactAppsTable extends StatelessWidget {
     if (id.contains('compass')) return 'mongodb';
     if (id.contains('rustfs')) return 'rustfs';
     if (id.contains('meilisearch')) return 'meilisearch';
+    if (id.contains('elasticsearch')) return 'elasticsearch';
 
     // Fallback to group name if id doesn't match
     return group;
@@ -98,6 +102,9 @@ class CompactAppsTable extends StatelessWidget {
     }
     if (appId.contains('meilisearch')) {
       return const Color(0xFFFF5E5E); // Meilisearch Pink/Red
+    }
+    if (appId.contains('elasticsearch')) {
+      return const Color(0xFF005A9E); // Elasticsearch Blue/Cyan
     }
     return AppColors.primary;
   }
