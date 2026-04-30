@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/utils/app_dialogs.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_model.dart';

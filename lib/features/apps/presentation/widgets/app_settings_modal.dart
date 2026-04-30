@@ -101,16 +101,21 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       _isElasticsearch;
 
   int get _tabCount {
-    if (_isPma) return 2;
-    if (_isPhp) return 3;
+    if (_isPma) {
+      return 2;
+    }
+    if (_isPhp) {
+      return 3;
+    }
     if (_isDb ||
         _isWebserver ||
         _isRedis ||
         _isMongodb ||
         _isRustFS ||
         _isMeilisearch ||
-        _isElasticsearch)
+        _isElasticsearch) {
       return 2;
+    }
     return 1;
   }
 

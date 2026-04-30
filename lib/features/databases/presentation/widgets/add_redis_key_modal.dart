@@ -184,8 +184,9 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
                 .toList();
             final list = <Map<String, dynamic>>[];
             for (int i = 0; i < output.length; i += 2) {
-              if (i + 1 < output.length)
+              if (i + 1 < output.length) {
                 list.add({'value': output[i], 'score': output[i + 1]});
+              }
             }
             fullValue = const JsonEncoder.withIndent('  ').convert(list);
           }
