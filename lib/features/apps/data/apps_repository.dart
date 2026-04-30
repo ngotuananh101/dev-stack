@@ -55,7 +55,6 @@ class AppsRepository {
           appId: appId,
           name: json['name'],
           description: json['description'],
-          developer: json['developer'] ?? 'official',
           categories: categories,
           groupName: json['group_name'],
           execFile: json['exec_file'],

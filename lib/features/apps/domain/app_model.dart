@@ -5,7 +5,6 @@ class AppModel {
   final String appId;
   String name;
   String? description;
-  String developer;
   List<String> categories;
   String? groupName;
   String? execFile;
@@ -116,7 +115,6 @@ class AppModel {
     required this.appId,
     required this.name,
     this.description,
-    this.developer = 'official',
     required this.categories,
     this.groupName,
     this.execFile,

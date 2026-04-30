@@ -133,8 +133,6 @@ class CompactAppsTable extends StatelessWidget {
               children: [
                 Expanded(flex: 7, child: _buildHeaderCell('SOFTWARE NAME')),
                 const SizedBox(width: 12),
-                SizedBox(width: 80, child: _buildHeaderCell('DEVELOPER')),
-                const SizedBox(width: 12),
                 Expanded(flex: 5, child: _buildHeaderCell('DESCRIPTION')),
                 const SizedBox(width: 12),
                 SizedBox(width: 120, child: _buildHeaderCell('STATUS')),
@@ -195,165 +193,126 @@ class CompactAppsTable extends StatelessWidget {
             ? const Border()
             : Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
       ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Software name with icon
-            Expanded(
-              flex: 7,
-              child: Row(
-                children: [
-                  SizedBox(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Software name with icon
+          Expanded(
+            flex: 7,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: Image.asset(
+                    'assets/images/${_getIconFileName(app)}.png',
                     width: 28,
                     height: 28,
-                    child: Image.asset(
-                      'assets/images/${_getIconFileName(app)}.png',
-                      width: 28,
-                      height: 28,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                        _getAppIcon(app.appId),
-                        size: 16,
-                        color: _getIconColor(app.appId),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                app.name,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: AppTextSize.xs,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            if (app.isInstalled &&
-                                app.installedVersion != null) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.08,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  app.installedVersion?.toLowerCase() ==
-                                          'latest'
-                                      ? 'latest'
-                                      : 'v${app.installedVersion}',
-                                  style: const TextStyle(
-                                    fontSize: AppTextSize.xxs,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            if (app.isDefault) ...[
-                              const SizedBox(width: 6),
-                              const Tooltip(
-                                message: 'Default Version',
-                                child: Icon(
-                                  Icons.verified_rounded,
-                                  size: 14,
-                                  color: AppColors.success,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Developer
-            SizedBox(
-              width: 80,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: app.developer.toLowerCase() == 'official'
-                        ? AppColors.primary.withValues(alpha: 0.1)
-                        : AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: app.developer.toLowerCase() == 'official'
-                          ? AppColors.primary.withValues(alpha: 0.3)
-                          : AppColors.border,
-                      width: 0.5,
-                    ),
-                  ),
-                  child: Text(
-                    app.developer.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: app.developer.toLowerCase() == 'official'
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
-                      letterSpacing: 0.5,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      _getAppIcon(app.appId),
+                      size: 16,
+                      color: _getIconColor(app.appId),
                     ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Description
-            Expanded(
-              flex: 5,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    app.description ?? 'No description',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: AppTextSize.xxs,
-                      color: AppColors.textPrimary,
-                    ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              app.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: AppTextSize.xs,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (app.isInstalled &&
+                              app.installedVersion != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.08,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                app.installedVersion?.toLowerCase() ==
+                                        'latest'
+                                    ? 'latest'
+                                    : 'v${app.installedVersion}',
+                                style: const TextStyle(
+                                  fontSize: AppTextSize.xxs,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (app.isDefault) ...[
+                            const SizedBox(width: 6),
+                            const Tooltip(
+                              message: 'Default Version',
+                              child: Icon(
+                                Icons.verified_rounded,
+                                size: 14,
+                                color: AppColors.success,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            // Status
-            SizedBox(width: 120, child: _buildStatusIndicator(app)),
-            const SizedBox(width: 12),
-            // PATH toggle
-            SizedBox(width: 50, child: _buildPathToggle(app)),
-            const SizedBox(width: 12),
-            // Operate buttons
-            SizedBox(width: 140, child: _buildOperateButtons(context, app)),
-          ],
-        ),
-      );
+          ),
+          const SizedBox(width: 12),
+          // Description
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  app.description ?? 'No description',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: AppTextSize.xxs,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Status
+          SizedBox(width: 120, child: _buildStatusIndicator(app)),
+          const SizedBox(width: 12),
+          // PATH toggle
+          SizedBox(width: 50, child: _buildPathToggle(app)),
+          const SizedBox(width: 12),
+          // Operate buttons
+          SizedBox(width: 140, child: _buildOperateButtons(context, app)),
+        ],
+      ),
+    );
   }
 
   Widget _buildStatusIndicator(AppModel app) {

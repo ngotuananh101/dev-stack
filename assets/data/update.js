@@ -152,12 +152,15 @@ const fetchers = {
   },
 
   async postgresql() {
-    const res = await fetch("https://www.enterprisedb.com/download-postgresql-binaries");
+    const res = await fetch(
+      "https://www.enterprisedb.com/download-postgresql-binaries",
+    );
     const html = await res.text();
     const versions = {};
 
     // Pattern: Version <!-- -->17.9</span><div><div class="m-5"><a href="URL">
-    const versionRegex = /Version\s*<!--\s*-->([\d.]+)(?:<span[^>]*>.*?<\/span>)?<\/span>[\s\S]*?<a\s+href="([^"]+)"[^>]*>\s*<img\s+alt="Windows x86-64"/gi;
+    const versionRegex =
+      /Version\s*<!--\s*-->([\d.]+)(?:<span[^>]*>.*?<\/span>)?<\/span>[\s\S]*?<a\s+href="([^"]+)"[^>]*>\s*<img\s+alt="Windows x86-64"/gi;
     const matches = html.matchAll(versionRegex);
 
     for (const match of matches) {
@@ -165,13 +168,15 @@ const fetchers = {
       let url = match[2];
 
       // Skip unsupported versions
-      if (html.substring(match.index, match.index + 500).includes('Not supported')) {
+      if (
+        html.substring(match.index, match.index + 500).includes("Not supported")
+      ) {
         continue;
       }
 
       // Ensure absolute URL
-      if (url.startsWith('/') || !url.startsWith('http')) {
-        url = 'https://www.enterprisedb.com' + url;
+      if (url.startsWith("/") || !url.startsWith("http")) {
+        url = "https://www.enterprisedb.com" + url;
       }
 
       versions[version] = url;
@@ -273,7 +278,8 @@ const fetchers = {
       const ver = t.name.replace(/^v/i, "");
       const parts = ver.split(".").map(Number);
       if (parts[0] >= 8) {
-        versions[ver] = `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-windows-x86_64.zip`;
+        versions[ver] =
+          `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-windows-x86_64.zip`;
       }
     });
     return versions;
