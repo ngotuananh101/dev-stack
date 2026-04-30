@@ -170,6 +170,20 @@ class PathService {
       await _createShim(cliName, app.cliFilePath!);
     }
     
+    // Special handling for Node.js: Add npm and npx
+    if (app.appId.contains('nodejs')) {
+      final nodeDir = p.dirname(app.cliFilePath!);
+      final npmCmd = p.join(nodeDir, 'npm.cmd');
+      final npxCmd = p.join(nodeDir, 'npx.cmd');
+
+      if (File(npmCmd).existsSync()) {
+        await _createShim('npm', npmCmd);
+      }
+      if (File(npxCmd).existsSync()) {
+        await _createShim('npx', npxCmd);
+      }
+    }
+
     _logger.info('Created shims for ${app.name} in $binDir');
   }
 
@@ -184,6 +198,13 @@ class PathService {
     if (cliName != shimName) {
       final shimFile2 = File(p.join(binDir, '$cliName.bat'));
       if (shimFile2.existsSync()) shimFile2.deleteSync();
+    }
+
+    if (app.appId.contains('nodejs')) {
+      final npmShim = File(p.join(binDir, 'npm.bat'));
+      final npxShim = File(p.join(binDir, 'npx.bat'));
+      if (npmShim.existsSync()) npmShim.deleteSync();
+      if (npxShim.existsSync()) npxShim.deleteSync();
     }
 
     _logger.info('Removed shims for ${app.name} from $binDir');
