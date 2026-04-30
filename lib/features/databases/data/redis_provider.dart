@@ -56,6 +56,22 @@ class RedisNotifier extends _$RedisNotifier {
             final valRes = await Process.run(cliPath, ['-n', dbIndex.toString(), 'GET', key]);
             value = valRes.stdout.toString().trim();
             length = value.length;
+          } else if (type == 'list') {
+            final lenRes = await Process.run(cliPath, ['-n', dbIndex.toString(), 'LLEN', key]);
+            length = int.tryParse(lenRes.stdout.toString().trim()) ?? 0;
+            value = '[list data]';
+          } else if (type == 'set') {
+            final lenRes = await Process.run(cliPath, ['-n', dbIndex.toString(), 'SCARD', key]);
+            length = int.tryParse(lenRes.stdout.toString().trim()) ?? 0;
+            value = '[set data]';
+          } else if (type == 'hash') {
+            final lenRes = await Process.run(cliPath, ['-n', dbIndex.toString(), 'HLEN', key]);
+            length = int.tryParse(lenRes.stdout.toString().trim()) ?? 0;
+            value = '[hash data]';
+          } else if (type == 'zset') {
+            final lenRes = await Process.run(cliPath, ['-n', dbIndex.toString(), 'ZCARD', key]);
+            length = int.tryParse(lenRes.stdout.toString().trim()) ?? 0;
+            value = '[zset data]';
           } else {
             value = '[$type data]';
           }

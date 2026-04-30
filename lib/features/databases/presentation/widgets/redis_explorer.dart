@@ -358,6 +358,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
           dbIndex: widget.selectedDb,
           initialKey: item.key,
           initialValue: item.value,
+          initialType: item.type,
           initialTtl: item.rawTtl,
           onClose: () => Navigator.pop(context),
         ),

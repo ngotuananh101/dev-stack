@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:dev_stack/core/theme/app_text_size.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +15,7 @@ class AddRedisKeyModal extends ConsumerStatefulWidget {
   final VoidCallback onClose;
   final String? initialKey;
   final String? initialValue;
+  final String? initialType;
   final int? initialTtl;
 
   const AddRedisKeyModal({
@@ -22,6 +25,7 @@ class AddRedisKeyModal extends ConsumerStatefulWidget {
     required this.onClose,
     this.initialKey,
     this.initialValue,
+    this.initialType,
     this.initialTtl,
   });
 
@@ -35,17 +39,169 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
   final _valueController = TextEditingController();
   final _ttlController = TextEditingController();
   bool _isAdding = false;
+  late String _type;
   bool get isEdit => widget.initialKey != null;
+  bool get _isReadOnly => isEdit && _type != 'string';
 
   @override
   void initState() {
     super.initState();
+    _type = widget.initialType ?? 'string';
+    _keyController.text = widget.initialKey ?? '';
+    _valueController.text = widget.initialValue ?? '';
+    if (widget.initialTtl != null && widget.initialTtl! > 0) {
+      _ttlController.text = widget.initialTtl.toString();
+    }
+
     if (isEdit) {
-      _keyController.text = widget.initialKey!;
-      _valueController.text = widget.initialValue ?? '';
-      if (widget.initialTtl != null && widget.initialTtl! > 0) {
-        _ttlController.text = widget.initialTtl.toString();
+      _fetchFullValue();
+    }
+  }
+
+  Future<void> _fetchFullValue() async {
+    try {
+      final cliPath = widget.engine.cliFilePath;
+      if (cliPath == null) return;
+
+      final type = widget.initialType ?? 'string';
+
+      String fullValue = '';
+      if (type == 'string') {
+        final valRes = await Process.run(cliPath, [
+          '-n',
+          widget.dbIndex.toString(),
+          'GET',
+          widget.initialKey!,
+        ]);
+        fullValue = valRes.stdout.toString().trim();
+      } else {
+        // For non-string types, check length/count first
+        int count = 0;
+        if (type == 'list') {
+          final res = await Process.run(cliPath, [
+            '-n',
+            widget.dbIndex.toString(),
+            'LLEN',
+            widget.initialKey!,
+          ]);
+          count = int.tryParse(res.stdout.toString().trim()) ?? 0;
+        } else if (type == 'set') {
+          final res = await Process.run(cliPath, [
+            '-n',
+            widget.dbIndex.toString(),
+            'SCARD',
+            widget.initialKey!,
+          ]);
+          count = int.tryParse(res.stdout.toString().trim()) ?? 0;
+        } else if (type == 'hash') {
+          final res = await Process.run(cliPath, [
+            '-n',
+            widget.dbIndex.toString(),
+            'HLEN',
+            widget.initialKey!,
+          ]);
+          count = int.tryParse(res.stdout.toString().trim()) ?? 0;
+        } else if (type == 'zset') {
+          final res = await Process.run(cliPath, [
+            '-n',
+            widget.dbIndex.toString(),
+            'ZCARD',
+            widget.initialKey!,
+          ]);
+          count = int.tryParse(res.stdout.toString().trim()) ?? 0;
+        }
+
+        if (count > 5000) {
+          fullValue =
+              'The data length ($count items) exceeds the preview limit of 5000 items. To ensure performance, the full data will not be displayed.';
+        } else {
+          // Fetch and format as JSON
+          if (type == 'list') {
+            final res = await Process.run(cliPath, [
+              '-n',
+              widget.dbIndex.toString(),
+              'LRANGE',
+              widget.initialKey!,
+              '0',
+              '-1',
+            ]);
+            final items = res.stdout
+                .toString()
+                .trim()
+                .split('\n')
+                .map((s) => s.trim())
+                .where((s) => s.isNotEmpty)
+                .toList();
+            fullValue = const JsonEncoder.withIndent('  ').convert(items);
+          } else if (type == 'set') {
+            final res = await Process.run(cliPath, [
+              '-n',
+              widget.dbIndex.toString(),
+              'SMEMBERS',
+              widget.initialKey!,
+            ]);
+            final items = res.stdout
+                .toString()
+                .trim()
+                .split('\n')
+                .map((s) => s.trim())
+                .where((s) => s.isNotEmpty)
+                .toList();
+            fullValue = const JsonEncoder.withIndent('  ').convert(items);
+          } else if (type == 'hash') {
+            final res = await Process.run(cliPath, [
+              '-n',
+              widget.dbIndex.toString(),
+              'HGETALL',
+              widget.initialKey!,
+            ]);
+            final output = res.stdout
+                .toString()
+                .trim()
+                .split('\n')
+                .map((s) => s.trim())
+                .toList();
+            final map = <String, String>{};
+            for (int i = 0; i < output.length; i += 2) {
+              if (i + 1 < output.length) map[output[i]] = output[i + 1];
+            }
+            fullValue = const JsonEncoder.withIndent('  ').convert(map);
+          } else if (type == 'zset') {
+            final res = await Process.run(cliPath, [
+              '-n',
+              widget.dbIndex.toString(),
+              'ZRANGE',
+              widget.initialKey!,
+              '0',
+              '-1',
+              'WITHSCORES',
+            ]);
+            final output = res.stdout
+                .toString()
+                .trim()
+                .split('\n')
+                .map((s) => s.trim())
+                .toList();
+            final list = <Map<String, dynamic>>[];
+            for (int i = 0; i < output.length; i += 2) {
+              if (i + 1 < output.length)
+                list.add({'value': output[i], 'score': output[i + 1]});
+            }
+            fullValue = const JsonEncoder.withIndent('  ').convert(list);
+          }
+        }
       }
+
+      if (mounted) {
+        setState(() {
+          _type = type;
+          if (fullValue.isNotEmpty) {
+            _valueController.text = fullValue;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching full value: $e');
     }
   }
 
@@ -113,7 +269,7 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
     return Material(
       color: Colors.transparent,
       child: Container(
-        width: 450,
+        width: 550,
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
@@ -200,13 +356,18 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    _buildLabel('Value (String)'),
+                    _buildLabel(
+                      _isReadOnly
+                          ? 'Value (Read Only - $_type)'
+                          : 'Value (String)',
+                    ),
                     _buildTextField(
                       controller: _valueController,
                       hint: 'Enter string value',
-                      maxLines: 5,
+                      maxLines: 8,
+                      enabled: !_isReadOnly,
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
+                        if (!_isReadOnly && (value == null || value.isEmpty)) {
                           return 'Please enter a value';
                         }
                         return null;
@@ -263,26 +424,27 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _isAdding ? null : _handleSave,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.success,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 12,
+                  if (!_isReadOnly)
+                    ElevatedButton(
+                      onPressed: _isAdding ? null : _handleSave,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: Text(
+                        _isAdding
+                            ? (isEdit ? 'Updating...' : 'Adding...')
+                            : (isEdit ? 'Update Key' : 'Add Key'),
+                        style: TextStyle(
+                          fontSize: AppTextSize.xs,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                    child: Text(
-                      _isAdding
-                          ? (isEdit ? 'Updating...' : 'Adding...')
-                          : (isEdit ? 'Update Key' : 'Add Key'),
-                      style: TextStyle(
-                        fontSize: AppTextSize.xs,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
