@@ -126,6 +126,8 @@ class RedisNotifier extends _$RedisNotifier {
       await Process.run(
           cliPath, ['-n', dbIndex.toString(), 'EXPIRE', key, ttl.toString()]);
     }
+    // Force save to disk to prevent data loss on restart
+    await Process.run(cliPath, ['-n', dbIndex.toString(), 'SAVE']);
     await fetchKeys(app, dbIndex);
   }
 
@@ -133,6 +135,8 @@ class RedisNotifier extends _$RedisNotifier {
     final cliPath = app.cliFilePath;
     if (cliPath == null) return;
     await Process.run(cliPath, ['-n', dbIndex.toString(), 'DEL', key]);
+    // Force save to disk to prevent data loss on restart
+    await Process.run(cliPath, ['-n', dbIndex.toString(), 'SAVE']);
     await fetchKeys(app, dbIndex);
   }
 
@@ -140,6 +144,8 @@ class RedisNotifier extends _$RedisNotifier {
     final cliPath = app.cliFilePath;
     if (cliPath == null) return;
     await Process.run(cliPath, ['-n', dbIndex.toString(), 'FLUSHDB']);
+    // Force save to disk to prevent data loss on restart
+    await Process.run(cliPath, ['-n', dbIndex.toString(), 'SAVE']);
     await fetchKeys(app, dbIndex);
   }
 }
