@@ -111,9 +111,9 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
           count = int.tryParse(res.stdout.toString().trim()) ?? 0;
         }
 
-        if (count > 5000) {
+        if (count > 500) {
           fullValue =
-              'The data length ($count items) exceeds the preview limit of 5000 items. To ensure performance, the full data will not be displayed.';
+              'The data length ($count items) exceeds the preview limit of 500 items. To ensure performance, the full data will not be displayed.';
         } else {
           // Fetch and format as JSON
           if (type == 'list') {
