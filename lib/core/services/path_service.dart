@@ -175,12 +175,16 @@ class PathService {
       final nodeDir = p.dirname(app.cliFilePath!);
       final npmCmd = p.join(nodeDir, 'npm.cmd');
       final npxCmd = p.join(nodeDir, 'npx.cmd');
+      final corepackCmd = p.join(nodeDir, 'corepack.cmd');
 
       if (File(npmCmd).existsSync()) {
         await _createShim('npm', npmCmd);
       }
       if (File(npxCmd).existsSync()) {
         await _createShim('npx', npxCmd);
+      }
+      if (File(corepackCmd).existsSync()) {
+        await _createShim('corepack', corepackCmd);
       }
     }
 
@@ -203,8 +207,10 @@ class PathService {
     if (app.appId.contains('nodejs')) {
       final npmShim = File(p.join(binDir, 'npm.bat'));
       final npxShim = File(p.join(binDir, 'npx.bat'));
+      final corepackShim = File(p.join(binDir, 'corepack.bat'));
       if (npmShim.existsSync()) npmShim.deleteSync();
       if (npxShim.existsSync()) npxShim.deleteSync();
+      if (corepackShim.existsSync()) corepackShim.deleteSync();
     }
 
     _logger.info('Removed shims for ${app.name} from $binDir');
