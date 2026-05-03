@@ -9,6 +9,7 @@ import '../../apps/data/apps_provider.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/config/app_config.dart';
 import '../../hosts/data/hosts_repository.dart';
+import '../../../core/services/log_service.dart';
 
 part 'sites_provider.g.dart';
 
@@ -59,6 +60,7 @@ class SitesNotifier extends _$SitesNotifier {
 
     if (useSsl) {
       final sslNotifier = ref.read(sslServiceProvider.notifier);
+      final logger = ref.read(logServiceProvider);
       bool certGenerated = false;
       
       for (int i = 0; i < 3; i++) {
@@ -70,13 +72,13 @@ class SitesNotifier extends _$SitesNotifier {
           certGenerated = true;
           break;
         } else {
-          debugPrint('Certificate generation failed, retrying... (${i + 1}/3)');
+          logger.warning('Certificate generation failed for $domain, retrying... (${i + 1}/3)');
           await Future.delayed(const Duration(seconds: 1));
         }
       }
 
       if (!certGenerated) {
-        debugPrint('Failed to generate SSL after 3 retries, disabling SSL for $domain');
+        logger.error('Failed to generate SSL after 3 retries, disabling SSL for $domain');
         site.useSsl = false;
         await isar.writeTxn(() async {
           await isar.siteModels.put(site);
