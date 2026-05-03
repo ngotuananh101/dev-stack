@@ -6,7 +6,7 @@ part of 'redis_settings_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$redisSettingsHash() => r'5130815861e7a9d028cba0d5739329e09c5a5e9f';
+String _$redisSettingsHash() => r'9a637cb610f57fcb3b11dc08e8ee9a964451db23';
 
 /// See also [RedisSettings].
 @ProviderFor(RedisSettings)

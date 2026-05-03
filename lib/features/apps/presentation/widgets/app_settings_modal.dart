@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -47,6 +48,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   bool _useCodeEditor = false;
   List<PhpExtension> _extensions = [];
   String _searchQuery = '';
+  final Map<String, Timer> _debounceTimers = {};
 
   // Lazy loading flags
   bool _isConfigLoaded = false;
@@ -134,6 +136,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     _tabController.dispose();
     _codeController?.dispose();
     _fallbackController.dispose();
+    for (var timer in _debounceTimers.values) {
+      timer.cancel();
+    }
+    _debounceTimers.clear();
     super.dispose();
   }
 
@@ -1030,7 +1036,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           Text(
             label,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: AppTextSize.xxs,
               color: AppColors.textSecondary,
               fontWeight: FontWeight.bold,
             ),
@@ -1038,12 +1044,17 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           const SizedBox(height: 8),
           TextField(
             onChanged: (val) {
-              onChanged(val);
+              if (_debounceTimers[key] != null) {
+                _debounceTimers[key]!.cancel();
+              }
+              _debounceTimers[key] = Timer(const Duration(seconds: 1), () {
+                onChanged(val);
+              });
             },
             controller: TextEditingController(text: value)
               ..selection = TextSelection.collapsed(offset: value.length),
             obscureText: obscureText,
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            style: const TextStyle(fontSize: AppTextSize.xs, color: AppColors.textPrimary),
             decoration: InputDecoration(
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(

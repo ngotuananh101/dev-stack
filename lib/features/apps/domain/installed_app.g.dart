@@ -47,33 +47,38 @@ const InstalledAppSchema = CollectionSchema(
       name: r'execFilePath',
       type: IsarType.string,
     ),
-    r'groupName': PropertySchema(
+    r'extraInfoJson': PropertySchema(
       id: 6,
+      name: r'extraInfoJson',
+      type: IsarType.string,
+    ),
+    r'groupName': PropertySchema(
+      id: 7,
       name: r'groupName',
       type: IsarType.string,
     ),
     r'installedAt': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'installedAt',
       type: IsarType.dateTime,
     ),
     r'isDefault': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'isDefault',
       type: IsarType.bool,
     ),
     r'location': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'location',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'status',
       type: IsarType.string,
     ),
     r'version': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'version',
       type: IsarType.string,
     )
@@ -153,6 +158,12 @@ int _installedAppEstimateSize(
     }
   }
   {
+    final value = object.extraInfoJson;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.groupName;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -181,12 +192,13 @@ void _installedAppSerialize(
   writer.writeBool(offsets[3], object.autoStartService);
   writer.writeString(offsets[4], object.cliFilePath);
   writer.writeString(offsets[5], object.execFilePath);
-  writer.writeString(offsets[6], object.groupName);
-  writer.writeDateTime(offsets[7], object.installedAt);
-  writer.writeBool(offsets[8], object.isDefault);
-  writer.writeString(offsets[9], object.location);
-  writer.writeString(offsets[10], object.status);
-  writer.writeString(offsets[11], object.version);
+  writer.writeString(offsets[6], object.extraInfoJson);
+  writer.writeString(offsets[7], object.groupName);
+  writer.writeDateTime(offsets[8], object.installedAt);
+  writer.writeBool(offsets[9], object.isDefault);
+  writer.writeString(offsets[10], object.location);
+  writer.writeString(offsets[11], object.status);
+  writer.writeString(offsets[12], object.version);
 }
 
 InstalledApp _installedAppDeserialize(
@@ -202,12 +214,13 @@ InstalledApp _installedAppDeserialize(
     autoStartService: reader.readBoolOrNull(offsets[3]) ?? false,
     cliFilePath: reader.readStringOrNull(offsets[4]),
     execFilePath: reader.readStringOrNull(offsets[5]),
-    groupName: reader.readStringOrNull(offsets[6]),
-    installedAt: reader.readDateTimeOrNull(offsets[7]),
-    isDefault: reader.readBoolOrNull(offsets[8]) ?? false,
-    location: reader.readString(offsets[9]),
-    status: reader.readString(offsets[10]),
-    version: reader.readStringOrNull(offsets[11]),
+    extraInfoJson: reader.readStringOrNull(offsets[6]),
+    groupName: reader.readStringOrNull(offsets[7]),
+    installedAt: reader.readDateTimeOrNull(offsets[8]),
+    isDefault: reader.readBoolOrNull(offsets[9]) ?? false,
+    location: reader.readString(offsets[10]),
+    status: reader.readString(offsets[11]),
+    version: reader.readStringOrNull(offsets[12]),
   );
   object.id = id;
   return object;
@@ -235,14 +248,16 @@ P _installedAppDeserializeProp<P>(
     case 6:
       return (reader.readStringOrNull(offset)) as P;
     case 7:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 8:
-      return (reader.readBoolOrNull(offset) ?? false) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 9:
-      return (reader.readString(offset)) as P;
+      return (reader.readBoolOrNull(offset) ?? false) as P;
     case 10:
       return (reader.readString(offset)) as P;
     case 11:
+      return (reader.readString(offset)) as P;
+    case 12:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1162,6 +1177,160 @@ extension InstalledAppQueryFilter
   }
 
   QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'extraInfoJson',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'extraInfoJson',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'extraInfoJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'extraInfoJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'extraInfoJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'extraInfoJson',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'extraInfoJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'extraInfoJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'extraInfoJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'extraInfoJson',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'extraInfoJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
+      extraInfoJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'extraInfoJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterFilterCondition>
       groupNameIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -1963,6 +2132,19 @@ extension InstalledAppQuerySortBy
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByExtraInfoJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'extraInfoJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      sortByExtraInfoJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'extraInfoJson', Sort.desc);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> sortByGroupName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'groupName', Sort.asc);
@@ -2116,6 +2298,19 @@ extension InstalledAppQuerySortThenBy
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByExtraInfoJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'extraInfoJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy>
+      thenByExtraInfoJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'extraInfoJson', Sort.desc);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QAfterSortBy> thenByGroupName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'groupName', Sort.asc);
@@ -2245,6 +2440,14 @@ extension InstalledAppQueryWhereDistinct
     });
   }
 
+  QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByExtraInfoJson(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'extraInfoJson',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<InstalledApp, InstalledApp, QDistinct> distinctByGroupName(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -2328,6 +2531,13 @@ extension InstalledAppQueryProperty
   QueryBuilder<InstalledApp, String?, QQueryOperations> execFilePathProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'execFilePath');
+    });
+  }
+
+  QueryBuilder<InstalledApp, String?, QQueryOperations>
+      extraInfoJsonProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'extraInfoJson');
     });
   }
 

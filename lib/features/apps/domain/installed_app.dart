@@ -29,6 +29,8 @@ class InstalledApp {
 
   bool isDefault = false;
 
+  String? extraInfoJson;
+
   InstalledApp({
     required this.appId,
     required this.appName,
@@ -42,5 +44,6 @@ class InstalledApp {
     this.autoStartService = false,
     this.groupName,
     this.isDefault = false,
+    this.extraInfoJson,
   });
 }

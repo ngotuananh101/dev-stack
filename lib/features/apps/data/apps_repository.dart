@@ -74,6 +74,7 @@ class AppsRepository {
           isAddedToPath: installed?.addedToPath ?? false,
           autoStartService: installed?.autoStartService ?? false,
           isDefault: installed?.isDefault ?? false,
+          extraInfoJson: installed?.extraInfoJson,
         );
       }).toList().cast<AppModel>();
     } catch (e, stack) {
@@ -125,6 +126,7 @@ class AppsRepository {
         autoStartService: app.autoStartService,
         groupName: app.groupName,
         isDefault: app.isDefault,
+        extraInfoJson: app.extraInfoJson,
       );
       await isar.installedApps.put(installed);
     });
