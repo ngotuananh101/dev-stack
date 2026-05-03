@@ -15,6 +15,7 @@ import 'package:process_run/shell.dart';
 import 'rustfs_settings_provider.dart';
 import 'meilisearch_settings_provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:dev_stack/core/services/log_service.dart';
 
 part 'apps_provider.g.dart';
 
@@ -34,7 +35,7 @@ class AppsNotifier extends _$AppsNotifier {
     try {
       await repository.importInitialData();
     } catch (e) {
-      debugPrint('Error in importInitialData: $e');
+      AppLogger.error('Error in importInitialData: $e');
       ref
           .read(errorNotifierProvider.notifier)
           .setError('Database initialization failed: $e');
@@ -49,7 +50,7 @@ class AppsNotifier extends _$AppsNotifier {
     Future.microtask(() {
       for (final app in apps) {
         if (app.isInstalled && app.isService && app.autoStartService) {
-          debugPrint('Auto-starting service: ${app.name}');
+          AppLogger.info('Auto-starting service: ${app.name}');
           startService(app);
         }
       }
@@ -174,7 +175,7 @@ class AppsNotifier extends _$AppsNotifier {
 
         notifyUpdate(force: true);
       } catch (e) {
-        debugPrint('Installation failed: $e');
+        AppLogger.error('Installation failed: $e');
         app.status = 'not_installed';
         app.installProgress = null;
         app.installStatus = null;
@@ -204,7 +205,7 @@ class AppsNotifier extends _$AppsNotifier {
           // 0. Stop service if running before update
           final manager = ref.read(appServiceManagerProvider);
           if (manager.isRunning(app.appId)) {
-            debugPrint('Stopping service before update: ${app.name}');
+            AppLogger.info('Stopping service before update: ${app.name}');
             await manager.stop(app);
           }
 
@@ -271,7 +272,7 @@ class AppsNotifier extends _$AppsNotifier {
 
           notifyUpdate(force: true);
         } catch (e) {
-          debugPrint('Update failed: $e');
+          AppLogger.error('Update failed: $e');
           app.status = 'installed'; // Revert to installed
           app.installProgress = null;
           app.installStatus = null;
@@ -298,7 +299,7 @@ class AppsNotifier extends _$AppsNotifier {
       // Stop service if running
       final manager = ref.read(appServiceManagerProvider);
       if (manager.isRunning(app.appId)) {
-        debugPrint('Stopping service before uninstallation: ${app.name}');
+        AppLogger.info('Stopping service before uninstallation: ${app.name}');
         await manager.stop(app);
       }
 
@@ -355,7 +356,7 @@ class AppsNotifier extends _$AppsNotifier {
 
       notifyUpdate(force: true);
     } catch (e) {
-      debugPrint('Uninstallation failed: $e');
+      AppLogger.error('Uninstallation failed: $e');
       ref.read(errorNotifierProvider.notifier).setError(e.toString());
     }
   }
@@ -389,7 +390,7 @@ class AppsNotifier extends _$AppsNotifier {
       await repository.save(app);
       notifyUpdate(force: true);
     } catch (e) {
-      debugPrint('Error toggling PATH: $e');
+      AppLogger.error('Error toggling PATH: $e');
     }
   }
 
@@ -411,7 +412,7 @@ class AppsNotifier extends _$AppsNotifier {
 
       notifyUpdate(force: true);
     } catch (e) {
-      debugPrint('Error starting service: $e');
+      AppLogger.error('Error starting service: $e');
     }
   }
 
@@ -425,7 +426,7 @@ class AppsNotifier extends _$AppsNotifier {
       await manager.stop(app);
       notifyUpdate(force: true);
     } catch (e) {
-      debugPrint('Error stopping service: $e');
+      AppLogger.error('Error stopping service: $e');
     }
   }
 
@@ -450,7 +451,7 @@ class AppsNotifier extends _$AppsNotifier {
       );
       notifyUpdate(force: true);
     } catch (e) {
-      debugPrint('Error restarting service: $e');
+      AppLogger.error('Error restarting service: $e');
     }
   }
 
@@ -481,7 +482,7 @@ class AppsNotifier extends _$AppsNotifier {
       );
       for (final ws in webServers) {
         if (manager.isRunning(ws.appId)) {
-          debugPrint('Restarting ${ws.name} due to default PHP change...');
+          AppLogger.info('Restarting ${ws.name} due to default PHP change...');
           await manager.restart(
             ws,
             onStatusChange: () => notifyUpdate(force: true),
@@ -491,7 +492,7 @@ class AppsNotifier extends _$AppsNotifier {
 
       notifyUpdate(force: true);
     } catch (e) {
-      debugPrint('Error changing default PHP: $e');
+      AppLogger.error('Error changing default PHP: $e');
       ref
           .read(errorNotifierProvider.notifier)
           .setError('Failed to change default PHP: $e');
@@ -516,7 +517,7 @@ class AppsNotifier extends _$AppsNotifier {
         }
         return;
       } catch (e) {
-        debugPrint('Error opening RustFS dashboard: $e');
+        AppLogger.error('Error opening RustFS dashboard: $e');
         ref.read(errorNotifierProvider.notifier).setError('Failed to open RustFS Dashboard: $e');
         return;
       }
@@ -543,7 +544,7 @@ class AppsNotifier extends _$AppsNotifier {
         }
         return;
       } catch (e) {
-        debugPrint('Error opening Meilisearch dashboard: $e');
+        AppLogger.error('Error opening Meilisearch dashboard: $e');
         ref.read(errorNotifierProvider.notifier).setError('Failed to open Meilisearch Dashboard: $e');
         return;
       }
@@ -560,7 +561,7 @@ class AppsNotifier extends _$AppsNotifier {
         throw Exception('Executable not found at ${app.execFilePath}');
       }
     } catch (e) {
-      debugPrint('Error opening app: $e');
+      AppLogger.error('Error opening app: $e');
       ref
           .read(errorNotifierProvider.notifier)
           .setError('Failed to open ${app.name}: $e');
@@ -576,7 +577,7 @@ class AppsNotifier extends _$AppsNotifier {
       app.isInstalled && app.isService && manager.isRunning(app.appId)
     ).toList();
 
-    debugPrint('Tray: Stopping ${runningApps.length} services...');
+    AppLogger.info('Tray: Stopping ${runningApps.length} services...');
 
     // Dừng tất cả song song để tăng tốc độ
     await Future.wait(runningApps.map((app) async {
@@ -584,7 +585,7 @@ class AppsNotifier extends _$AppsNotifier {
         await manager.stop(app);
         app.serviceStatus = 'stopped';
       } catch (e) {
-        debugPrint('Error stopping ${app.name}: $e');
+        AppLogger.error('Error stopping ${app.name}: $e');
       }
     }));
 

@@ -13,6 +13,7 @@ import '../../settings/data/settings_provider.dart';
 import '../../apps/data/apps_provider.dart';
 import 'widgets/add_site_modal.dart';
 import 'widgets/edit_site_modal.dart';
+import 'package:dev_stack/core/services/log_service.dart';
 
 class SitesPage extends ConsumerStatefulWidget {
   const SitesPage({super.key});
@@ -347,7 +348,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
               count++;
             } catch (e) {
               // Log error but continue with others
-              debugPrint('Error adding site $domain: $e');
+              AppLogger.error('Error adding site $domain: $e');
             }
           }
 

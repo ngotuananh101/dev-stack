@@ -8,9 +8,11 @@ import '../config/app_config.dart';
 
 part 'log_service.g.dart';
 
+final AppLogger = LogService();
+
 @riverpod
 LogService logService(Ref ref) {
-  return LogService();
+  return AppLogger;
 }
 
 class LogService {

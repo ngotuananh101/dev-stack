@@ -169,7 +169,7 @@ class AppServiceManager {
       final startLog =
           'Service started (PID: ${process.pid}) with command $execPath ${args.join(' ')}';
       app.addServiceLog(startLog);
-      debugPrint('[${app.name}] $startLog');
+      AppLogger.info('[${app.name}] $startLog');
 
       onStatusChange?.call();
 
@@ -177,7 +177,7 @@ class AppServiceManager {
       process.exitCode.then((code) {
         final activeApp = _activeApps[app.appId];
         _logger.info('Service ${app.name} exited with code $code');
-        debugPrint('[${app.name}] Exited with code $code');
+        AppLogger.info('[${app.name}] Exited with code $code');
         _processes.remove(app.appId);
         _activeApps.remove(app.appId);
         if (activeApp != null) {
@@ -194,7 +194,7 @@ class AppServiceManager {
           if (line.trim().isNotEmpty) {
             final cleanLine = line.trim();
             _activeApps[app.appId]?.addServiceLog(cleanLine);
-            debugPrint('[${app.name}] $cleanLine');
+            AppLogger.info('[${app.name}] $cleanLine');
             onStatusChange?.call();
           }
         }
@@ -216,14 +216,14 @@ class AppServiceManager {
             }
 
             _activeApps[app.appId]?.addServiceLog('[$prefix] $cleanLine');
-            debugPrint('[${app.name}] $prefix: $cleanLine');
+            AppLogger.info('[${app.name}] $prefix: $cleanLine');
             onStatusChange?.call();
           }
         }
       });
     } catch (e) {
       _logger.error('Failed to start service ${app.name}: $e');
-      debugPrint('[${app.name}] CRITICAL ERROR: $e');
+      AppLogger.error('[${app.name}] CRITICAL ERROR: $e');
       app.serviceStatus = 'stopped';
       rethrow;
     }

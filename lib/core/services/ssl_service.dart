@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
 import '../../features/settings/data/settings_provider.dart';
 import '../config/app_config.dart';
+import 'package:dev_stack/core/services/log_service.dart';
 
 part 'ssl_service.g.dart';
 
@@ -40,7 +41,7 @@ class SslService extends _$SslService {
       final results = await shell.run('"$mkcertPath" -CAROOT');
       return results.isNotEmpty && results.first.stdout.toString().trim().isNotEmpty;
     } catch (e) {
-      debugPrint('SSL status check failed: $e');
+      AppLogger.error('SSL status check failed: $e');
       return false;
     }
   }
@@ -56,7 +57,7 @@ class SslService extends _$SslService {
     final keyPath = getSiteKeyPath(domain);
 
     if (!force && File(certPath).existsSync() && File(keyPath).existsSync()) {
-      debugPrint('Certificate for $domain already exists, skipping generation.');
+      AppLogger.info('Certificate for $domain already exists, skipping generation.');
       return;
     }
 
@@ -70,9 +71,9 @@ class SslService extends _$SslService {
       await shell.run(
         '"$mkcertPath" -cert-file cert.pem -key-file key.pem "$domain" localhost 127.0.0.1 ::1',
       );
-      debugPrint('Successfully generated certificate for $domain');
+      AppLogger.info('Successfully generated certificate for $domain');
     } catch (e) {
-      debugPrint('Failed to generate certificate for $domain: $e');
+      AppLogger.error('Failed to generate certificate for $domain: $e');
     }
   }
 
@@ -89,7 +90,7 @@ class SslService extends _$SslService {
     // Double check actual system status before running expensive install command
     final isActuallyInstalled = await checkStatus();
     if (isActuallyInstalled) {
-      debugPrint('SSL is already installed in system, updating database status...');
+      AppLogger.info('SSL is already installed in system, updating database status...');
       await ref.read(settingsNotifierProvider.notifier).updateField(isSslInstalled: true);
       state = const AsyncValue.data(true);
       await generateSiteCert('localhost');
@@ -98,11 +99,11 @@ class SslService extends _$SslService {
     
     try {
       if (!File(mkcertPath).existsSync()) {
-        debugPrint('mkcert.exe not found at $mkcertPath');
+        AppLogger.info('mkcert.exe not found at $mkcertPath');
         return;
       }
 
-      debugPrint('SSL not found, running mkcert -install...');
+      AppLogger.info('SSL not found, running mkcert -install...');
       final shell = Shell();
       final installCmd =
           'Start-Process -FilePath "$mkcertPath" -ArgumentList "-install" -Verb RunAs -Wait';
@@ -116,7 +117,7 @@ class SslService extends _$SslService {
       }
       state = AsyncValue.data(isInstalledNow);
     } catch (e) {
-      debugPrint('Failed to initialize Root CA: $e');
+      AppLogger.error('Failed to initialize Root CA: $e');
       state = AsyncValue.error(e, StackTrace.current);
     }
   }
@@ -132,7 +133,7 @@ class SslService extends _$SslService {
       await ref.read(settingsNotifierProvider.notifier).updateField(isSslInstalled: false);
       state = const AsyncValue.data(false);
     } catch (e) {
-      debugPrint('Failed to uninstall Root CA: $e');
+      AppLogger.error('Failed to uninstall Root CA: $e');
       state = AsyncValue.error(e, StackTrace.current);
     }
   }

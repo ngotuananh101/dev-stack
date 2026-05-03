@@ -20,6 +20,7 @@ import 'core/services/window_service.dart';
 import 'core/services/ssl_service.dart';
 import 'features/apps/data/app_installer_service.dart';
 import 'features/settings/domain/app_settings.dart';
+import 'package:dev_stack/core/services/log_service.dart';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -109,7 +110,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         final installer = ref.read(appInstallerServiceProvider);
         await installer.reconfigureWebservers(
           apps,
-          (msg) => debugPrint('SSL Sync: $msg'),
+          (msg) => AppLogger.info('SSL Sync: $msg'),
         );
       }
     });

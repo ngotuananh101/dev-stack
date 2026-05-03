@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../data/redis_provider.dart';
 import '../../../apps/domain/app_model.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
+import 'package:dev_stack/core/services/log_service.dart';
 
 class AddRedisKeyModal extends ConsumerStatefulWidget {
   final AppModel engine;
@@ -202,7 +203,7 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
         });
       }
     } catch (e) {
-      debugPrint('Error fetching full value: $e');
+      AppLogger.error('Error fetching full value: $e');
     }
   }
 

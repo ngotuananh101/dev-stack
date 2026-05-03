@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'apps_provider.dart';
+import 'package:dev_stack/core/services/log_service.dart';
 
 part 'pyenv_provider.g.dart';
 
@@ -64,7 +65,7 @@ class PyenvNotifier extends _$PyenvNotifier {
         }).where((v) => v.isNotEmpty && v != 'current').toList();
       }
     } catch (e) {
-      debugPrint('Error listing pyenv versions: $e');
+      AppLogger.error('Error listing pyenv versions: $e');
     }
     return [];
   }
@@ -108,7 +109,7 @@ class PyenvNotifier extends _$PyenvNotifier {
         return latestVersions.values.toList().reversed.toList();
       }
     } catch (e) {
-      debugPrint('Error listing installable versions: $e');
+      AppLogger.error('Error listing installable versions: $e');
     }
     return [];
   }

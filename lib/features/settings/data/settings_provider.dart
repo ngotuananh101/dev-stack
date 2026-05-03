@@ -8,6 +8,7 @@ import '../../../core/database/isar_provider.dart';
 import '../../apps/domain/installed_app.dart';
 import '../../sites/domain/site_model.dart';
 import '../domain/app_settings.dart';
+import 'package:dev_stack/core/services/log_service.dart';
 
 part 'settings_provider.g.dart';
 
@@ -31,7 +32,7 @@ class SettingsNotifier extends _$SettingsNotifier {
       
       return settings;
     } catch (e) {
-      debugPrint('Error reading AppSettings, resetting to default: $e');
+      AppLogger.error('Error reading AppSettings, resetting to default: $e');
       // If reading fails (e.g. RangeError due to schema mismatch), clear and reset
       await isar.writeTxn(() async {
         await isar.appSettings.clear();
@@ -62,7 +63,7 @@ class SettingsNotifier extends _$SettingsNotifier {
       final target = Directory(newDir);
 
       if (!source.existsSync()) {
-        debugPrint('Source directory does not exist: $oldDir');
+        AppLogger.info('Source directory does not exist: $oldDir');
         return false;
       }
 
@@ -71,25 +72,25 @@ class SettingsNotifier extends _$SettingsNotifier {
       }
 
       // Step 1: Copy all files
-      debugPrint('Migration Step 1/4: Copying files...');
+      AppLogger.info('Migration Step 1/4: Copying files...');
       await _copyDirectory(source, target);
 
       // Step 2: Rewrite paths in config files
-      debugPrint('Migration Step 2/4: Rewriting config file paths...');
+      AppLogger.info('Migration Step 2/4: Rewriting config file paths...');
       await _rewriteConfigPaths(target, oldDir, newDir);
 
       // Step 3: Update paths in Isar database
-      debugPrint('Migration Step 3/4: Updating database records...');
+      AppLogger.info('Migration Step 3/4: Updating database records...');
       await _rewriteDbPaths(oldDir, newDir);
 
       // Step 4: Update Windows User PATH
-      debugPrint('Migration Step 4/4: Updating Windows PATH...');
+      AppLogger.info('Migration Step 4/4: Updating Windows PATH...');
       await _rewriteWindowsPath(oldDir, newDir);
 
-      debugPrint('Migration completed successfully.');
+      AppLogger.info('Migration completed successfully.');
       return true;
     } catch (e) {
-      debugPrint('Migration failed: $e');
+      AppLogger.error('Migration failed: $e');
       return false;
     }
   }
@@ -165,11 +166,11 @@ class SettingsNotifier extends _$SettingsNotifier {
 
         if (modified) {
           await entity.writeAsString(content);
-          debugPrint('Rewrote paths in: ${entity.path}');
+          AppLogger.info('Rewrote paths in: ${entity.path}');
         }
       } catch (e) {
         // Skip binary or unreadable files
-        debugPrint('Skipping file (unreadable): ${entity.path}');
+        AppLogger.info('Skipping file (unreadable): ${entity.path}');
       }
     }
   }
@@ -202,7 +203,7 @@ class SettingsNotifier extends _$SettingsNotifier {
 
           if (modified) {
             await isar.installedApps.put(app);
-            debugPrint('Updated DB paths for app: ${app.appId}');
+            AppLogger.info('Updated DB paths for app: ${app.appId}');
           }
         }
       });
@@ -216,7 +217,7 @@ class SettingsNotifier extends _$SettingsNotifier {
           if (site.rootDir.contains(oldDir)) {
             site.rootDir = site.rootDir.replaceAll(oldDir, newDir);
             await isar.siteModels.put(site);
-            debugPrint('Updated DB paths for site: ${site.domain}');
+            AppLogger.info('Updated DB paths for site: ${site.domain}');
           }
         }
       });
@@ -243,7 +244,7 @@ class SettingsNotifier extends _$SettingsNotifier {
             '-Command',
             '[Environment]::SetEnvironmentVariable("Path", "$newPath", "User")',
           ]);
-          debugPrint('Updated User PATH: replaced $oldDir → $newDir');
+          AppLogger.info('Updated User PATH: replaced $oldDir → $newDir');
         }
       }
 
@@ -264,12 +265,12 @@ class SettingsNotifier extends _$SettingsNotifier {
               '-Command',
               '[Environment]::SetEnvironmentVariable("$envVar", "$newEnvValue", "User")',
             ]);
-            debugPrint('Updated env var $envVar: $envValue → $newEnvValue');
+            AppLogger.info('Updated env var $envVar: $envValue → $newEnvValue');
           }
         }
       }
     } catch (e) {
-      debugPrint('Warning: Failed to update Windows PATH: $e');
+      AppLogger.warning('Warning: Failed to update Windows PATH: $e');
       // Non-fatal — user can fix PATH manually
     }
   }
@@ -300,7 +301,7 @@ class SettingsNotifier extends _$SettingsNotifier {
           }
         }
       } catch (e) {
-        debugPrint('Failed to toggle auto-start: $e');
+        AppLogger.error('Failed to toggle auto-start: $e');
       }
     }
     if (isSslInstalled != null) currentSettings.isSslInstalled = isSslInstalled;

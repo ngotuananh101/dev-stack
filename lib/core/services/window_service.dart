@@ -10,6 +10,7 @@ import '../../features/apps/domain/app_model.dart';
 import '../../features/apps/data/apps_provider.dart';
 import '../../features/apps/data/app_service_manager.dart';
 import '../../features/settings/data/settings_provider.dart';
+import 'package:dev_stack/core/services/log_service.dart';
 
 part 'window_service.g.dart';
 
@@ -101,7 +102,7 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
         await trayManager.setToolTip('DevStack');
       }
     } catch (e) {
-      debugPrint('Tray initialization failed: $e');
+      AppLogger.error('Tray initialization failed: $e');
     }
   }
 
@@ -174,15 +175,15 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
       final settings = await ref.read(settingsNotifierProvider.future);
       if (settings.autoStartWithWindows) {
         await launchAtStartup.enable();
-        debugPrint('Auto-start enabled with --minimized');
+        AppLogger.info('Auto-start enabled with --minimized');
       } else {
         if (await launchAtStartup.isEnabled()) {
           await launchAtStartup.disable();
-          debugPrint('Auto-start disabled');
+          AppLogger.info('Auto-start disabled');
         }
       }
     } catch (e) {
-      debugPrint('Auto-start initialization failed: $e');
+      AppLogger.error('Auto-start initialization failed: $e');
     }
   }
 

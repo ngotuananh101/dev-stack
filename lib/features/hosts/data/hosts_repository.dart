@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:dev_stack/core/services/log_service.dart';
 
 class HostsRepository {
   static const String hostsPath = r'C:\Windows\System32\drivers\etc\hosts';
@@ -10,7 +11,7 @@ class HostsRepository {
       if (!await file.exists()) return '';
       return await file.readAsString();
     } catch (e) {
-      debugPrint('Error reading hosts raw: $e');
+      AppLogger.error('Error reading hosts raw: $e');
       return '';
     }
   }
@@ -22,7 +23,7 @@ class HostsRepository {
       await file.writeAsString(content);
       return true;
     } catch (e) {
-      debugPrint('Direct write failed, trying elevation... $e');
+      AppLogger.error('Direct write failed, trying elevation... $e');
     }
 
     // 2. Try elevation via PowerShell
@@ -40,7 +41,7 @@ class HostsRepository {
         return true;
       }
     } catch (e) {
-      debugPrint('Elevation failed: $e');
+      AppLogger.error('Elevation failed: $e');
     }
 
     return false;

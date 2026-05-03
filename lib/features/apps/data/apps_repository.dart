@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import '../domain/app_model.dart';
 import '../domain/installed_app.dart';
+import 'package:dev_stack/core/services/log_service.dart';
 
 class AppsRepository {
   final Isar isar;
@@ -22,10 +23,10 @@ class AppsRepository {
       final localFile = File(p.join(supportDir.path, 'apps.json'));
 
       if (await localFile.exists()) {
-        debugPrint('Loading apps from local storage: ${localFile.path}');
+        AppLogger.info('Loading apps from local storage: ${localFile.path}');
         response = await localFile.readAsString();
       } else {
-        debugPrint('Loading apps from assets bundle');
+        AppLogger.info('Loading apps from assets bundle');
         response = await rootBundle.loadString('assets/data/apps.json');
       }
 
@@ -78,7 +79,7 @@ class AppsRepository {
         );
       }).toList().cast<AppModel>();
     } catch (e, stack) {
-      debugPrint('Error loading apps: $e\n$stack');
+      AppLogger.error('Error loading apps: $e\n$stack');
       
       // If it's a RangeError or corruption, try to delete local cache to force a fresh load next time
       if (e is RangeError || e.toString().contains('RangeError')) {
@@ -87,10 +88,10 @@ class AppsRepository {
           final localFile = File(p.join(supportDir.path, 'apps.json'));
           if (await localFile.exists()) {
             await localFile.delete();
-            debugPrint('Deleted corrupted apps.json');
+            AppLogger.info('Deleted corrupted apps.json');
           }
         } catch (err) {
-          debugPrint('Failed to delete corrupted apps.json: $err');
+          AppLogger.error('Failed to delete corrupted apps.json: $err');
         }
       }
       
@@ -107,7 +108,7 @@ class AppsRepository {
         // Isar will use the new schema automatically since we registered it
       });
     } catch (e) {
-      debugPrint('Error in importInitialData: $e');
+      AppLogger.error('Error in importInitialData: $e');
     }
   }
 
@@ -181,14 +182,14 @@ class AppsRepository {
           final projectFile = File(p.join(currentDir, 'assets', 'data', 'apps.json'));
           if (await projectFile.exists()) {
             await projectFile.writeAsString(jsonString);
-            debugPrint('Successfully updated project source file: ${projectFile.path}');
+            AppLogger.info('Successfully updated project source file: ${projectFile.path}');
           }
         } catch (e) {
-          debugPrint('Could not update source file (expected in production): $e');
+          AppLogger.error('Could not update source file (expected in production): $e');
         }
       }
     } catch (e) {
-      debugPrint('Error updating app list: $e');
+      AppLogger.error('Error updating app list: $e');
       rethrow;
     }
   }
