@@ -40,6 +40,10 @@ class AppsNotifier extends _$AppsNotifier {
           .setError('Database initialization failed: $e');
     }
     final apps = await repository.getAll();
+    final serviceManager = ref.read(appServiceManagerProvider);
+    for (final app in apps) {
+      serviceManager.syncAppState(app);
+    }
 
     // Auto start services after initial load
     Future.microtask(() {
@@ -57,6 +61,10 @@ class AppsNotifier extends _$AppsNotifier {
   Future<void> refresh() async {
     final repository = await ref.read(appsRepositoryProvider.future);
     final list = await repository.getAll();
+    final serviceManager = ref.read(appServiceManagerProvider);
+    for (final app in list) {
+      serviceManager.syncAppState(app);
+    }
     state = AsyncValue.data(list);
   }
 

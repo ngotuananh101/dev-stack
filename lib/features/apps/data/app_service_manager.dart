@@ -19,10 +19,21 @@ AppServiceManager appServiceManager(Ref ref) {
 class AppServiceManager {
   final LogService _logger;
   final Map<String, Process> _processes = {};
+  final Map<String, AppModel> _activeApps = {};
 
   AppServiceManager(this._logger);
 
   bool isRunning(String appId) => _processes.containsKey(appId);
+
+  void syncAppState(AppModel newApp) {
+    if (_activeApps.containsKey(newApp.appId)) {
+      final oldApp = _activeApps[newApp.appId]!;
+      newApp.serviceStatus = oldApp.serviceStatus;
+      newApp.servicePid = oldApp.servicePid;
+      newApp.serviceLogs = oldApp.serviceLogs;
+      _activeApps[newApp.appId] = newApp;
+    }
+  }
 
   Future<void> start(AppModel app, {VoidCallback? onStatusChange}) async {
     if (isRunning(app.appId)) return;
@@ -150,6 +161,7 @@ class AppServiceManager {
       );
 
       _processes[app.appId] = process;
+      _activeApps[app.appId] = app;
       app.servicePid = process.pid;
       app.serviceStatus = 'running';
       app.serviceLogs = []; // Clear old logs on start
@@ -163,11 +175,15 @@ class AppServiceManager {
 
       // Listen for exit
       process.exitCode.then((code) {
+        final activeApp = _activeApps[app.appId];
         _logger.info('Service ${app.name} exited with code $code');
         debugPrint('[${app.name}] Exited with code $code');
         _processes.remove(app.appId);
-        app.serviceStatus = 'stopped';
-        app.servicePid = null;
+        _activeApps.remove(app.appId);
+        if (activeApp != null) {
+          activeApp.serviceStatus = 'stopped';
+          activeApp.servicePid = null;
+        }
         onStatusChange?.call();
       });
 
@@ -177,7 +193,7 @@ class AppServiceManager {
         for (final line in lines) {
           if (line.trim().isNotEmpty) {
             final cleanLine = line.trim();
-            app.addServiceLog(cleanLine);
+            _activeApps[app.appId]?.addServiceLog(cleanLine);
             debugPrint('[${app.name}] $cleanLine');
             onStatusChange?.call();
           }
@@ -199,7 +215,7 @@ class AppServiceManager {
               prefix = 'INFO';
             }
 
-            app.addServiceLog('[$prefix] $cleanLine');
+            _activeApps[app.appId]?.addServiceLog('[$prefix] $cleanLine');
             debugPrint('[${app.name}] $prefix: $cleanLine');
             onStatusChange?.call();
           }
@@ -237,8 +253,10 @@ class AppServiceManager {
     }
 
     _processes.remove(app.appId);
-    app.serviceStatus = 'stopped';
-    app.servicePid = null;
+    final activeApp = _activeApps[app.appId] ?? app;
+    activeApp.serviceStatus = 'stopped';
+    activeApp.servicePid = null;
+    _activeApps.remove(app.appId);
   }
 
   Future<void> restart(AppModel app, {VoidCallback? onStatusChange}) async {
