@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/database/isar_provider.dart';
@@ -57,7 +58,30 @@ class SitesNotifier extends _$SitesNotifier {
     });
 
     if (useSsl) {
-      await ref.read(sslServiceProvider.notifier).generateSiteCert(domain);
+      final sslNotifier = ref.read(sslServiceProvider.notifier);
+      bool certGenerated = false;
+      
+      for (int i = 0; i < 3; i++) {
+        await sslNotifier.generateSiteCert(domain);
+        final certFile = File(sslNotifier.getSiteCertPath(domain));
+        final keyFile = File(sslNotifier.getSiteKeyPath(domain));
+        
+        if (certFile.existsSync() && keyFile.existsSync()) {
+          certGenerated = true;
+          break;
+        } else {
+          debugPrint('Certificate generation failed, retrying... (${i + 1}/3)');
+          await Future.delayed(const Duration(seconds: 1));
+        }
+      }
+
+      if (!certGenerated) {
+        debugPrint('Failed to generate SSL after 3 retries, disabling SSL for $domain');
+        site.useSsl = false;
+        await isar.writeTxn(() async {
+          await isar.siteModels.put(site);
+        });
+      }
     }
 
     // Generate Vhost files
