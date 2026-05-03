@@ -1055,9 +1055,14 @@ net:
     // Determine PHP port
     String phpPort = '9000'; // Default
     if (php != null) {
-      final versionMatch = RegExp(r'\d+').firstMatch(php.appId);
-      if (versionMatch != null) {
-        phpPort = '90${versionMatch.group(0)}';
+      final customPort = php.extraInfo['port']?.toString() ?? '';
+      if (customPort.isNotEmpty) {
+        phpPort = customPort;
+      } else {
+        final versionMatch = RegExp(r'\d+').firstMatch(php.appId);
+        if (versionMatch != null) {
+          phpPort = '90${versionMatch.group(0)}';
+        }
       }
     }
 

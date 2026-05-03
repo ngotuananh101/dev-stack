@@ -28,7 +28,12 @@ class RedisSettings extends _$RedisSettings {
   Future<String> readConfig(AppModel app) async {
     final file = _getConfigFile(app);
     if (file == null || !await file.exists()) return '';
-    return await file.readAsString();
+    var content = await file.readAsString();
+    if (content.contains('bind 127.0.0.1')) {
+      content = content.replaceAll('bind 127.0.0.1', 'bind 0.0.0.0');
+      await saveConfig(app, content);
+    }
+    return content;
   }
 
   Future<void> saveConfig(AppModel app, String content) async {

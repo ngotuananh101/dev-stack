@@ -16,6 +16,7 @@ import '../../data/rustfs_settings_provider.dart';
 import '../../data/meilisearch_settings_provider.dart';
 import '../../data/elasticsearch_settings_provider.dart';
 import '../../data/app_service_manager.dart';
+import '../../data/apps_provider.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:highlight/languages/properties.dart';
@@ -587,6 +588,47 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                   widget.app.defaultPassword!,
                   isPassword: true,
                 ),
+            ]),
+          ],
+          if (_isPhp) ...[
+            const SizedBox(height: 24),
+            _buildInfoSection('Startup Configuration', [
+              _buildSettingField(
+                'Bind Address',
+                'bind_address',
+                widget.app.extraInfo['bind_address']?.toString() ?? '0.0.0.0',
+                (val) async {
+                  final newInfo = Map<String, dynamic>.from(widget.app.extraInfo);
+                  newInfo['bind_address'] = val;
+                  widget.app.extraInfo = newInfo;
+                  final repo = await ref.read(appsRepositoryProvider.future);
+                  await repo.save(widget.app);
+                  ref.invalidate(appsNotifierProvider);
+                },
+              ),
+              _buildSettingField(
+                'Port',
+                'port',
+                widget.app.extraInfo['port']?.toString() ?? '',
+                (val) async {
+                  final newInfo = Map<String, dynamic>.from(widget.app.extraInfo);
+                  newInfo['port'] = val;
+                  widget.app.extraInfo = newInfo;
+                  final repo = await ref.read(appsRepositoryProvider.future);
+                  await repo.save(widget.app);
+                  ref.invalidate(appsNotifierProvider);
+                },
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: Text(
+                  'Note: Changing the port may require reconfiguration of Nginx/Apache.',
+                  style: TextStyle(
+                    fontSize: AppTextSize.xxs,
+                    color: AppColors.warning,
+                  ),
+                ),
+              ),
             ]),
           ],
         ],

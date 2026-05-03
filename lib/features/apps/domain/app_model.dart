@@ -13,6 +13,7 @@ class AppModel {
   String? versionLinksJson;
   String? defaultUsername;
   String? defaultPassword;
+  String? extraInfoJson;
 
   // UI/State properties
   String? selectedVersion;
@@ -72,6 +73,19 @@ class AppModel {
 
   set versionLinks(Map<String, String> links) {
     versionLinksJson = json.encode(links);
+  }
+
+  Map<String, dynamic> get extraInfo {
+    if (extraInfoJson == null) return {};
+    try {
+      return json.decode(extraInfoJson!) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  set extraInfo(Map<String, dynamic> info) {
+    extraInfoJson = json.encode(info);
   }
 
   bool get hasUpdateAvailable {
@@ -137,5 +151,6 @@ class AppModel {
     this.installStatus,
     this.defaultUsername,
     this.defaultPassword,
+    this.extraInfoJson,
   });
 }

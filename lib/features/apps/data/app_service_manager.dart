@@ -49,24 +49,28 @@ class AppServiceManager {
 
       Map<String, String>? env;
       if (fileName == 'php-cgi.exe' || fileName == 'php.exe') {
-        // Dynamic port based on version: php82 -> 9082
-        String port = '9000';
-        final versionMatch = RegExp(r'\d+').firstMatch(app.appId);
-        if (versionMatch != null) {
-          port = '90${versionMatch.group(0)}';
+        // Dynamic port based on version or extraInfo: php82 -> 9082
+        String port = app.extraInfo['port']?.toString() ?? '';
+        if (port.isEmpty) {
+          port = '9000';
+          final versionMatch = RegExp(r'\d+').firstMatch(app.appId);
+          if (versionMatch != null) {
+            port = '90${versionMatch.group(0)}';
+          }
         }
+        
+        final bindAddress = app.extraInfo['bind_address']?.toString() ?? '0.0.0.0';
 
         if (fileName == 'php-cgi.exe') {
-          args = ['-b', '0.0.0.0:$port'];
+          args = ['-b', '$bindAddress:$port'];
         } else {
-          args = ['-S', '0.0.0.0:$port'];
+          args = ['-S', '$bindAddress:$port'];
         }
       } else if (fileName == 'redis-server.exe') {
-        // Force bind to 0.0.0.0 to allow LAN access
-        args = ['--bind', '0.0.0.0'];
-
-        // Optional: Support custom port if 6379 is busy (later improvement)
-        // args.addAll(['--port', '6379']);
+        final confFile = File(p.join(workingDir, 'redis.windows.conf'));
+        if (confFile.existsSync()) {
+          args = [confFile.path];
+        }
       } else if (fileName == 'mysqld.exe' || fileName == 'mariadbd.exe') {
         // Force output to console for capturing logs
         final version = app.installedVersion ?? 'unknown';
