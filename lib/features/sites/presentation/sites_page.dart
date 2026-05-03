@@ -52,9 +52,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
                 site: site,
                 onClose: () => Navigator.of(context).pop(),
               )
-            : AddSiteModal(
-                onClose: () => Navigator.of(context).pop(),
-              ),
+            : AddSiteModal(onClose: () => Navigator.of(context).pop()),
       ),
     );
   }
@@ -73,9 +71,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 16),
-                  Expanded(
-                    child: _buildContent(),
-                  ),
+                  Expanded(child: _buildContent()),
                 ],
               ),
             ),
@@ -84,7 +80,6 @@ class _SitesPageState extends ConsumerState<SitesPage> {
       ),
     );
   }
-
 
   Widget _buildHeader() {
     return Row(
@@ -95,7 +90,9 @@ class _SitesPageState extends ConsumerState<SitesPage> {
             backgroundColor: AppColors.success,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
           icon: const Icon(LucideIcons.plus, size: 16),
           label: const Text(
@@ -231,17 +228,20 @@ class _SitesPageState extends ConsumerState<SitesPage> {
     AppDialogs.showConfirm(
       context: context,
       title: 'Bulk Delete Sites',
-      text: 'Are you sure you want to delete $count selected sites? This action cannot be undone.',
+      text:
+          'Are you sure you want to delete $count selected sites? This action cannot be undone.',
       confirmBtnText: 'DELETE ALL',
       onConfirm: () async {
         final sitesNotifier = ref.read(sitesNotifierProvider.notifier);
-        
+
         // Use a copy to avoid concurrent modification issues
         final idsToDelete = _selectedSiteIds.toList();
-        
+
         for (final id in idsToDelete) {
-          await sitesNotifier.deleteSite(id);
+          await sitesNotifier.deleteSite(id, restartWebserver: false);
         }
+
+        await sitesNotifier.restartWebservers();
 
         setState(() {
           _selectedSiteIds.clear();
@@ -267,8 +267,10 @@ class _SitesPageState extends ConsumerState<SitesPage> {
     if (path == null) return;
 
     final dir = Directory(path);
-    final List<Directory> subdirs =
-        dir.listSync().whereType<Directory>().toList();
+    final List<Directory> subdirs = dir
+        .listSync()
+        .whereType<Directory>()
+        .toList();
 
     if (subdirs.isEmpty) {
       if (mounted) {
@@ -294,23 +296,26 @@ class _SitesPageState extends ConsumerState<SitesPage> {
           final apps = ref.read(appsNotifierProvider).value ?? [];
 
           // Get default PHP version (first installed or first overall)
-          final defaultPhpApp = apps.where((a) => a.groupName == 'php').firstWhere(
-            (a) => a.isInstalled,
-            orElse: () => apps.firstWhere(
-              (a) => a.groupName == 'php',
-              orElse: () => apps.first, // Dummy fallback
-            ),
-          );
-          
-          final String defaultPhp = (defaultPhpApp.isInstalled && defaultPhpApp.groupName == 'php') 
-              ? defaultPhpApp.appId 
+          final defaultPhpApp = apps
+              .where((a) => a.groupName == 'php')
+              .firstWhere(
+                (a) => a.isInstalled,
+                orElse: () => apps.firstWhere(
+                  (a) => a.groupName == 'php',
+                  orElse: () => apps.first, // Dummy fallback
+                ),
+              );
+
+          final String defaultPhp =
+              (defaultPhpApp.isInstalled && defaultPhpApp.groupName == 'php')
+              ? defaultPhpApp.appId
               : 'static';
 
           int count = 0;
           int skipped = 0;
           for (final subdir in subdirs) {
             final folderName = p.basename(subdir.path);
-            
+
             // Flexible replacement for common placeholders
             String domain = settings.siteTemplate;
             if (domain.contains('[site-name]')) {
@@ -337,6 +342,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
                 siteType: 'php',
                 phpAppId: defaultPhp,
                 useSsl: true,
+                restartWebserver: false,
               );
               count++;
             } catch (e) {
@@ -344,6 +350,9 @@ class _SitesPageState extends ConsumerState<SitesPage> {
               debugPrint('Error adding site $domain: $e');
             }
           }
+
+          // Restart webservers at the end
+          await sitesNotifier.restartWebservers();
 
           if (mounted) {
             String message = 'Successfully created $count sites.';

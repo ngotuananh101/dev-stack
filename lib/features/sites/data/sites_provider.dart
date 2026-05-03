@@ -28,9 +28,10 @@ class SitesNotifier extends _$SitesNotifier {
     String? phpAppId,
     String? proxyTarget,
     required bool useSsl,
+    bool restartWebserver = true,
   }) async {
     final isar = await ref.read(isarProvider.future);
-    
+
     String? phpVersion;
     int? phpPort;
 
@@ -66,10 +67,14 @@ class SitesNotifier extends _$SitesNotifier {
     await _updateHostsFile();
 
     // Refresh state
-    state = AsyncValue.data(await isar.siteModels.where().sortByCreatedAtDesc().findAll());
+    state = AsyncValue.data(
+      await isar.siteModels.where().sortByCreatedAtDesc().findAll(),
+    );
 
-    // Restart webservers to apply changes
-    await _restartWebservers();
+    if (restartWebserver) {
+      // Restart webservers to apply changes
+      await restartWebservers();
+    }
   }
 
   Future<void> updateSite({
@@ -126,43 +131,55 @@ class SitesNotifier extends _$SitesNotifier {
     await _updateHostsFile();
 
     // Refresh state
-    state = AsyncValue.data(await isar.siteModels.where().sortByCreatedAtDesc().findAll());
+    state = AsyncValue.data(
+      await isar.siteModels.where().sortByCreatedAtDesc().findAll(),
+    );
 
     // Restart webservers to apply changes
-    await _restartWebservers();
+    await restartWebservers();
   }
 
-  Future<void> deleteSite(int id) async {
+  Future<void> deleteSite(int id, {bool restartWebserver = true}) async {
     final isar = await ref.read(isarProvider.future);
     final site = await isar.siteModels.get(id);
-    
+
     if (site != null) {
       // Remove Vhost files
       await _removeVhostFiles(site);
-      
+
       await isar.writeTxn(() async {
         await isar.siteModels.delete(id);
       });
-      
+
       // Update hosts file
       await _updateHostsFile();
-      
-      state = AsyncValue.data(await isar.siteModels.where().sortByCreatedAtDesc().findAll());
-      
-      // Restart webservers
-      await _restartWebservers();
+
+      state = AsyncValue.data(
+        await isar.siteModels.where().sortByCreatedAtDesc().findAll(),
+      );
+
+      if (restartWebserver) {
+        // Restart webservers
+        await restartWebservers();
+      }
     }
   }
 
   // --- File Management for Edit Modal ---
 
   Future<Map<String, String>> getConfigs(SiteModel site) async {
-    final nginxFile = File(p.join(AppConfig.vhostsDir, 'nginx', '${site.domain}.conf'));
-    final apacheFile = File(p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'));
+    final nginxFile = File(
+      p.join(AppConfig.vhostsDir, 'nginx', '${site.domain}.conf'),
+    );
+    final apacheFile = File(
+      p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'),
+    );
 
     return {
       'nginx': await nginxFile.exists() ? await nginxFile.readAsString() : '',
-      'apache': await apacheFile.exists() ? await apacheFile.readAsString() : '',
+      'apache': await apacheFile.exists()
+          ? await apacheFile.readAsString()
+          : '',
     };
   }
 
@@ -170,7 +187,7 @@ class SitesNotifier extends _$SitesNotifier {
     final dir = type == 'nginx' ? 'nginx' : 'apache';
     final file = File(p.join(AppConfig.vhostsDir, dir, '${site.domain}.conf'));
     await file.writeAsString(content);
-    await _restartWebservers();
+    await restartWebservers();
   }
 
   Future<Map<String, String>> getSslFiles(SiteModel site) async {
@@ -186,14 +203,16 @@ class SitesNotifier extends _$SitesNotifier {
 
   Future<void> saveSslFile(SiteModel site, String type, String content) async {
     final sslNotifier = ref.read(sslServiceProvider.notifier);
-    final path = type == 'cert' ? sslNotifier.getSiteCertPath(site.domain) : sslNotifier.getSiteKeyPath(site.domain);
+    final path = type == 'cert'
+        ? sslNotifier.getSiteCertPath(site.domain)
+        : sslNotifier.getSiteKeyPath(site.domain);
     await File(path).writeAsString(content);
-    await _restartWebservers();
+    await restartWebservers();
   }
 
   Future<Map<String, String>> getLogs(SiteModel site) async {
     final logsDir = p.join(AppConfig.baseDir, 'logs', site.domain);
-    
+
     final nAccess = File(p.join(logsDir, 'nginx_access.log'));
     final nError = File(p.join(logsDir, 'nginx_error.log'));
     final aAccess = File(p.join(logsDir, 'apache_access.log'));
@@ -216,17 +235,17 @@ class SitesNotifier extends _$SitesNotifier {
 
   Future<void> regenerateSsl(SiteModel site) async {
     await ref.read(sslServiceProvider.notifier).generateSiteCert(site.domain);
-    await _restartWebservers();
+    await restartWebservers();
   }
 
   Future<void> _updateHostsFile() async {
     final isar = await ref.read(isarProvider.future);
     final allSites = await isar.siteModels.where().findAll();
-    
+
     String hostsContent = await _hostsRepo.readHostsRaw();
     const startMarker = '# [PONTA-START]';
     const endMarker = '# [PONTA-END]';
-    
+
     // Generate new lines
     final newLines = [
       startMarker,
@@ -235,11 +254,12 @@ class SitesNotifier extends _$SitesNotifier {
     ];
     final newBlock = newLines.join('\n');
 
-    if (hostsContent.contains(startMarker) && hostsContent.contains(endMarker)) {
+    if (hostsContent.contains(startMarker) &&
+        hostsContent.contains(endMarker)) {
       // Replace existing block
       final startIndex = hostsContent.indexOf(startMarker);
       final endIndex = hostsContent.indexOf(endMarker) + endMarker.length;
-      
+
       hostsContent = hostsContent.replaceRange(startIndex, endIndex, newBlock);
     } else {
       // Append new block
@@ -267,20 +287,24 @@ class SitesNotifier extends _$SitesNotifier {
 
     // --- 1. Nginx Vhost ---
     final nginxVhostFile = File(p.join(nginxDir.path, '${site.domain}.conf'));
-    
+
     String buildNginxServer(int port, {bool ssl = false}) {
       String config = 'server {\n';
       config += '    listen $port${ssl ? " ssl" : ""};\n';
       config += '    server_name ${site.domain};\n';
-      
+
       if (site.siteType != 'proxy') {
         config += '    root "$rootDirUnix";\n';
         config += '    index index.php index.html;\n';
       }
 
       if (ssl) {
-        final certPath = sslNotifier.getSiteCertPath(site.domain).replaceAll('\\', '/');
-        final keyPath = sslNotifier.getSiteKeyPath(site.domain).replaceAll('\\', '/');
+        final certPath = sslNotifier
+            .getSiteCertPath(site.domain)
+            .replaceAll('\\', '/');
+        final keyPath = sslNotifier
+            .getSiteKeyPath(site.domain)
+            .replaceAll('\\', '/');
         config += '\n';
         config += '    ssl_certificate      "$certPath";\n';
         config += '    ssl_certificate_key  "$keyPath";\n';
@@ -300,7 +324,8 @@ class SitesNotifier extends _$SitesNotifier {
         config += '        proxy_pass ${site.proxyTarget};\n';
         config += '        proxy_set_header Host \$host;\n';
         config += '        proxy_set_header X-Real-IP \$remote_addr;\n';
-        config += '        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\n';
+        config +=
+            '        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\n';
         config += '        proxy_set_header X-Forwarded-Proto \$scheme;\n';
         config += '    }\n';
       } else {
@@ -314,7 +339,8 @@ class SitesNotifier extends _$SitesNotifier {
           config += '        fastcgi_pass 127.0.0.1:${site.phpPort};\n';
           config += '        fastcgi_index index.php;\n';
           config += '        include fastcgi_params;\n';
-          config += '        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;\n';
+          config +=
+              '        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;\n';
           config += '    }\n';
         }
       }
@@ -335,14 +361,18 @@ class SitesNotifier extends _$SitesNotifier {
     String buildApacheServer(int port, {bool ssl = false}) {
       String config = '<VirtualHost *:$port>\n';
       config += '    ServerName ${site.domain}\n';
-      
+
       if (site.siteType != 'proxy') {
         config += '    DocumentRoot "$rootDirUnix"\n';
       }
 
       if (ssl) {
-        final certPath = sslNotifier.getSiteCertPath(site.domain).replaceAll('\\', '/');
-        final keyPath = sslNotifier.getSiteKeyPath(site.domain).replaceAll('\\', '/');
+        final certPath = sslNotifier
+            .getSiteCertPath(site.domain)
+            .replaceAll('\\', '/');
+        final keyPath = sslNotifier
+            .getSiteKeyPath(site.domain)
+            .replaceAll('\\', '/');
         config += '    SSLEngine on\n';
         config += '    SSLCertificateFile "$certPath"\n';
         config += '    SSLCertificateKeyFile "$keyPath"\n';
@@ -367,7 +397,8 @@ class SitesNotifier extends _$SitesNotifier {
         if (site.siteType == 'php') {
           config += '\n';
           config += '    <FilesMatch \\.php\$>\n';
-          config += '        SetHandler "proxy:fcgi://127.0.0.1:${site.phpPort}"\n';
+          config +=
+              '        SetHandler "proxy:fcgi://127.0.0.1:${site.phpPort}"\n';
           config += '    </FilesMatch>\n';
         }
       }
@@ -386,10 +417,14 @@ class SitesNotifier extends _$SitesNotifier {
   }
 
   Future<void> _removeVhostFiles(SiteModel site) async {
-    final nginxVhostFile = File(p.join(AppConfig.vhostsDir, 'nginx', '${site.domain}.conf'));
+    final nginxVhostFile = File(
+      p.join(AppConfig.vhostsDir, 'nginx', '${site.domain}.conf'),
+    );
     if (nginxVhostFile.existsSync()) await nginxVhostFile.delete();
-    
-    final apacheVhostFile = File(p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'));
+
+    final apacheVhostFile = File(
+      p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'),
+    );
     if (apacheVhostFile.existsSync()) await apacheVhostFile.delete();
 
     // Remove SSL directory
@@ -402,12 +437,18 @@ class SitesNotifier extends _$SitesNotifier {
     if (logsDir.existsSync()) await logsDir.delete(recursive: true);
   }
 
-  Future<void> _restartWebservers() async {
+  Future<void> restartWebservers() async {
     final appsNotifier = ref.read(appsNotifierProvider.notifier);
     final apps = ref.read(appsNotifierProvider).value ?? [];
-    
-    final webservers = apps.where((a) => a.isInstalled && (a.appId.contains('nginx') || a.appId.contains('apache'))).toList();
-    
+
+    final webservers = apps
+        .where(
+          (a) =>
+              a.isInstalled &&
+              (a.appId.contains('nginx') || a.appId.contains('apache')),
+        )
+        .toList();
+
     for (final ws in webservers) {
       await appsNotifier.restartService(ws);
     }
