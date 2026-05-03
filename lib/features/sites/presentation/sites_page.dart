@@ -296,16 +296,17 @@ class _SitesPageState extends ConsumerState<SitesPage> {
           final existingSites = ref.read(sitesNotifierProvider).value ?? [];
           final apps = ref.read(appsNotifierProvider).value ?? [];
 
-          // Get default PHP version (first installed or first overall)
-          final defaultPhpApp = apps
-              .where((a) => a.groupName == 'php')
-              .firstWhere(
-                (a) => a.isInstalled,
-                orElse: () => apps.firstWhere(
-                  (a) => a.groupName == 'php',
-                  orElse: () => apps.first, // Dummy fallback
-                ),
-              );
+          // Get default PHP version (prioritize isDefault, then installed)
+          final defaultPhpApp = apps.firstWhere(
+            (a) => a.groupName == 'php' && a.isInstalled && a.isDefault,
+            orElse: () => apps.firstWhere(
+              (a) => a.groupName == 'php' && a.isInstalled,
+              orElse: () => apps.firstWhere(
+                (a) => a.groupName == 'php',
+                orElse: () => apps.first, // Dummy fallback
+              ),
+            ),
+          );
 
           final String defaultPhp =
               (defaultPhpApp.isInstalled && defaultPhpApp.groupName == 'php')
