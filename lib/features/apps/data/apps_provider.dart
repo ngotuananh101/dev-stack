@@ -353,6 +353,18 @@ class AppsNotifier extends _$AppsNotifier {
         app.isAddedToPath = false;
       }
 
+      // Remove Composer if this was the last PHP version
+      if (app.groupName == 'php') {
+        final remainingPhps = allApps.where(
+          (a) => a.isInstalled && a.groupName == 'php' && a.appId != app.appId,
+        );
+        if (remainingPhps.isEmpty) {
+          AppLogger.info('Last PHP uninstalled, removing Composer...');
+          final installer = ref.read(appInstallerServiceProvider);
+          await installer.uninstallComposer();
+        }
+      }
+
       notifyUpdate(force: true);
     } catch (e) {
       AppLogger.error('Uninstallation failed: $e');

@@ -160,6 +160,9 @@ class AppInstallerService {
           await _tunePhpIni(phpIni, logInfo);
           await _enableDefaultExtensions(phpIni, installPath, logInfo);
         }
+
+        // Install Composer if not already installed
+        await _installComposer(logInfo);
       }
 
       // 7. Post-installation: Configure Web Servers
@@ -1329,6 +1332,68 @@ Alias /phpmyadmin "$pmaPathUnix/"
       
       await confFile.writeAsString(buffer.toString());
       logInfo('Applied managed configuration to ${confFile.path}');
+    }
+  }
+
+  /// Downloads composer.phar and creates composer.bat wrapper in Ponta bin directory.
+  /// The wrapper uses `php` from PATH, so it will use whichever PHP version
+  /// the user has added to PATH or the default PHP.
+  Future<void> _installComposer(Function(String) logInfo) async {
+    final composerPhar = File(p.join(PathService.binDir, 'composer.phar'));
+    final composerBat = File(p.join(PathService.binDir, 'composer.bat'));
+
+    // Skip if already installed
+    if (composerPhar.existsSync() && composerBat.existsSync()) {
+      logInfo('Composer already installed, skipping.');
+      return;
+    }
+
+    logInfo('Installing Composer...');
+
+    // Ensure bin directory exists
+    final binDir = Directory(PathService.binDir);
+    if (!binDir.existsSync()) {
+      await binDir.create(recursive: true);
+    }
+
+    try {
+      // Download composer.phar
+      logInfo('Downloading composer.phar...');
+      await _dio.download(
+        'https://getcomposer.org/download/latest-stable/composer.phar',
+        composerPhar.path,
+      );
+      logInfo('composer.phar downloaded to ${composerPhar.path}');
+
+      // Create composer.bat wrapper that uses php from PATH
+      final batContent = '@echo off\r\nphp "%~dp0composer.phar" %*';
+      await composerBat.writeAsString(batContent);
+      logInfo('Created composer.bat wrapper at ${composerBat.path}');
+
+      // Ensure Ponta bin is in PATH
+      final pathService = _ref.read(pathServiceProvider);
+      await pathService.ensurePontaBinInPath();
+
+      logInfo('Composer installed successfully.');
+    } catch (e) {
+      logInfo('Warning: Failed to install Composer: $e');
+      // Non-fatal: PHP installation should still succeed even if Composer fails
+    }
+  }
+
+  /// Removes composer.phar and composer.bat from Ponta bin directory.
+  /// Call this when the last PHP version is uninstalled.
+  Future<void> uninstallComposer() async {
+    final composerPhar = File(p.join(PathService.binDir, 'composer.phar'));
+    final composerBat = File(p.join(PathService.binDir, 'composer.bat'));
+
+    if (composerPhar.existsSync()) {
+      await composerPhar.delete();
+      _logger.info('Removed composer.phar');
+    }
+    if (composerBat.existsSync()) {
+      await composerBat.delete();
+      _logger.info('Removed composer.bat');
     }
   }
 }
