@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'apps_provider.dart';
 import 'package:dev_stack/core/services/log_service.dart';

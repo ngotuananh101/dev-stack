@@ -8,6 +8,7 @@ import '../config/app_config.dart';
 
 part 'log_service.g.dart';
 
+// ignore: non_constant_identifier_names
 final AppLogger = LogService();
 
 @riverpod

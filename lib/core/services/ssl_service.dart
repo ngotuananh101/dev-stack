@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:process_run/shell.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
@@ -27,12 +26,29 @@ class SslService extends _$SslService {
   bool get isInstalled => state.value ?? false;
 
   String get mkcertPath {
-    final binPath = '${AppConfig.binDir}\\mkcert.exe';
+    final binPath = p.join(AppConfig.binDir, 'mkcert.exe');
     if (File(binPath).existsSync()) {
       return binPath;
     }
-    final localBinPath = '${Directory.current.path}\\assets\\bin\\mkcert.exe';
-    return localBinPath;
+
+    final devPath = p.join(Directory.current.path, 'assets', 'bin', 'mkcert.exe');
+    if (File(devPath).existsSync()) {
+      return devPath;
+    }
+
+    final prodPath = p.join(
+      p.dirname(Platform.resolvedExecutable),
+      'data',
+      'flutter_assets',
+      'assets',
+      'bin',
+      'mkcert.exe',
+    );
+    if (File(prodPath).existsSync()) {
+      return prodPath;
+    }
+
+    return devPath;
   }
 
   Future<bool> checkStatus() async {
