@@ -23,7 +23,7 @@ class ElasticsearchSettings extends _$ElasticsearchSettings {
     final Map<String, dynamic> config = {
       'cluster.name': 'ponta-cluster',
       'node.name': 'ponta-node-1',
-      'network.host': '127.0.0.1',
+      'network.host': '0.0.0.0',
       'http.port': 9200,
       'discovery.type': 'single-node',
       'xpack.security.enabled': false,

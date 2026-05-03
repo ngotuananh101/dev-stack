@@ -500,6 +500,29 @@ class AppInstallerService {
       final result = await Process.run(initdbExec.path, args);
       if (result.exitCode == 0) {
         logInfo('PostgreSQL database cluster initialized successfully.');
+        
+        // Allow connections from any IP
+        try {
+          final confFile = File(p.join(dataDir.path, 'postgresql.conf'));
+          if (confFile.existsSync()) {
+            var content = await confFile.readAsString();
+            content = content.replaceAll(RegExp(r"^#?listen_addresses\s*=\s*'.*?'", multiLine: true), "listen_addresses = '*'");
+            await confFile.writeAsString(content);
+            logInfo('Updated PostgreSQL listen_addresses to *');
+          }
+
+          final hbaFile = File(p.join(dataDir.path, 'pg_hba.conf'));
+          if (hbaFile.existsSync()) {
+            var content = await hbaFile.readAsString();
+            if (!content.contains('0.0.0.0/0')) {
+              content += '\nhost    all             all             0.0.0.0/0               trust\n';
+              await hbaFile.writeAsString(content);
+              logInfo('Updated pg_hba.conf to allow all connections');
+            }
+          }
+        } catch (e) {
+          logInfo('Warning: Could not update PostgreSQL config for remote access: $e');
+        }
       } else {
         logInfo('Initialization returned non-zero code: ${result.exitCode}');
         logInfo('Output: ${result.stdout}');
@@ -844,7 +867,7 @@ systemLog:
 
 net:
   port: 27017
-  bindIp: 127.0.0.1
+  bindIp: 0.0.0.0
 ''';
       await confFile.writeAsString(configContent);
       logInfo('Created MongoDB configuration at ${confFile.path}');
@@ -1260,7 +1283,7 @@ Alias /phpmyadmin "$pmaPathUnix/"
     if (!confFile.existsSync() || true) { // Always update or create
       final buffer = StringBuffer();
       buffer.writeln('# ======================== Ponta Managed Configuration =========================');
-      buffer.writeln('http_addr = "127.0.0.1:7700"');
+      buffer.writeln('http_addr = "0.0.0.0:7700"');
       buffer.writeln('master_key = "meilisearch_master_key"');
       buffer.writeln('env = "development"');
       buffer.writeln('no_analytics = true');
@@ -1289,7 +1312,7 @@ Alias /phpmyadmin "$pmaPathUnix/"
       buffer.writeln('# ======================== Ponta Managed Configuration =========================');
       buffer.writeln('cluster.name: "ponta-cluster"');
       buffer.writeln('node.name: "ponta-node-1"');
-      buffer.writeln('network.host: 127.0.0.1');
+      buffer.writeln('network.host: 0.0.0.0');
       buffer.writeln('http.port: 9200');
       buffer.writeln('discovery.type: single-node');
       buffer.writeln('xpack.security.enabled: false');

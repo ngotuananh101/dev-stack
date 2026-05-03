@@ -21,7 +21,7 @@ class MeilisearchSettings extends _$MeilisearchSettings {
     
     // Default values
     final defaultConfig = {
-      'http_addr': '127.0.0.1:7700',
+      'http_addr': '0.0.0.0:7700',
       'master_key': 'meilisearch_master_key',
       'env': 'development',
       'no_analytics': true,

@@ -57,13 +57,13 @@ class AppServiceManager {
         }
 
         if (fileName == 'php-cgi.exe') {
-          args = ['-b', '127.0.0.1:$port'];
+          args = ['-b', '0.0.0.0:$port'];
         } else {
-          args = ['-S', '127.0.0.1:$port'];
+          args = ['-S', '0.0.0.0:$port'];
         }
       } else if (fileName == 'redis-server.exe') {
-        // Force bind to 127.0.0.1 to avoid common bind errors on Windows
-        args = ['--bind', '127.0.0.1'];
+        // Force bind to 0.0.0.0 to allow LAN access
+        args = ['--bind', '0.0.0.0'];
 
         // Optional: Support custom port if 6379 is busy (later improvement)
         // args.addAll(['--port', '6379']);
