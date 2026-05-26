@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:process_run/shell.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
 import '../../features/settings/data/settings_provider.dart';
@@ -53,9 +52,9 @@ class SslService extends _$SslService {
 
   Future<bool> checkStatus() async {
     try {
-      final shell = Shell();
-      final results = await shell.run('"$mkcertPath" -CAROOT');
-      return results.isNotEmpty && results.first.stdout.toString().trim().isNotEmpty;
+      final result = await Process.run(mkcertPath, ['-CAROOT']);
+      final output = result.stdout.toString().trim();
+      return result.exitCode == 0 && output.isNotEmpty;
     } catch (e) {
       AppLogger.error('SSL status check failed: $e');
       return false;
@@ -83,9 +82,10 @@ class SslService extends _$SslService {
     }
 
     try {
-      final shell = Shell(workingDirectory: dir.path);
-      await shell.run(
-        '"$mkcertPath" -cert-file cert.pem -key-file key.pem "$domain" localhost 127.0.0.1 ::1',
+      await Process.run(
+        mkcertPath,
+        ['-cert-file', 'cert.pem', '-key-file', 'key.pem', domain, 'localhost', '127.0.0.1', '::1'],
+        workingDirectory: dir.path,
       );
       AppLogger.info('Successfully generated certificate for $domain');
     } catch (e) {
@@ -120,10 +120,9 @@ class SslService extends _$SslService {
       }
 
       AppLogger.info('SSL not found, running mkcert -install...');
-      final shell = Shell();
-      final installCmd =
-          'Start-Process -FilePath "$mkcertPath" -ArgumentList "-install" -Verb RunAs -Wait';
-      await shell.run('powershell -Command "$installCmd"');
+      final psCommand =
+          "Start-Process -FilePath '$mkcertPath' -ArgumentList '-install' -Verb RunAs -Wait";
+      await Process.run('powershell', ['-Command', psCommand]);
 
       final isInstalledNow = await checkStatus();
       if (isInstalledNow) {
@@ -142,9 +141,9 @@ class SslService extends _$SslService {
     try {
       if (!File(mkcertPath).existsSync()) return;
 
-      final shell = Shell();
-      final command = 'Start-Process -FilePath "$mkcertPath" -ArgumentList "-uninstall" -Verb RunAs -Wait';
-      await shell.run('powershell -Command "$command"');
+      final psCommand =
+          "Start-Process -FilePath '$mkcertPath' -ArgumentList '-uninstall' -Verb RunAs -Wait";
+      await Process.run('powershell', ['-Command', psCommand]);
       
       await ref.read(settingsNotifierProvider.notifier).updateField(isSslInstalled: false);
       state = const AsyncValue.data(false);

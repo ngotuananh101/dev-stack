@@ -6,7 +6,7 @@ part of 'window_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$windowServiceHash() => r'612eeac712c1d86fdc7914ef7b10561e24ab5b37';
+String _$windowServiceHash() => r'21d52202ac571e4907c35f7646a286dbf0992667';
 
 /// See also [WindowService].
 @ProviderFor(WindowService)
