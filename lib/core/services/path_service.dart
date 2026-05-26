@@ -250,6 +250,9 @@ class PathService {
       if (npmShim.existsSync()) npmShim.deleteSync();
       if (npxShim.existsSync()) npxShim.deleteSync();
       if (corepackShim.existsSync()) corepackShim.deleteSync();
+      
+      // Clean up global npm packages (node_modules and wrappers)
+      await _cleanNpmGlobals();
     }
 
     _logger.info('Removed shims for ${app.name} from $binDir');
@@ -259,5 +262,32 @@ class PathService {
     final shimFile = File(p.join(binDir, '$commandName.bat'));
     final content = '@echo off\r\n"$targetPath" %*';
     await shimFile.writeAsString(content);
+  }
+
+  Future<void> _cleanNpmGlobals() async {
+    final nodeModulesDir = Directory(p.join(binDir, 'node_modules'));
+    if (!nodeModulesDir.existsSync()) return;
+
+    try {
+      nodeModulesDir.deleteSync(recursive: true);
+      
+      final binDirectory = Directory(binDir);
+      final files = binDirectory.listSync().whereType<File>();
+      for (final file in files) {
+        final ext = p.extension(file.path).toLowerCase();
+        final name = p.basename(file.path).toLowerCase();
+        
+        if (name == 'composer.phar' || name == 'node.exe') continue;
+        
+        if (ext == '.cmd' || ext == '.ps1' || ext == '') {
+          try {
+            file.deleteSync();
+          } catch (_) {}
+        }
+      }
+      _logger.info('Cleaned up global npm packages and wrappers from $binDir');
+    } catch (e) {
+      _logger.error('Failed to clean npm globals: $e');
+    }
   }
 }
