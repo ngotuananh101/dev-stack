@@ -179,6 +179,16 @@ class PathService {
 
       if (File(npmCmd).existsSync()) {
         await _createShim('npm', npmCmd);
+        
+        // Cấu hình npm global prefix trỏ về thư mục C:\Ponta\bin
+        // Để các lệnh cài đặt global như `npm i -g pnpm`, `yarn` v.v. được ghi thẳng vào C:\Ponta\bin
+        // Và người dùng có thể sử dụng được ngay lập tức từ terminal.
+        try {
+          await Process.run('cmd', ['/c', npmCmd, 'config', 'set', 'prefix', binDir, '-g']);
+          _logger.info('Set npm global prefix to $binDir');
+        } catch (e) {
+          _logger.error('Failed to set npm global prefix: $e');
+        }
       }
       if (File(npxCmd).existsSync()) {
         await _createShim('npx', npxCmd);
