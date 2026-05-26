@@ -10,7 +10,6 @@ import '../../../core/services/path_service.dart';
 import '../../../shared/providers/error_provider.dart';
 
 import 'dart:io';
-import 'package:process_run/shell.dart';
 import 'rustfs_settings_provider.dart';
 import 'meilisearch_settings_provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -30,15 +29,6 @@ class AppsNotifier extends _$AppsNotifier {
   Future<List<AppModel>> build() async {
     final repository = await ref.watch(appsRepositoryProvider.future);
 
-    // Import initial data if needed
-    try {
-      await repository.importInitialData();
-    } catch (e) {
-      AppLogger.error('Error in importInitialData: $e');
-      ref
-          .read(errorNotifierProvider.notifier)
-          .setError('Database initialization failed: $e');
-    }
     final apps = await repository.getAll();
     final serviceManager = ref.read(appServiceManagerProvider);
     for (final app in apps) {
@@ -88,6 +78,9 @@ class AppsNotifier extends _$AppsNotifier {
 
   Future<void> toggleInstallation(AppModel app) async {
     final repository = await ref.read(appsRepositoryProvider.future);
+
+    // Guard against concurrent installation
+    if (app.status == 'installing') return;
 
     if (!app.isInstalled) {
       try {
@@ -566,8 +559,7 @@ class AppsNotifier extends _$AppsNotifier {
     try {
       final file = File(app.execFilePath!);
       if (await file.exists()) {
-        final shell = Shell();
-        await shell.run('start "" "${app.execFilePath}"');
+        await Process.run('cmd', ['/c', 'start', '', app.execFilePath!]);
       } else {
         throw Exception('Executable not found at ${app.execFilePath}');
       }

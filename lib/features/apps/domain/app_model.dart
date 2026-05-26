@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 
 class AppModel {
+  static const int maxServiceLogEntries = 100;
+  static const int maxInstallLogEntries = 50;
   final String appId;
   String name;
   String? description;
@@ -46,7 +48,7 @@ class AppModel {
   void addServiceLog(String message) {
     final timestamp = DateFormat('HH:mm:ss').format(DateTime.now());
     serviceLogs.add('[$timestamp] $message');
-    if (serviceLogs.length > 100) serviceLogs.removeAt(0);
+    if (serviceLogs.length > maxServiceLogEntries) serviceLogs.removeAt(0);
   }
 
   // Real-time progress (non-persistent)
@@ -58,7 +60,7 @@ class AppModel {
 
   void addLog(String message) {
     installLogs.add(message);
-    if (installLogs.length > 50) installLogs.removeAt(0);
+    if (installLogs.length > maxInstallLogEntries) installLogs.removeAt(0);
   }
 
   Map<String, String> get versionLinks {
@@ -92,6 +94,9 @@ class AppModel {
     if (!isInstalled || installedVersion == null || versions.isEmpty) {
       return false;
     }
+
+    // 'latest' version can't be compared semantically
+    if (installedVersion == 'latest') return false;
 
     // Split installed version to get Major.Minor (e.g., 8.2 from 8.2.1)
     final parts = installedVersion!.split('.');

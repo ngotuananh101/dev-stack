@@ -31,11 +31,22 @@ class IsarInstance {
         directory: dir.path,
       );
     } catch (e) {
-      // Xoá DB cũ nếu lỗi cấu trúc (Schema mismatch)
+      // Backup and delete DB on schema mismatch or corruption
       final isarFile = File('${dir.path}/default.isar');
       final lockFile = File('${dir.path}/default.isar.lock');
-      if (isarFile.existsSync()) isarFile.deleteSync();
+      
+      // Create backup before deleting
+      if (isarFile.existsSync()) {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        try {
+          isarFile.copySync('${dir.path}/default.isar.bak.$timestamp');
+        } catch (_) {}
+        isarFile.deleteSync();
+      }
       if (lockFile.existsSync()) lockFile.deleteSync();
+      
+      // ignore: avoid_print
+      print('[Isar] Database reset due to error: $e');
       
       _instance = await Isar.open(
         [

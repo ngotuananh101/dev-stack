@@ -98,18 +98,6 @@ class AppsRepository {
     }
   }
 
-  Future<void> importInitialData() async {
-    // This is where we "clear" the old DB or perform initialization
-    // For a clean start as requested:
-    try {
-      await isar.writeTxn(() async {
-        // Clear collections if needed, but the user wants to start fresh
-        // Isar will use the new schema automatically since we registered it
-      });
-    } catch (e) {
-      AppLogger.error('Error in importInitialData: $e');
-    }
-  }
 
   Future<void> save(AppModel app) async {
     await isar.writeTxn(() async {
@@ -174,18 +162,7 @@ class AppsRepository {
         final localFile = File(p.join(supportDir.path, 'apps.json'));
         await localFile.writeAsString(jsonString);
         
-        // Also try to update the source file if in dev mode
-        try {
-          // This is a heuristic to find the project root during development
-          final currentDir = Directory.current.path;
-          final projectFile = File(p.join(currentDir, 'assets', 'data', 'apps.json'));
-          if (await projectFile.exists()) {
-            await projectFile.writeAsString(jsonString);
-            AppLogger.info('Successfully updated project source file: ${projectFile.path}');
-          }
-        } catch (e) {
-          AppLogger.error('Could not update source file (expected in production): $e');
-        }
+        AppLogger.info('Successfully updated apps list');
       }
     } catch (e) {
       AppLogger.error('Error updating app list: $e');

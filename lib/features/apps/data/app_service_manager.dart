@@ -66,7 +66,10 @@ class AppServiceManager {
           port = '9000';
           final versionMatch = RegExp(r'\d+').firstMatch(app.appId);
           if (versionMatch != null) {
-            port = '90${versionMatch.group(0)}';
+            final candidate = int.tryParse('90${versionMatch.group(0)}');
+            if (candidate != null && candidate >= 1024 && candidate <= 65535) {
+              port = candidate.toString();
+            }
           }
         }
         

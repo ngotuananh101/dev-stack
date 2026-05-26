@@ -95,10 +95,13 @@ class SettingsNotifier extends _$SettingsNotifier {
   }
 
   Future<void> _copyDirectory(Directory source, Directory target) async {
-    await for (final entity in source.list(recursive: false)) {
+    await for (final entity in source.list(recursive: false, followLinks: false)) {
       final name = p.basename(entity.path);
       final newPath = p.join(target.path, name);
-      if (entity is File) {
+      if (entity is Link) {
+        // Skip symlinks to avoid circular references
+        continue;
+      } else if (entity is File) {
         await entity.copy(newPath);
       } else if (entity is Directory) {
         final newDir = Directory(newPath);
@@ -284,6 +287,10 @@ class SettingsNotifier extends _$SettingsNotifier {
   }) async {
     final currentSettings = state.value;
     if (currentSettings == null) return;
+
+    // Work on Isar-managed object directly (Isar requires the same instance)
+    // but validate inputs first
+    if (baseDir != null && baseDir.isEmpty) return;
 
     if (baseDir != null) currentSettings.baseDir = baseDir;
     if (siteTemplate != null) currentSettings.siteTemplate = siteTemplate;

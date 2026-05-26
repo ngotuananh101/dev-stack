@@ -8,7 +8,13 @@ class HostsRepository {
     try {
       final file = File(hostsPath);
       if (!await file.exists()) return '';
-      return await file.readAsString();
+      // Use system encoding to handle non-ASCII comments/hostnames
+      final bytes = await file.readAsBytes();
+      try {
+        return systemEncoding.decode(bytes);
+      } catch (_) {
+        return String.fromCharCodes(bytes);
+      }
     } catch (e) {
       AppLogger.error('Error reading hosts raw: $e');
       return '';
@@ -30,10 +36,12 @@ class HostsRepository {
       final tempFile = File('${Directory.systemTemp.path}\\hosts_temp');
       await tempFile.writeAsString(content);
 
-      // PowerShell command to copy temp to system hosts using RunAs
+      final tempPath = tempFile.path;
+      // Use proper argument separation to avoid nested quoting issues
+      final psCommand = 'Copy-Item -Path "$tempPath" -Destination "$hostsPath" -Force';
       final result = await Process.run('powershell', [
         '-Command',
-        'Start-Process powershell -ArgumentList \'-Command "Copy-Item -Path \'\'${tempFile.path}\'\' -Destination \'\'$hostsPath\'\' -Force"\' -Verb RunAs -Wait'
+        'Start-Process powershell -ArgumentList @("-NoProfile","-Command","$psCommand") -Verb RunAs -Wait'
       ]);
 
       if (result.exitCode == 0) {

@@ -147,9 +147,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               _StatusAction(
                                 label: 'Reinstall',
                                 color: AppColors.accent,
-                                onTap: () => ref
-                                    .read(sslServiceProvider.notifier)
-                                    .initializeRootCA(),
+                                onTap: () => _handleSslAction(
+                                  'Reinstall',
+                                  () => ref.read(sslServiceProvider.notifier).initializeRootCA(),
+                                ),
                               ),
                               _StatusAction(
                                 label: 'Uninstall',
@@ -161,9 +162,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               _StatusAction(
                                 label: 'Install',
                                 color: AppColors.accent,
-                                onTap: () => ref
-                                    .read(sslServiceProvider.notifier)
-                                    .initializeRootCA(),
+                                onTap: () => _handleSslAction(
+                                  'Install',
+                                  () => ref.read(sslServiceProvider.notifier).initializeRootCA(),
+                                ),
                               ),
                             ],
                     ),
@@ -999,8 +1001,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       text:
           'Warning: Uninstalling the root certificate will cause SSL errors for all local .test sites. Use this only if you know what you are doing.',
       confirmBtnText: 'UNINSTALL ANYWAY',
-      onConfirm: () => ref.read(sslServiceProvider.notifier).uninstallRootCA(),
+      onConfirm: () => _handleSslAction(
+        'Uninstall',
+        () => ref.read(sslServiceProvider.notifier).uninstallRootCA(),
+      ),
     );
+  }
+
+  Future<void> _handleSslAction(String actionName, Future<void> Function() action) async {
+    // Show an initial feedback toast (optional, but helps UX)
+    AppDialogs.showToast(context, '$actionName SSL Root Certificate...');
+    
+    await action();
+    if (!mounted) return;
+    
+    final sslState = ref.read(sslServiceProvider);
+    if (sslState.hasError) {
+      AppDialogs.showToast(context, 'Failed to ${actionName.toLowerCase()} SSL.', isError: true);
+    } else {
+      AppDialogs.showSuccess(
+        context: context, 
+        title: 'Success', 
+        text: 'Successfully ${actionName.toLowerCase()}ed SSL Root Certificate.'
+      );
+    }
   }
 
   void _showSystemInfo(BuildContext context) {

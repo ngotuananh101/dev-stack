@@ -16,6 +16,23 @@ part 'sites_provider.g.dart';
 class SitesNotifier extends _$SitesNotifier {
   final _hostsRepo = HostsRepository();
 
+  /// Validates domain name to prevent config injection
+  bool _isValidDomain(String domain) {
+    if (domain.isEmpty || domain.length > 253) return false;
+    return RegExp(r'^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$')
+        .hasMatch(domain);
+  }
+
+  /// Validates and clamps PHP port to valid range
+  int _safePhpPort(String? phpAppId) {
+    if (phpAppId == null) return 9000;
+    final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
+    if (versionMatch == null) return 9000;
+    final candidate = int.tryParse('90${versionMatch.group(0)}');
+    if (candidate == null || candidate < 1024 || candidate > 65535) return 9000;
+    return candidate;
+  }
+
   @override
   Future<List<SiteModel>> build() async {
     final isar = await ref.watch(isarProvider.future);
@@ -31,6 +48,10 @@ class SitesNotifier extends _$SitesNotifier {
     required bool useSsl,
     bool restartWebserver = true,
   }) async {
+    if (!_isValidDomain(domain)) {
+      throw ArgumentError('Invalid domain name: $domain');
+    }
+
     final isar = await ref.read(isarProvider.future);
 
     String? phpVersion;
@@ -39,7 +60,7 @@ class SitesNotifier extends _$SitesNotifier {
     if (siteType == 'php' && phpAppId != null) {
       final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
       phpVersion = versionMatch?.group(0) ?? '82';
-      phpPort = int.parse('90$phpVersion');
+      phpPort = _safePhpPort(phpAppId);
     }
 
     final site = SiteModel(
@@ -126,7 +147,7 @@ class SitesNotifier extends _$SitesNotifier {
     if (siteType == 'php' && phpAppId != null) {
       final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
       phpVersion = versionMatch?.group(0) ?? '82';
-      phpPort = int.parse('90$phpVersion');
+      phpPort = _safePhpPort(phpAppId);
     }
 
     final updatedSite = SiteModel(

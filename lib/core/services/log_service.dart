@@ -18,12 +18,26 @@ LogService logService(Ref ref) {
 
 class LogService {
   static String get baseLogDir => AppConfig.logsDir;
+  
+  // Serialize writes to prevent concurrent file corruption
+  Future<void>? _pendingWrite;
 
   Future<void> info(String message) => _write('INFO', message);
   Future<void> error(String message) => _write('ERROR', message);
   Future<void> warning(String message) => _write('WARN', message);
 
   Future<void> _write(String level, String message) async {
+    // Chain writes sequentially
+    final completer = _pendingWrite;
+    _pendingWrite = _doWrite(level, message, completer);
+    await _pendingWrite;
+  }
+
+  Future<void> _doWrite(String level, String message, Future<void>? previous) async {
+    try {
+      await previous;
+    } catch (_) {}
+    
     final now = DateTime.now();
     final fileName = '${DateFormat('yyyy-MM-dd').format(now)}.log';
     final logDir = Directory(baseLogDir);

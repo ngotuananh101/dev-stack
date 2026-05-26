@@ -143,7 +143,7 @@ class PathService {
       _logger.info('Removing User Environment Variable: $name');
       await Process.run('powershell', [
         '-Command',
-        "[Environment]::SetEnvironmentVariable(\"$name\", \$null, \"User\")"
+        '[Environment]::SetEnvironmentVariable("$name", \$null, "User")'
       ]);
     } catch (e) {
       _logger.error('Error removing environment variable $name: $e');

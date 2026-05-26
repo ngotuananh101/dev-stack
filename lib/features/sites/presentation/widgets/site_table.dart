@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../domain/site_model.dart';
 import '../../data/sites_provider.dart';
 import '../../../../shared/utils/app_dialogs.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class SiteTable extends ConsumerWidget {
   final List<SiteModel> sites;
@@ -126,13 +127,39 @@ class SiteTable extends ConsumerWidget {
           const SizedBox(width: 8),
           Expanded(
             flex: 3,
-            child: Text(
-              site.domain,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    site.domain,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Tooltip(
+                  message: 'Open in browser',
+                  child: InkWell(
+                    onTap: () {
+                      final protocol = site.useSsl ? 'https' : 'http';
+                      launchUrlString('$protocol://${site.domain}');
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4.0),
+                      child: Icon(
+                        LucideIcons.externalLink,
+                        size: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 12),

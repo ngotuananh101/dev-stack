@@ -31,7 +31,10 @@ class AppInstallerService {
   final LogService _logger;
   final Ref _ref;
   static String get defaultBaseDir => AppConfig.appsDir;
-  final _dio = Dio();
+  final _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(minutes: 10),
+  ));
 
   AppInstallerService(this._logger, this._ref);
 
@@ -251,10 +254,13 @@ class AppInstallerService {
 
       final subEntities = await subDir.list().toList();
 
-      for (final entity in subEntities) {
+    for (final entity in subEntities) {
         final newPath = p.join(targetPath, p.basename(entity.path));
-        // Using rename might fail across different partitions, but here it's same parent
-        await entity.rename(newPath);
+        try {
+          await entity.rename(newPath);
+        } catch (e) {
+          logInfo('Warning: Could not move ${entity.path}: $e');
+        }
       }
 
       // Delete the now empty nested directory
@@ -933,6 +939,15 @@ net:
         await dataDir.delete(recursive: true);
       }
     }
+
+    // Delete data directory for Elasticsearch
+    if (appId == 'elasticsearch') {
+      final dataDir = Directory(p.join(AppConfig.dataDir, 'elasticsearch'));
+      if (dataDir.existsSync()) {
+        _logger.info('Deleting Elasticsearch data directory: ${dataDir.path}');
+        await dataDir.delete(recursive: true);
+      }
+    }
   }
 
   /// Syncs configurations between different apps (e.g., phpMyAdmin with Web Servers)
@@ -960,13 +975,9 @@ net:
     if (isPMA) {
       phpMyAdmin = currentApp;
     } else {
-      phpMyAdmin = allApps.firstWhere(
+      phpMyAdmin = allApps.where(
         (a) => a.appId == 'phpMyAdmin' && a.isInstalled,
-        orElse: () => currentApp, // Dummy to check if it's really installed
-      );
-      if (phpMyAdmin.appId != 'phpMyAdmin' || !phpMyAdmin.isInstalled) {
-        phpMyAdmin = null;
-      }
+      ).firstOrNull;
     }
 
     if (phpMyAdmin == null) {
@@ -1288,7 +1299,7 @@ Alias /phpmyadmin "$pmaPathUnix/"
     }
 
     final confFile = File(p.join(installPath, 'config.toml'));
-    if (!confFile.existsSync() || true) { // Always update or create
+    if (!confFile.existsSync()) {
       final buffer = StringBuffer();
       buffer.writeln('# ======================== Ponta Managed Configuration =========================');
       buffer.writeln('http_addr = "0.0.0.0:7700"');
