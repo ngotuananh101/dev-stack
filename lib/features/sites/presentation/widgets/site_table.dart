@@ -1,7 +1,12 @@
+import 'dart:io';
+import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/services/log_service.dart';
+import '../../../apps/data/apps_provider.dart';
+import '../../../apps/domain/app_model.dart';
 import '../../domain/site_model.dart';
 import '../../data/sites_provider.dart';
 import '../../../../shared/utils/app_dialogs.dart';
@@ -81,7 +86,7 @@ class SiteTable extends ConsumerWidget {
           SizedBox(width: 50, child: _buildHeaderCell('SSL')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 80,
+            width: 110,
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
@@ -193,10 +198,19 @@ class SiteTable extends ConsumerWidget {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 80,
+            width: 110,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if (site.siteType == 'php') ...[
+                  _buildActionButton(
+                    icon: LucideIcons.terminal,
+                    onPressed: () => _openTerminal(site, ref),
+                    color: AppColors.accent,
+                    tooltip: 'Open Terminal',
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 _buildActionButton(
                   icon: LucideIcons.settings,
                   onPressed: () => onEdit(site),
@@ -265,5 +279,53 @@ class SiteTable extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openTerminal(SiteModel site, WidgetRef ref) async {
+    final phpApps = ref.read(appsNotifierProvider).valueOrNull?.where((a) => a.isInstalled && a.groupName == 'php') ?? [];
+    String? phpDir;
+
+    if (site.siteType == 'php' && site.phpVersion != null) {
+      final app = phpApps.cast<AppModel?>().firstWhere(
+        (a) => a!.appId.contains(site.phpVersion!), 
+        orElse: () => phpApps.isNotEmpty ? phpApps.first : null
+      );
+      if (app != null && app.cliFilePath != null) {
+        phpDir = p.dirname(app.cliFilePath!);
+      }
+    }
+
+    final workingDir = site.rootDir;
+    String psCommand = '';
+    
+    if (phpDir != null) {
+      psCommand += '\$env:PATH = "$phpDir;" + \$env:PATH; ';
+    }
+    
+    psCommand += 'Clear-Host; ';
+    psCommand += 'Write-Host "==========================================" -ForegroundColor Cyan; ';
+    psCommand += 'Write-Host " DevStack Terminal for ${site.domain}" -ForegroundColor White; ';
+    psCommand += 'Write-Host "==========================================" -ForegroundColor Cyan; ';
+    
+    if (phpDir != null) {
+      psCommand += 'Write-Host "PHP Path : $phpDir" -ForegroundColor DarkGray; ';
+    }
+    psCommand += 'Write-Host "Site Path: $workingDir" -ForegroundColor DarkGray; ';
+    psCommand += 'Write-Host ""; ';
+    
+    if (phpDir != null) {
+      psCommand += 'php -v; Write-Host ""; ';
+    }
+
+    try {
+      await Process.start(
+        'start',
+        ['powershell', '-NoExit', '-Command', psCommand],
+        workingDirectory: workingDir,
+        runInShell: true,
+      );
+    } catch (e) {
+      AppLogger.error('Failed to open terminal for ${site.domain}: $e');
+    }
   }
 }
