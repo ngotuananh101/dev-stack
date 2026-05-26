@@ -1385,6 +1385,14 @@ Alias /phpmyadmin "$pmaPathUnix/"
       final pathService = _ref.read(pathServiceProvider);
       await pathService.ensurePontaBinInPath();
 
+      // Ensure Composer global bin is in PATH
+      final appData = Platform.environment['APPDATA'];
+      if (appData != null) {
+        final composerBinPath = p.join(appData, 'Composer', 'vendor', 'bin');
+        await pathService.addRawPathToUserPath(composerBinPath);
+        logInfo('Added Composer global bin directory to User PATH: $composerBinPath');
+      }
+
       logInfo('Composer installed successfully.');
     } catch (e) {
       logInfo('Warning: Failed to install Composer: $e');
