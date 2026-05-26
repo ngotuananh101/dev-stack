@@ -177,6 +177,30 @@ class PathService {
       final npxCmd = p.join(nodeDir, 'npx.cmd');
       final corepackCmd = p.join(nodeDir, 'corepack.cmd');
 
+      // Lệnh cài đặt global của npm (như pnpm.ps1) sẽ yêu cầu chính xác file "node.exe" tồn tại trong PATH.
+      // Thay vì copy, ta tạo symlink để tiết kiệm dung lượng.
+      try {
+        final nodeExe = File(app.cliFilePath!);
+        final symlinkPath = p.join(binDir, 'node.exe');
+        
+        if (File(symlinkPath).existsSync()) {
+          File(symlinkPath).deleteSync();
+        }
+        
+        if (nodeExe.existsSync()) {
+          final result = await Process.run('cmd', ['/c', 'mklink', symlinkPath, nodeExe.path]);
+          if (result.exitCode == 0) {
+            _logger.info('Created symlink for node.exe at $binDir');
+          } else {
+            _logger.error('Failed to create symlink for node.exe: ${result.stderr}');
+            await nodeExe.copy(symlinkPath);
+            _logger.info('Copied node.exe to $binDir as fallback');
+          }
+        }
+      } catch (e) {
+        _logger.error('Error creating symlink/copy for node.exe: $e');
+      }
+
       if (File(npmCmd).existsSync()) {
         await _createShim('npm', npmCmd);
         
@@ -215,6 +239,11 @@ class PathService {
     }
 
     if (app.appId.contains('nodejs')) {
+      final nodeExe = File(p.join(binDir, 'node.exe'));
+      if (nodeExe.existsSync()) {
+        try { nodeExe.deleteSync(); } catch (_) {}
+      }
+
       final npmShim = File(p.join(binDir, 'npm.bat'));
       final npxShim = File(p.join(binDir, 'npx.bat'));
       final corepackShim = File(p.join(binDir, 'corepack.bat'));
