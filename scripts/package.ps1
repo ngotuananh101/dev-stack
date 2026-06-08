@@ -45,7 +45,7 @@ foreach ($path in $InnoPaths) {
 
 if ($null -eq $ISCC) {
     Write-Host "Error: Inno Setup Compiler (ISCC.exe) not found." -ForegroundColor Yellow
-    Write-Host "Please install Inno Setup 6 or add ISCC.exe to your PATH." -ForegroundColor White
+    Write-Host "Please install Inno Setup 6/7 or add ISCC.exe to your PATH." -ForegroundColor White
     Write-Host "You can download it from: https://jrsoftware.org/isdl.php" -ForegroundColor White
     exit 1
 }
