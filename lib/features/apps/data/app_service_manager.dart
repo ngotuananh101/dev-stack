@@ -153,6 +153,10 @@ class AppServiceManager {
       } else if (fileName == 'elasticsearch.bat') {
         // No special environment or args needed anymore as we edit the config in the app dir
         // but still point data to our managed data dir inside the yml.
+      } else if (fileName == 'postgres.exe') {
+        final version = app.installedVersion ?? 'unknown';
+        final dataDir = p.join(AppConfig.dataDir, '${app.appId}-$version');
+        args = ['-D', dataDir];
       }
 
       final process = await Process.start(
