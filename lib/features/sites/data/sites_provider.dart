@@ -19,8 +19,9 @@ class SitesNotifier extends _$SitesNotifier {
   /// Validates domain name to prevent config injection
   bool _isValidDomain(String domain) {
     if (domain.isEmpty || domain.length > 253) return false;
-    return RegExp(r'^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$')
-        .hasMatch(domain);
+    return RegExp(
+      r'^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$',
+    ).hasMatch(domain);
   }
 
   /// Validates and clamps PHP port to valid range
@@ -82,23 +83,27 @@ class SitesNotifier extends _$SitesNotifier {
       final sslNotifier = ref.read(sslServiceProvider.notifier);
       final logger = ref.read(logServiceProvider);
       bool certGenerated = false;
-      
+
       for (int i = 0; i < 3; i++) {
         await sslNotifier.generateSiteCert(domain);
         final certFile = File(sslNotifier.getSiteCertPath(domain));
         final keyFile = File(sslNotifier.getSiteKeyPath(domain));
-        
+
         if (certFile.existsSync() && keyFile.existsSync()) {
           certGenerated = true;
           break;
         } else {
-          logger.warning('Certificate generation failed for $domain, retrying... (${i + 1}/3)');
+          logger.warning(
+            'Certificate generation failed for $domain, retrying... (${i + 1}/3)',
+          );
           await Future.delayed(const Duration(seconds: 1));
         }
       }
 
       if (!certGenerated) {
-        logger.error('Failed to generate SSL after 3 retries, disabling SSL for $domain');
+        logger.error(
+          'Failed to generate SSL after 3 retries, disabling SSL for $domain',
+        );
         site.useSsl = false;
         await isar.writeTxn(() async {
           await isar.siteModels.put(site);
@@ -338,6 +343,10 @@ class SitesNotifier extends _$SitesNotifier {
       String config = 'server {\n';
       config += '    listen $port${ssl ? " ssl" : ""};\n';
       config += '    server_name ${site.domain};\n';
+      config += '\n';
+      config += '    client_max_body_size 512M;\n';
+      config += '    send_timeout 1800;\n';
+      config += '    proxy_read_timeout 1800;\n';
 
       if (site.siteType != 'proxy') {
         config += '    root "$rootDirUnix";\n';
@@ -387,6 +396,7 @@ class SitesNotifier extends _$SitesNotifier {
           config += '        include fastcgi_params;\n';
           config +=
               '        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;\n';
+          config += '        fastcgi_read_timeout 1800;\n';
           config += '    }\n';
         }
       }

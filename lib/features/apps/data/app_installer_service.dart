@@ -31,10 +31,12 @@ class AppInstallerService {
   final LogService _logger;
   final Ref _ref;
   static String get defaultBaseDir => AppConfig.appsDir;
-  final _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(minutes: 10),
-  ));
+  final _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(minutes: 10),
+    ),
+  );
 
   AppInstallerService(this._logger, this._ref);
 
@@ -104,17 +106,19 @@ class AppInstallerService {
       } else if (isExe) {
         logInfo('Handling executable binary for ${app.name}');
         onProgress?.call(0.8, 'Moving binary...');
-        
+
         // Use the specified exec_file name if available, otherwise keep original
         final fileName = app.execFile ?? p.basename(uri.path);
         final targetFile = File(p.join(installPath, fileName));
-        
+
         logInfo('Copying binary to: ${targetFile.path}');
         await tempFile.copy(targetFile.path);
       } else {
         // Fallback for other formats or if extension is missing
         // For now, assume ZIP if unknown to maintain backward compatibility
-        logInfo('Format $extension not explicitly handled, attempting ZIP extraction...');
+        logInfo(
+          'Format $extension not explicitly handled, attempting ZIP extraction...',
+        );
         try {
           final bytes = await tempFile.readAsBytes();
           await _extractZip(bytes, installPath, onLog);
@@ -194,12 +198,12 @@ class AppInstallerService {
       if (app.appId == 'phpMyAdmin') {
         await _configurePhpMyAdmin(installPath, logInfo);
       }
-      
+
       // 10. Post-installation: Configure pyenv
       if (app.appId == 'pyenv') {
         await _configurePyenv(installPath, logInfo);
       }
-      
+
       // 11. Post-installation: Configure RustFS
       if (app.appId == 'rustfs') {
         await _configureRustFS(app, installPath, logInfo);
@@ -254,7 +258,7 @@ class AppInstallerService {
 
       final subEntities = await subDir.list().toList();
 
-    for (final entity in subEntities) {
+      for (final entity in subEntities) {
         final newPath = p.join(targetPath, p.basename(entity.path));
         try {
           await entity.rename(newPath);
@@ -322,16 +326,6 @@ class AppInstallerService {
       r'^;?\s*post_max_size\s*=.*': 'post_max_size = 2G',
       r'^;?\s*upload_max_filesize\s*=.*': 'upload_max_filesize = 512M',
       r'^;?\s*extension_dir\s*=\s*"ext"': 'extension_dir = "ext"',
-      r'^;?\s*zend_extension\s*=\s*opcache.*': 'zend_extension = opcache',
-      r'^;?\s*opcache\.enable\s*=.*': 'opcache.enable = 1',
-      r'^;?\s*opcache\.enable_cli\s*=.*': 'opcache.enable_cli = 1',
-      r'^;?\s*opcache\.memory_consumption\s*=.*':
-          'opcache.memory_consumption = 128',
-      r'^;?\s*opcache\.max_accelerated_files\s*=.*':
-          'opcache.max_accelerated_files = 10000',
-      r'^;?\s*opcache\.validate_timestamps\s*=.*':
-          'opcache.validate_timestamps = 1',
-      r'^;?\s*opcache\.revalidate_freq\s*=.*': 'opcache.revalidate_freq = 2',
       r'^;?\s*realpath_cache_size\s*=.*': 'realpath_cache_size = 4096k',
       r'^;?\s*realpath_cache_ttl\s*=.*': 'realpath_cache_ttl = 600',
     };
@@ -419,7 +413,9 @@ class AppInstallerService {
     Function(String) logInfo,
   ) async {
     logInfo('Initializing database system tables...');
-    final dataDir = Directory(p.join(AppConfig.dataDir, '${app.appId}-$version'));
+    final dataDir = Directory(
+      p.join(AppConfig.dataDir, '${app.appId}-$version'),
+    );
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
     }
@@ -479,7 +475,9 @@ class AppInstallerService {
     Function(String) logInfo,
   ) async {
     logInfo('Initializing PostgreSQL database cluster...');
-    final dataDir = Directory(p.join(AppConfig.dataDir, '${app.appId}-$version'));
+    final dataDir = Directory(
+      p.join(AppConfig.dataDir, '${app.appId}-$version'),
+    );
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
     }
@@ -497,11 +495,15 @@ class AppInstallerService {
     }
 
     final args = [
-      '-D', dataDir.path,
-      '-E', 'UTF8',
-      '-U', 'postgres',
+      '-D',
+      dataDir.path,
+      '-E',
+      'UTF8',
+      '-U',
+      'postgres',
       '--locale=C',
-      '-A', 'trust',
+      '-A',
+      'trust',
     ];
 
     logInfo('Running: ${initdbExec.path} ${args.join(' ')}');
@@ -509,13 +511,16 @@ class AppInstallerService {
       final result = await Process.run(initdbExec.path, args);
       if (result.exitCode == 0) {
         logInfo('PostgreSQL database cluster initialized successfully.');
-        
+
         // Allow connections from any IP
         try {
           final confFile = File(p.join(dataDir.path, 'postgresql.conf'));
           if (confFile.existsSync()) {
             var content = await confFile.readAsString();
-            content = content.replaceAll(RegExp(r"^#?listen_addresses\s*=\s*'.*?'", multiLine: true), "listen_addresses = '*'");
+            content = content.replaceAll(
+              RegExp(r"^#?listen_addresses\s*=\s*'.*?'", multiLine: true),
+              "listen_addresses = '*'",
+            );
             await confFile.writeAsString(content);
             logInfo('Updated PostgreSQL listen_addresses to *');
           }
@@ -524,13 +529,16 @@ class AppInstallerService {
           if (hbaFile.existsSync()) {
             var content = await hbaFile.readAsString();
             if (!content.contains('0.0.0.0/0')) {
-              content += '\nhost    all             all             0.0.0.0/0               trust\n';
+              content +=
+                  '\nhost    all             all             0.0.0.0/0               trust\n';
               await hbaFile.writeAsString(content);
               logInfo('Updated pg_hba.conf to allow all connections');
             }
           }
         } catch (e) {
-          logInfo('Warning: Could not update PostgreSQL config for remote access: $e');
+          logInfo(
+            'Warning: Could not update PostgreSQL config for remote access: $e',
+          );
         }
       } else {
         logInfo('Initialization returned non-zero code: ${result.exitCode}');
@@ -913,8 +921,8 @@ net:
     // Delete data directory for databases
     if (version != null &&
         (appId.contains('mysql') ||
-         appId.contains('mariadb') ||
-         appId.contains('postgresql'))) {
+            appId.contains('mariadb') ||
+            appId.contains('postgresql'))) {
       final dataDir = Directory(p.join(AppConfig.dataDir, '$appId-$version'));
       if (dataDir.existsSync()) {
         _logger.info('Deleting data directory: ${dataDir.path}');
@@ -975,9 +983,9 @@ net:
     if (isPMA) {
       phpMyAdmin = currentApp;
     } else {
-      phpMyAdmin = allApps.where(
-        (a) => a.appId == 'phpMyAdmin' && a.isInstalled,
-      ).firstOrNull;
+      phpMyAdmin = allApps
+          .where((a) => a.appId == 'phpMyAdmin' && a.isInstalled)
+          .firstOrNull;
     }
 
     if (phpMyAdmin == null) {
@@ -1052,13 +1060,17 @@ net:
     final pmaPath = pma.location;
     if (wsPath == null || pmaPath == null) return;
 
-    final nginxVhostsDir = Directory(p.join(AppConfig.vhostsDir, 'nginx', 'integrations'));
+    final nginxVhostsDir = Directory(
+      p.join(AppConfig.vhostsDir, 'nginx', 'integrations'),
+    );
     if (!nginxVhostsDir.existsSync()) {
       await nginxVhostsDir.create(recursive: true);
     }
 
     // Cleanup legacy config if exists
-    final legacyConf = File(p.join(AppConfig.vhostsDir, 'nginx', 'phpmyadmin.conf'));
+    final legacyConf = File(
+      p.join(AppConfig.vhostsDir, 'nginx', 'phpmyadmin.conf'),
+    );
     if (legacyConf.existsSync()) {
       await legacyConf.delete();
       log('Removed legacy phpmyadmin.conf from vhosts root');
@@ -1231,10 +1243,12 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
     final pathService = _ref.read(pathServiceProvider);
     final pyenvWinDir = p.join(installPath, 'pyenv-win');
-    
+
     // Check if pyenv-win directory exists
     if (!Directory(pyenvWinDir).existsSync()) {
-      logInfo('Warning: pyenv-win directory not found at $pyenvWinDir. Skipping detailed config.');
+      logInfo(
+        'Warning: pyenv-win directory not found at $pyenvWinDir. Skipping detailed config.',
+      );
       return;
     }
 
@@ -1255,7 +1269,10 @@ Alias /phpmyadmin "$pmaPathUnix/"
     );
   }
 
-  Future<void> cleanupPyenv(String installPath, Function(String) logInfo) async {
+  Future<void> cleanupPyenv(
+    String installPath,
+    Function(String) logInfo,
+  ) async {
     logInfo('Cleaning up pyenv-win environment variables and PATH...');
 
     final pathService = _ref.read(pathServiceProvider);
@@ -1291,8 +1308,13 @@ Alias /phpmyadmin "$pmaPathUnix/"
     // so here we just ensure the data path exists.
   }
 
-  Future<void> _configureMeilisearch(String installPath, Function(String) logInfo) async {
-    logInfo('Configuring Meilisearch (Hybrid: Config in App, Data in Ponta Data)...');
+  Future<void> _configureMeilisearch(
+    String installPath,
+    Function(String) logInfo,
+  ) async {
+    logInfo(
+      'Configuring Meilisearch (Hybrid: Config in App, Data in Ponta Data)...',
+    );
     final dataDir = Directory(p.join(AppConfig.dataDir, 'meilisearch'));
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
@@ -1301,20 +1323,29 @@ Alias /phpmyadmin "$pmaPathUnix/"
     final confFile = File(p.join(installPath, 'config.toml'));
     if (!confFile.existsSync()) {
       final buffer = StringBuffer();
-      buffer.writeln('# ======================== Ponta Managed Configuration =========================');
+      buffer.writeln(
+        '# ======================== Ponta Managed Configuration =========================',
+      );
       buffer.writeln('http_addr = "0.0.0.0:7700"');
       buffer.writeln('master_key = "meilisearch_master_key"');
       buffer.writeln('env = "development"');
       buffer.writeln('no_analytics = true');
-      buffer.writeln('db_path = "${p.join(dataDir.path, 'data.ms').replaceAll('\\', '/')}"');
-      
+      buffer.writeln(
+        'db_path = "${p.join(dataDir.path, 'data.ms').replaceAll('\\', '/')}"',
+      );
+
       await confFile.writeAsString(buffer.toString());
       logInfo('Applied managed configuration to ${confFile.path}');
     }
   }
 
-  Future<void> _configureElasticsearch(String installPath, Function(String) logInfo) async {
-    logInfo('Configuring Elasticsearch (Hybrid: Config in App, Data in Ponta Data)...');
+  Future<void> _configureElasticsearch(
+    String installPath,
+    Function(String) logInfo,
+  ) async {
+    logInfo(
+      'Configuring Elasticsearch (Hybrid: Config in App, Data in Ponta Data)...',
+    );
     final esDataDir = Directory(p.join(AppConfig.dataDir, 'elasticsearch'));
     final dataPath = Directory(p.join(esDataDir.path, 'data'));
     final logsPath = Directory(p.join(esDataDir.path, 'logs'));
@@ -1325,10 +1356,12 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
     // Edit config directly in the installPath/config directory
     final confFile = File(p.join(installPath, 'config', 'elasticsearch.yml'));
-    
+
     if (confFile.existsSync()) {
       final buffer = StringBuffer();
-      buffer.writeln('# ======================== Ponta Managed Configuration =========================');
+      buffer.writeln(
+        '# ======================== Ponta Managed Configuration =========================',
+      );
       buffer.writeln('cluster.name: "ponta-cluster"');
       buffer.writeln('node.name: "ponta-node-1"');
       buffer.writeln('network.host: 0.0.0.0');
@@ -1336,11 +1369,11 @@ Alias /phpmyadmin "$pmaPathUnix/"
       buffer.writeln('discovery.type: single-node');
       buffer.writeln('xpack.security.enabled: false');
       buffer.writeln('ingest.geoip.downloader.enabled: false');
-      
+
       // Points data and logs to the managed Ponta data directory
       buffer.writeln('path.data: "${dataPath.path.replaceAll('\\', '/')}"');
       buffer.writeln('path.logs: "${logsPath.path.replaceAll('\\', '/')}"');
-      
+
       await confFile.writeAsString(buffer.toString());
       logInfo('Applied managed configuration to ${confFile.path}');
     }
@@ -1390,7 +1423,9 @@ Alias /phpmyadmin "$pmaPathUnix/"
       if (appData != null) {
         final composerBinPath = p.join(appData, 'Composer', 'vendor', 'bin');
         await pathService.addRawPathToUserPath(composerBinPath);
-        logInfo('Added Composer global bin directory to User PATH: $composerBinPath');
+        logInfo(
+          'Added Composer global bin directory to User PATH: $composerBinPath',
+        );
       }
 
       logInfo('Composer installed successfully.');
