@@ -38,10 +38,10 @@ class HostsRepository {
 
       final tempPath = tempFile.path;
       // Use proper argument separation to avoid nested quoting issues
-      final psCommand = 'Copy-Item -Path "$tempPath" -Destination "$hostsPath" -Force';
+      final psCommand = "Copy-Item -Path '$tempPath' -Destination '$hostsPath' -Force";
       final result = await Process.run('powershell', [
         '-Command',
-        'Start-Process powershell -ArgumentList @("-NoProfile","-Command","$psCommand") -Verb RunAs -Wait'
+        'Start-Process powershell -ArgumentList @("-NoProfile","-WindowStyle","Hidden","-Command","$psCommand") -Verb RunAs -Wait'
       ]);
 
       if (result.exitCode == 0) {

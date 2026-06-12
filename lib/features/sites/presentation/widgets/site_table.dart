@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../core/services/log_service.dart';
+import '../../../../core/services/notepad_service.dart';
 import '../../../apps/data/apps_provider.dart';
 import '../../../apps/domain/app_model.dart';
 import '../../domain/site_model.dart';
@@ -86,7 +88,7 @@ class SiteTable extends ConsumerWidget {
           SizedBox(width: 50, child: _buildHeaderCell('SSL')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 110,
+            width: 150,
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
@@ -198,7 +200,7 @@ class SiteTable extends ConsumerWidget {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 110,
+            width: 150,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -211,6 +213,13 @@ class SiteTable extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                 ],
+                _buildActionButton(
+                  icon: LucideIcons.pencil,
+                  onPressed: () => _openVhostInNotepad(site, 'nginx'),
+                  color: AppColors.primary,
+                  tooltip: 'Edit Nginx Config',
+                ),
+                const SizedBox(width: 8),
                 _buildActionButton(
                   icon: LucideIcons.settings,
                   onPressed: () => onEdit(site),
@@ -279,6 +288,20 @@ class SiteTable extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openVhostInNotepad(SiteModel site, String serverType) async {
+    final vhostPath = p.join(
+      AppConfig.vhostsDir,
+      serverType,
+      '${site.domain}.conf',
+    );
+
+    if (!File(vhostPath).existsSync()) {
+      return;
+    }
+
+    await NotepadService.openFile(vhostPath);
   }
 
   Future<void> _openTerminal(SiteModel site, WidgetRef ref) async {

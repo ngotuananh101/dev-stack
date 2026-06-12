@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:flutter_code_editor/flutter_code_editor.dart';
-import 'package:flutter_highlight/themes/monokai-sublime.dart';
-import 'package:highlight/languages/properties.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
+import '../../../core/services/notepad_service.dart';
 import '../data/hosts_provider.dart';
 
 class HostsPage extends ConsumerStatefulWidget {
@@ -17,57 +15,27 @@ class HostsPage extends ConsumerStatefulWidget {
 }
 
 class _HostsPageState extends ConsumerState<HostsPage> {
-  CodeController? _controller;
-  final FocusNode _editorFocusNode = FocusNode();
+  static const String _hostsPath = r'C:\Windows\System32\drivers\etc\hosts';
 
-  @override
-  void dispose() {
-    _controller?.dispose();
-    _editorFocusNode.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleSave() async {
-    final success = await ref.read(hostsNotifierProvider.notifier).save();
-    if (!mounted) return;
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hosts file saved successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to save hosts file.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  void _initController(String text) {
-    if (_controller == null) {
-      _controller = CodeController(text: text, language: properties);
-      _controller!.addListener(() {
-        ref.read(hostsNotifierProvider.notifier).updateText(_controller!.text);
-      });
+  Future<void> _openInNotepadPlusPlus() async {
+    await NotepadService.openFile(_hostsPath);
+    // Reload hosts content after NPP closes
+    if (mounted) {
+      ref.invalidate(hostsNotifierProvider);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final hostsAsync = ref.watch(hostsNotifierProvider);
-
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyS, control: true): () =>
-            _handleSave(),
+            _openInNotepadPlusPlus(),
+        const SingleActivator(LogicalKeyboardKey.keyE, control: true): () =>
+            _openInNotepadPlusPlus(),
       },
       child: Focus(
         autofocus: true,
-        focusNode: _editorFocusNode,
         child: Scaffold(
           backgroundColor: AppColors.background,
           body: Padding(
@@ -77,17 +45,7 @@ class _HostsPageState extends ConsumerState<HostsPage> {
               children: [
                 _buildHeader(),
                 const SizedBox(height: 32),
-                Expanded(
-                  child: hostsAsync.when(
-                    data: (content) {
-                      _initController(content);
-                      return _buildEditor();
-                    },
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (err, stack) => Center(child: Text('Error: $err')),
-                  ),
-                ),
+                Expanded(child: _buildContent()),
               ],
             ),
           ),
@@ -120,38 +78,110 @@ class _HostsPageState extends ConsumerState<HostsPage> {
             ),
           ],
         ),
-        ElevatedButton.icon(
-          onPressed: _handleSave,
-          icon: const Icon(LucideIcons.save, size: 18),
-          label: const Text('Save Changes'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.accent,
-            foregroundColor: Colors.black,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: () {
+                ref.invalidate(hostsNotifierProvider);
+              },
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Reload'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textSecondary,
+                side: const BorderSide(color: AppColors.border),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
+              onPressed: _openInNotepadPlusPlus,
+              icon: const Icon(LucideIcons.pencil, size: 18),
+              label: const Text('Open in Notepad++'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildEditor() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: CodeTheme(
-        data: CodeThemeData(styles: monokaiSublimeTheme),
-        child: SingleChildScrollView(
-          child: CodeField(
-            controller: _controller!,
-            textStyle: const TextStyle(fontFamily: 'monospace', fontSize: 14),
-          ),
+  Widget _buildContent() {
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500),
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.description_outlined,
+                size: 48,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Hosts File',
+              style: TextStyle(
+                fontSize: AppTextSize.base,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _hostsPath,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: AppTextSize.xxs,
+                fontFamily: 'monospace',
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _openInNotepadPlusPlus,
+              icon: const Icon(Icons.edit_note, size: 20),
+              label: const Text('Open in Notepad++'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Ctrl+S or Ctrl+E to open  •  Auto-reload after saving',
+              style: TextStyle(
+                fontSize: AppTextSize.xxs,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
         ),
       ),
     );

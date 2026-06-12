@@ -1,8 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/config/app_config.dart';
+import '../../../../core/services/notepad_service.dart';
+import '../../../../core/services/ssl_service.dart';
 import '../../domain/site_model.dart';
 import '../../../apps/data/apps_provider.dart';
 import '../../data/sites_provider.dart';
@@ -509,43 +514,31 @@ class _ConfigTab extends ConsumerStatefulWidget {
 
 class _ConfigTabState extends ConsumerState<_ConfigTab> {
   String _selectedType = 'nginx';
-  final _controller = TextEditingController();
-  bool _isLoading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadConfig();
-  }
-
-  Future<void> _loadConfig() async {
-    setState(() => _isLoading = true);
-    final configs = await ref
-        .read(sitesNotifierProvider.notifier)
-        .getConfigs(widget.site);
-    setState(() {
-      _controller.text = configs[_selectedType] ?? '';
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _saveConfig() async {
-    await ref
-        .read(sitesNotifierProvider.notifier)
-        .saveConfig(widget.site, _selectedType, _controller.text);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Configuration saved and webservers restarted'),
-        ),
+  String get _configPath => p.join(
+        AppConfig.vhostsDir,
+        _selectedType,
+        '${widget.site.domain}.conf',
       );
+
+  Future<void> _openInNotepadPlusPlus() async {
+    final path = _configPath;
+    if (!File(path).existsSync()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Config file not found: $path'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
     }
+    await NotepadService.openFile(path);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -558,36 +551,84 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
               _buildTypeButton('apache', 'Apache'),
               const Spacer(),
               ElevatedButton.icon(
-                onPressed: _saveConfig,
-                icon: const Icon(LucideIcons.save, size: 14),
-                label: const Text('Save Changes'),
+                onPressed: _openInNotepadPlusPlus,
+                icon: const Icon(LucideIcons.pencil, size: 14),
+                label: const Text('Open in Notepad++'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.black,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: TextField(
-                controller: _controller,
-                maxLines: null,
-                expands: true,
-                style: const TextStyle(
-                  color: Color(0xFFD4D4D4),
-                  fontFamily: 'monospace',
-                  fontSize: 13,
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 500),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
                 ),
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.all(16),
-                  border: InputBorder.none,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        LucideIcons.fileCode,
+                        size: 48,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      '${_selectedType == 'nginx' ? 'Nginx' : 'Apache'} Config',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _configPath,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: _openInNotepadPlusPlus,
+                      icon: const Icon(LucideIcons.edit3, size: 18),
+                      label: const Text('Open in Notepad++'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Auto-reload after saving in Notepad++',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -600,10 +641,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
   Widget _buildTypeButton(String type, String label) {
     final isSelected = _selectedType == type;
     return InkWell(
-      onTap: () {
-        setState(() => _selectedType = type);
-        _loadConfig();
-      },
+      onTap: () => setState(() => _selectedType = type),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -637,41 +675,32 @@ class _SslTab extends ConsumerStatefulWidget {
 
 class _SslTabState extends ConsumerState<_SslTab> {
   String _selectedFile = 'cert';
-  final _controller = TextEditingController();
-  bool _isLoading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadSsl();
+  String get _sslFilePath {
+    final ssl = ref.read(sslServiceProvider.notifier);
+    return _selectedFile == 'cert'
+        ? ssl.getSiteCertPath(widget.site.domain)
+        : ssl.getSiteKeyPath(widget.site.domain);
   }
 
-  Future<void> _loadSsl() async {
-    setState(() => _isLoading = true);
-    final files = await ref
-        .read(sitesNotifierProvider.notifier)
-        .getSslFiles(widget.site);
-    setState(() {
-      _controller.text = files[_selectedFile] ?? '';
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _saveSsl() async {
-    await ref
-        .read(sitesNotifierProvider.notifier)
-        .saveSslFile(widget.site, _selectedFile, _controller.text);
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('SSL file saved')));
+  Future<void> _openInNotepadPlusPlus() async {
+    final path = _sslFilePath;
+    if (!File(path).existsSync()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('SSL file not found: $path'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
     }
+    await NotepadService.openFile(path);
   }
 
   Future<void> _regenerate() async {
-    setState(() => _isLoading = true);
     await ref.read(sitesNotifierProvider.notifier).regenerateSsl(widget.site);
-    await _loadSsl();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('SSL certificate regenerated')),
@@ -681,8 +710,6 @@ class _SslTabState extends ConsumerState<_SslTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -704,36 +731,76 @@ class _SslTabState extends ConsumerState<_SslTab> {
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: _saveSsl,
-                icon: const Icon(LucideIcons.save, size: 14),
-                label: const Text('Save Changes'),
+                onPressed: _openInNotepadPlusPlus,
+                icon: const Icon(LucideIcons.pencil, size: 14),
+                label: const Text('Open in Notepad++'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.black,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: TextField(
-                controller: _controller,
-                maxLines: null,
-                expands: true,
-                style: const TextStyle(
-                  color: Color(0xFFD4D4D4),
-                  fontFamily: 'monospace',
-                  fontSize: 12,
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 500),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
                 ),
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.all(16),
-                  border: InputBorder.none,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        LucideIcons.shieldCheck,
+                        size: 48,
+                        color: AppColors.success,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      _selectedFile == 'cert' ? 'Certificate' : 'Private Key',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _sslFilePath,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: _openInNotepadPlusPlus,
+                      icon: const Icon(LucideIcons.edit3, size: 18),
+                      label: const Text('Open in Notepad++'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -746,10 +813,7 @@ class _SslTabState extends ConsumerState<_SslTab> {
   Widget _buildTypeButton(String type, String label) {
     final isSelected = _selectedFile == type;
     return InkWell(
-      onTap: () {
-        setState(() => _selectedFile = type);
-        _loadSsl();
-      },
+      onTap: () => setState(() => _selectedFile = type),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(

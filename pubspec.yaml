@@ -2,7 +2,7 @@ name: dev_stack
 description: "Local development stack for Windows"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -86,7 +86,6 @@ flutter_launcher_icons:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
@@ -97,6 +96,9 @@ flutter:
     - assets/data/
     - assets/images/
     - assets/bin/
+    - assets/bin/npp/
+    - assets/bin/npp/userDefineLangs/
+    - assets/bin/npp/themes/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
