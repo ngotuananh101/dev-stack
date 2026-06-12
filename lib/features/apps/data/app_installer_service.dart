@@ -361,6 +361,7 @@ class AppInstallerService {
       'sqlite3',
       'zip',
       'mysqli',
+      'openssl',
     ];
 
     for (final ext in extensions) {
