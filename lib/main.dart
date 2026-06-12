@@ -9,7 +9,6 @@ import 'core/theme/app_theme.dart';
 
 import 'shared/providers/navigation_provider.dart';
 import 'shared/layouts/sidebar.dart';
-import 'features/hosts/presentation/hosts_page.dart';
 import 'features/apps/presentation/apps_page.dart';
 import 'features/apps/data/apps_provider.dart';
 import 'features/logs/presentation/logs_page.dart';
@@ -18,6 +17,7 @@ import 'features/settings/presentation/settings_page.dart';
 import 'features/sites/presentation/sites_page.dart';
 import 'core/services/window_service.dart';
 import 'core/services/ssl_service.dart';
+import 'core/services/notepad_service.dart';
 import 'features/apps/data/app_installer_service.dart';
 import 'features/settings/domain/app_settings.dart';
 import 'package:dev_stack/core/services/log_service.dart';
@@ -31,6 +31,9 @@ void main(List<String> args) async {
   if (settings != null) {
     AppConfig.initialize(baseDir: settings.baseDir);
   }
+
+  // Extract Notepad++ from npp.zip if not already extracted
+  await NotepadService.ensureExtracted();
 
   await windowManager.ensureInitialized();
   final packageInfo = await PackageInfo.fromPlatform();
@@ -131,8 +134,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     switch (tab) {
       case NavigationTab.apps:
         return const AppsPage();
-      case NavigationTab.hosts:
-        return const HostsPage();
       case NavigationTab.logs:
         return const LogsPage();
       case NavigationTab.databases:

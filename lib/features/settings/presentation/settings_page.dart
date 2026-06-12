@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
+import '../../../core/services/notepad_service.dart';
 import '../../../shared/utils/app_dialogs.dart';
 import '../../apps/data/apps_provider.dart';
 import '../../../core/services/ssl_service.dart';
@@ -68,6 +69,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   title: 'Site Configuration',
                   icon: LucideIcons.globe,
                   children: [
+                    _buildActionSetting(
+                      title: 'Edit Hosts File',
+                      subtitle: 'Open Windows hosts file in Notepad++',
+                      icon: LucideIcons.fileText,
+                      actionLabel: 'Edit',
+                      onTap: () => _editHostsFile(context),
+                    ),
+                    const Divider(color: AppColors.border, height: 32),
                     _buildDropdownSetting(
                       title: 'Default PHP Version',
                       subtitle:
@@ -1029,6 +1038,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   void _showSystemInfo(BuildContext context) {
     showDialog(context: context, builder: (context) => const SystemInfoModal());
+  }
+
+  Future<void> _editHostsFile(BuildContext context) async {
+    const hostsPath = r'C:\Windows\System32\drivers\etc\hosts';
+    final success = await NotepadService.openFile(hostsPath);
+    if (!success && context.mounted) {
+      AppDialogs.showToast(
+        context,
+        'Failed to open hosts file in Notepad++',
+        isError: true,
+      );
+    }
   }
 }
 

@@ -6,7 +6,6 @@ enum NavigationTab {
   apps,
   sites,
   databases,
-  hosts,
   logs,
   settings,
 }

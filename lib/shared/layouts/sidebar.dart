@@ -52,14 +52,6 @@ class Sidebar extends ConsumerWidget {
                       .setTab(NavigationTab.databases),
                 ),
                 _buildNavItem(
-                  LucideIcons.server,
-                  'Hosts',
-                  isActive: currentTab == NavigationTab.hosts,
-                  onTap: () => ref
-                      .read(navigationProvider.notifier)
-                      .setTab(NavigationTab.hosts),
-                ),
-                _buildNavItem(
                   LucideIcons.terminal,
                   'Logs',
                   isActive: currentTab == NavigationTab.logs,
