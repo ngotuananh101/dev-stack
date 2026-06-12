@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:archive/archive.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -319,6 +320,23 @@ class AppInstallerService {
     logInfo('Tuning php.ini for better performance...');
     String content = await phpIni.readAsString();
 
+    // Extract cacert.pem from assets to a stable location
+    final certsDir = Directory(AppConfig.certsDir);
+    if (!certsDir.existsSync()) {
+      certsDir.createSync(recursive: true);
+    }
+    final cacertPath = p.join(AppConfig.certsDir, 'cacert.pem');
+    try {
+      final cacertData = await rootBundle.load('assets/data/cacert.pem');
+      await File(cacertPath).writeAsBytes(cacertData.buffer.asUint8List());
+      logInfo('Extracted cacert.pem to $cacertPath');
+    } catch (e) {
+      logInfo('Warning: Could not extract cacert.pem: $e');
+    }
+
+    // Use forward slashes for php.ini paths (Windows accepts both)
+    final cacertPathNormalized = cacertPath.replaceAll(r'\', '/');
+
     final Map<String, String> replacements = {
       r'^;?\s*max_execution_time\s*=.*': 'max_execution_time = 1800',
       r'^;?\s*max_input_time\s*=.*': 'max_input_time = 3600',
@@ -328,6 +346,7 @@ class AppInstallerService {
       r'^;?\s*extension_dir\s*=\s*"ext"': 'extension_dir = "ext"',
       r'^;?\s*realpath_cache_size\s*=.*': 'realpath_cache_size = 4096k',
       r'^;?\s*realpath_cache_ttl\s*=.*': 'realpath_cache_ttl = 600',
+      r'^;?\s*openssl\.cafile\s*=.*': 'openssl.cafile = "$cacertPathNormalized"',
     };
 
     for (final entry in replacements.entries) {

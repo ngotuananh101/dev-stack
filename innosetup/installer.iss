@@ -43,3 +43,47 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+var
+  DeleteDataPage: TInputOptionWizardPage;
+
+procedure InitializeWizard;
+begin
+  DeleteDataPage := CreateInputOptionPage(wpSelectDir,
+    'Data Cleanup', 'Choose what to remove on uninstall.',
+    'Select the data you want removed when uninstalling {#MyAppName}.',
+    False, False);
+  DeleteDataPage.Add('Delete all app data (C:\Ponta) — apps, databases, logs, certs, vhosts');
+  DeleteDataPage.Add('Delete user settings (%APPDATA%\dev_stack)');
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  BaseDir: String;
+  UserDataDir: String;
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    BaseDir := 'C:\Ponta';
+    UserDataDir := ExpandConstant('{%APPDATA}\dev_stack');
+
+    if DeleteDataPage.Values[0] then
+    begin
+      if DirExists(BaseDir) then
+      begin
+        DelTree(BaseDir, True, True, True);
+        Log('Deleted base directory: ' + BaseDir);
+      end;
+    end;
+
+    if DeleteDataPage.Values[1] then
+    begin
+      if DirExists(UserDataDir) then
+      begin
+        DelTree(UserDataDir, True, True, True);
+        Log('Deleted user data directory: ' + UserDataDir);
+      end;
+    end;
+  end;
+end;
