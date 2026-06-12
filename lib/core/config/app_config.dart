@@ -1,3 +1,6 @@
+import 'dart:io';
+import '../services/log_service.dart';
+
 class AppConfig {
   static String _baseDir = 'C:\\Ponta';
 
@@ -34,4 +37,23 @@ class AppConfig {
 
   /// SQL databases directory.
   static String get dataDir => '$_baseDir\\data';
+}
+
+/// Update DEVSTACK_BASE_DIR environment variable in Windows registry.
+Future<void> updateBaseDirEnvVar(String baseDir) async {
+  try {
+    final result = await Process.run('powershell', [
+      '-NoProfile',
+      '-Command',
+      '[Environment]::SetEnvironmentVariable("DEVSTACK_BASE_DIR", "$baseDir", "User")',
+    ]);
+
+    if (result.exitCode == 0) {
+      AppLogger.info('Updated DEVSTACK_BASE_DIR environment variable: $baseDir');
+    } else {
+      AppLogger.warning('Failed to update DEVSTACK_BASE_DIR: ${result.stderr}');
+    }
+  } catch (e) {
+    AppLogger.warning('Failed to update DEVSTACK_BASE_DIR: $e');
+  }
 }

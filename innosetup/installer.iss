@@ -41,6 +41,9 @@ Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignore
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
+[Registry]
+Root: HKCU; Subkey: "Environment"; ValueType: string; ValueName: "DEVSTACK_BASE_DIR"; ValueData: "C:\Ponta"; Flags: uninsdeletevalue
+
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
@@ -52,7 +55,8 @@ var
 begin
   if CurUninstallStep = usPostUninstall then
   begin
-    BaseDir := 'C:\Ponta';
+    // Read base dir from environment variable (set by installer, updated by app)
+    BaseDir := ExpandConstant('{%DEVSTACK_BASE_DIR|C:\Ponta}');
     UserDataDir := ExpandConstant('{%APPDATA}\com.ponta\dev_stack');
 
     if DirExists(BaseDir) then

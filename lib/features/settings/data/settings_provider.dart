@@ -4,6 +4,7 @@ import 'package:isar/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import '../../../core/database/isar_provider.dart';
+import '../../../core/config/app_config.dart';
 import '../../apps/domain/installed_app.dart';
 import '../../sites/domain/site_model.dart';
 import '../domain/app_settings.dart';
@@ -292,7 +293,10 @@ class SettingsNotifier extends _$SettingsNotifier {
     // but validate inputs first
     if (baseDir != null && baseDir.isEmpty) return;
 
-    if (baseDir != null) currentSettings.baseDir = baseDir;
+    if (baseDir != null) {
+      currentSettings.baseDir = baseDir;
+      await updateBaseDirEnvVar(baseDir);
+    }
     if (siteTemplate != null) currentSettings.siteTemplate = siteTemplate;
     if (autoCreateSite != null) currentSettings.autoCreateSite = autoCreateSite;
     if (minimizeToTray != null) currentSettings.minimizeToTray = minimizeToTray;
