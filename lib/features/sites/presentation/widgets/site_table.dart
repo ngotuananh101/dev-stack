@@ -48,8 +48,12 @@ class SiteTable extends ConsumerWidget {
             Expanded(
               child: ListView.builder(
                 itemCount: sites.length,
-                itemBuilder: (context, index) =>
-                    _buildRow(context, ref, sites[index], index == sites.length - 1),
+                itemBuilder: (context, index) => _buildRow(
+                  context,
+                  ref,
+                  sites[index],
+                  index == sites.length - 1,
+                ),
               ),
             ),
         ],
@@ -58,7 +62,8 @@ class SiteTable extends ConsumerWidget {
   }
 
   Widget _buildHeader() {
-    final allSelected = sites.isNotEmpty && sites.every((s) => selectedIds.contains(s.id));
+    final allSelected =
+        sites.isNotEmpty && sites.every((s) => selectedIds.contains(s.id));
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -75,7 +80,9 @@ class SiteTable extends ConsumerWidget {
               value: allSelected,
               onChanged: (val) => onToggleAll(val ?? false),
               side: const BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -96,7 +103,10 @@ class SiteTable extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeaderCell(String label, {TextAlign alignment = TextAlign.left}) {
+  Widget _buildHeaderCell(
+    String label, {
+    TextAlign alignment = TextAlign.left,
+  }) {
     return Text(
       label,
       textAlign: alignment,
@@ -109,7 +119,12 @@ class SiteTable extends ConsumerWidget {
     );
   }
 
-  Widget _buildRow(BuildContext context, WidgetRef ref, SiteModel site, bool isLast) {
+  Widget _buildRow(
+    BuildContext context,
+    WidgetRef ref,
+    SiteModel site,
+    bool isLast,
+  ) {
     final isSelected = selectedIds.contains(site.id);
 
     return Container(
@@ -128,7 +143,9 @@ class SiteTable extends ConsumerWidget {
               value: isSelected,
               onChanged: (_) => onToggleSelection(site.id),
               side: const BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -173,8 +190,13 @@ class SiteTable extends ConsumerWidget {
           Expanded(
             flex: 4,
             child: Text(
-              site.siteType == 'proxy' ? (site.proxyTarget ?? '-') : site.rootDir,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              site.siteType == 'proxy'
+                  ? (site.proxyTarget ?? '-')
+                  : site.rootDir,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -182,8 +204,13 @@ class SiteTable extends ConsumerWidget {
           SizedBox(
             width: 100,
             child: Text(
-              site.siteType == 'php' ? 'PHP ${site.phpVersion}' : site.siteType.toUpperCase(),
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              site.siteType == 'php'
+                  ? 'PHP ${site.phpVersion}'
+                  : site.siteType.toUpperCase(),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -214,13 +241,6 @@ class SiteTable extends ConsumerWidget {
                   const SizedBox(width: 8),
                 ],
                 _buildActionButton(
-                  icon: LucideIcons.pencil,
-                  onPressed: () => _openVhostInNotepad(site, 'nginx'),
-                  color: AppColors.primary,
-                  tooltip: 'Edit Nginx Config',
-                ),
-                const SizedBox(width: 8),
-                _buildActionButton(
                   icon: LucideIcons.settings,
                   onPressed: () => onEdit(site),
                   color: AppColors.textSecondary,
@@ -233,10 +253,13 @@ class SiteTable extends ConsumerWidget {
                     AppDialogs.showConfirm(
                       context: context,
                       title: 'Delete Site',
-                      text: 'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
+                      text:
+                          'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
                       confirmBtnText: 'DELETE',
                       onConfirm: () {
-                        ref.read(sitesNotifierProvider.notifier).deleteSite(site.id);
+                        ref
+                            .read(sitesNotifierProvider.notifier)
+                            .deleteSite(site.id);
                       },
                     );
                   },
@@ -290,28 +313,19 @@ class SiteTable extends ConsumerWidget {
     );
   }
 
-  Future<void> _openVhostInNotepad(SiteModel site, String serverType) async {
-    final vhostPath = p.join(
-      AppConfig.vhostsDir,
-      serverType,
-      '${site.domain}.conf',
-    );
-
-    if (!File(vhostPath).existsSync()) {
-      return;
-    }
-
-    await NotepadService.openFile(vhostPath);
-  }
-
   Future<void> _openTerminal(SiteModel site, WidgetRef ref) async {
-    final phpApps = ref.read(appsNotifierProvider).valueOrNull?.where((a) => a.isInstalled && a.groupName == 'php') ?? [];
+    final phpApps =
+        ref
+            .read(appsNotifierProvider)
+            .valueOrNull
+            ?.where((a) => a.isInstalled && a.groupName == 'php') ??
+        [];
     String? phpDir;
 
     if (site.siteType == 'php' && site.phpVersion != null) {
       final app = phpApps.cast<AppModel?>().firstWhere(
-        (a) => a!.appId.contains(site.phpVersion!), 
-        orElse: () => phpApps.isNotEmpty ? phpApps.first : null
+        (a) => a!.appId.contains(site.phpVersion!),
+        orElse: () => phpApps.isNotEmpty ? phpApps.first : null,
       );
       if (app != null && app.cliFilePath != null) {
         phpDir = p.dirname(app.cliFilePath!);
@@ -320,22 +334,27 @@ class SiteTable extends ConsumerWidget {
 
     final workingDir = site.rootDir;
     String psCommand = '';
-    
+
     if (phpDir != null) {
       psCommand += '\$env:PATH = "$phpDir;" + \$env:PATH; ';
     }
-    
+
     psCommand += 'Clear-Host; ';
-    psCommand += 'Write-Host "==========================================" -ForegroundColor Cyan; ';
-    psCommand += 'Write-Host " DevStack Terminal for ${site.domain}" -ForegroundColor White; ';
-    psCommand += 'Write-Host "==========================================" -ForegroundColor Cyan; ';
-    
+    psCommand +=
+        'Write-Host "==========================================" -ForegroundColor Cyan; ';
+    psCommand +=
+        'Write-Host " DevStack Terminal for ${site.domain}" -ForegroundColor White; ';
+    psCommand +=
+        'Write-Host "==========================================" -ForegroundColor Cyan; ';
+
     if (phpDir != null) {
-      psCommand += 'Write-Host "PHP Path : $phpDir" -ForegroundColor DarkGray; ';
+      psCommand +=
+          'Write-Host "PHP Path : $phpDir" -ForegroundColor DarkGray; ';
     }
-    psCommand += 'Write-Host "Site Path: $workingDir" -ForegroundColor DarkGray; ';
+    psCommand +=
+        'Write-Host "Site Path: $workingDir" -ForegroundColor DarkGray; ';
     psCommand += 'Write-Host ""; ';
-    
+
     if (phpDir != null) {
       psCommand += 'php -v; Write-Host ""; ';
     }
