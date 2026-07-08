@@ -19,22 +19,34 @@ class IsarInstance {
     }
 
     final dir = await getApplicationSupportDirectory();
-    
+
     try {
-      _instance = await Isar.open(
-        [
-          InstalledAppSchema,
-          DatabaseRecordSchema,
-          AppSettingsSchema,
-          SiteModelSchema,
-        ],
-        directory: dir.path,
-      );
+      _instance = await Isar.open([
+        InstalledAppSchema,
+        DatabaseRecordSchema,
+        AppSettingsSchema,
+        SiteModelSchema,
+      ], directory: dir.path);
     } catch (e) {
+      // Only reset for schema mismatch or corruption errors.
+      // Other errors (file lock, disk full, etc.) should propagate.
+      final message = e.toString().toLowerCase();
+      final isSchemaOrCorruption =
+          message.contains('schema') ||
+          message.contains('corrupt') ||
+          message.contains('migration') ||
+          message.contains('incompatible');
+
+      if (!isSchemaOrCorruption) {
+        // ignore: avoid_print
+        print('[Isar] Database open failed (not schema/corruption): $e');
+        rethrow;
+      }
+
       // Backup and delete DB on schema mismatch or corruption
       final isarFile = File('${dir.path}/default.isar');
       final lockFile = File('${dir.path}/default.isar.lock');
-      
+
       // Create backup before deleting
       if (isarFile.existsSync()) {
         final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -44,19 +56,16 @@ class IsarInstance {
         isarFile.deleteSync();
       }
       if (lockFile.existsSync()) lockFile.deleteSync();
-      
+
       // ignore: avoid_print
-      print('[Isar] Database reset due to error: $e');
-      
-      _instance = await Isar.open(
-        [
-          InstalledAppSchema,
-          DatabaseRecordSchema,
-          AppSettingsSchema,
-          SiteModelSchema,
-        ],
-        directory: dir.path,
-      );
+      print('[Isar] Database reset due to schema/corruption error: $e');
+
+      _instance = await Isar.open([
+        InstalledAppSchema,
+        DatabaseRecordSchema,
+        AppSettingsSchema,
+        SiteModelSchema,
+      ], directory: dir.path);
     }
     return _instance!;
   }

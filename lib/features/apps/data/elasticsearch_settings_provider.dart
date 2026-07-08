@@ -3,7 +3,6 @@ import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
 
-
 part 'elasticsearch_settings_provider.g.dart';
 
 @riverpod
@@ -23,10 +22,10 @@ class ElasticsearchSettings extends _$ElasticsearchSettings {
     final Map<String, dynamic> config = {
       'cluster.name': 'ponta-cluster',
       'node.name': 'ponta-node-1',
-      'network.host': '0.0.0.0',
+      'network.host': '127.0.0.1',
       'http.port': 9200,
       'discovery.type': 'single-node',
-      'xpack.security.enabled': false,
+      'xpack.security.enabled': true,
       'ingest.geoip.downloader.enabled': false,
     };
 

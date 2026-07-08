@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:archive/archive.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -40,6 +42,12 @@ class AppInstallerService {
   );
 
   AppInstallerService(this._logger, this._ref);
+
+  String _generateSecret({int length = 32}) {
+    final random = Random.secure();
+    final bytes = List<int>.generate(length, (_) => random.nextInt(256));
+    return base64Url.encode(bytes).replaceAll('=', '');
+  }
 
   Future<String> install(
     AppModel app,
@@ -227,16 +235,31 @@ class AppInstallerService {
     InstallationLogCallback? onLog,
   ) async {
     final archive = ZipDecoder().decodeBytes(bytes);
+    final canonicalTarget = p.canonicalize(targetPath);
+    final targetPrefix = canonicalTarget.endsWith(p.separator)
+        ? canonicalTarget
+        : '$canonicalTarget${p.separator}';
     for (final file in archive) {
       final filename = file.name;
+      // Path traversal protection: reject absolute paths and ".." segments.
+      final parts = p.split(filename);
+      if (p.isAbsolute(filename) || parts.contains('..')) {
+        if (onLog != null) onLog('Skipping unsafe entry: $filename');
+        continue;
+      }
+      final destPath = p.canonicalize(p.join(targetPath, filename));
+      if (destPath != canonicalTarget && !destPath.startsWith(targetPrefix)) {
+        if (onLog != null) onLog('Skipping entry outside target: $filename');
+        continue;
+      }
       if (onLog != null) onLog('Extracting: $filename');
       if (file.isFile) {
         final data = file.content as List<int>;
-        final f = File(p.join(targetPath, filename));
+        final f = File(destPath);
         await f.create(recursive: true);
         await f.writeAsBytes(data);
       } else {
-        await Directory(p.join(targetPath, filename)).create(recursive: true);
+        await Directory(destPath).create(recursive: true);
       }
     }
   }
@@ -346,7 +369,8 @@ class AppInstallerService {
       r'^;?\s*extension_dir\s*=\s*"ext"': 'extension_dir = "ext"',
       r'^;?\s*realpath_cache_size\s*=.*': 'realpath_cache_size = 4096k',
       r'^;?\s*realpath_cache_ttl\s*=.*': 'realpath_cache_ttl = 600',
-      r'^;?\s*openssl\.cafile\s*=.*': 'openssl.cafile = "$cacertPathNormalized"',
+      r'^;?\s*openssl\.cafile\s*=.*':
+          'openssl.cafile = "$cacertPathNormalized"',
     };
 
     for (final entry in replacements.entries) {
@@ -514,6 +538,11 @@ class AppInstallerService {
       return;
     }
 
+    final passwordFile = File(p.join(dataDir.path, 'postgres-password.txt'));
+    if (!passwordFile.existsSync()) {
+      await passwordFile.writeAsString(_generateSecret());
+    }
+
     final args = [
       '-D',
       dataDir.path,
@@ -523,7 +552,9 @@ class AppInstallerService {
       'postgres',
       '--locale=C',
       '-A',
-      'trust',
+      'scram-sha-256',
+      '--pwfile',
+      passwordFile.path,
     ];
 
     logInfo('Running: ${initdbExec.path} ${args.join(' ')}');
@@ -548,11 +579,13 @@ class AppInstallerService {
           final hbaFile = File(p.join(dataDir.path, 'pg_hba.conf'));
           if (hbaFile.existsSync()) {
             var content = await hbaFile.readAsString();
-            if (!content.contains('0.0.0.0/0')) {
+            if (!content.contains('127.0.0.1/32')) {
               content +=
-                  '\nhost    all             all             0.0.0.0/0               trust\n';
+                  '\nhost    all             all             127.0.0.1/32            scram-sha-256\n';
               await hbaFile.writeAsString(content);
-              logInfo('Updated pg_hba.conf to allow all connections');
+              logInfo(
+                'Updated pg_hba.conf to allow localhost connections only',
+              );
             }
           }
         } catch (e) {
@@ -904,7 +937,9 @@ systemLog:
 
 net:
   port: 27017
-  bindIp: 0.0.0.0
+  bindIp: 127.0.0.1
+security:
+  authorization: enabled
 ''';
       await confFile.writeAsString(configContent);
       logInfo('Created MongoDB configuration at ${confFile.path}');
@@ -1346,8 +1381,8 @@ Alias /phpmyadmin "$pmaPathUnix/"
       buffer.writeln(
         '# ======================== Ponta Managed Configuration =========================',
       );
-      buffer.writeln('http_addr = "0.0.0.0:7700"');
-      buffer.writeln('master_key = "meilisearch_master_key"');
+      buffer.writeln('http_addr = "127.0.0.1:7700"');
+      buffer.writeln('master_key = "${_generateSecret()}"');
       buffer.writeln('env = "development"');
       buffer.writeln('no_analytics = true');
       buffer.writeln(
@@ -1384,10 +1419,10 @@ Alias /phpmyadmin "$pmaPathUnix/"
       );
       buffer.writeln('cluster.name: "ponta-cluster"');
       buffer.writeln('node.name: "ponta-node-1"');
-      buffer.writeln('network.host: 0.0.0.0');
+      buffer.writeln('network.host: 127.0.0.1');
       buffer.writeln('http.port: 9200');
       buffer.writeln('discovery.type: single-node');
-      buffer.writeln('xpack.security.enabled: false');
+      buffer.writeln('xpack.security.enabled: true');
       buffer.writeln('ingest.geoip.downloader.enabled: false');
 
       // Points data and logs to the managed Ponta data directory

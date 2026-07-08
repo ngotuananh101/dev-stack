@@ -86,33 +86,33 @@ class Sidebar extends ConsumerWidget {
               color: AppColors.accent.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Image.asset(
-              'assets/images/icon.png',
-              width: 24,
-              height: 24,
-            ),
+            child: Image.asset('assets/images/icon.png', width: 24, height: 24),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'DevStack',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: AppTextSize.lg,
-                  color: AppColors.textPrimary,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'DevStack',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: AppTextSize.lg,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-              ),
-              Text(
-                'LOCAL NODE',
-                style: TextStyle(
-                  fontSize: AppTextSize.xxs,
-                  color: AppColors.textSecondary.withValues(alpha: 0.7),
-                  letterSpacing: 1,
+                Text(
+                  'LOCAL NODE',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: AppTextSize.xxs,
+                    color: AppColors.textSecondary.withValues(alpha: 0.7),
+                    letterSpacing: 1,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

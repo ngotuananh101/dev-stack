@@ -19,10 +19,10 @@ class RustFSSettings extends _$RustFSSettings {
     final file = _getConfigFile();
     if (!await file.exists()) {
       return {
-        'address': ':9000',
-        'console_address': ':9001',
-        'access_key': 'rustfsadmin',
-        'secret_key': 'rustfsadmin',
+        'address': '127.0.0.1:9000',
+        'console_address': '127.0.0.1:9001',
+        'access_key': '',
+        'secret_key': '',
         'console_enable': true,
       };
     }

@@ -1,5 +1,6 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
@@ -22,6 +23,12 @@ class AppServiceManager {
   final Map<String, AppModel> _activeApps = {};
 
   AppServiceManager(this._logger);
+
+  String _generateSecret({int length = 32}) {
+    final random = Random.secure();
+    final bytes = List<int>.generate(length, (_) => random.nextInt(256));
+    return base64Url.encode(bytes).replaceAll('=', '');
+  }
 
   bool isRunning(String appId) => _processes.containsKey(appId);
 
@@ -72,8 +79,9 @@ class AppServiceManager {
             }
           }
         }
-        
-        final bindAddress = app.extraInfo['bind_address']?.toString() ?? '0.0.0.0';
+
+        final bindAddress =
+            app.extraInfo['bind_address']?.toString() ?? '127.0.0.1';
 
         if (fileName == 'php-cgi.exe') {
           args = ['-b', '$bindAddress:$port'];
@@ -89,10 +97,7 @@ class AppServiceManager {
         // Force output to console for capturing logs
         final version = app.installedVersion ?? 'unknown';
         final dataDir = p.join(AppConfig.dataDir, '${app.appId}-$version');
-        args = [
-          '--console',
-          '--datadir=${dataDir.replaceAll('\\', '/')}',
-        ];
+        args = ['--console', '--datadir=${dataDir.replaceAll('\\', '/')}'];
       } else if (fileName == 'mongod.exe') {
         // Look for mongod.cfg in the same directory as mongod.exe or its parent
         final confFile = File(p.join(workingDir, 'mongod.cfg'));
@@ -111,10 +116,10 @@ class AppServiceManager {
         final dataDir = p.join(AppConfig.dataDir, 'rustfs');
         final confFile = File(p.join(dataDir, 'config.json'));
 
-        String address = ':9000';
-        String consoleAddress = ':9001';
-        String accessKey = 'rustfsadmin';
-        String secretKey = 'rustfsadmin';
+        String address = '127.0.0.1:9000';
+        String consoleAddress = '127.0.0.1:9001';
+        String accessKey = '';
+        String secretKey = '';
         bool consoleEnable = true;
 
         if (confFile.existsSync()) {
@@ -126,6 +131,23 @@ class AppServiceManager {
             secretKey = config['secret_key'] ?? secretKey;
             consoleEnable = config['console_enable'] ?? consoleEnable;
           } catch (_) {}
+        }
+
+        if (accessKey.isEmpty || secretKey.isEmpty) {
+          accessKey = _generateSecret(length: 18);
+          secretKey = _generateSecret(length: 32);
+          if (!confFile.parent.existsSync()) {
+            confFile.parent.createSync(recursive: true);
+          }
+          confFile.writeAsStringSync(
+            const JsonEncoder.withIndent('  ').convert({
+              'address': address,
+              'console_address': consoleAddress,
+              'access_key': accessKey,
+              'secret_key': secretKey,
+              'console_enable': consoleEnable,
+            }),
+          );
         }
 
         args = [
@@ -146,7 +168,7 @@ class AppServiceManager {
         if (confFile.existsSync()) {
           args = ['--config-file-path', confFile.path];
         }
-        
+
         // Ensure db-path is set to our managed data directory if not in config
         // Actually, Meilisearch defaults to ./data.ms, better to be explicit or let config handle it.
         // For now, if config exists, we use it. If not, we might want to pass --db-path.

@@ -158,7 +158,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 color: AppColors.accent,
                                 onTap: () => _handleSslAction(
                                   'Reinstall',
-                                  () => ref.read(sslServiceProvider.notifier).initializeRootCA(),
+                                  () => ref
+                                      .read(sslServiceProvider.notifier)
+                                      .initializeRootCA(),
                                 ),
                               ),
                               _StatusAction(
@@ -173,7 +175,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 color: AppColors.accent,
                                 onTap: () => _handleSslAction(
                                   'Install',
-                                  () => ref.read(sslServiceProvider.notifier).initializeRootCA(),
+                                  () => ref
+                                      .read(sslServiceProvider.notifier)
+                                      .initializeRootCA(),
                                 ),
                               ),
                             ],
@@ -640,11 +644,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         const SizedBox(width: 24),
         SizedBox(
           width: 200,
-          child: TextField(
-            controller: TextEditingController(text: value)
-              ..selection = TextSelection.fromPosition(
-                TextPosition(offset: value.length),
-              ),
+          child: TextFormField(
+            key: ValueKey('$title-$value'),
+            initialValue: value,
             onChanged: onChanged,
             style: const TextStyle(
               color: AppColors.textPrimary,
@@ -723,7 +725,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(LucideIcons.folder, size: 16, color: AppColors.accent),
+                  const Icon(
+                    LucideIcons.folder,
+                    size: 16,
+                    color: AppColors.accent,
+                  ),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
@@ -1017,21 +1023,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Future<void> _handleSslAction(String actionName, Future<void> Function() action) async {
+  Future<void> _handleSslAction(
+    String actionName,
+    Future<void> Function() action,
+  ) async {
     // Show an initial feedback toast (optional, but helps UX)
     AppDialogs.showToast(context, '$actionName SSL Root Certificate...');
-    
+
     await action();
     if (!mounted) return;
-    
+
     final sslState = ref.read(sslServiceProvider);
     if (sslState.hasError) {
-      AppDialogs.showToast(context, 'Failed to ${actionName.toLowerCase()} SSL.', isError: true);
+      AppDialogs.showToast(
+        context,
+        'Failed to ${actionName.toLowerCase()} SSL.',
+        isError: true,
+      );
     } else {
       AppDialogs.showSuccess(
-        context: context, 
-        title: 'Success', 
-        text: 'Successfully ${actionName.toLowerCase()}ed SSL Root Certificate.'
+        context: context,
+        title: 'Success',
+        text:
+            'Successfully ${actionName.toLowerCase()}ed SSL Root Certificate.',
       );
     }
   }

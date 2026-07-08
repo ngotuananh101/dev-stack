@@ -94,39 +94,50 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
       // 1. Create Database
       final createDb = await Process.run(cliPath, [
-        '-u', 'root',
-        '-e', 'CREATE DATABASE `$name`;',
+        '-u',
+        'root',
+        '-e',
+        'CREATE DATABASE `$name`;',
       ]);
-      if (createDb.exitCode != 0) throw Exception('Create DB error: ${createDb.stderr}');
+      if (createDb.exitCode != 0) {
+        throw Exception('Create DB error: ${createDb.stderr}');
+      }
 
       // 2. Create User if not exists and Grant Permissions
       // We use a single command block to handle user logic
-      final sql = """
+      final sql =
+          """
         CREATE USER IF NOT EXISTS '$user'@'%' IDENTIFIED BY '$password';
         GRANT ALL PRIVILEGES ON `$name`.* TO '$user'@'%';
         FLUSH PRIVILEGES;
       """;
-      
-      final grantRes = await Process.run(cliPath, [
-        '-u', 'root',
-        '-e', sql,
-      ]);
-      if (grantRes.exitCode != 0) throw Exception('Grant error: ${grantRes.stderr}');
 
+      final grantRes = await Process.run(cliPath, ['-u', 'root', '-e', sql]);
+      if (grantRes.exitCode != 0) {
+        throw Exception('Grant error: ${grantRes.stderr}');
+      }
     } else if (app.appId.contains('postgresql')) {
       // CREATE DATABASE
       final createDb = await Process.run(cliPath, [
-        '-U', 'postgres',
-        '-c', 'CREATE DATABASE "$name";',
+        '-U',
+        'postgres',
+        '-c',
+        'CREATE DATABASE "$name";',
       ]);
-      if (createDb.exitCode != 0) throw Exception('Create DB error: ${createDb.stderr}');
+      if (createDb.exitCode != 0) {
+        throw Exception('Create DB error: ${createDb.stderr}');
+      }
 
       // CREATE USER and GRANT
       final grantRes = await Process.run(cliPath, [
-        '-U', 'postgres',
-        '-c', 'CREATE USER "$user" WITH PASSWORD \'$password\'; GRANT ALL PRIVILEGES ON DATABASE "$name" TO "$user";',
+        '-U',
+        'postgres',
+        '-c',
+        'CREATE USER "$user" WITH PASSWORD \'$password\'; GRANT ALL PRIVILEGES ON DATABASE "$name" TO "$user";',
       ]);
-      if (grantRes.exitCode != 0) throw Exception('Grant error: ${grantRes.stderr}');
+      if (grantRes.exitCode != 0) {
+        throw Exception('Grant error: ${grantRes.stderr}');
+      }
     } else {
       throw Exception('Engine ${app.appId} not supported for creation yet');
     }
@@ -160,15 +171,20 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     // Update user password if changed and engine supports it
     if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
       if (newPassword.isNotEmpty) {
-        final sql = "ALTER USER '$newUser'@'%' IDENTIFIED BY '$newPassword'; FLUSH PRIVILEGES;";
+        final sql =
+            "ALTER USER '$newUser'@'%' IDENTIFIED BY '$newPassword'; FLUSH PRIVILEGES;";
         final res = await Process.run(cliPath, ['-u', 'root', '-e', sql]);
-        if (res.exitCode != 0) throw Exception('Update password error: ${res.stderr}');
+        if (res.exitCode != 0) {
+          throw Exception('Update password error: ${res.stderr}');
+        }
       }
     } else if (app.appId.contains('postgresql')) {
       if (newPassword.isNotEmpty) {
         final sql = "ALTER USER \"$newUser\" WITH PASSWORD '$newPassword';";
         final res = await Process.run(cliPath, ['-U', 'postgres', '-c', sql]);
-        if (res.exitCode != 0) throw Exception('Update password error: ${res.stderr}');
+        if (res.exitCode != 0) {
+          throw Exception('Update password error: ${res.stderr}');
+        }
       }
     }
 
@@ -191,8 +207,10 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
       // Drop the database first
       await Process.run(cliPath, [
-        '-u', 'root',
-        '-e', 'DROP DATABASE `${record.name}`;',
+        '-u',
+        'root',
+        '-e',
+        'DROP DATABASE `${record.name}`;',
       ]);
 
       // Drop the associated user if they only had access to this one database
@@ -203,16 +221,20 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     } else if (app.appId.contains('postgresql')) {
       // Drop the database first
       await Process.run(cliPath, [
-        '-U', 'postgres',
-        '-c', 'DROP DATABASE IF EXISTS "${record.name}";',
+        '-U',
+        'postgres',
+        '-c',
+        'DROP DATABASE IF EXISTS "${record.name}";',
       ]);
 
       // Drop the associated user
       final username = record.username;
       if (username.isNotEmpty && username != 'postgres') {
         await Process.run(cliPath, [
-          '-U', 'postgres',
-          '-c', 'DROP USER IF EXISTS "$username";',
+          '-U',
+          'postgres',
+          '-c',
+          'DROP USER IF EXISTS "$username";',
         ]);
       }
     } else if (app.appId.contains('redis')) {
@@ -229,13 +251,18 @@ class DatabasesNotifier extends _$DatabasesNotifier {
 
   /// Drops a MySQL/MariaDB user if they only have GRANT on [dbName] and nothing else.
   Future<void> _dropUserIfExclusive(
-      String cliPath, String username, String dbName) async {
+    String cliPath,
+    String username,
+    String dbName,
+  ) async {
     // SHOW GRANTS returns lines like:
     //   GRANT ALL PRIVILEGES ON `mydb`.* TO 'user'@'%'
     //   GRANT USAGE ON *.* TO 'user'@'%'   <- baseline, always present
     final grantsRes = await Process.run(cliPath, [
-      '-u', 'root',
-      '-se', "SHOW GRANTS FOR '$username'@'%';",
+      '-u',
+      'root',
+      '-se',
+      "SHOW GRANTS FOR '$username'@'%';",
     ]);
     if (grantsRes.exitCode != 0) return; // user may not exist
 
@@ -249,23 +276,35 @@ class DatabasesNotifier extends _$DatabasesNotifier {
         .toList();
 
     // Check if the only remaining grant is for our database
-    final onlyThisDb = grants.every((g) =>
-        g.contains('`$dbName`') || g.contains("'$dbName'"));
+    final onlyThisDb = grants.every(
+      (g) => g.contains('`$dbName`') || g.contains("'$dbName'"),
+    );
 
     if (onlyThisDb) {
       await Process.run(cliPath, [
-        '-u', 'root',
-        '-e', "DROP USER IF EXISTS '$username'@'%'; FLUSH PRIVILEGES;",
+        '-u',
+        'root',
+        '-e',
+        "DROP USER IF EXISTS '$username'@'%'; FLUSH PRIVILEGES;",
       ]);
     }
   }
 
   Future<List<String>> _getMysqlNames(String cliPath) async {
-    final result = await Process.run(cliPath, ['-u', 'root', '-e', 'SHOW DATABASES;']);
+    final result = await Process.run(cliPath, [
+      '-u',
+      'root',
+      '-e',
+      'SHOW DATABASES;',
+    ]);
     if (result.exitCode != 0) return [];
-    
+
     final lines = result.stdout.toString().split('\n');
-    return lines.skip(1).map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+    return lines
+        .skip(1)
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
   }
 
   Future<List<String>> _getMongoNames(String cliPath) async {
@@ -291,24 +330,27 @@ class DatabasesNotifier extends _$DatabasesNotifier {
   Future<List<String>> _getPostgresNames(String cliPath) async {
     final result = await Process.run(cliPath, [
       '-U', 'postgres',
-      '-l',  // list databases
-      '-t',  // tuples only
+      '-l', // list databases
+      '-t', // tuples only
     ]);
     if (result.exitCode != 0) return [];
 
     final lines = result.stdout.toString().split('\n');
     return lines
-      .map((l) => l.trim().split('|')[0].trim())
-      .where((l) => l.isNotEmpty && l != 'template0' && l != 'template1')
-      .toList();
+        .map((l) => l.trim().split('|')[0].trim())
+        .where((l) => l.isNotEmpty && l != 'template0' && l != 'template1')
+        .toList();
   }
 }
 
 @riverpod
 Future<List<AppModel>> installedDatabaseEngines(Ref ref) async {
   final apps = await ref.watch(appsNotifierProvider.future);
-  return apps.where((app) => 
-    app.isInstalled && 
-    app.categories.any((c) => c.toLowerCase() == 'database')
-  ).toList();
+  return apps
+      .where(
+        (app) =>
+            app.isInstalled &&
+            app.categories.any((c) => c.toLowerCase() == 'database'),
+      )
+      .toList();
 }

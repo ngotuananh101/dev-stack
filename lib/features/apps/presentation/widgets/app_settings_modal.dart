@@ -175,7 +175,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (_isDb) {
       if (_isPma) return p.join(location, 'config.inc.php');
 
-      final isMariaDb = app.groupName == 'mariadb' || app.appId.toLowerCase().contains('mariadb');
+      final isMariaDb =
+          app.groupName == 'mariadb' ||
+          app.appId.toLowerCase().contains('mariadb');
       if (isMariaDb || app.appId.toLowerCase().contains('mysql')) {
         final version = app.installedVersion ?? 'unknown';
         final dataDir = p.join(AppConfig.dataDir, '${app.appId}-$version');
@@ -218,7 +220,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
 
     if (_isRustFS) return p.join(AppConfig.dataDir, 'rustfs', 'config.json');
     if (_isMeilisearch) return p.join(location, 'config.toml');
-    if (_isElasticsearch) return p.join(location, 'config', 'elasticsearch.yml');
+    if (_isElasticsearch) {
+      return p.join(location, 'config', 'elasticsearch.yml');
+    }
 
     return null;
   }
@@ -575,9 +579,11 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               _buildSettingField(
                 'Bind Address',
                 'bind_address',
-                widget.app.extraInfo['bind_address']?.toString() ?? '0.0.0.0',
+                widget.app.extraInfo['bind_address']?.toString() ?? '127.0.0.1',
                 (val) async {
-                  final newInfo = Map<String, dynamic>.from(widget.app.extraInfo);
+                  final newInfo = Map<String, dynamic>.from(
+                    widget.app.extraInfo,
+                  );
                   newInfo['bind_address'] = val;
                   widget.app.extraInfo = newInfo;
                   final repo = await ref.read(appsRepositoryProvider.future);
@@ -590,7 +596,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                 'port',
                 widget.app.extraInfo['port']?.toString() ?? '',
                 (val) async {
-                  final newInfo = Map<String, dynamic>.from(widget.app.extraInfo);
+                  final newInfo = Map<String, dynamic>.from(
+                    widget.app.extraInfo,
+                  );
                   newInfo['port'] = val;
                   widget.app.extraInfo = newInfo;
                   final repo = await ref.read(appsRepositoryProvider.future);
@@ -719,7 +727,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.textSecondary,
                   side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -772,7 +783,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accent,
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -1030,12 +1044,15 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             ),
           ),
           const SizedBox(height: 8),
-          TextField(
+          TextFormField(
+            key: ValueKey('$key-$value'),
+            initialValue: value,
             onChanged: onChanged,
-            controller: TextEditingController(text: value)
-              ..selection = TextSelection.collapsed(offset: value.length),
             obscureText: obscureText,
-            style: const TextStyle(fontSize: AppTextSize.xs, color: AppColors.textPrimary),
+            style: const TextStyle(
+              fontSize: AppTextSize.xs,
+              color: AppColors.textPrimary,
+            ),
             decoration: InputDecoration(
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(

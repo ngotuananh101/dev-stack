@@ -18,14 +18,16 @@ class MeilisearchSettings extends _$MeilisearchSettings {
 
   Future<Map<String, dynamic>> readConfig(AppModel app) async {
     final file = _getConfigFile(app);
-    
+
     // Default values
     final defaultConfig = {
-      'http_addr': '0.0.0.0:7700',
-      'master_key': 'meilisearch_master_key',
+      'http_addr': '127.0.0.1:7700',
+      'master_key': '',
       'env': 'development',
       'no_analytics': true,
-      'db_path': p.join(AppConfig.dataDir, 'meilisearch', 'data.ms').replaceAll('\\', '/'),
+      'db_path': p
+          .join(AppConfig.dataDir, 'meilisearch', 'data.ms')
+          .replaceAll('\\', '/'),
     };
 
     if (file == null || !await file.exists()) {
@@ -35,24 +37,24 @@ class MeilisearchSettings extends _$MeilisearchSettings {
     try {
       final content = await file.readAsString();
       final Map<String, dynamic> config = Map.from(defaultConfig);
-      
+
       final lines = content.split('\n');
       for (var line in lines) {
         line = line.trim();
         if (line.isEmpty || line.startsWith('#')) continue;
-        
+
         final parts = line.split('=');
         if (parts.length >= 2) {
           final key = parts[0].trim();
           var value = parts.sublist(1).join('=').trim();
-          
+
           // Remove quotes for strings
           if (value.startsWith('"') && value.endsWith('"')) {
             value = value.substring(1, value.length - 1);
           } else if (value.startsWith("'") && value.endsWith("'")) {
             value = value.substring(1, value.length - 1);
           }
-          
+
           // Parse boolean/number
           if (value == 'true') {
             config[key] = true;
