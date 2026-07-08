@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -14,13 +15,16 @@ part 'app_service_manager.g.dart';
 @Riverpod(keepAlive: true)
 AppServiceManager appServiceManager(Ref ref) {
   final logger = ref.read(logServiceProvider);
-  return AppServiceManager(logger);
+  final manager = AppServiceManager(logger);
+  ref.onDispose(manager.dispose);
+  return manager;
 }
 
 class AppServiceManager {
   final LogService _logger;
   final Map<String, Process> _processes = {};
   final Map<String, AppModel> _activeApps = {};
+  final Map<String, List<StreamSubscription<String>>> _logSubscriptions = {};
 
   AppServiceManager(this._logger);
 
@@ -203,11 +207,17 @@ class AppServiceManager {
       onStatusChange?.call();
 
       // Listen for exit
-      process.exitCode.then((code) {
+      process.exitCode.then((code) async {
         final activeApp = _activeApps[app.appId];
         _logger.info('Service ${app.name} exited with code $code');
         AppLogger.info('[${app.name}] Exited with code $code');
         _processes.remove(app.appId);
+        final subscriptions = _logSubscriptions.remove(app.appId);
+        if (subscriptions != null) {
+          for (final subscription in subscriptions) {
+            await subscription.cancel();
+          }
+        }
         _activeApps.remove(app.appId);
         if (activeApp != null) {
           activeApp.serviceStatus = 'stopped';
@@ -217,7 +227,9 @@ class AppServiceManager {
       });
 
       // Handle output
-      process.stdout.transform(utf8.decoder).listen((data) {
+      final stdoutSubscription = process.stdout.transform(utf8.decoder).listen((
+        data,
+      ) {
         final lines = data.split('\n');
         for (final line in lines) {
           if (line.trim().isNotEmpty) {
@@ -229,7 +241,9 @@ class AppServiceManager {
         }
       });
 
-      process.stderr.transform(utf8.decoder).listen((data) {
+      final stderrSubscription = process.stderr.transform(utf8.decoder).listen((
+        data,
+      ) {
         final lines = data.split('\n');
         for (final line in lines) {
           if (line.trim().isNotEmpty) {
@@ -250,6 +264,7 @@ class AppServiceManager {
           }
         }
       });
+      _logSubscriptions[app.appId] = [stdoutSubscription, stderrSubscription];
     } catch (e) {
       _logger.error('Failed to start service ${app.name}: $e');
       AppLogger.error('[${app.name}] CRITICAL ERROR: $e');
@@ -282,10 +297,31 @@ class AppServiceManager {
     }
 
     _processes.remove(app.appId);
+    final subscriptions = _logSubscriptions.remove(app.appId);
+    if (subscriptions != null) {
+      for (final subscription in subscriptions) {
+        await subscription.cancel();
+      }
+    }
     final activeApp = _activeApps[app.appId] ?? app;
     activeApp.serviceStatus = 'stopped';
     activeApp.servicePid = null;
     _activeApps.remove(app.appId);
+  }
+
+  void dispose() {
+    for (final subscriptions in _logSubscriptions.values) {
+      for (final subscription in subscriptions) {
+        unawaited(subscription.cancel());
+      }
+    }
+    _logSubscriptions.clear();
+
+    for (final process in _processes.values) {
+      process.kill();
+    }
+    _processes.clear();
+    _activeApps.clear();
   }
 
   Future<void> restart(AppModel app, {VoidCallback? onStatusChange}) async {

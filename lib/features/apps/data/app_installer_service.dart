@@ -86,9 +86,10 @@ class AppInstallerService {
     final isZip = extension == '.zip';
     final isExe = extension == '.exe';
 
-    final tempFile = File(
-      p.join(Directory.systemTemp.path, '${app.appId}-$version$extension'),
+    final tempDir = await Directory.systemTemp.createTemp(
+      'ponta-${app.appId}-',
     );
+    final tempFile = File(p.join(tempDir.path, 'download$extension'));
 
     try {
       await _dio.download(
@@ -218,14 +219,14 @@ class AppInstallerService {
         await _configureRustFS(app, installPath, logInfo);
       }
 
-      // Cleanup
-      if (tempFile.existsSync()) await tempFile.delete();
-
       return installPath;
     } catch (e) {
       logError('Installation failed for ${app.name}: $e');
-      if (tempFile.existsSync()) await tempFile.delete();
       rethrow;
+    } finally {
+      if (tempDir.existsSync()) {
+        await tempDir.delete(recursive: true);
+      }
     }
   }
 

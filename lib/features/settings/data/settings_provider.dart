@@ -17,10 +17,10 @@ class SettingsNotifier extends _$SettingsNotifier {
   @override
   Future<AppSettings> build() async {
     final isar = await ref.watch(isarProvider.future);
-    
+
     try {
       final settings = await isar.appSettings.where().findFirst();
-      
+
       if (settings == null) {
         // Initialize default settings
         final defaultSettings = AppSettings();
@@ -29,7 +29,7 @@ class SettingsNotifier extends _$SettingsNotifier {
         });
         return defaultSettings;
       }
-      
+
       return settings;
     } catch (e) {
       AppLogger.error('Error reading AppSettings, resetting to default: $e');
@@ -96,7 +96,10 @@ class SettingsNotifier extends _$SettingsNotifier {
   }
 
   Future<void> _copyDirectory(Directory source, Directory target) async {
-    await for (final entity in source.list(recursive: false, followLinks: false)) {
+    await for (final entity in source.list(
+      recursive: false,
+      followLinks: false,
+    )) {
       final name = p.basename(entity.path);
       final newPath = p.join(target.path, name);
       if (entity is Link) {
@@ -116,15 +119,15 @@ class SettingsNotifier extends _$SettingsNotifier {
 
   /// Config file extensions that may contain hardcoded paths.
   static const _configExtensions = [
-    '.conf',  // nginx, apache vhosts
-    '.cfg',   // mongod.cfg
-    '.ini',   // php.ini
-    '.bat',   // shim scripts in bin/
-    '.html',  // index.html with paths
-    '.yaml',  // possible config files
-    '.yml',   // possible config files
-    '.toml',  // meilisearch config
-    '.json',  // rustfs config
+    '.conf', // nginx, apache vhosts
+    '.cfg', // mongod.cfg
+    '.ini', // php.ini
+    '.bat', // shim scripts in bin/
+    '.html', // index.html with paths
+    '.yaml', // possible config files
+    '.yml', // possible config files
+    '.toml', // meilisearch config
+    '.json', // rustfs config
   ];
 
   /// Scan all config files in [dir] and replace old paths with new paths.
@@ -135,19 +138,21 @@ class SettingsNotifier extends _$SettingsNotifier {
     String newDir,
   ) async {
     // Prepare both backslash and forward-slash variants
-    final oldBackslash = oldDir;                              // C:\Ponta
-    final newBackslash = newDir;                              // D:\MyStack
-    final oldForwardSlash = oldDir.replaceAll('\\', '/');     // C:/Ponta
-    final newForwardSlash = newDir.replaceAll('\\', '/');     // D:/MyStack
+    final oldBackslash = oldDir; // C:\Ponta
+    final newBackslash = newDir; // D:\MyStack
+    final oldForwardSlash = oldDir.replaceAll('\\', '/'); // C:/Ponta
+    final newForwardSlash = newDir.replaceAll('\\', '/'); // D:/MyStack
 
     await for (final entity in dir.list(recursive: true)) {
       if (entity is! File) continue;
 
-      final ext = entity.path.substring(
-        entity.path.lastIndexOf('.') == -1
-            ? entity.path.length
-            : entity.path.lastIndexOf('.'),
-      ).toLowerCase();
+      final ext = entity.path
+          .substring(
+            entity.path.lastIndexOf('.') == -1
+                ? entity.path.length
+                : entity.path.lastIndexOf('.'),
+          )
+          .toLowerCase();
 
       if (!_configExtensions.contains(ext)) continue;
 
@@ -295,6 +300,7 @@ class SettingsNotifier extends _$SettingsNotifier {
 
     if (baseDir != null) {
       currentSettings.baseDir = baseDir;
+      AppConfig.initialize(baseDir: baseDir);
       await updateBaseDirEnvVar(baseDir);
     }
     if (siteTemplate != null) currentSettings.siteTemplate = siteTemplate;

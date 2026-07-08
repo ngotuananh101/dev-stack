@@ -21,6 +21,11 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
   Future<void> build() async {
     windowManager.addListener(this);
     trayManager.addListener(this);
+    ref.onDispose(() {
+      _updateTimer?.cancel();
+      windowManager.removeListener(this);
+      trayManager.removeListener(this);
+    });
 
     // Prevent app from closing when X is pressed, we will handle it in onWindowClose
     await windowManager.setPreventClose(true);
@@ -165,14 +170,16 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
   Future<void> _initAutoStart() async {
     try {
       PackageInfo packageInfo = await PackageInfo.fromPlatform();
-      String appName = packageInfo.appName.isNotEmpty ? packageInfo.appName : "DevStack";
-      
+      String appName = packageInfo.appName.isNotEmpty
+          ? packageInfo.appName
+          : "DevStack";
+
       launchAtStartup.setup(
         appName: appName,
         appPath: Platform.resolvedExecutable,
         args: ['--minimized'],
       );
-      
+
       final settings = await ref.read(settingsNotifierProvider.future);
       if (settings.autoStartWithWindows) {
         await launchAtStartup.enable();

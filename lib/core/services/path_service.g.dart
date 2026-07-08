@@ -13,8 +13,9 @@ String _$pathServiceHash() => r'361905b8f9eb32e074735a15f146f1dc4eb13bbd';
 final pathServiceProvider = AutoDisposeProvider<PathService>.internal(
   pathService,
   name: r'pathServiceProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$pathServiceHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$pathServiceHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );

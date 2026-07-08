@@ -7,7 +7,7 @@ import 'package:dev_stack/core/services/log_service.dart';
 
 part 'ssl_service.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class SslService extends _$SslService {
   @override
   Future<bool> build() async {
@@ -30,7 +30,12 @@ class SslService extends _$SslService {
       return binPath;
     }
 
-    final devPath = p.join(Directory.current.path, 'assets', 'bin', 'mkcert.exe');
+    final devPath = p.join(
+      Directory.current.path,
+      'assets',
+      'bin',
+      'mkcert.exe',
+    );
     if (File(devPath).existsSync()) {
       return devPath;
     }
@@ -62,8 +67,10 @@ class SslService extends _$SslService {
   }
 
   String getSiteCertDir(String domain) => p.join(AppConfig.certsDir, domain);
-  String getSiteCertPath(String domain) => p.join(getSiteCertDir(domain), 'cert.pem');
-  String getSiteKeyPath(String domain) => p.join(getSiteCertDir(domain), 'key.pem');
+  String getSiteCertPath(String domain) =>
+      p.join(getSiteCertDir(domain), 'cert.pem');
+  String getSiteKeyPath(String domain) =>
+      p.join(getSiteCertDir(domain), 'key.pem');
 
   Future<void> generateSiteCert(String domain, {bool force = false}) async {
     if (!isInstalled) return;
@@ -72,7 +79,9 @@ class SslService extends _$SslService {
     final keyPath = getSiteKeyPath(domain);
 
     if (!force && File(certPath).existsSync() && File(keyPath).existsSync()) {
-      AppLogger.info('Certificate for $domain already exists, skipping generation.');
+      AppLogger.info(
+        'Certificate for $domain already exists, skipping generation.',
+      );
       return;
     }
 
@@ -82,11 +91,16 @@ class SslService extends _$SslService {
     }
 
     try {
-      await Process.run(
-        mkcertPath,
-        ['-cert-file', 'cert.pem', '-key-file', 'key.pem', domain, 'localhost', '127.0.0.1', '::1'],
-        workingDirectory: dir.path,
-      );
+      await Process.run(mkcertPath, [
+        '-cert-file',
+        'cert.pem',
+        '-key-file',
+        'key.pem',
+        domain,
+        'localhost',
+        '127.0.0.1',
+        '::1',
+      ], workingDirectory: dir.path);
       AppLogger.info('Successfully generated certificate for $domain');
     } catch (e) {
       AppLogger.error('Failed to generate certificate for $domain: $e');
@@ -106,13 +120,17 @@ class SslService extends _$SslService {
     // Double check actual system status before running expensive install command
     final isActuallyInstalled = await checkStatus();
     if (isActuallyInstalled) {
-      AppLogger.info('SSL is already installed in system, updating database status...');
-      await ref.read(settingsNotifierProvider.notifier).updateField(isSslInstalled: true);
+      AppLogger.info(
+        'SSL is already installed in system, updating database status...',
+      );
+      await ref
+          .read(settingsNotifierProvider.notifier)
+          .updateField(isSslInstalled: true);
       state = const AsyncValue.data(true);
       await generateSiteCert('localhost');
       return;
     }
-    
+
     try {
       if (!File(mkcertPath).existsSync()) {
         AppLogger.info('mkcert.exe not found at $mkcertPath');
@@ -144,8 +162,10 @@ class SslService extends _$SslService {
       final psCommand =
           "Start-Process -FilePath '$mkcertPath' -ArgumentList '-uninstall' -Verb RunAs -Wait";
       await Process.run('powershell', ['-Command', psCommand]);
-      
-      await ref.read(settingsNotifierProvider.notifier).updateField(isSslInstalled: false);
+
+      await ref
+          .read(settingsNotifierProvider.notifier)
+          .updateField(isSslInstalled: false);
       state = const AsyncValue.data(false);
     } catch (e) {
       AppLogger.error('Failed to uninstall Root CA: $e');

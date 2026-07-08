@@ -28,8 +28,9 @@ class PathService {
       }
 
       final result = await Process.run('powershell', [
+        '-NoProfile',
         '-Command',
-        '[Environment]::GetEnvironmentVariable("PATH", "User")'
+        '[Environment]::GetEnvironmentVariable("PATH", "User")',
       ]);
 
       if (result.exitCode != 0) {
@@ -37,7 +38,7 @@ class PathService {
       }
 
       final currentPath = result.stdout.toString().trim();
-      
+
       // Kiểm tra xem binDir đã có trong PATH chưa
       final paths = currentPath.split(';');
       bool alreadyInPath = false;
@@ -51,10 +52,13 @@ class PathService {
       if (!alreadyInPath) {
         _logger.info('Adding $binDir to User PATH...');
         final newPath = currentPath.isEmpty ? binDir : '$currentPath;$binDir';
-        
+
         final setXResult = await Process.run('powershell', [
+          '-NoProfile',
           '-Command',
-          '[Environment]::SetEnvironmentVariable("PATH", "$newPath", "User")'
+          r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
+          'PATH',
+          newPath,
         ]);
 
         if (setXResult.exitCode == 0) {
@@ -72,22 +76,30 @@ class PathService {
   Future<void> addRawPathToUserPath(String pathToAdd) async {
     try {
       final result = await Process.run('powershell', [
+        '-NoProfile',
         '-Command',
-        '[Environment]::GetEnvironmentVariable("PATH", "User")'
+        '[Environment]::GetEnvironmentVariable("PATH", "User")',
       ]);
 
       if (result.exitCode != 0) return;
 
       final currentPath = result.stdout.toString().trim();
       final paths = currentPath.split(';');
-      
-      if (!paths.any((p) => p.trim().toLowerCase() == pathToAdd.toLowerCase())) {
+
+      if (!paths.any(
+        (p) => p.trim().toLowerCase() == pathToAdd.toLowerCase(),
+      )) {
         _logger.info('Adding $pathToAdd to User PATH...');
-        final newPath = currentPath.isEmpty ? pathToAdd : '$currentPath;$pathToAdd';
-        
+        final newPath = currentPath.isEmpty
+            ? pathToAdd
+            : '$currentPath;$pathToAdd';
+
         await Process.run('powershell', [
+          '-NoProfile',
           '-Command',
-          "[Environment]::SetEnvironmentVariable(\"PATH\", \"$newPath\", \"User\")"
+          r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
+          'PATH',
+          newPath,
         ]);
       }
     } catch (e) {
@@ -100,8 +112,11 @@ class PathService {
     try {
       _logger.info('Setting User Environment Variable: $name = $value');
       await Process.run('powershell', [
+        '-NoProfile',
         '-Command',
-        "[Environment]::SetEnvironmentVariable(\"$name\", \"$value\", \"User\")"
+        r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
+        name,
+        value,
       ]);
     } catch (e) {
       _logger.error('Error setting environment variable $name: $e');
@@ -112,24 +127,30 @@ class PathService {
   Future<void> removeRawPathFromUserPath(String pathToRemove) async {
     try {
       final result = await Process.run('powershell', [
+        '-NoProfile',
         '-Command',
-        '[Environment]::GetEnvironmentVariable("PATH", "User")'
+        '[Environment]::GetEnvironmentVariable("PATH", "User")',
       ]);
 
       if (result.exitCode != 0) return;
 
       final currentPath = result.stdout.toString().trim();
       final paths = currentPath.split(';');
-      
-      final newPaths = paths.where((p) => p.trim().toLowerCase() != pathToRemove.toLowerCase()).toList();
-      
+
+      final newPaths = paths
+          .where((p) => p.trim().toLowerCase() != pathToRemove.toLowerCase())
+          .toList();
+
       if (newPaths.length != paths.length) {
         _logger.info('Removing $pathToRemove from User PATH...');
         final newPathString = newPaths.join(';');
-        
+
         await Process.run('powershell', [
+          '-NoProfile',
           '-Command',
-          "[Environment]::SetEnvironmentVariable(\"PATH\", \"$newPathString\", \"User\")"
+          r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
+          'PATH',
+          newPathString,
         ]);
       }
     } catch (e) {
@@ -142,8 +163,10 @@ class PathService {
     try {
       _logger.info('Removing User Environment Variable: $name');
       await Process.run('powershell', [
+        '-NoProfile',
         '-Command',
-        '[Environment]::SetEnvironmentVariable("$name", \$null, "User")'
+        r'[Environment]::SetEnvironmentVariable($args[0], $null, "User")',
+        name,
       ]);
     } catch (e) {
       _logger.error('Error removing environment variable $name: $e');
@@ -161,15 +184,15 @@ class PathService {
 
     final shimName = app.appId; // Sử dụng appId làm lệnh chính (vd: nodejs.bat)
     final cliName = p.basenameWithoutExtension(app.cliFile ?? app.appId);
-    
+
     // Tạo shim cho appId
     await _createShim(shimName, app.cliFilePath!);
-    
+
     // Tạo shim cho cli_file nếu khác appId (vd: node.bat)
     if (cliName != shimName) {
       await _createShim(cliName, app.cliFilePath!);
     }
-    
+
     // Special handling for Node.js: Add npm and npx
     if (app.appId.contains('nodejs')) {
       final nodeDir = p.dirname(app.cliFilePath!);
@@ -182,17 +205,24 @@ class PathService {
       try {
         final nodeExe = File(app.cliFilePath!);
         final symlinkPath = p.join(binDir, 'node.exe');
-        
+
         if (File(symlinkPath).existsSync()) {
           File(symlinkPath).deleteSync();
         }
-        
+
         if (nodeExe.existsSync()) {
-          final result = await Process.run('cmd', ['/c', 'mklink', symlinkPath, nodeExe.path]);
+          final result = await Process.run('cmd', [
+            '/c',
+            'mklink',
+            symlinkPath,
+            nodeExe.path,
+          ]);
           if (result.exitCode == 0) {
             _logger.info('Created symlink for node.exe at $binDir');
           } else {
-            _logger.error('Failed to create symlink for node.exe: ${result.stderr}');
+            _logger.error(
+              'Failed to create symlink for node.exe: ${result.stderr}',
+            );
             await nodeExe.copy(symlinkPath);
             _logger.info('Copied node.exe to $binDir as fallback');
           }
@@ -203,12 +233,20 @@ class PathService {
 
       if (File(npmCmd).existsSync()) {
         await _createShim('npm', npmCmd);
-        
+
         // Cấu hình npm global prefix trỏ về thư mục C:\Ponta\bin
         // Để các lệnh cài đặt global như `npm i -g pnpm`, `yarn` v.v. được ghi thẳng vào C:\Ponta\bin
         // Và người dùng có thể sử dụng được ngay lập tức từ terminal.
         try {
-          await Process.run('cmd', ['/c', npmCmd, 'config', 'set', 'prefix', binDir, '-g']);
+          await Process.run('cmd', [
+            '/c',
+            npmCmd,
+            'config',
+            'set',
+            'prefix',
+            binDir,
+            '-g',
+          ]);
           _logger.info('Set npm global prefix to $binDir');
         } catch (e) {
           _logger.error('Failed to set npm global prefix: $e');
@@ -241,7 +279,9 @@ class PathService {
     if (app.appId.contains('nodejs')) {
       final nodeExe = File(p.join(binDir, 'node.exe'));
       if (nodeExe.existsSync()) {
-        try { nodeExe.deleteSync(); } catch (_) {}
+        try {
+          nodeExe.deleteSync();
+        } catch (_) {}
       }
 
       final npmShim = File(p.join(binDir, 'npm.bat'));
@@ -250,7 +290,7 @@ class PathService {
       if (npmShim.existsSync()) npmShim.deleteSync();
       if (npxShim.existsSync()) npxShim.deleteSync();
       if (corepackShim.existsSync()) corepackShim.deleteSync();
-      
+
       // Clean up global npm packages (node_modules and wrappers)
       await _cleanNpmGlobals();
     }
@@ -270,15 +310,15 @@ class PathService {
 
     try {
       nodeModulesDir.deleteSync(recursive: true);
-      
+
       final binDirectory = Directory(binDir);
       final files = binDirectory.listSync().whereType<File>();
       for (final file in files) {
         final ext = p.extension(file.path).toLowerCase();
         final name = p.basename(file.path).toLowerCase();
-        
+
         if (name == 'composer.phar' || name == 'node.exe') continue;
-        
+
         if (ext == '.cmd' || ext == '.ps1' || ext == '') {
           try {
             file.deleteSync();

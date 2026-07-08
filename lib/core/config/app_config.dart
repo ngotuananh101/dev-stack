@@ -45,11 +45,15 @@ Future<void> updateBaseDirEnvVar(String baseDir) async {
     final result = await Process.run('powershell', [
       '-NoProfile',
       '-Command',
-      '[Environment]::SetEnvironmentVariable("DEVSTACK_BASE_DIR", "$baseDir", "User")',
+      r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
+      'DEVSTACK_BASE_DIR',
+      baseDir,
     ]);
 
     if (result.exitCode == 0) {
-      AppLogger.info('Updated DEVSTACK_BASE_DIR environment variable: $baseDir');
+      AppLogger.info(
+        'Updated DEVSTACK_BASE_DIR environment variable: $baseDir',
+      );
     } else {
       AppLogger.warning('Failed to update DEVSTACK_BASE_DIR: ${result.stderr}');
     }

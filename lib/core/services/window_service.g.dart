@@ -6,20 +6,20 @@ part of 'window_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$windowServiceHash() => r'0fd20aee8e5f8c58fde6d8b463719070e31916c2';
+String _$windowServiceHash() => r'e4dd351ce12fb634640adab2c831d82fa736fe8a';
 
 /// See also [WindowService].
 @ProviderFor(WindowService)
 final windowServiceProvider =
     AsyncNotifierProvider<WindowService, void>.internal(
-  WindowService.new,
-  name: r'windowServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$windowServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      WindowService.new,
+      name: r'windowServiceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$windowServiceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 typedef _$WindowService = AsyncNotifier<void>;
 // ignore_for_file: type=lint
