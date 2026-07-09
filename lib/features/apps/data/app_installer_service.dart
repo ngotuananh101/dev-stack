@@ -109,13 +109,17 @@ class AppInstallerService {
       );
 
       logInfo('Download completed for ${app.name}');
+      onProgress?.call(0.8, 'Download completed');
+
       if (isZip) {
         logInfo('Extracting ZIP for ${app.name}');
+        onProgress?.call(0.82, 'Extracting...');
         final bytes = await tempFile.readAsBytes();
         await _extractZip(bytes, installPath, onLog);
+        onProgress?.call(0.9, 'Extracted');
       } else if (isExe) {
         logInfo('Handling executable binary for ${app.name}');
-        onProgress?.call(0.8, 'Moving binary...');
+        onProgress?.call(0.85, 'Moving binary...');
 
         // Use the specified exec_file name if available, otherwise keep original
         final fileName = app.execFile ?? p.basename(uri.path);
@@ -123,6 +127,7 @@ class AppInstallerService {
 
         logInfo('Copying binary to: ${targetFile.path}');
         await tempFile.copy(targetFile.path);
+        onProgress?.call(0.9, 'Binary ready');
       } else {
         // Fallback for other formats or if extension is missing
         // For now, assume ZIP if unknown to maintain backward compatibility
@@ -130,8 +135,10 @@ class AppInstallerService {
           'Format $extension not explicitly handled, attempting ZIP extraction...',
         );
         try {
+          onProgress?.call(0.82, 'Extracting...');
           final bytes = await tempFile.readAsBytes();
           await _extractZip(bytes, installPath, onLog);
+          onProgress?.call(0.9, 'Extracted');
         } catch (e) {
           logError('Failed to extract as ZIP: $e');
           rethrow;
@@ -139,10 +146,12 @@ class AppInstallerService {
       }
 
       // 4. Flatten directory if needed
+      onProgress?.call(0.92, 'Preparing files...');
       await _flattenDirectory(installPath, logInfo);
 
       // 5. Detect executable and CLI files
       logInfo('Detecting executable and CLI files...');
+      onProgress?.call(0.94, 'Detecting files...');
       final detected = await _detectFiles(
         installPath,
         app.execFile,
@@ -152,21 +161,23 @@ class AppInstallerService {
       app.execFilePath = detected['exec'];
       app.cliFilePath = detected['cli'];
 
-      onProgress?.call(1.0, 'Completed');
       logInfo('Successfully installed ${app.name} to $installPath');
 
       // 5. Post-installation: Initialize database
       if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
+        onProgress?.call(0.96, 'Initializing database...');
         await _initializeDatabase(app, version, installPath, logInfo);
       }
 
       // 5b. Post-installation: Initialize PostgreSQL
       if (app.appId.contains('postgresql')) {
+        onProgress?.call(0.96, 'Initializing PostgreSQL...');
         await _initializePostgresql(app, version, installPath, logInfo);
       }
 
       // 6. Post-installation: Handle PHP configuration
       if (app.groupName == 'php') {
+        onProgress?.call(0.97, 'Configuring PHP...');
         final phpIniDev = File(p.join(installPath, 'php.ini-development'));
         final phpIni = File(p.join(installPath, 'php.ini'));
 
@@ -179,6 +190,7 @@ class AppInstallerService {
         }
 
         // Install Composer if not already installed
+        onProgress?.call(0.98, 'Installing Composer...');
         await _installComposer(logInfo);
       }
 
@@ -186,39 +198,47 @@ class AppInstallerService {
       if (app.groupName == 'webserver' ||
           app.appId.contains('nginx') ||
           app.appId.contains('apache')) {
+        onProgress?.call(0.97, 'Configuring web server...');
         await _configureWebserver(app, installPath, logInfo);
       }
 
       // 8. Post-installation: Configure MongoDB
       if (app.appId == 'mongodb') {
+        onProgress?.call(0.97, 'Configuring MongoDB...');
         await _configureMongodb(app, installPath, logInfo);
       }
 
       // 10. Post-installation: Configure Meilisearch
       if (app.appId == 'meilisearch') {
+        onProgress?.call(0.97, 'Configuring Meilisearch...');
         await _configureMeilisearch(installPath, logInfo);
       }
 
       // 11. Post-installation: Configure Elasticsearch
       if (app.appId == 'elasticsearch') {
+        onProgress?.call(0.97, 'Configuring Elasticsearch...');
         await _configureElasticsearch(installPath, logInfo);
       }
 
       // 9. Post-installation: Configure phpMyAdmin
       if (app.appId == 'phpMyAdmin') {
+        onProgress?.call(0.97, 'Configuring phpMyAdmin...');
         await _configurePhpMyAdmin(installPath, logInfo);
       }
 
       // 10. Post-installation: Configure pyenv
       if (app.appId == 'pyenv') {
+        onProgress?.call(0.97, 'Configuring pyenv...');
         await _configurePyenv(installPath, logInfo);
       }
 
       // 11. Post-installation: Configure RustFS
       if (app.appId == 'rustfs') {
+        onProgress?.call(0.97, 'Configuring RustFS...');
         await _configureRustFS(app, installPath, logInfo);
       }
 
+      onProgress?.call(1.0, 'Completed');
       return installPath;
     } catch (e) {
       logError('Installation failed for ${app.name}: $e');

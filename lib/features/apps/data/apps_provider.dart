@@ -117,11 +117,14 @@ class AppsNotifier extends _$AppsNotifier {
           app,
           version,
           onProgress: (progress, status, {downloadedBytes, totalBytes}) {
+            final statusChanged = app.installStatus != status;
             app.installProgress = progress;
             app.installStatus = status;
             app.downloadedBytes = downloadedBytes;
             app.totalBytes = totalBytes;
-            notifyUpdate();
+            // Force UI refresh on phase changes so status text is never stuck
+            // on "Downloading..." while extraction/config is already running.
+            notifyUpdate(force: statusChanged);
           },
           onLog: (message) {
             app.addLog(message);
