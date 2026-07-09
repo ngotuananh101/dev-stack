@@ -348,7 +348,12 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             child: SingleChildScrollView(
               child: Column(
                 children: versionInfo.versions
-                    .map((version) => _buildVersionOption(version))
+                    .map(
+                      (version) => _buildVersionOption(
+                        version,
+                        ltsLabel: versionInfo.ltsLabel(version),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -459,8 +464,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     );
   }
 
-  Widget _buildVersionOption(String version) {
+  Widget _buildVersionOption(String version, {String? ltsLabel}) {
     final isSelected = _selectedVersion == version;
+    final hasLts = ltsLabel != null && ltsLabel.isNotEmpty;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -504,14 +510,49 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                   : null,
             ),
             const SizedBox(width: 12),
-            Text(
-              version,
-              style: TextStyle(
-                fontSize: AppTextSize.sm,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      version,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: AppTextSize.sm,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                        color: isSelected
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  if (hasLts) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: AppColors.success.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      child: Text(
+                        ltsLabel == 'LTS' ? 'LTS' : 'LTS · $ltsLabel',
+                        style: const TextStyle(
+                          fontSize: AppTextSize.xxs,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.success,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],

@@ -55,14 +55,19 @@ const fetchers = {
     const res = await fetch("https://nodejs.org/download/release/index.json");
     const data = await res.json();
     const versions = {};
+    const ltsLabels = {};
     data
       .filter((v) => parseInt(v.version.replace("v", "").split(".")[0]) >= 4)
       .forEach((v) => {
         const ver = v.version.replace("v", "");
         versions[ver] =
           `https://nodejs.org/dist/v${ver}/node-v${ver}-win-x64.zip`;
+        if (v.lts) {
+          // Node API returns codename string for LTS, false otherwise.
+          ltsLabels[ver] = typeof v.lts === "string" ? v.lts : "LTS";
+        }
       });
-    return versions;
+    return { versions, ltsLabels };
   },
 
   async php(prefix) {
@@ -521,12 +526,25 @@ async function updateAppsJson() {
           });
         else if (fetchers[app.id]) v = await fetchers[app.id]();
 
-        if (v) app.versions = sortVersionsObject(v);
+        if (v) {
+          // nodejs fetcher returns { versions, ltsLabels }; others return versions map.
+          if (app.id === "nodejs" && v.versions) {
+            app.versions = sortVersionsObject(v.versions);
+            if (v.ltsLabels && Object.keys(v.ltsLabels).length > 0) {
+              app.lts_labels = v.ltsLabels;
+            }
+          } else {
+            app.versions = sortVersionsObject(v);
+          }
+        }
       } catch (err) {
         console.error(`Lỗi khi lấy dữ liệu cho ${app.name}:`, err.message);
         // Giữ lại dữ liệu cũ nếu lỗi
         const oldApp = oldData?.apps?.find((a) => a.id === app.id);
-        if (oldApp) app.versions = oldApp.versions;
+        if (oldApp) {
+          app.versions = oldApp.versions;
+          if (oldApp.lts_labels) app.lts_labels = oldApp.lts_labels;
+        }
       }
     });
 

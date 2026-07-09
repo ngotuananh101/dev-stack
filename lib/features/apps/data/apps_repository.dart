@@ -51,6 +51,25 @@ class AppsRepository {
         final versionsMap = json['versions'] as Map<String, dynamic>? ?? {};
         final versionKeys = versionsMap.keys.toList();
 
+        // Catalog-level extra metadata (e.g. LTS labels) can live under
+        // `extra` / `extra_info`. Prefer installed app overrides when present.
+        Map<String, dynamic> catalogExtra = {};
+        final rawExtra = json['extra'] ?? json['extra_info'];
+        if (rawExtra is Map) {
+          catalogExtra = Map<String, dynamic>.from(rawExtra);
+        } else if (json['lts'] != null || json['lts_labels'] != null) {
+          catalogExtra = {
+            if (json['lts'] != null) 'lts': json['lts'],
+            if (json['lts_labels'] != null) 'lts_labels': json['lts_labels'],
+          };
+        }
+
+        String? extraInfoJson = installed?.extraInfoJson;
+        if ((extraInfoJson == null || extraInfoJson.isEmpty) &&
+            catalogExtra.isNotEmpty) {
+          extraInfoJson = jsonEncode(catalogExtra);
+        }
+
         return AppModel(
           appId: appId,
           name: json['name'],
@@ -74,7 +93,7 @@ class AppsRepository {
           isAddedToPath: installed?.addedToPath ?? false,
           autoStartService: installed?.autoStartService ?? false,
           isDefault: installed?.isDefault ?? false,
-          extraInfoJson: installed?.extraInfoJson,
+          extraInfoJson: extraInfoJson,
         );
       }).toList().cast<AppModel>();
     } catch (e, stack) {
