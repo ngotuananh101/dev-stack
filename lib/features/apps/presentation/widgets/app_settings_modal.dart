@@ -11,7 +11,6 @@ import '../../../../core/config/app_config.dart';
 import '../../../../core/services/notepad_service.dart';
 import '../../domain/app_model.dart';
 import '../../data/php_settings_provider.dart';
-import '../../data/app_service_manager.dart';
 import '../../data/apps_provider.dart';
 
 class AppSettingsModal extends ConsumerStatefulWidget {
@@ -394,8 +393,13 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               padding: const EdgeInsets.only(right: 8),
               child: OutlinedButton.icon(
                 onPressed: () async {
-                  await ref.read(appServiceManagerProvider).restart(widget.app);
+                  // Route through AppsNotifier so service status changes
+                  // notify the apps table/provider, not only AppServiceManager.
+                  await ref
+                      .read(appsNotifierProvider.notifier)
+                      .restartService(widget.app);
                   if (mounted) {
+                    setState(() {});
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Service restarted successfully'),
