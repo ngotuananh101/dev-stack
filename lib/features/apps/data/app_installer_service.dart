@@ -1435,16 +1435,28 @@ Alias /phpmyadmin "$pmaPathUnix/"
     }
   }
 
-  /// Downloads composer.phar and creates composer.bat wrapper in Ponta bin directory.
+  /// Downloads composer.phar and creates cross-shell composer wrappers in Ponta bin directory.
   /// The wrapper uses `php` from PATH, so it will use whichever PHP version
   /// the user has added to PATH or the default PHP.
   Future<void> _installComposer(Function(String) logInfo) async {
     final composerPhar = File(p.join(PathService.binDir, 'composer.phar'));
-    final composerBat = File(p.join(PathService.binDir, 'composer.bat'));
+    final composerShimPaths = PathService.shimPathsFor(
+      PathService.binDir,
+      'composer',
+    );
 
-    // Skip if already installed
-    if (composerPhar.existsSync() && composerBat.existsSync()) {
-      logInfo('Composer already installed, skipping.');
+    // Skip download if already installed, but still remove legacy PowerShell shim
+    // and ensure Composer global bin is on PATH.
+    if (composerPhar.existsSync() &&
+        composerShimPaths.every((path) => File(path).existsSync())) {
+      final legacyPowerShellShim = File(
+        p.join(PathService.binDir, 'composer.ps1'),
+      );
+      if (legacyPowerShellShim.existsSync()) {
+        await legacyPowerShellShim.delete();
+      }
+      await _ensureComposerGlobalBinInPath(logInfo);
+      logInfo('Composer already installed, skipping download.');
       return;
     }
 
@@ -1457,6 +1469,13 @@ Alias /phpmyadmin "$pmaPathUnix/"
     }
 
     try {
+      if (composerPhar.existsSync()) {
+        logInfo('composer.phar exists, repairing Composer wrappers...');
+        await _writeComposerWrappers(logInfo);
+        await _ensureComposerGlobalBinInPath(logInfo);
+        return;
+      }
+
       // Download composer.phar
       logInfo('Downloading composer.phar...');
       await _dio.download(
@@ -1465,24 +1484,9 @@ Alias /phpmyadmin "$pmaPathUnix/"
       );
       logInfo('composer.phar downloaded to ${composerPhar.path}');
 
-      // Create composer.bat wrapper that uses php from PATH
-      final batContent = '@echo off\r\nphp "%~dp0composer.phar" %*';
-      await composerBat.writeAsString(batContent);
-      logInfo('Created composer.bat wrapper at ${composerBat.path}');
+      await _writeComposerWrappers(logInfo);
 
-      // Ensure Ponta bin is in PATH
-      final pathService = _ref.read(pathServiceProvider);
-      await pathService.ensurePontaBinInPath();
-
-      // Ensure Composer global bin is in PATH
-      final appData = Platform.environment['APPDATA'];
-      if (appData != null) {
-        final composerBinPath = p.join(appData, 'Composer', 'vendor', 'bin');
-        await pathService.addRawPathToUserPath(composerBinPath);
-        logInfo(
-          'Added Composer global bin directory to User PATH: $composerBinPath',
-        );
-      }
+      await _ensureComposerGlobalBinInPath(logInfo);
 
       logInfo('Composer installed successfully.');
     } catch (e) {
@@ -1491,19 +1495,77 @@ Alias /phpmyadmin "$pmaPathUnix/"
     }
   }
 
-  /// Removes composer.phar and composer.bat from Ponta bin directory.
+  Future<void> _ensureComposerGlobalBinInPath(Function(String) logInfo) async {
+    final pathService = _ref.read(pathServiceProvider);
+    await pathService.ensurePontaBinInPath();
+
+    final appData = Platform.environment['APPDATA'];
+    if (appData != null) {
+      final composerBinPath = p.join(appData, 'Composer', 'vendor', 'bin');
+      await pathService.addRawPathToUserPath(composerBinPath);
+      logInfo(
+        'Added Composer global bin directory to User PATH: $composerBinPath',
+      );
+    }
+  }
+
+  Future<void> _writeComposerWrappers(Function(String) logInfo) async {
+    final batContent =
+        '@echo off\r\nphp "%~dp0composer.phar" %*\r\nexit /b %ERRORLEVEL%\r\n';
+    await File(
+      p.join(PathService.binDir, 'composer.bat'),
+    ).writeAsString(batContent);
+    await File(
+      p.join(PathService.binDir, 'composer.cmd'),
+    ).writeAsString(batContent);
+    await File(p.join(PathService.binDir, 'composer')).writeAsString(
+      '#!/usr/bin/env sh\n'
+      r'script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)'
+      '\n'
+      r'composer_phar="$script_dir/composer.phar"'
+      '\n'
+      r'case "$(uname -r 2>/dev/null | tr A-Z a-z)" in'
+      '\n'
+      '  *microsoft*|*wsl*)\n'
+      r'    case "$composer_phar" in'
+      '\n'
+      r'      /mnt/*) drive=$(printf "%s" "$composer_phar" | cut -d/ -f3 | tr A-Z a-z); rest=$(printf "%s" "$composer_phar" | cut -d/ -f4-); composer_phar="$drive:/$rest" ;;'
+      '\n'
+      r'    esac'
+      '\n'
+      '    ;;\n'
+      'esac\n'
+      r'exec php "$composer_phar" "$@"'
+      '\n',
+    );
+    final legacyPowerShellShim = File(
+      p.join(PathService.binDir, 'composer.ps1'),
+    );
+    if (legacyPowerShellShim.existsSync()) {
+      await legacyPowerShellShim.delete();
+    }
+    logInfo('Created cross-shell composer wrappers in ${PathService.binDir}');
+  }
+
+  /// Removes composer.phar and cross-shell Composer wrappers from Ponta bin directory.
   /// Call this when the last PHP version is uninstalled.
   Future<void> uninstallComposer() async {
     final composerPhar = File(p.join(PathService.binDir, 'composer.phar'));
-    final composerBat = File(p.join(PathService.binDir, 'composer.bat'));
+    final composerShimPaths = [
+      ...PathService.shimPathsFor(PathService.binDir, 'composer'),
+      p.join(PathService.binDir, 'composer.ps1'),
+    ];
 
     if (composerPhar.existsSync()) {
       await composerPhar.delete();
       _logger.info('Removed composer.phar');
     }
-    if (composerBat.existsSync()) {
-      await composerBat.delete();
-      _logger.info('Removed composer.bat');
+    for (final path in composerShimPaths) {
+      final file = File(path);
+      if (file.existsSync()) {
+        await file.delete();
+      }
     }
+    _logger.info('Removed Composer wrappers');
   }
 }

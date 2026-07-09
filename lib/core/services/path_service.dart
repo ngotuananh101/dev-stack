@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'log_service.dart';
@@ -19,6 +20,62 @@ class PathService {
   static String get binDir => AppConfig.binDir;
 
   PathService(this._logger);
+
+  /// Returns the on-disk shim file paths for a command under [binDir].
+  ///
+  /// Includes `.bat`, `.cmd`, and an extensionless POSIX shell wrapper.
+  static List<String> shimPathsFor(String binDir, String commandName) {
+    return [
+      p.join(binDir, '$commandName.bat'),
+      p.join(binDir, '$commandName.cmd'),
+      p.join(binDir, commandName),
+    ];
+  }
+
+  /// Returns the `cmd.exe` / `.bat` / `.cmd` shim content that forwards
+  /// arguments to [targetPath] and preserves the exit code.
+  @visibleForTesting
+  static String windowsBatchShimContent(String targetPath) {
+    return '@echo off\r\n"$targetPath" %*\r\nexit /b %ERRORLEVEL%\r\n';
+  }
+
+  @visibleForTesting
+  static String shellSingleQuote(String value) {
+    return "'${value.replaceAll("'", "'\\''")}'";
+  }
+
+  /// Returns the POSIX shell wrapper (bash / Git Bash / MSYS2 / Cygwin / WSL)
+  /// shim content that `exec`s [targetPath], converts Windows paths for WSL,
+  /// and forwards arguments. Use LF line endings so the shebang is portable.
+  @visibleForTesting
+  static String shellShimContent(String targetPath) {
+    final posixPath = targetPath.replaceAll(r'\', '/');
+    final quotedPosixPath = shellSingleQuote(posixPath);
+    return '#!/usr/bin/env sh\n'
+        'target=$quotedPosixPath\n'
+        'windows_target=$quotedPosixPath\n'
+        r'case "$(uname -r 2>/dev/null | tr A-Z a-z)" in'
+        '\n'
+        '  *microsoft*|*wsl*)\n'
+        r'    lower_target=$(printf "%s" "$windows_target" | tr A-Z a-z)'
+        '\n'
+        r'    case "$lower_target" in'
+        '\n'
+        r'      *.cmd|*.bat) exec cmd.exe /c "$windows_target" "$@" ;;'
+        '\n'
+        r'    esac'
+        '\n'
+        r'    drive=$(printf "%s" "$target" | cut -c1 | tr A-Z a-z)'
+        '\n'
+        r'    rest=$(printf "%s" "$target" | cut -c4-)'
+        '\n'
+        r'    target="/mnt/$drive/$rest"'
+        '\n'
+        '    ;;\n'
+        'esac\n'
+        r'exec "$target" "$@"'
+        '\n';
+  }
 
   /// Đảm bảo thư mục C:\Ponta\bin tồn tại và nằm trong User PATH
   Future<void> ensurePontaBinInPath() async {
@@ -186,11 +243,11 @@ class PathService {
     final cliName = p.basenameWithoutExtension(app.cliFile ?? app.appId);
 
     // Tạo shim cho appId
-    await _createShim(shimName, app.cliFilePath!);
+    await _createShimSet(shimName, app.cliFilePath!);
 
     // Tạo shim cho cli_file nếu khác appId (vd: node.bat)
     if (cliName != shimName) {
-      await _createShim(cliName, app.cliFilePath!);
+      await _createShimSet(cliName, app.cliFilePath!);
     }
 
     // Special handling for Node.js: Add npm and npx
@@ -232,7 +289,7 @@ class PathService {
       }
 
       if (File(npmCmd).existsSync()) {
-        await _createShim('npm', npmCmd);
+        await _createShimSet('npm', npmCmd);
 
         // Cấu hình npm global prefix trỏ về thư mục C:\Ponta\bin
         // Để các lệnh cài đặt global như `npm i -g pnpm`, `yarn` v.v. được ghi thẳng vào C:\Ponta\bin
@@ -253,27 +310,25 @@ class PathService {
         }
       }
       if (File(npxCmd).existsSync()) {
-        await _createShim('npx', npxCmd);
+        await _createShimSet('npx', npxCmd);
       }
       if (File(corepackCmd).existsSync()) {
-        await _createShim('corepack', corepackCmd);
+        await _createShimSet('corepack', corepackCmd);
       }
     }
 
     _logger.info('Created shims for ${app.name} in $binDir');
   }
 
-  /// Xóa file shim (.bat) của app
+  /// Xóa file shim của app
   Future<void> removeAppFromPath(AppModel app) async {
     final shimName = app.appId;
     final cliName = p.basenameWithoutExtension(app.cliFile ?? app.appId);
 
-    final shimFile1 = File(p.join(binDir, '$shimName.bat'));
-    if (shimFile1.existsSync()) shimFile1.deleteSync();
+    await _deleteShimSet(shimName);
 
     if (cliName != shimName) {
-      final shimFile2 = File(p.join(binDir, '$cliName.bat'));
-      if (shimFile2.existsSync()) shimFile2.deleteSync();
+      await _deleteShimSet(cliName);
     }
 
     if (app.appId.contains('nodejs')) {
@@ -284,12 +339,9 @@ class PathService {
         } catch (_) {}
       }
 
-      final npmShim = File(p.join(binDir, 'npm.bat'));
-      final npxShim = File(p.join(binDir, 'npx.bat'));
-      final corepackShim = File(p.join(binDir, 'corepack.bat'));
-      if (npmShim.existsSync()) npmShim.deleteSync();
-      if (npxShim.existsSync()) npxShim.deleteSync();
-      if (corepackShim.existsSync()) corepackShim.deleteSync();
+      await _deleteShimSet('npm');
+      await _deleteShimSet('npx');
+      await _deleteShimSet('corepack');
 
       // Clean up global npm packages (node_modules and wrappers)
       await _cleanNpmGlobals();
@@ -298,10 +350,31 @@ class PathService {
     _logger.info('Removed shims for ${app.name} from $binDir');
   }
 
-  Future<void> _createShim(String commandName, String targetPath) async {
-    final shimFile = File(p.join(binDir, '$commandName.bat'));
-    final content = '@echo off\r\n"$targetPath" %*';
-    await shimFile.writeAsString(content);
+  Future<void> _createShimSet(String commandName, String targetPath) async {
+    final legacyPowerShellShim = File(p.join(binDir, '$commandName.ps1'));
+    if (legacyPowerShellShim.existsSync()) {
+      await legacyPowerShellShim.delete();
+    }
+
+    final paths = shimPathsFor(binDir, commandName);
+    final batchContent = windowsBatchShimContent(targetPath);
+    await File(paths[0]).writeAsString(batchContent);
+    await File(paths[1]).writeAsString(batchContent);
+    await File(paths[2]).writeAsString(shellShimContent(targetPath));
+  }
+
+  Future<void> _deleteShimSet(String commandName) async {
+    final paths = [
+      ...shimPathsFor(binDir, commandName),
+      // Remove legacy PowerShell shims so PowerShell does not prefer blocked .ps1 files.
+      p.join(binDir, '$commandName.ps1'),
+    ];
+    for (final path in paths) {
+      final file = File(path);
+      if (file.existsSync()) {
+        await file.delete();
+      }
+    }
   }
 
   Future<void> _cleanNpmGlobals() async {
@@ -309,22 +382,30 @@ class PathService {
     if (!nodeModulesDir.existsSync()) return;
 
     try {
-      nodeModulesDir.deleteSync(recursive: true);
-
       final binDirectory = Directory(binDir);
-      final files = binDirectory.listSync().whereType<File>();
+      final files = binDirectory.listSync().whereType<File>().toList();
       for (final file in files) {
         final ext = p.extension(file.path).toLowerCase();
         final name = p.basename(file.path).toLowerCase();
 
         if (name == 'composer.phar' || name == 'node.exe') continue;
+        if (ext != '.bat' && ext != '.cmd' && ext != '.ps1' && ext != '') {
+          continue;
+        }
 
-        if (ext == '.cmd' || ext == '.ps1' || ext == '') {
-          try {
-            file.deleteSync();
-          } catch (_) {}
+        try {
+          final content = await file.readAsString();
+          if (content.contains('node_modules')) {
+            await file.delete();
+          }
+        } catch (e) {
+          _logger.warning(
+            'Skipping unreadable npm wrapper candidate ${file.path}: $e',
+          );
         }
       }
+
+      await nodeModulesDir.delete(recursive: true);
       _logger.info('Cleaned up global npm packages and wrappers from $binDir');
     } catch (e) {
       _logger.error('Failed to clean npm globals: $e');

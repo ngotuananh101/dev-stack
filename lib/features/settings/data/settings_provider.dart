@@ -106,6 +106,12 @@ class SettingsNotifier extends _$SettingsNotifier {
         // Skip symlinks to avoid circular references
         continue;
       } else if (entity is File) {
+        final isLegacyPowerShellShim =
+            p.basename(target.path).toLowerCase() == 'bin' &&
+            p.extension(name).toLowerCase() == '.ps1';
+        if (isLegacyPowerShellShim) {
+          continue;
+        }
         await entity.copy(newPath);
       } else if (entity is Directory) {
         final newDir = Directory(newPath);
@@ -123,6 +129,9 @@ class SettingsNotifier extends _$SettingsNotifier {
     '.cfg', // mongod.cfg
     '.ini', // php.ini
     '.bat', // shim scripts in bin/
+    '.cmd', // shim scripts in bin/
+    '.ps1', // PowerShell shim scripts in bin/
+    '', // extensionless POSIX shim scripts in bin/
     '.html', // index.html with paths
     '.yaml', // possible config files
     '.yml', // possible config files
@@ -146,13 +155,7 @@ class SettingsNotifier extends _$SettingsNotifier {
     await for (final entity in dir.list(recursive: true)) {
       if (entity is! File) continue;
 
-      final ext = entity.path
-          .substring(
-            entity.path.lastIndexOf('.') == -1
-                ? entity.path.length
-                : entity.path.lastIndexOf('.'),
-          )
-          .toLowerCase();
+      final ext = p.extension(p.basename(entity.path)).toLowerCase();
 
       if (!_configExtensions.contains(ext)) continue;
 
