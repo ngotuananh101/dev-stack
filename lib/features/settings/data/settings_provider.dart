@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../../../core/services/background_process.dart';
 import 'package:path/path.dart' as p;
 import 'package:isar/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -240,7 +241,7 @@ class SettingsNotifier extends _$SettingsNotifier {
   Future<void> _rewriteWindowsPath(String oldDir, String newDir) async {
     try {
       // Read current User PATH
-      final result = await Process.run('powershell', [
+      final result = await BackgroundProcess.run('powershell', [
         '-NoProfile',
         '-Command',
         '[Environment]::GetEnvironmentVariable("Path", "User")',
@@ -250,7 +251,7 @@ class SettingsNotifier extends _$SettingsNotifier {
         final currentPath = (result.stdout as String).trim();
         if (currentPath.contains(oldDir)) {
           final newPath = currentPath.replaceAll(oldDir, newDir);
-          await Process.run('powershell', [
+          await BackgroundProcess.run('powershell', [
             '-NoProfile',
             '-Command',
             '[Environment]::SetEnvironmentVariable("Path", "$newPath", "User")',
@@ -261,7 +262,7 @@ class SettingsNotifier extends _$SettingsNotifier {
 
       // Update PYENV-related env vars
       for (final envVar in ['PYENV', 'PYENV_HOME', 'PYENV_ROOT']) {
-        final envResult = await Process.run('powershell', [
+        final envResult = await BackgroundProcess.run('powershell', [
           '-NoProfile',
           '-Command',
           '[Environment]::GetEnvironmentVariable("$envVar", "User")',
@@ -271,7 +272,7 @@ class SettingsNotifier extends _$SettingsNotifier {
           final envValue = (envResult.stdout as String).trim();
           if (envValue.isNotEmpty && envValue.contains(oldDir)) {
             final newEnvValue = envValue.replaceAll(oldDir, newDir);
-            await Process.run('powershell', [
+            await BackgroundProcess.run('powershell', [
               '-NoProfile',
               '-Command',
               '[Environment]::SetEnvironmentVariable("$envVar", "$newEnvValue", "User")',

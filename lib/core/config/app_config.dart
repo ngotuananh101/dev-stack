@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../services/background_process.dart';
 import '../services/log_service.dart';
 
 class AppConfig {
@@ -42,7 +42,7 @@ class AppConfig {
 /// Update DEVSTACK_BASE_DIR environment variable in Windows registry.
 Future<void> updateBaseDirEnvVar(String baseDir) async {
   try {
-    final result = await Process.run('powershell', [
+    final result = await BackgroundProcess.run('powershell', [
       '-NoProfile',
       '-Command',
       r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',

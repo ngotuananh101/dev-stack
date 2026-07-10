@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dev_stack/core/services/background_process.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 
 class HostsRepository {
@@ -31,22 +32,23 @@ class HostsRepository {
       AppLogger.error('Direct write failed, trying elevation... $e');
     }
 
-    // 2. Try elevation via PowerShell
+    // 2. Elevate only the copy operation. The PowerShell host itself runs
+    // hidden; Windows may still show the required UAC consent dialog.
     try {
       final tempFile = File('${Directory.systemTemp.path}\\hosts_temp');
       await tempFile.writeAsString(content);
 
-      final tempPath = tempFile.path;
-      // Use proper argument separation to avoid nested quoting issues
-      final psCommand = "Copy-Item -Path '$tempPath' -Destination '$hostsPath' -Force";
-      final result = await Process.run('powershell', [
-        '-Command',
-        'Start-Process powershell -ArgumentList @("-NoProfile","-WindowStyle","Hidden","-Command","$psCommand") -Verb RunAs -Wait'
-      ]);
+      final escapedTempPath = tempFile.path.replaceAll("'", "''");
+      final escapedHostsPath = hostsPath.replaceAll("'", "''");
+      final result = await BackgroundProcess.runElevatedPowerShell(
+        "Copy-Item -LiteralPath '$escapedTempPath' "
+        "-Destination '$escapedHostsPath' -Force",
+      );
 
       if (result.exitCode == 0) {
         return true;
       }
+      AppLogger.error('Elevated hosts write failed: ${result.stderr}');
     } catch (e) {
       AppLogger.error('Elevation failed: $e');
     }

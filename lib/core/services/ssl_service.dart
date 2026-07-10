@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
 import '../../features/settings/data/settings_provider.dart';
 import '../config/app_config.dart';
+import 'package:dev_stack/core/services/background_process.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 
 part 'ssl_service.g.dart';
@@ -57,9 +58,40 @@ class SslService extends _$SslService {
 
   Future<bool> checkStatus() async {
     try {
-      final result = await Process.run(mkcertPath, ['-CAROOT']);
-      final output = result.stdout.toString().trim();
-      return result.exitCode == 0 && output.isNotEmpty;
+      // First check if CAROOT exists
+      final carootResult = await BackgroundProcess.run(mkcertPath, ['-CAROOT']);
+      if (carootResult.exitCode != 0 ||
+          carootResult.stdout.toString().trim().isEmpty) {
+        AppLogger.info('CAROOT not found or invalid');
+        return false;
+      }
+
+      // Now verify the CA is actually installed in the system trust store
+      // We do this by attempting to generate a test certificate and checking
+      // if mkcert warns about the CA not being installed
+      final testResult = await BackgroundProcess.run(mkcertPath, [
+        '-cert-file',
+        'nul',
+        '-key-file',
+        'nul',
+        'test.local',
+      ]);
+
+      final stdout = testResult.stdout.toString();
+      final stderr = testResult.stderr.toString();
+      final combinedOutput = stdout + stderr;
+
+      // If mkcert warns about CA not being installed, return false
+      if (combinedOutput.contains('local CA is not installed') ||
+          combinedOutput.contains('Run "mkcert -install"')) {
+        AppLogger.warning(
+          'CAROOT exists but CA is not installed in system trust store',
+        );
+        return false;
+      }
+
+      AppLogger.info('SSL Root CA is properly installed and trusted');
+      return true;
     } catch (e) {
       AppLogger.error('SSL status check failed: $e');
       return false;
@@ -91,7 +123,7 @@ class SslService extends _$SslService {
     }
 
     try {
-      await Process.run(mkcertPath, [
+      await BackgroundProcess.run(mkcertPath, [
         '-cert-file',
         'cert.pem',
         '-key-file',
@@ -111,24 +143,30 @@ class SslService extends _$SslService {
     // Wait for the build process to finish so we have the correct state
     await future;
 
-    if (state.value == true) {
-      // Already marked as installed in DB, just ensure localhost cert exists
+    // Always verify actual system status, even if DB says installed
+    // This catches cases where DB is out of sync with reality
+    final isActuallyInstalled = await checkStatus();
+
+    if (isActuallyInstalled) {
+      // CA is properly installed and trusted
+      if (state.value != true) {
+        AppLogger.info(
+          'SSL is already installed in system, updating database status...',
+        );
+        await ref
+            .read(settingsNotifierProvider.notifier)
+            .updateField(isSslInstalled: true);
+        state = const AsyncValue.data(true);
+      }
       await generateSiteCert('localhost');
       return;
     }
 
-    // Double check actual system status before running expensive install command
-    final isActuallyInstalled = await checkStatus();
-    if (isActuallyInstalled) {
-      AppLogger.info(
-        'SSL is already installed in system, updating database status...',
+    // If DB says installed but checkStatus() says not, log the discrepancy
+    if (state.value == true) {
+      AppLogger.warning(
+        'Database says SSL is installed, but verification failed. Will attempt reinstall...',
       );
-      await ref
-          .read(settingsNotifierProvider.notifier)
-          .updateField(isSslInstalled: true);
-      state = const AsyncValue.data(true);
-      await generateSiteCert('localhost');
-      return;
     }
 
     try {
@@ -138,15 +176,36 @@ class SslService extends _$SslService {
       }
 
       AppLogger.info('SSL not found, running mkcert -install...');
-      final psCommand =
-          "Start-Process -FilePath '$mkcertPath' -ArgumentList '-install' -Verb RunAs -Wait";
-      await Process.run('powershell', ['-Command', psCommand]);
+
+      final result = await BackgroundProcess.runElevated(mkcertPath, const [
+        '-install',
+      ]);
+
+      AppLogger.info('mkcert -install exit code: ${result.exitCode}');
+
+      if (result.exitCode != 0) {
+        AppLogger.error(
+          'mkcert -install failed with exit code ${result.exitCode}',
+        );
+        state = AsyncValue.error(
+          Exception(
+            'mkcert installation failed with exit code ${result.exitCode}',
+          ),
+          StackTrace.current,
+        );
+        return;
+      }
 
       final isInstalledNow = await checkStatus();
       if (isInstalledNow) {
         final settingsNotifier = ref.read(settingsNotifierProvider.notifier);
         await settingsNotifier.updateField(isSslInstalled: true);
         await generateSiteCert('localhost');
+        AppLogger.info('SSL Root CA successfully installed and trusted');
+      } else {
+        AppLogger.error(
+          'mkcert -install succeeded but checkStatus() still returns false',
+        );
       }
       state = AsyncValue.data(isInstalledNow);
     } catch (e) {
@@ -159,14 +218,32 @@ class SslService extends _$SslService {
     try {
       if (!File(mkcertPath).existsSync()) return;
 
-      final psCommand =
-          "Start-Process -FilePath '$mkcertPath' -ArgumentList '-uninstall' -Verb RunAs -Wait";
-      await Process.run('powershell', ['-Command', psCommand]);
+      AppLogger.info('Uninstalling SSL Root CA...');
+
+      final result = await BackgroundProcess.runElevated(mkcertPath, const [
+        '-uninstall',
+      ]);
+
+      AppLogger.info('mkcert -uninstall exit code: ${result.exitCode}');
+
+      if (result.exitCode != 0) {
+        AppLogger.error(
+          'mkcert -uninstall failed with exit code ${result.exitCode}',
+        );
+        state = AsyncValue.error(
+          Exception(
+            'mkcert uninstallation failed with exit code ${result.exitCode}',
+          ),
+          StackTrace.current,
+        );
+        return;
+      }
 
       await ref
           .read(settingsNotifierProvider.notifier)
           .updateField(isSslInstalled: false);
       state = const AsyncValue.data(false);
+      AppLogger.info('SSL Root CA successfully uninstalled');
     } catch (e) {
       AppLogger.error('Failed to uninstall Root CA: $e');
       state = AsyncValue.error(e, StackTrace.current);

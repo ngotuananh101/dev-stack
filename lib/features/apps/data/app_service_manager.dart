@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
+import '../../../core/services/background_process.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/config/app_config.dart';
 
@@ -22,7 +23,7 @@ AppServiceManager appServiceManager(Ref ref) {
 
 class AppServiceManager {
   final LogService _logger;
-  final Map<String, Process> _processes = {};
+  final Map<String, ManagedBackgroundProcess> _processes = {};
   final Map<String, AppModel> _activeApps = {};
   final Map<String, List<StreamSubscription<String>>> _logSubscriptions = {};
 
@@ -185,13 +186,26 @@ class AppServiceManager {
         args = ['-D', dataDir];
       }
 
-      final process = await Process.start(
-        execPath,
-        args,
-        workingDirectory: workingDir,
-        environment: env,
-        mode: ProcessStartMode.normal,
-      );
+      final runsDetached =
+          fileName == 'nginx.exe' ||
+          fileName == 'httpd.exe' ||
+          fileName == 'apache.exe';
+      final process = runsDetached
+          ? await BackgroundProcess.start(
+              execPath,
+              args,
+              workingDirectory: workingDir,
+              environment: env,
+            )
+          : ManagedBackgroundProcess.wrap(
+              await Process.start(
+                execPath,
+                args,
+                workingDirectory: workingDir,
+                environment: env,
+                mode: ProcessStartMode.normal,
+              ),
+            );
 
       _processes[app.appId] = process;
       _activeApps[app.appId] = app;
@@ -206,7 +220,7 @@ class AppServiceManager {
 
       onStatusChange?.call();
 
-      // Listen for exit
+      // Listen for exit for both hidden webservers and normal services.
       process.exitCode.then((code) async {
         final activeApp = _activeApps[app.appId];
         _logger.info('Service ${app.name} exited with code $code');
@@ -226,45 +240,46 @@ class AppServiceManager {
         onStatusChange?.call();
       });
 
-      // Handle output
-      final stdoutSubscription = process.stdout.transform(utf8.decoder).listen((
-        data,
-      ) {
-        final lines = data.split('\n');
-        for (final line in lines) {
-          if (line.trim().isNotEmpty) {
-            final cleanLine = line.trim();
-            _activeApps[app.appId]?.addServiceLog(cleanLine);
-            AppLogger.info('[${app.name}] $cleanLine');
-            onStatusChange?.call();
-          }
-        }
-      });
+      if (!runsDetached) {
+        final stdoutSubscription = process.stdout
+            .transform(utf8.decoder)
+            .listen((data) {
+              final lines = data.split('\n');
+              for (final line in lines) {
+                if (line.trim().isNotEmpty) {
+                  final cleanLine = line.trim();
+                  _activeApps[app.appId]?.addServiceLog(cleanLine);
+                  AppLogger.info('[${app.name}] $cleanLine');
+                  onStatusChange?.call();
+                }
+              }
+            });
 
-      final stderrSubscription = process.stderr.transform(utf8.decoder).listen((
-        data,
-      ) {
-        final lines = data.split('\n');
-        for (final line in lines) {
-          if (line.trim().isNotEmpty) {
-            final cleanLine = line.trim();
-            String prefix = 'LOG';
-            if (cleanLine.contains('[ERROR]')) {
-              prefix = 'ERROR';
-            } else if (cleanLine.contains('[Warning]')) {
-              prefix = 'WARN';
-            } else if (cleanLine.contains('[System]') ||
-                cleanLine.contains('[Note]')) {
-              prefix = 'INFO';
-            }
+        final stderrSubscription = process.stderr
+            .transform(utf8.decoder)
+            .listen((data) {
+              final lines = data.split('\n');
+              for (final line in lines) {
+                if (line.trim().isNotEmpty) {
+                  final cleanLine = line.trim();
+                  String prefix = 'LOG';
+                  if (cleanLine.contains('[ERROR]')) {
+                    prefix = 'ERROR';
+                  } else if (cleanLine.contains('[Warning]')) {
+                    prefix = 'WARN';
+                  } else if (cleanLine.contains('[System]') ||
+                      cleanLine.contains('[Note]')) {
+                    prefix = 'INFO';
+                  }
 
-            _activeApps[app.appId]?.addServiceLog('[$prefix] $cleanLine');
-            AppLogger.info('[${app.name}] $prefix: $cleanLine');
-            onStatusChange?.call();
-          }
-        }
-      });
-      _logSubscriptions[app.appId] = [stdoutSubscription, stderrSubscription];
+                  _activeApps[app.appId]?.addServiceLog('[$prefix] $cleanLine');
+                  AppLogger.info('[${app.name}] $prefix: $cleanLine');
+                  onStatusChange?.call();
+                }
+              }
+            });
+        _logSubscriptions[app.appId] = [stdoutSubscription, stderrSubscription];
+      }
     } catch (e) {
       _logger.error('Failed to start service ${app.name}: $e');
       AppLogger.error('[${app.name}] CRITICAL ERROR: $e');
@@ -281,12 +296,7 @@ class AppServiceManager {
     if (process != null) {
       if (Platform.isWindows) {
         // Dùng /T để giết toàn bộ cây tiến trình (tránh sót worker processes)
-        await Process.run('taskkill', [
-          '/F',
-          '/T',
-          '/PID',
-          process.pid.toString(),
-        ]);
+        await BackgroundProcess.stopManaged(process);
       } else {
         process.kill();
       }
@@ -347,7 +357,7 @@ class AppServiceManager {
       _logger.info('Force killing processes by name: $taskName');
       try {
         // /F - force, /IM - image name, /T - child processes
-        await Process.run('taskkill', ['/F', '/IM', taskName, '/T']);
+        await BackgroundProcess.run('taskkill', ['/F', '/IM', taskName, '/T']);
       } catch (e) {
         _logger.warning('Failed to kill task $taskName: $e');
       }

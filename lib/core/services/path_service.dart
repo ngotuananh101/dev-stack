@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'background_process.dart';
 import 'log_service.dart';
 import '../../features/apps/domain/app_model.dart';
 import '../config/app_config.dart';
@@ -84,7 +85,7 @@ class PathService {
         Directory(binDir).createSync(recursive: true);
       }
 
-      final result = await Process.run('powershell', [
+      final result = await BackgroundProcess.run('powershell', [
         '-NoProfile',
         '-Command',
         '[Environment]::GetEnvironmentVariable("PATH", "User")',
@@ -110,7 +111,7 @@ class PathService {
         _logger.info('Adding $binDir to User PATH...');
         final newPath = currentPath.isEmpty ? binDir : '$currentPath;$binDir';
 
-        final setXResult = await Process.run('powershell', [
+        final setXResult = await BackgroundProcess.run('powershell', [
           '-NoProfile',
           '-Command',
           r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
@@ -132,7 +133,7 @@ class PathService {
   /// Thêm một đường dẫn trực tiếp vào User PATH
   Future<void> addRawPathToUserPath(String pathToAdd) async {
     try {
-      final result = await Process.run('powershell', [
+      final result = await BackgroundProcess.run('powershell', [
         '-NoProfile',
         '-Command',
         '[Environment]::GetEnvironmentVariable("PATH", "User")',
@@ -151,7 +152,7 @@ class PathService {
             ? pathToAdd
             : '$currentPath;$pathToAdd';
 
-        await Process.run('powershell', [
+        await BackgroundProcess.run('powershell', [
           '-NoProfile',
           '-Command',
           r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
@@ -168,7 +169,7 @@ class PathService {
   Future<void> setUserEnvVar(String name, String value) async {
     try {
       _logger.info('Setting User Environment Variable: $name = $value');
-      await Process.run('powershell', [
+      await BackgroundProcess.run('powershell', [
         '-NoProfile',
         '-Command',
         r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
@@ -183,7 +184,7 @@ class PathService {
   /// Xóa một đường dẫn trực tiếp khỏi User PATH
   Future<void> removeRawPathFromUserPath(String pathToRemove) async {
     try {
-      final result = await Process.run('powershell', [
+      final result = await BackgroundProcess.run('powershell', [
         '-NoProfile',
         '-Command',
         '[Environment]::GetEnvironmentVariable("PATH", "User")',
@@ -202,7 +203,7 @@ class PathService {
         _logger.info('Removing $pathToRemove from User PATH...');
         final newPathString = newPaths.join(';');
 
-        await Process.run('powershell', [
+        await BackgroundProcess.run('powershell', [
           '-NoProfile',
           '-Command',
           r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
@@ -219,7 +220,7 @@ class PathService {
   Future<void> removeUserEnvVar(String name) async {
     try {
       _logger.info('Removing User Environment Variable: $name');
-      await Process.run('powershell', [
+      await BackgroundProcess.run('powershell', [
         '-NoProfile',
         '-Command',
         r'[Environment]::SetEnvironmentVariable($args[0], $null, "User")',
