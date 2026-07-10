@@ -9,12 +9,14 @@ import '../../../../core/services/notepad_service.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import 'widgets/site_table.dart';
 import '../domain/site_model.dart';
+import '../domain/batch_models.dart';
+import '../domain/site_domain_utils.dart';
 import '../data/sites_provider.dart';
 import '../../settings/data/settings_provider.dart';
 import '../../apps/data/apps_provider.dart';
 import 'widgets/add_site_modal.dart';
 import 'widgets/edit_site_modal.dart';
-import 'package:dev_stack/core/services/log_service.dart';
+import 'widgets/batch_progress_dialog.dart';
 
 class SitesPage extends ConsumerStatefulWidget {
   const SitesPage({super.key});
@@ -264,25 +266,47 @@ class _SitesPageState extends ConsumerState<SitesPage> {
       confirmBtnText: 'DELETE ALL',
       onConfirm: () async {
         final sitesNotifier = ref.read(sitesNotifierProvider.notifier);
-
-        // Use a copy to avoid concurrent modification issues
         final idsToDelete = _selectedSiteIds.toList();
+        final progress = ValueNotifier<BatchProgress>(
+          BatchProgress(
+            current: 0,
+            total: idsToDelete.length,
+            currentLabel: '',
+            phase: BatchPhase.processing,
+          ),
+        );
+        final token = CancelToken();
 
-        for (final id in idsToDelete) {
-          await sitesNotifier.deleteSite(id, restartWebserver: false);
-        }
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => BatchProgressDialog(
+            title: 'Deleting Sites',
+            progress: progress,
+            onCancel: token.cancel,
+          ),
+        );
 
-        await sitesNotifier.restartWebservers();
+        final result = await sitesNotifier.deleteSitesBatch(
+          idsToDelete,
+          onProgress: (p) => progress.value = p,
+          cancel: token,
+        );
 
-        setState(() {
-          _selectedSiteIds.clear();
-        });
+        progress.dispose();
+        setState(() => _selectedSiteIds.clear());
 
         if (mounted) {
+          Navigator.of(context).pop(); // close progress dialog
+          var text = 'Deleted ${result.succeeded} sites.';
+          if (result.failed.isNotEmpty) {
+            text += ' Failed: ${result.failed.length}.';
+          }
+          if (result.cancelled) text += ' (Cancelled)';
           AppDialogs.showSuccess(
             context: context,
-            title: 'Success',
-            text: 'Successfully deleted $count sites.',
+            title: 'Bulk Delete Finished',
+            text: text,
           );
         }
       },
@@ -323,74 +347,76 @@ class _SitesPageState extends ConsumerState<SitesPage> {
         confirmBtnText: 'CREATE ALL',
         onConfirm: () async {
           final sitesNotifier = ref.read(sitesNotifierProvider.notifier);
-          final existingSites = ref.read(sitesNotifierProvider).value ?? [];
           final apps = ref.read(appsNotifierProvider).value ?? [];
 
-          // Get default PHP version (prioritize isDefault, then installed)
+          // Get default PHP version (prioritize isDefault, then installed).
           final defaultPhpApp = apps.firstWhere(
             (a) => a.groupName == 'php' && a.isInstalled && a.isDefault,
             orElse: () => apps.firstWhere(
               (a) => a.groupName == 'php' && a.isInstalled,
               orElse: () => apps.firstWhere(
                 (a) => a.groupName == 'php',
-                orElse: () => apps.first, // Dummy fallback
+                orElse: () => apps.first,
               ),
             ),
           );
-
           final String defaultPhp =
               (defaultPhpApp.isInstalled && defaultPhpApp.groupName == 'php')
               ? defaultPhpApp.appId
               : 'static';
 
-          int count = 0;
-          int skipped = 0;
-          for (final subdir in subdirs) {
+          final specs = subdirs.map((subdir) {
             final folderName = p.basename(subdir.path);
+            return BatchSiteSpec(
+              domain: resolveDomainFromTemplate(
+                settings.siteTemplate,
+                folderName,
+              ),
+              rootDir: subdir.path,
+              siteType: 'php',
+              phpAppId: defaultPhp,
+              useSsl: true,
+            );
+          }).toList();
 
-            // Flexible replacement for common placeholders
-            String domain = settings.siteTemplate;
-            if (domain.contains('[site-name]')) {
-              domain = domain.replaceAll('[site-name]', folderName);
-            } else if (domain.contains('{name}')) {
-              domain = domain.replaceAll('{name}', folderName);
-            } else if (domain.contains('{site-name}')) {
-              domain = domain.replaceAll('{site-name}', folderName);
-            } else {
-              // Fallback: if no placeholder found, maybe it's just a suffix like ".test"
-              // but if it's literally "[site-name].test" it will be handled above
-            }
+          final progress = ValueNotifier<BatchProgress>(
+            BatchProgress(
+              current: 0,
+              total: specs.length,
+              currentLabel: '',
+              phase: BatchPhase.processing,
+            ),
+          );
+          final token = CancelToken();
 
-            // Skip if domain already exists
-            if (existingSites.any((s) => s.domain == domain)) {
-              skipped++;
-              continue;
-            }
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => BatchProgressDialog(
+              title: 'Creating Sites',
+              progress: progress,
+              onCancel: token.cancel,
+            ),
+          );
 
-            try {
-              await sitesNotifier.addSite(
-                domain: domain,
-                rootDir: subdir.path,
-                siteType: 'php',
-                phpAppId: defaultPhp,
-                useSsl: true,
-                restartWebserver: false,
-              );
-              count++;
-            } catch (e) {
-              // Log error but continue with others
-              AppLogger.error('Error adding site $domain: $e');
-            }
-          }
+          final result = await sitesNotifier.addSitesBatch(
+            specs,
+            onProgress: (pr) => progress.value = pr,
+            cancel: token,
+          );
 
-          // Restart webservers at the end
-          await sitesNotifier.restartWebservers();
+          progress.dispose();
 
           if (mounted) {
-            String message = 'Successfully created $count sites.';
-            if (skipped > 0) {
-              message += ' Skipped $skipped existing domains.';
+            Navigator.of(context).pop(); // close progress dialog
+            var message = 'Created ${result.succeeded} sites.';
+            if (result.skipped > 0) {
+              message += ' Skipped ${result.skipped} existing/invalid.';
             }
+            if (result.failed.isNotEmpty) {
+              message += ' Failed: ${result.failed.length}.';
+            }
+            if (result.cancelled) message += ' (Cancelled)';
             AppDialogs.showSuccess(
               context: context,
               title: 'Batch Creation Finished',

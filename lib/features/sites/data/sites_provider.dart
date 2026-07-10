@@ -3,12 +3,14 @@ import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/database/isar_provider.dart';
 import '../domain/site_model.dart';
+import '../domain/batch_models.dart';
 import 'package:isar/isar.dart';
 import '../../apps/data/apps_provider.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/config/app_config.dart';
 import '../../hosts/data/hosts_repository.dart';
 import '../../../core/services/log_service.dart';
+import '../../../shared/utils/bounded_runner.dart';
 
 part 'sites_provider.g.dart';
 
@@ -80,52 +82,143 @@ class SitesNotifier extends _$SitesNotifier {
     });
 
     if (useSsl) {
-      final sslNotifier = ref.read(sslServiceProvider.notifier);
-      final logger = ref.read(logServiceProvider);
-      bool certGenerated = false;
-
-      for (int i = 0; i < 3; i++) {
-        await sslNotifier.generateSiteCert(domain);
-        final certFile = File(sslNotifier.getSiteCertPath(domain));
-        final keyFile = File(sslNotifier.getSiteKeyPath(domain));
-
-        if (certFile.existsSync() && keyFile.existsSync()) {
-          certGenerated = true;
-          break;
-        } else {
-          logger.warning(
-            'Certificate generation failed for $domain, retrying... (${i + 1}/3)',
-          );
-          await Future.delayed(const Duration(seconds: 1));
-        }
-      }
-
-      if (!certGenerated) {
-        logger.error(
-          'Failed to generate SSL after 3 retries, disabling SSL for $domain',
-        );
-        site.useSsl = false;
-        await isar.writeTxn(() async {
-          await isar.siteModels.put(site);
-        });
-      }
+      await _generateSslWithRetry(site);
     }
 
     // Generate Vhost files
     await _generateVhostFiles(site);
 
-    // Update hosts file
-    await _updateHostsFile();
+    await _finalize(restartWebserver: restartWebserver);
+  }
 
-    // Refresh state
-    state = AsyncValue.data(
-      await isar.siteModels.where().sortByCreatedAtDesc().findAll(),
+  /// Generates the SSL cert for [site]; retries once immediately if the cert or
+  /// key file is missing after mkcert returns. Disables SSL on the site (and
+  /// persists that) if generation still fails.
+  Future<void> _generateSslWithRetry(SiteModel site) async {
+    final sslNotifier = ref.read(sslServiceProvider.notifier);
+    final logger = ref.read(logServiceProvider);
+    final isar = await ref.read(isarProvider.future);
+
+    bool certPresent() {
+      final certFile = File(sslNotifier.getSiteCertPath(site.domain));
+      final keyFile = File(sslNotifier.getSiteKeyPath(site.domain));
+      return certFile.existsSync() && keyFile.existsSync();
+    }
+
+    await sslNotifier.generateSiteCert(site.domain);
+    if (!certPresent()) {
+      logger.warning('Certificate missing for ${site.domain}, retrying once...');
+      await sslNotifier.generateSiteCert(site.domain, force: true);
+    }
+
+    if (!certPresent()) {
+      logger.error('Failed to generate SSL for ${site.domain}, disabling SSL');
+      site.useSsl = false;
+      await isar.writeTxn(() async {
+        await isar.siteModels.put(site);
+      });
+    }
+  }
+
+  /// Creates many sites efficiently: persists all new sites in one transaction,
+  /// then generates SSL + vhost files in bounded parallel, then finalizes once
+  /// (hosts write + state refresh + single webserver restart). Duplicate domains
+  /// (already in DB or within [specs]) are skipped. Honors [cancel].
+  Future<BatchResult> addSitesBatch(
+    List<BatchSiteSpec> specs, {
+    void Function(BatchProgress)? onProgress,
+    CancelToken? cancel,
+  }) async {
+    final isar = await ref.read(isarProvider.future);
+    final logger = ref.read(logServiceProvider);
+
+    // Determine which specs are new (skip duplicates by domain).
+    final existingDomains = (await isar.siteModels.where().findAll())
+        .map((s) => s.domain)
+        .toSet();
+    final seen = <String>{};
+    final toCreate = <SiteModel>[];
+    var skipped = 0;
+
+    for (final spec in specs) {
+      if (!_isValidDomain(spec.domain) ||
+          existingDomains.contains(spec.domain) ||
+          !seen.add(spec.domain)) {
+        skipped++;
+        continue;
+      }
+
+      String? phpVersion;
+      int? phpPort;
+      if (spec.siteType == 'php' && spec.phpAppId != null) {
+        final versionMatch = RegExp(r'\d+').firstMatch(spec.phpAppId!);
+        phpVersion = versionMatch?.group(0) ?? '82';
+        phpPort = _safePhpPort(spec.phpAppId);
+      }
+
+      toCreate.add(SiteModel(
+        domain: spec.domain,
+        rootDir: spec.rootDir,
+        siteType: spec.siteType,
+        phpVersion: phpVersion,
+        phpPort: phpPort,
+        useSsl: spec.useSsl,
+        createdAt: DateTime.now(),
+      ));
+    }
+
+    // Persist all new sites in one transaction.
+    if (toCreate.isNotEmpty) {
+      await isar.writeTxn(() async {
+        await isar.siteModels.putAll(toCreate);
+      });
+    }
+
+    // Fan out SSL + vhost generation (bounded).
+    final total = toCreate.length;
+    var completed = 0;
+    final failed = <String>[];
+
+    await runBounded<SiteModel, void>(
+      toCreate,
+      8,
+      (site, index) async {
+        try {
+          if (site.useSsl) {
+            await _generateSslWithRetry(site);
+          }
+          await _generateVhostFiles(site);
+        } catch (e) {
+          logger.error('Batch create failed for ${site.domain}: $e');
+          failed.add(site.domain);
+        } finally {
+          completed++;
+          onProgress?.call(BatchProgress(
+            current: completed,
+            total: total,
+            currentLabel: site.domain,
+            phase: BatchPhase.processing,
+          ));
+        }
+      },
+      cancel: cancel,
     );
 
-    if (restartWebserver) {
-      // Restart webservers to apply changes
-      await restartWebservers();
-    }
+    // Finalize once (even on cancel — reflect what was actually created).
+    onProgress?.call(BatchProgress(
+      current: completed,
+      total: total,
+      currentLabel: '',
+      phase: BatchPhase.finalizing,
+    ));
+    await _finalize();
+
+    return BatchResult(
+      succeeded: completed - failed.length,
+      skipped: skipped,
+      failed: failed,
+      cancelled: cancel?.isCancelled ?? false,
+    );
   }
 
   Future<void> updateSite({
@@ -178,16 +271,7 @@ class SitesNotifier extends _$SitesNotifier {
     // Generate/Update Vhost files
     await _generateVhostFiles(updatedSite);
 
-    // Update hosts file
-    await _updateHostsFile();
-
-    // Refresh state
-    state = AsyncValue.data(
-      await isar.siteModels.where().sortByCreatedAtDesc().findAll(),
-    );
-
-    // Restart webservers to apply changes
-    await restartWebservers();
+    await _finalize();
   }
 
   Future<void> deleteSite(int id, {bool restartWebserver = true}) async {
@@ -202,18 +286,76 @@ class SitesNotifier extends _$SitesNotifier {
         await isar.siteModels.delete(id);
       });
 
-      // Update hosts file
-      await _updateHostsFile();
-
-      state = AsyncValue.data(
-        await isar.siteModels.where().sortByCreatedAtDesc().findAll(),
-      );
-
-      if (restartWebserver) {
-        // Restart webservers
-        await restartWebservers();
-      }
+      await _finalize(restartWebserver: restartWebserver);
     }
+  }
+
+  /// Deletes many sites efficiently: removes vhost/ssl/logs files in bounded
+  /// parallel, deletes all rows in one transaction, then finalizes once.
+  /// Honors [cancel] (already-deleted sites stay deleted).
+  Future<BatchResult> deleteSitesBatch(
+    List<int> ids, {
+    void Function(BatchProgress)? onProgress,
+    CancelToken? cancel,
+  }) async {
+    final isar = await ref.read(isarProvider.future);
+    final logger = ref.read(logServiceProvider);
+
+    final sites = <SiteModel>[];
+    for (final id in ids) {
+      final site = await isar.siteModels.get(id);
+      if (site != null) sites.add(site);
+    }
+
+    final total = sites.length;
+    var completed = 0;
+    final failed = <String>[];
+    final removedIds = <int>[];
+
+    await runBounded<SiteModel, void>(
+      sites,
+      8,
+      (site, index) async {
+        try {
+          await _removeVhostFiles(site);
+          removedIds.add(site.id);
+        } catch (e) {
+          logger.error('Batch delete failed for ${site.domain}: $e');
+          failed.add(site.domain);
+        } finally {
+          completed++;
+          onProgress?.call(BatchProgress(
+            current: completed,
+            total: total,
+            currentLabel: site.domain,
+            phase: BatchPhase.processing,
+          ));
+        }
+      },
+      cancel: cancel,
+    );
+
+    // Delete DB rows for successfully removed sites in one transaction.
+    if (removedIds.isNotEmpty) {
+      await isar.writeTxn(() async {
+        await isar.siteModels.deleteAll(removedIds);
+      });
+    }
+
+    onProgress?.call(BatchProgress(
+      current: completed,
+      total: total,
+      currentLabel: '',
+      phase: BatchPhase.finalizing,
+    ));
+    await _finalize();
+
+    return BatchResult(
+      succeeded: removedIds.length,
+      skipped: 0,
+      failed: failed,
+      cancelled: cancel?.isCancelled ?? false,
+    );
   }
 
   // --- File Management for Edit Modal ---
@@ -287,6 +429,19 @@ class SitesNotifier extends _$SitesNotifier {
   Future<void> regenerateSsl(SiteModel site) async {
     await ref.read(sslServiceProvider.notifier).generateSiteCert(site.domain);
     await restartWebservers();
+  }
+
+  /// Shared finalization run once after site changes: rewrite the hosts file,
+  /// refresh provider state from the DB, and restart webservers.
+  Future<void> _finalize({bool restartWebserver = true}) async {
+    final isar = await ref.read(isarProvider.future);
+    await _updateHostsFile();
+    state = AsyncValue.data(
+      await isar.siteModels.where().sortByCreatedAtDesc().findAll(),
+    );
+    if (restartWebserver) {
+      await restartWebservers();
+    }
   }
 
   Future<void> _updateHostsFile() async {
