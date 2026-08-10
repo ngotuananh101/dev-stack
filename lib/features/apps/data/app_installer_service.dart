@@ -4,14 +4,17 @@ import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:archive/archive.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/config/webserver_bind_policy.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/services/path_service.dart';
+import '../../settings/data/settings_provider.dart';
 
 part 'app_installer_service.g.dart';
 
@@ -481,6 +484,13 @@ class AppInstallerService {
     final dataDir = Directory(
       p.join(AppConfig.dataDir, '${app.appId}-$version'),
     );
+    if (dataDir.existsSync() && dataDir.listSync().isNotEmpty) {
+      logInfo(
+        'Data directory already contains data, skipping initialization to '
+        'avoid overwriting it: ${dataDir.path}',
+      );
+      return;
+    }
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
     }
@@ -543,6 +553,13 @@ class AppInstallerService {
     final dataDir = Directory(
       p.join(AppConfig.dataDir, '${app.appId}-$version'),
     );
+    if (dataDir.existsSync() && dataDir.listSync().isNotEmpty) {
+      logInfo(
+        'Data directory already contains a cluster, skipping initdb to '
+        'avoid overwriting it: ${dataDir.path}',
+      );
+      return;
+    }
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
     }
@@ -673,6 +690,11 @@ class AppInstallerService {
 
     final isSslInstalled = _ref.read(sslServiceProvider).value ?? false;
     final sslNotifier = _ref.read(sslServiceProvider.notifier);
+    final settings = await _ref.read(settingsNotifierProvider.future);
+    final allowLanAccess = settings.allowLanAccess;
+    final bindAddress = WebserverBindPolicy.address(
+      allowLanAccess: allowLanAccess,
+    );
 
     if (isSslInstalled) {
       await sslNotifier.generateSiteCert('localhost');
@@ -695,6 +717,7 @@ class AppInstallerService {
         isSslInstalled: isSslInstalled,
         certPath: certPath,
         keyPath: keyPath,
+        allowLanAccess: allowLanAccess,
       );
 
       await confFile.writeAsString(nginxConfig);
@@ -744,7 +767,15 @@ class AppInstallerService {
           '<Directory "$webRoot">\n    Options Indexes FollowSymLinks\n    AllowOverride All\n    Require all granted',
         );
 
-        // 5. Fix ServerName warning
+        // 5. Bind only to localhost by default. LAN access must be explicitly
+        // enabled in Settings. Normalize old wildcard/duplicate directives too.
+        content = WebserverBindPolicy.normalizeApacheListeners(
+          content,
+          allowLanAccess: allowLanAccess,
+          includeSsl: isSslInstalled,
+        );
+
+        // 6. Fix ServerName warning
         if (!content.contains('ServerName localhost')) {
           content = content.replaceFirst(
             RegExp(r'^#?ServerName\s+.*$', multiLine: true),
@@ -781,13 +812,6 @@ class AppInstallerService {
             'LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so',
           );
 
-          if (!content.contains('Listen 443')) {
-            content = content.replaceFirst(
-              'Listen 80',
-              'Listen 80\nListen 443',
-            );
-          }
-
           final certPath = sslNotifier
               .getSiteCertPath('localhost')
               .replaceAll('\\', '/');
@@ -799,7 +823,7 @@ class AppInstallerService {
               '''
 $sslVhostMarker
 <IfModule mod_ssl.c>
-<VirtualHost *:443>
+<VirtualHost $bindAddress:443>
     DocumentRoot "$webRoot"
     ServerName localhost:443
     SSLEngine on
@@ -860,14 +884,24 @@ $sslVhostMarker
     required bool isSslInstalled,
     required String certPath,
     required String keyPath,
+    required bool allowLanAccess,
   }) {
+    final httpListen = WebserverBindPolicy.nginxListen(
+      80,
+      allowLanAccess: allowLanAccess,
+    );
+    final httpsListen = WebserverBindPolicy.nginxListen(
+      443,
+      allowLanAccess: allowLanAccess,
+      ssl: true,
+    );
     String sslBlock = '';
     if (isSslInstalled) {
       sslBlock =
           '''
     # HTTPS server
     server {
-        listen       443 ssl;
+        listen       $httpsListen;
         server_name  localhost;
         root         "$webRoot";
 
@@ -904,7 +938,7 @@ http {
 
     # HTTP server
     server {
-        listen       80;
+        listen       $httpListen;
         server_name  localhost;
         root         "$webRoot";
 
@@ -987,18 +1021,185 @@ security:
     }
   }
 
-  Future<void> delete(String path, String appId, String? version) async {
+  /// Fault-injection hooks for data carry-over. Tests set these to exercise
+  /// failure paths that are impractical to trigger for real (cross-volume
+  /// renames, a full disk mid-copy). Always null in production.
+  @visibleForTesting
+  static void Function()? debugRenameFailure;
+
+  @visibleForTesting
+  static void Function()? debugCopyFailure;
+
+  /// True when [appId] keeps its data in a version-keyed directory
+  /// (`<dataDir>/<appId>-<version>`) that must be carried across a version swap.
+  static bool hasVersionedDataDir(String appId) =>
+      appId.contains('mysql') ||
+      appId.contains('mariadb') ||
+      appId.contains('postgresql');
+
+  /// Moves the version-keyed data directory from [oldVersion] to [newVersion]
+  /// so an updated engine keeps the user's existing databases.
+  ///
+  /// Does nothing when the app has no versioned data dir, when the source is
+  /// missing, or when a non-empty destination already exists. Returns true when
+  /// data was carried over.
+  Future<bool> carryOverDataDir(
+    String appId,
+    String? oldVersion,
+    String newVersion,
+    Function(String) logInfo,
+  ) async {
+    if (!hasVersionedDataDir(appId)) return false;
+    if (oldVersion == null || oldVersion == newVersion) return false;
+
+    final oldDataDir = Directory(
+      p.join(AppConfig.dataDir, '$appId-$oldVersion'),
+    );
+    final newDataDir = Directory(
+      p.join(AppConfig.dataDir, '$appId-$newVersion'),
+    );
+
+    // PostgreSQL stores its catalog version in the cluster, so a data dir built
+    // by PG15 cannot be opened by PG16 (the new initdb already ran). Carrying it
+    // over would leave the engine unable to start instead of losing data, which
+    // is strictly worse for the user. Gate carry-over on the same major version:
+    // read the old cluster's `PG_VERSION`, compare to the new binary's major.
+    if (appId.contains('postgresql')) {
+      final pgVersionFile = File(p.join(oldDataDir.path, 'PG_VERSION'));
+      if (pgVersionFile.existsSync()) {
+        final oldMajor = int.tryParse(
+          (await pgVersionFile.readAsString()).trim(),
+        );
+        final newMajor = int.tryParse(newVersion.split('.').first);
+        if (oldMajor != null && newMajor != null && oldMajor != newMajor) {
+          logInfo(
+            'PostgreSQL major version changed (PG$oldMajor -> PG$newMajor); '
+            'not carrying the data directory. The old cluster at '
+            '${oldDataDir.path} is left intact; initdb will create a fresh '
+            'PG$newMajor cluster. Use pg_upgrade to migrate the data.',
+          );
+          return false;
+        }
+      }
+    }
+
+    if (!oldDataDir.existsSync() || oldDataDir.listSync().isEmpty) return false;
+    if (newDataDir.existsSync() && newDataDir.listSync().isNotEmpty) {
+      logInfo(
+        'Data directory for $newVersion already exists, keeping it and leaving '
+        '${oldDataDir.path} untouched.',
+      );
+      return false;
+    }
+
+    logInfo('Carrying over data: ${oldDataDir.path} -> ${newDataDir.path}');
+    try {
+      if (newDataDir.existsSync()) await newDataDir.delete();
+      debugRenameFailure?.call();
+      await oldDataDir.rename(newDataDir.path);
+      logInfo('Data directory carried over to $newVersion.');
+      return true;
+    } catch (e) {
+      // Cross-volume or locked file: fall back to copy, keeping the original
+      // intact so a failure never destroys the user's data.
+      logInfo('Rename failed ($e), falling back to copy...');
+      try {
+        await _copyDirectory(oldDataDir, newDataDir);
+        logInfo(
+          'Data copied to $newVersion. Original kept at ${oldDataDir.path}.',
+        );
+        return true;
+      } catch (e2) {
+        // A half-copied directory looks "already initialized" to the engine
+        // setup, so the update would silently start on truncated data. Remove
+        // it and let the caller abort; the original is still intact.
+        logInfo('ERROR: Could not carry over data directory: $e2');
+        if (newDataDir.existsSync()) {
+          try {
+            await newDataDir.delete(recursive: true);
+            logInfo('Removed the incomplete copy at ${newDataDir.path}.');
+          } catch (e3) {
+            logInfo('ERROR: Could not remove the incomplete copy: $e3');
+          }
+        }
+        rethrow;
+      }
+    }
+  }
+
+  /// Restores a data directory carried to [newVersion] after an update fails.
+  ///
+  /// If carry-over used rename, the new directory is moved back. If it used
+  /// copy, the original still exists and only the temporary new copy is removed.
+  Future<void> rollbackCarriedDataDir(
+    String appId,
+    String? oldVersion,
+    String newVersion,
+    Function(String) logInfo,
+  ) async {
+    if (!hasVersionedDataDir(appId)) return;
+    if (oldVersion == null || oldVersion == newVersion) return;
+
+    final oldDataDir = Directory(
+      p.join(AppConfig.dataDir, '$appId-$oldVersion'),
+    );
+    final newDataDir = Directory(
+      p.join(AppConfig.dataDir, '$appId-$newVersion'),
+    );
+    if (!newDataDir.existsSync()) return;
+
+    if (oldDataDir.existsSync()) {
+      logInfo('Removing copied data for failed update: ${newDataDir.path}');
+      await newDataDir.delete(recursive: true);
+      return;
+    }
+
+    logInfo(
+      'Restoring data for $oldVersion after failed update: '
+      '${newDataDir.path} -> ${oldDataDir.path}',
+    );
+    await newDataDir.rename(oldDataDir.path);
+  }
+
+  Future<void> _copyDirectory(Directory source, Directory destination) async {
+    if (!destination.existsSync()) {
+      await destination.create(recursive: true);
+    }
+    await for (final entity in source.list(followLinks: false)) {
+      final newPath = p.join(destination.path, p.basename(entity.path));
+      if (entity is Directory) {
+        await _copyDirectory(entity, Directory(newPath));
+      } else if (entity is File) {
+        await entity.copy(newPath);
+        debugCopyFailure?.call();
+      }
+    }
+  }
+
+  /// Removes the install directory at [path].
+  ///
+  /// Data directories (database clusters, search indexes, object storage) are
+  /// only removed when [deleteData] is true. Pass false when replacing one
+  /// version with another so the user's data survives the swap.
+  Future<void> delete(
+    String path,
+    String appId,
+    String? version, {
+    bool deleteData = true,
+  }) async {
     final directory = Directory(path);
     if (directory.existsSync()) {
       _logger.info('Deleting directory: $path');
       await directory.delete(recursive: true);
     }
 
+    if (!deleteData) {
+      _logger.info('Preserving data directories for $appId (version swap)');
+      return;
+    }
+
     // Delete data directory for databases
-    if (version != null &&
-        (appId.contains('mysql') ||
-            appId.contains('mariadb') ||
-            appId.contains('postgresql'))) {
+    if (version != null && hasVersionedDataDir(appId)) {
       final dataDir = Directory(p.join(AppConfig.dataDir, '$appId-$version'));
       if (dataDir.existsSync()) {
         _logger.info('Deleting data directory: ${dataDir.path}');

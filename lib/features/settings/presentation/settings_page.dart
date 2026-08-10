@@ -9,6 +9,7 @@ import '../../../core/theme/app_text_size.dart';
 import '../../../core/services/notepad_service.dart';
 import '../../../shared/utils/app_dialogs.dart';
 import '../../apps/data/apps_provider.dart';
+import '../../sites/data/sites_provider.dart';
 import '../../../core/services/ssl_service.dart';
 import '../data/settings_provider.dart';
 import 'widgets/system_info_modal.dart';
@@ -125,6 +126,42 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onChanged: (val) => ref
                           .read(settingsNotifierProvider.notifier)
                           .updateField(autoStartWithWindows: val),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _buildSection(
+                  title: 'Network Access',
+                  icon: LucideIcons.network,
+                  children: [
+                    _buildSwitchSetting(
+                      title: 'Allow LAN Access',
+                      subtitle:
+                          'Bind webservers to 0.0.0.0 so other devices on your '
+                          'network can reach local sites and phpMyAdmin.\n'
+                          'Off (default) binds to 127.0.0.1 only — recommended '
+                          'unless you need to test from another device.',
+                      value: settings.allowLanAccess,
+                      onChanged: (val) async {
+                        await ref
+                            .read(settingsNotifierProvider.notifier)
+                            .updateField(allowLanAccess: val);
+                        if (!mounted) return;
+
+                        // Rewrite global and per-site configs first, then restart
+                        // installed webservers once with the new bind address.
+                        await ref
+                            .read(appsNotifierProvider.notifier)
+                            .reconfigureWebservers(restartRunning: false);
+                        if (!mounted) return;
+                        await ref
+                            .read(sitesNotifierProvider.notifier)
+                            .regenerateAllVhosts(restartWebserver: false);
+                        if (!mounted) return;
+                        await ref
+                            .read(appsNotifierProvider.notifier)
+                            .restartRunningWebservers();
+                      },
                     ),
                   ],
                 ),

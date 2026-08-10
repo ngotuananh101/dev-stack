@@ -17,33 +17,38 @@ const AppSettingsSchema = CollectionSchema(
   name: r'AppSettings',
   id: -5633561779022347008,
   properties: {
-    r'autoCreateSite': PropertySchema(
+    r'allowLanAccess': PropertySchema(
       id: 0,
+      name: r'allowLanAccess',
+      type: IsarType.bool,
+    ),
+    r'autoCreateSite': PropertySchema(
+      id: 1,
       name: r'autoCreateSite',
       type: IsarType.bool,
     ),
     r'autoStartWithWindows': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'autoStartWithWindows',
       type: IsarType.bool,
     ),
     r'baseDir': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'baseDir',
       type: IsarType.string,
     ),
     r'isSslInstalled': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'isSslInstalled',
       type: IsarType.bool,
     ),
     r'minimizeToTray': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'minimizeToTray',
       type: IsarType.bool,
     ),
     r'siteTemplate': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'siteTemplate',
       type: IsarType.string,
     )
@@ -79,12 +84,13 @@ void _appSettingsSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeBool(offsets[0], object.autoCreateSite);
-  writer.writeBool(offsets[1], object.autoStartWithWindows);
-  writer.writeString(offsets[2], object.baseDir);
-  writer.writeBool(offsets[3], object.isSslInstalled);
-  writer.writeBool(offsets[4], object.minimizeToTray);
-  writer.writeString(offsets[5], object.siteTemplate);
+  writer.writeBool(offsets[0], object.allowLanAccess);
+  writer.writeBool(offsets[1], object.autoCreateSite);
+  writer.writeBool(offsets[2], object.autoStartWithWindows);
+  writer.writeString(offsets[3], object.baseDir);
+  writer.writeBool(offsets[4], object.isSslInstalled);
+  writer.writeBool(offsets[5], object.minimizeToTray);
+  writer.writeString(offsets[6], object.siteTemplate);
 }
 
 AppSettings _appSettingsDeserialize(
@@ -94,13 +100,14 @@ AppSettings _appSettingsDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = AppSettings();
-  object.autoCreateSite = reader.readBool(offsets[0]);
-  object.autoStartWithWindows = reader.readBool(offsets[1]);
-  object.baseDir = reader.readString(offsets[2]);
+  object.allowLanAccess = reader.readBool(offsets[0]);
+  object.autoCreateSite = reader.readBool(offsets[1]);
+  object.autoStartWithWindows = reader.readBool(offsets[2]);
+  object.baseDir = reader.readString(offsets[3]);
   object.id = id;
-  object.isSslInstalled = reader.readBool(offsets[3]);
-  object.minimizeToTray = reader.readBool(offsets[4]);
-  object.siteTemplate = reader.readString(offsets[5]);
+  object.isSslInstalled = reader.readBool(offsets[4]);
+  object.minimizeToTray = reader.readBool(offsets[5]);
+  object.siteTemplate = reader.readString(offsets[6]);
   return object;
 }
 
@@ -116,12 +123,14 @@ P _appSettingsDeserializeProp<P>(
     case 1:
       return (reader.readBool(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
-    case 3:
       return (reader.readBool(offset)) as P;
+    case 3:
+      return (reader.readString(offset)) as P;
     case 4:
       return (reader.readBool(offset)) as P;
     case 5:
+      return (reader.readBool(offset)) as P;
+    case 6:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -221,6 +230,16 @@ extension AppSettingsQueryWhere
 
 extension AppSettingsQueryFilter
     on QueryBuilder<AppSettings, AppSettings, QFilterCondition> {
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      allowLanAccessEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'allowLanAccess',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
       autoCreateSiteEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
@@ -593,6 +612,19 @@ extension AppSettingsQueryLinks
 
 extension AppSettingsQuerySortBy
     on QueryBuilder<AppSettings, AppSettings, QSortBy> {
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByAllowLanAccess() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'allowLanAccess', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByAllowLanAccessDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'allowLanAccess', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByAutoCreateSite() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'autoCreateSite', Sort.asc);
@@ -674,6 +706,19 @@ extension AppSettingsQuerySortBy
 
 extension AppSettingsQuerySortThenBy
     on QueryBuilder<AppSettings, AppSettings, QSortThenBy> {
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByAllowLanAccess() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'allowLanAccess', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByAllowLanAccessDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'allowLanAccess', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByAutoCreateSite() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'autoCreateSite', Sort.asc);
@@ -767,6 +812,12 @@ extension AppSettingsQuerySortThenBy
 
 extension AppSettingsQueryWhereDistinct
     on QueryBuilder<AppSettings, AppSettings, QDistinct> {
+  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByAllowLanAccess() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'allowLanAccess');
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByAutoCreateSite() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'autoCreateSite');
@@ -812,6 +863,12 @@ extension AppSettingsQueryProperty
   QueryBuilder<AppSettings, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<AppSettings, bool, QQueryOperations> allowLanAccessProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'allowLanAccess');
     });
   }
 

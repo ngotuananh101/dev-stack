@@ -8,6 +8,8 @@ import 'package:isar/isar.dart';
 import '../../apps/data/apps_provider.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/config/webserver_bind_policy.dart';
+import '../../settings/data/settings_provider.dart';
 import '../../hosts/data/hosts_repository.dart';
 import '../../../core/services/log_service.dart';
 import '../../../shared/utils/bounded_runner.dart';
@@ -107,7 +109,9 @@ class SitesNotifier extends _$SitesNotifier {
 
     await sslNotifier.generateSiteCert(site.domain);
     if (!certPresent()) {
-      logger.warning('Certificate missing for ${site.domain}, retrying once...');
+      logger.warning(
+        'Certificate missing for ${site.domain}, retrying once...',
+      );
       await sslNotifier.generateSiteCert(site.domain, force: true);
     }
 
@@ -156,15 +160,17 @@ class SitesNotifier extends _$SitesNotifier {
         phpPort = _safePhpPort(spec.phpAppId);
       }
 
-      toCreate.add(SiteModel(
-        domain: spec.domain,
-        rootDir: spec.rootDir,
-        siteType: spec.siteType,
-        phpVersion: phpVersion,
-        phpPort: phpPort,
-        useSsl: spec.useSsl,
-        createdAt: DateTime.now(),
-      ));
+      toCreate.add(
+        SiteModel(
+          domain: spec.domain,
+          rootDir: spec.rootDir,
+          siteType: spec.siteType,
+          phpVersion: phpVersion,
+          phpPort: phpPort,
+          useSsl: spec.useSsl,
+          createdAt: DateTime.now(),
+        ),
+      );
     }
 
     // Persist all new sites in one transaction.
@@ -179,38 +185,37 @@ class SitesNotifier extends _$SitesNotifier {
     var completed = 0;
     final failed = <String>[];
 
-    await runBounded<SiteModel, void>(
-      toCreate,
-      8,
-      (site, index) async {
-        try {
-          if (site.useSsl) {
-            await _generateSslWithRetry(site);
-          }
-          await _generateVhostFiles(site);
-        } catch (e) {
-          logger.error('Batch create failed for ${site.domain}: $e');
-          failed.add(site.domain);
-        } finally {
-          completed++;
-          onProgress?.call(BatchProgress(
+    await runBounded<SiteModel, void>(toCreate, 8, (site, index) async {
+      try {
+        if (site.useSsl) {
+          await _generateSslWithRetry(site);
+        }
+        await _generateVhostFiles(site);
+      } catch (e) {
+        logger.error('Batch create failed for ${site.domain}: $e');
+        failed.add(site.domain);
+      } finally {
+        completed++;
+        onProgress?.call(
+          BatchProgress(
             current: completed,
             total: total,
             currentLabel: site.domain,
             phase: BatchPhase.processing,
-          ));
-        }
-      },
-      cancel: cancel,
-    );
+          ),
+        );
+      }
+    }, cancel: cancel);
 
     // Finalize once (even on cancel — reflect what was actually created).
-    onProgress?.call(BatchProgress(
-      current: completed,
-      total: total,
-      currentLabel: '',
-      phase: BatchPhase.finalizing,
-    ));
+    onProgress?.call(
+      BatchProgress(
+        current: completed,
+        total: total,
+        currentLabel: '',
+        phase: BatchPhase.finalizing,
+      ),
+    );
     await _finalize();
 
     return BatchResult(
@@ -312,28 +317,25 @@ class SitesNotifier extends _$SitesNotifier {
     final failed = <String>[];
     final removedIds = <int>[];
 
-    await runBounded<SiteModel, void>(
-      sites,
-      8,
-      (site, index) async {
-        try {
-          await _removeVhostFiles(site);
-          removedIds.add(site.id);
-        } catch (e) {
-          logger.error('Batch delete failed for ${site.domain}: $e');
-          failed.add(site.domain);
-        } finally {
-          completed++;
-          onProgress?.call(BatchProgress(
+    await runBounded<SiteModel, void>(sites, 8, (site, index) async {
+      try {
+        await _removeVhostFiles(site);
+        removedIds.add(site.id);
+      } catch (e) {
+        logger.error('Batch delete failed for ${site.domain}: $e');
+        failed.add(site.domain);
+      } finally {
+        completed++;
+        onProgress?.call(
+          BatchProgress(
             current: completed,
             total: total,
             currentLabel: site.domain,
             phase: BatchPhase.processing,
-          ));
-        }
-      },
-      cancel: cancel,
-    );
+          ),
+        );
+      }
+    }, cancel: cancel);
 
     // Delete DB rows for successfully removed sites in one transaction.
     if (removedIds.isNotEmpty) {
@@ -342,12 +344,14 @@ class SitesNotifier extends _$SitesNotifier {
       });
     }
 
-    onProgress?.call(BatchProgress(
-      current: completed,
-      total: total,
-      currentLabel: '',
-      phase: BatchPhase.finalizing,
-    ));
+    onProgress?.call(
+      BatchProgress(
+        current: completed,
+        total: total,
+        currentLabel: '',
+        phase: BatchPhase.finalizing,
+      ),
+    );
     await _finalize();
 
     return BatchResult(
@@ -452,25 +456,14 @@ class SitesNotifier extends _$SitesNotifier {
     const startMarker = '# [PONTA-START]';
     const endMarker = '# [PONTA-END]';
 
-    // Generate new lines
-    final newLines = [
+    final domainLines = allSites.map((s) => '127.0.0.1 ${s.domain}').toList();
+
+    hostsContent = HostsRepository.replacePontaBlock(
+      hostsContent,
       startMarker,
-      ...allSites.map((s) => '127.0.0.1 ${s.domain}'),
       endMarker,
-    ];
-    final newBlock = newLines.join('\n');
-
-    if (hostsContent.contains(startMarker) &&
-        hostsContent.contains(endMarker)) {
-      // Replace existing block
-      final startIndex = hostsContent.indexOf(startMarker);
-      final endIndex = hostsContent.indexOf(endMarker) + endMarker.length;
-
-      hostsContent = hostsContent.replaceRange(startIndex, endIndex, newBlock);
-    } else {
-      // Append new block
-      hostsContent = '${hostsContent.trim()}\n\n$newBlock\n';
-    }
+      domainLines,
+    );
 
     await _hostsRepo.saveHostsRaw(hostsContent);
   }
@@ -478,6 +471,8 @@ class SitesNotifier extends _$SitesNotifier {
   Future<void> _generateVhostFiles(SiteModel site) async {
     final rootDirUnix = site.rootDir.replaceAll('\\', '/');
     final sslNotifier = ref.read(sslServiceProvider.notifier);
+    final settings = await ref.read(settingsNotifierProvider.future);
+    final allowLanAccess = settings.allowLanAccess;
 
     // Ensure directories exist
     final nginxDir = Directory(p.join(AppConfig.vhostsDir, 'nginx'));
@@ -495,8 +490,13 @@ class SitesNotifier extends _$SitesNotifier {
     final nginxVhostFile = File(p.join(nginxDir.path, '${site.domain}.conf'));
 
     String buildNginxServer(int port, {bool ssl = false}) {
+      final listen = WebserverBindPolicy.nginxListen(
+        port,
+        allowLanAccess: allowLanAccess,
+        ssl: ssl,
+      );
       String config = 'server {\n';
-      config += '    listen $port${ssl ? " ssl" : ""};\n';
+      config += '    listen $listen;\n';
       config += '    server_name ${site.domain};\n';
       config += '\n';
       config += '    client_max_body_size 512M;\n';
@@ -570,7 +570,11 @@ class SitesNotifier extends _$SitesNotifier {
     final apacheVhostFile = File(p.join(apacheDir.path, '${site.domain}.conf'));
 
     String buildApacheServer(int port, {bool ssl = false}) {
-      String config = '<VirtualHost *:$port>\n';
+      final virtualHost = WebserverBindPolicy.apacheVirtualHost(
+        port,
+        allowLanAccess: allowLanAccess,
+      );
+      String config = '<VirtualHost $virtualHost>\n';
       config += '    ServerName ${site.domain}\n';
 
       if (site.siteType != 'proxy') {
@@ -646,6 +650,21 @@ class SitesNotifier extends _$SitesNotifier {
     // Remove logs directory
     final logsDir = Directory(p.join(AppConfig.baseDir, 'logs', site.domain));
     if (logsDir.existsSync()) await logsDir.delete(recursive: true);
+  }
+
+  /// Rewrites every generated site vhost using the current settings and then
+  /// restarts installed webservers once. Used when the LAN bind policy changes.
+  Future<void> regenerateAllVhosts({bool restartWebserver = true}) async {
+    final isar = await ref.read(isarProvider.future);
+    final sites = await isar.siteModels.where().findAll();
+
+    for (final site in sites) {
+      await _generateVhostFiles(site);
+    }
+
+    if (restartWebserver) {
+      await restartWebservers();
+    }
   }
 
   Future<void> restartWebservers() async {

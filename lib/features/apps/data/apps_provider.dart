@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:path/path.dart' as p;
+import '../../../core/config/app_config.dart';
 import '../../../core/database/isar_provider.dart';
 import '../domain/app_model.dart';
 import 'apps_repository.dart';
@@ -184,13 +186,14 @@ class AppsNotifier extends _$AppsNotifier {
       // Check if it's an update (different version selected)
       if (app.selectedVersion != null &&
           app.selectedVersion != app.installedVersion) {
-        try {
-          final oldPath = app.location;
-          final oldVersion = app.installedVersion;
-          final wasInPath = app.isAddedToPath;
-          final newVersion = app.selectedVersion!;
-          final installer = ref.read(appInstallerServiceProvider);
+        final oldPath = app.location;
+        final oldVersion = app.installedVersion;
+        final newVersion = app.selectedVersion!;
+        final installer = ref.read(appInstallerServiceProvider);
+        var dataCarried = false;
+        var wasInPath = app.isAddedToPath;
 
+        try {
           app.status = 'installing';
           app.installProgress = 0.0;
           app.installStatus = 'Updating to $newVersion...';
@@ -213,7 +216,20 @@ class AppsNotifier extends _$AppsNotifier {
           // Safety delay for Windows file handles
           await Future.delayed(const Duration(seconds: 1));
 
-          // 1. Download and install new version to a new folder
+          // 1. Carry the existing data directory over to the new version key
+          // BEFORE installing, so initialization sees a populated data dir and
+          // skips re-initializing (which would otherwise start from empty).
+          dataCarried = await installer.carryOverDataDir(
+            app.appId,
+            oldVersion,
+            newVersion,
+            (m) {
+              app.addLog(m);
+              notifyUpdate();
+            },
+          );
+
+          // 2. Download and install new version to a new folder
           final newInstallPath = await installer.install(
             app,
             newVersion,
@@ -230,7 +246,7 @@ class AppsNotifier extends _$AppsNotifier {
             },
           );
 
-          // 2. Manage PATH if needed
+          // 3. Manage PATH if needed
           if (wasInPath) {
             final pathService = ref.read(pathServiceProvider);
             // Remove old shim
@@ -240,12 +256,18 @@ class AppsNotifier extends _$AppsNotifier {
             app.isAddedToPath = true;
           }
 
-          // 3. Delete old version folder
+          // 4. Delete old version folder. Never delete data directories here:
+          // this is a version swap, not an uninstall.
           if (oldPath != null) {
-            await installer.delete(oldPath, app.appId, oldVersion);
+            await installer.delete(
+              oldPath,
+              app.appId,
+              oldVersion,
+              deleteData: false,
+            );
           }
 
-          // 4. Update state
+          // 5. Update state
           app.isInstalled = true;
           app.status = 'installed';
           app.location = newInstallPath;
@@ -257,6 +279,10 @@ class AppsNotifier extends _$AppsNotifier {
 
           await repository.save(app);
 
+          // The upgrade is committed: the app now points at $newVersion, so the
+          // carried data is where it belongs and must not be rolled back.
+          dataCarried = false;
+
           // Post-install orchestration
           final allApps = state.valueOrNull ?? [];
           await installer.syncInterAppConfigs(
@@ -265,15 +291,70 @@ class AppsNotifier extends _$AppsNotifier {
             onLog: (m) => app.addLog(m),
           );
 
+          // The upgrade is fully committed (persisted + inter-app config
+          // synced). If carry-over fell back to copy, the old version-keyed
+          // data dir is now a stale, orphaned copy — remove it so disk usage
+          // matches the running version. A rename-style carry-over already
+          // vacated this path, so this is a no-op for it.
+          if (oldVersion != null &&
+              AppInstallerService.hasVersionedDataDir(app.appId)) {
+            final oldDataDir = Directory(
+              p.join(AppConfig.dataDir, '${app.appId}-$oldVersion'),
+            );
+            if (oldDataDir.existsSync()) {
+              try {
+                await oldDataDir.delete(recursive: true);
+                app.addLog(
+                  'Removed orphaned data directory for $oldVersion: '
+                  '${oldDataDir.path}',
+                );
+              } catch (cleanupError) {
+                app.addLog(
+                  'Could not remove orphaned data directory '
+                  '${oldDataDir.path}: $cleanupError',
+                );
+              }
+            }
+          }
+
           notifyUpdate(force: true);
         } catch (e) {
           AppLogger.error('Update failed: $e');
+
+          var userMessage = e.toString();
+
+          // The app is still recorded at $oldVersion, so its data must be too.
+          if (dataCarried) {
+            try {
+              await installer.rollbackCarriedDataDir(
+                app.appId,
+                oldVersion,
+                newVersion,
+                (m) {
+                  app.addLog(m);
+                  notifyUpdate();
+                },
+              );
+            } catch (rollbackError) {
+              AppLogger.error(
+                'Data rollback failed after a failed update: $rollbackError',
+              );
+              userMessage =
+                  '$userMessage\n\nData rollback also failed: $rollbackError';
+            }
+          }
+
           app.status = 'installed'; // Revert to installed
           app.installProgress = null;
           app.installStatus = null;
+          app.isAddedToPath = wasInPath;
+          if (oldPath != null) {
+            app.location = oldPath;
+          }
+          app.installedVersion = oldVersion;
+          app.selectedVersion = null;
 
-          // Notify UI of error
-          ref.read(errorNotifierProvider.notifier).setError(e.toString());
+          ref.read(errorNotifierProvider.notifier).setError(userMessage);
 
           notifyUpdate(force: true);
         }
@@ -440,13 +521,48 @@ class AppsNotifier extends _$AppsNotifier {
   Future<void> stopAllServicesQuietly() async {
     final manager = ref.read(appServiceManagerProvider);
     final apps = state.valueOrNull ?? [];
-    
+
     for (final app in apps) {
       if (manager.isRunning(app.appId)) {
         await manager.stop(app);
       }
     }
     // Không gọi notifyUpdate vì app sắp tắt
+  }
+
+  Future<void> reconfigureWebservers({bool restartRunning = true}) async {
+    final apps = state.valueOrNull ?? [];
+    final installer = ref.read(appInstallerServiceProvider);
+
+    await installer.reconfigureWebservers(
+      apps,
+      (message) => AppLogger.info('Network Sync: $message'),
+    );
+
+    if (restartRunning) {
+      await restartRunningWebservers();
+    } else {
+      notifyUpdate(force: true);
+    }
+  }
+
+  Future<void> restartRunningWebservers() async {
+    final apps = state.valueOrNull ?? [];
+    final manager = ref.read(appServiceManagerProvider);
+
+    for (final app in apps.where(
+      (app) =>
+          app.isInstalled &&
+          app.categories.contains('webserver') &&
+          manager.isRunning(app.appId),
+    )) {
+      await manager.restart(
+        app,
+        onStatusChange: () => notifyUpdate(force: true),
+      );
+    }
+
+    notifyUpdate(force: true);
   }
 
   Future<void> restartService(AppModel app) async {
@@ -512,11 +628,13 @@ class AppsNotifier extends _$AppsNotifier {
     // Special handling for RustFS Dashboard
     if (app.appId == 'rustfs') {
       try {
-        final settings = await ref.read(rustFSSettingsProvider.notifier).readConfig();
+        final settings = await ref
+            .read(rustFSSettingsProvider.notifier)
+            .readConfig();
         final consoleAddress = settings['console_address'] ?? ':9001';
         final port = consoleAddress.split(':').last;
         final url = 'http://localhost:$port';
-        
+
         if (await canLaunchUrlString(url)) {
           await launchUrlString(url);
         } else {
@@ -525,7 +643,9 @@ class AppsNotifier extends _$AppsNotifier {
         return;
       } catch (e) {
         AppLogger.error('Error opening RustFS dashboard: $e');
-        ref.read(errorNotifierProvider.notifier).setError('Failed to open RustFS Dashboard: $e');
+        ref
+            .read(errorNotifierProvider.notifier)
+            .setError('Failed to open RustFS Dashboard: $e');
         return;
       }
     }
@@ -533,9 +653,11 @@ class AppsNotifier extends _$AppsNotifier {
     // Special handling for Meilisearch Dashboard
     if (app.appId == 'meilisearch') {
       try {
-        final settings = await ref.read(meilisearchSettingsProvider.notifier).readConfig(app);
+        final settings = await ref
+            .read(meilisearchSettingsProvider.notifier)
+            .readConfig(app);
         final httpAddr = settings['http_addr'] ?? '127.0.0.1:7700';
-        
+
         // Handle both "127.0.0.1:7700" and ":7700" formats
         String url;
         if (httpAddr.startsWith(':')) {
@@ -543,7 +665,7 @@ class AppsNotifier extends _$AppsNotifier {
         } else {
           url = 'http://$httpAddr';
         }
-        
+
         if (await canLaunchUrlString(url)) {
           await launchUrlString(url);
         } else {
@@ -552,7 +674,9 @@ class AppsNotifier extends _$AppsNotifier {
         return;
       } catch (e) {
         AppLogger.error('Error opening Meilisearch dashboard: $e');
-        ref.read(errorNotifierProvider.notifier).setError('Failed to open Meilisearch Dashboard: $e');
+        ref
+            .read(errorNotifierProvider.notifier)
+            .setError('Failed to open Meilisearch Dashboard: $e');
         return;
       }
     }
@@ -577,23 +701,28 @@ class AppsNotifier extends _$AppsNotifier {
   Future<void> stopAllServices() async {
     final apps = state.valueOrNull ?? [];
     final manager = ref.read(appServiceManagerProvider);
-    
+
     // Lọc ra các app đang chạy
-    final runningApps = apps.where((app) => 
-      app.isInstalled && app.isService && manager.isRunning(app.appId)
-    ).toList();
+    final runningApps = apps
+        .where(
+          (app) =>
+              app.isInstalled && app.isService && manager.isRunning(app.appId),
+        )
+        .toList();
 
     AppLogger.info('Tray: Stopping ${runningApps.length} services...');
 
     // Dừng tất cả song song để tăng tốc độ
-    await Future.wait(runningApps.map((app) async {
-      try {
-        await manager.stop(app);
-        app.serviceStatus = 'stopped';
-      } catch (e) {
-        AppLogger.error('Error stopping ${app.name}: $e');
-      }
-    }));
+    await Future.wait(
+      runningApps.map((app) async {
+        try {
+          await manager.stop(app);
+          app.serviceStatus = 'stopped';
+        } catch (e) {
+          AppLogger.error('Error stopping ${app.name}: $e');
+        }
+      }),
+    );
 
     notifyUpdate(force: true);
   }

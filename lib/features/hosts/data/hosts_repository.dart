@@ -64,4 +64,29 @@ class HostsRepository {
       return false;
     }
   }
+
+  /// Replaces (or appends) the PONTA-managed block in a hosts file.
+  ///
+  /// The block is delimited by [startMarker]..[endMarker] in document order.
+  /// Using an ordered regex instead of indexOf avoids a RangeError when the
+  /// markers are out of order (e.g. a user moved end above start) and avoids
+  /// adopting a stale block when a duplicate marker is present.
+  static String replacePontaBlock(
+    String hostsContent,
+    String startMarker,
+    String endMarker,
+    List<String> domainLines,
+  ) {
+    final newBlock = '$startMarker\n${domainLines.join('\n')}\n$endMarker';
+
+    final blockPattern = RegExp(
+      '${RegExp.escape(startMarker)}.*?${RegExp.escape(endMarker)}',
+      dotAll: true,
+    );
+
+    if (blockPattern.hasMatch(hostsContent)) {
+      return hostsContent.replaceFirst(blockPattern, newBlock);
+    }
+    return '${hostsContent.trim()}\n\n$newBlock\n';
+  }
 }

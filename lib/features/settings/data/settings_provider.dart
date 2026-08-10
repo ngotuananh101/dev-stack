@@ -251,32 +251,47 @@ class SettingsNotifier extends _$SettingsNotifier {
         final currentPath = (result.stdout as String).trim();
         if (currentPath.contains(oldDir)) {
           final newPath = currentPath.replaceAll(oldDir, newDir);
-          await BackgroundProcess.run('powershell', [
-            '-NoProfile',
-            '-Command',
-            '[Environment]::SetEnvironmentVariable("Path", "$newPath", "User")',
-          ]);
+          await BackgroundProcess.run(
+            'powershell',
+            [
+              '-NoProfile',
+              '-Command',
+              '[Environment]::SetEnvironmentVariable("Path", \$env:DEVSTACK_SETVALUE, "User")',
+            ],
+            environment: {'DEVSTACK_SETVALUE': newPath},
+          );
           AppLogger.info('Updated User PATH: replaced $oldDir → $newDir');
         }
       }
 
       // Update PYENV-related env vars
       for (final envVar in ['PYENV', 'PYENV_HOME', 'PYENV_ROOT']) {
-        final envResult = await BackgroundProcess.run('powershell', [
-          '-NoProfile',
-          '-Command',
-          '[Environment]::GetEnvironmentVariable("$envVar", "User")',
-        ]);
+        final envResult = await BackgroundProcess.run(
+          'powershell',
+          [
+            '-NoProfile',
+            '-Command',
+            '[Environment]::GetEnvironmentVariable(\$env:DEVSTACK_ENVVAR, "User")',
+          ],
+          environment: {'DEVSTACK_ENVVAR': envVar},
+        );
 
         if (envResult.exitCode == 0) {
           final envValue = (envResult.stdout as String).trim();
           if (envValue.isNotEmpty && envValue.contains(oldDir)) {
             final newEnvValue = envValue.replaceAll(oldDir, newDir);
-            await BackgroundProcess.run('powershell', [
-              '-NoProfile',
-              '-Command',
-              '[Environment]::SetEnvironmentVariable("$envVar", "$newEnvValue", "User")',
-            ]);
+            await BackgroundProcess.run(
+              'powershell',
+              [
+                '-NoProfile',
+                '-Command',
+                '[Environment]::SetEnvironmentVariable(\$env:DEVSTACK_ENVVAR, \$env:DEVSTACK_SETVALUE, "User")',
+              ],
+              environment: {
+                'DEVSTACK_ENVVAR': envVar,
+                'DEVSTACK_SETVALUE': newEnvValue,
+              },
+            );
             AppLogger.info('Updated env var $envVar: $envValue → $newEnvValue');
           }
         }
@@ -294,6 +309,7 @@ class SettingsNotifier extends _$SettingsNotifier {
     bool? minimizeToTray,
     bool? autoStartWithWindows,
     bool? isSslInstalled,
+    bool? allowLanAccess,
   }) async {
     final currentSettings = state.value;
     if (currentSettings == null) return;
@@ -325,6 +341,9 @@ class SettingsNotifier extends _$SettingsNotifier {
       }
     }
     if (isSslInstalled != null) currentSettings.isSslInstalled = isSslInstalled;
+    if (allowLanAccess != null) {
+      currentSettings.allowLanAccess = allowLanAccess;
+    }
 
     await updateSettings(currentSettings);
   }
