@@ -5,7 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/services/notepad_service.dart';
+import '../../hosts/presentation/hosts_editor_dialog.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import 'widgets/site_table.dart';
 import '../domain/site_model.dart';
@@ -125,17 +125,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
         ),
         const SizedBox(width: 12),
         ElevatedButton.icon(
-          onPressed: () async {
-            const hostsPath = r'C:\Windows\System32\drivers\etc\hosts';
-            final success = await NotepadService.openFile(hostsPath);
-            if (!success && mounted) {
-              AppDialogs.showToast(
-                context,
-                'Failed to open hosts file in Notepad++',
-                isError: true,
-              );
-            }
-          },
+          onPressed: () => HostsEditorDialog.show(context),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.surface,
             foregroundColor: AppColors.textPrimary,

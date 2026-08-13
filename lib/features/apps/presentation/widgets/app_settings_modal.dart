@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
+import 'package:dev_stack/shared/widgets/code_editor/config_code_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +9,7 @@ import 'package:path/path.dart' as p;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../core/config/app_config.dart';
-import '../../../../core/services/notepad_service.dart';
+import '../../../../core/services/log_service.dart';
 import '../../domain/app_model.dart';
 import '../../data/php_settings_provider.dart';
 import '../../data/apps_provider.dart';
@@ -226,51 +227,26 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     return null;
   }
 
-  // ─── Open in Notepad++ ────────────────────────────────────────────────────────
-  Future<void> _openInNotepadPlusPlus() async {
+  // ─── Save config file ────────────────────────────────────────────────────────
+  /// Persists the edited config content directly to the resolved config file.
+  /// These are arbitrary user-authored config files (php.ini, nginx.conf,
+  /// mongod.cfg, ...); there is no domain to validate, so the content is
+  /// written verbatim — mirroring the per-app *_settings_provider.saveConfig
+  /// pattern.
+  Future<bool> _saveConfigFile(String content) async {
     final path = _getConfigFilePath();
     if (path == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Config file path not found'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-      return;
+      AppLogger.warning('Cannot save config: path not resolved for ${widget.app.appId}');
+      return false;
     }
-
-    final file = File(path);
-    if (!await file.exists()) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Config file does not exist: $path'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-      return;
+    try {
+      await File(path).writeAsString(content);
+      AppLogger.info('Saved config: $path');
+      return true;
+    } catch (e) {
+      AppLogger.error('Failed to save config $path: $e');
+      return false;
     }
-
-    // Open NPP and wait for close
-    final success = await NotepadService.openFile(path);
-
-    if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to open Notepad++'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
-
-    // Auto-reload config state
-    _isConfigLoaded = false;
-    await _loadConfig();
-    if (mounted) setState(() {});
   }
 
   // ─── Toggle extension ─────────────────────────────────────────────────────────
@@ -368,7 +344,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: OutlinedButton.icon(
-                onPressed: _openInNotepadPlusPlus,
+                onPressed: () => _tabController.animateTo(1),
                 icon: const Icon(Icons.edit_note, size: 14),
                 label: const Text('Edit Config'),
                 style: OutlinedButton.styleFrom(
@@ -719,88 +695,26 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                   color: AppColors.textSecondary,
                 ),
               ),
-              const Spacer(),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  _isConfigLoaded = false;
-                  await _loadConfig();
-                  if (mounted) setState(() {});
-                },
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Reload'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // File path display
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.folder_outlined,
-                  size: 18,
-                  color: AppColors.textMuted,
+          if (configPath != null)
+            Expanded(
+              child: ConfigCodeEditor(
+                filePath: configPath,
+                onSave: _saveConfigFile,
+              ),
+            )
+          else
+            const Expanded(
+              child: Center(
+                child: Text(
+                  'Config file path not found for this app.',
+                  style: TextStyle(color: AppColors.textMuted),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    configPath ?? 'Config file path not found',
-                    style: TextStyle(
-                      fontSize: AppTextSize.xxs,
-                      fontFamily: 'monospace',
-                      color: configPath != null
-                          ? AppColors.textPrimary
-                          : AppColors.textMuted,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const Spacer(),
-
-          // Big "Open in Notepad++" button
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: configPath != null ? _openInNotepadPlusPlus : null,
-              icon: const Icon(Icons.edit_note, size: 20),
-              label: const Text('Open in Notepad++'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                disabledBackgroundColor: AppColors.surfaceLight,
-                disabledForegroundColor: AppColors.textMuted,
               ),
             ),
-          ),
-
-          const Spacer(),
         ],
       ),
     );

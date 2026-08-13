@@ -17,7 +17,6 @@ import 'features/settings/presentation/settings_page.dart';
 import 'features/sites/presentation/sites_page.dart';
 import 'core/services/window_service.dart';
 import 'core/services/ssl_service.dart';
-import 'core/services/notepad_service.dart';
 import 'features/apps/data/app_installer_service.dart';
 import 'features/settings/domain/app_settings.dart';
 import 'package:dev_stack/core/services/log_service.dart';
@@ -31,9 +30,6 @@ void main(List<String> args) async {
   if (settings != null) {
     AppConfig.initialize(baseDir: settings.baseDir);
   }
-
-  // Extract Notepad++ from npp.zip if not already extracted
-  await NotepadService.ensureExtracted();
 
   await windowManager.ensureInitialized();
   final packageInfo = await PackageInfo.fromPlatform();

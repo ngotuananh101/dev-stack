@@ -6,9 +6,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
-import '../../../core/services/notepad_service.dart';
 import '../../../shared/utils/app_dialogs.dart';
 import '../../apps/data/apps_provider.dart';
+import '../../hosts/presentation/hosts_editor_dialog.dart';
 import '../../sites/data/sites_provider.dart';
 import '../../../core/services/ssl_service.dart';
 import '../data/settings_provider.dart';
@@ -72,7 +72,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   children: [
                     _buildActionSetting(
                       title: 'Edit Hosts File',
-                      subtitle: 'Open Windows hosts file in Notepad++',
+                      subtitle: 'Edit the Windows hosts file',
                       icon: LucideIcons.fileText,
                       actionLabel: 'Edit',
                       onTap: () => _editHostsFile(context),
@@ -1105,15 +1105,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _editHostsFile(BuildContext context) async {
-    const hostsPath = r'C:\Windows\System32\drivers\etc\hosts';
-    final success = await NotepadService.openFile(hostsPath);
-    if (!success && context.mounted) {
-      AppDialogs.showToast(
-        context,
-        'Failed to open hosts file in Notepad++',
-        isError: true,
-      );
-    }
+    await HostsEditorDialog.show(context);
   }
 }
 
