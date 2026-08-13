@@ -60,6 +60,7 @@ class ConfigCodeEditor extends StatefulWidget {
 
 class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   late final CodeLineEditingController _controller;
+  late final CodeFindController _findController;
   final _scrollController = CodeScrollController();
   bool _isLoading = true;
   bool _isSaving = false;
@@ -71,6 +72,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   void initState() {
     super.initState();
     _controller = CodeLineEditingController.fromText('');
+    _findController = CodeFindController(_controller);
     _controller.addListener(_onChanged);
     _loadFile();
   }
@@ -79,6 +81,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   void dispose() {
     _controller.removeListener(_onChanged);
     _controller.dispose();
+    _findController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -103,9 +106,9 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
       try {
         text = widget.encoding.decode(bytes);
       } catch (_) {
-        text = (widget.decodeFallback ??
-                (b) => String.fromCharCodes(b))
-            .call(bytes);
+        text = (widget.decodeFallback ?? (b) => String.fromCharCodes(b)).call(
+          bytes,
+        );
       }
       _controller.text = text;
       _dirty = false;
@@ -146,8 +149,10 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
       AppLogger.error('ConfigCodeEditor save failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e'),
-              backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -159,11 +164,221 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   static CodeHighlightTheme buildHighlightTheme(String filePath) {
     return CodeHighlightTheme(
       languages: {
-        'config': CodeHighlightThemeMode(
-          mode: languageForConfigPath(filePath),
-        ),
+        'config': CodeHighlightThemeMode(mode: languageForConfigPath(filePath)),
       },
       theme: atomOneDarkTheme,
+    );
+  }
+
+  /// Find/replace panel shown on top of the editor (Ctrl+F / Ctrl+Alt+F).
+  /// re_editor provides all the logic via [CodeFindController]; this only
+  /// builds the UI: find + replace inputs, match counter, prev/next,
+  /// replace/replace-all, and case/regex toggles.
+  PreferredSizeWidget _buildFindPanel(
+    BuildContext context,
+    CodeFindController controller,
+    bool readOnly,
+  ) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(120),
+      child: ValueListenableBuilder<CodeFindValue?>(
+        valueListenable: controller,
+        builder: (context, value, _) {
+          // re_editor keeps the widget mounted but hides it visually when
+          // the value is null (panel closed).
+          if (value == null) return const SizedBox.shrink();
+
+          final result = value.result;
+          final matchCount = result?.matches.length ?? 0;
+          final index = result?.index ?? -1;
+          final counter = matchCount == 0
+              ? 'No results'
+              : '${index < 0 ? 0 : index + 1}/$matchCount';
+
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF252830),
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Find row
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 32,
+                        child: TextField(
+                          controller: controller.findInputController,
+                          focusNode: controller.findInputFocusNode,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
+                            hintText: 'Find',
+                            hintStyle: const TextStyle(
+                              color: AppColors.textMuted,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFF1E2127),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              borderSide: BorderSide(color: AppColors.border),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _toggleButton(
+                      label: 'Aa',
+                      active: value.option.caseSensitive,
+                      tooltip: 'Match case (Ctrl+Alt+C)',
+                      onTap: controller.toggleCaseSensitive,
+                    ),
+                    const SizedBox(width: 4),
+                    _toggleButton(
+                      label: '.*',
+                      active: value.option.regex,
+                      tooltip: 'Regex (Ctrl+Alt+R)',
+                      onTap: controller.toggleRegex,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      counter,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _iconButton(
+                      icon: Icons.keyboard_arrow_up,
+                      tooltip: 'Previous (Shift+Enter)',
+                      onTap: controller.previousMatch,
+                    ),
+                    _iconButton(
+                      icon: Icons.keyboard_arrow_down,
+                      tooltip: 'Next (Enter)',
+                      onTap: controller.nextMatch,
+                    ),
+                    _iconButton(
+                      icon: Icons.close,
+                      tooltip: 'Close (Esc)',
+                      onTap: controller.close,
+                    ),
+                  ],
+                ),
+                // Replace row (only in replace mode)
+                if (value.replaceMode) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 32,
+                          child: TextField(
+                            controller: controller.replaceInputController,
+                            focusNode: controller.replaceInputFocusNode,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
+                              ),
+                              hintText: 'Replace',
+                              hintStyle: const TextStyle(
+                                color: AppColors.textMuted,
+                              ),
+                              filled: true,
+                              fillColor: const Color(0xFF1E2127),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide(color: AppColors.border),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: readOnly ? null : controller.replaceMatch,
+                        child: const Text('Replace'),
+                      ),
+                      TextButton(
+                        onPressed: readOnly
+                            ? null
+                            : controller.replaceAllMatches,
+                        child: const Text('Replace All'),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _toggleButton({
+    required String label,
+    required bool active,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: active ? AppColors.accent : const Color(0xFF1E2127),
+        borderRadius: BorderRadius.circular(4),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: active ? Colors.black : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _iconButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, size: 18, color: AppColors.textSecondary),
+        ),
+      ),
     );
   }
 
@@ -222,6 +437,23 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                 ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
+                onPressed: () {
+                  _findController.findMode();
+                  _findController.focusOnFindInput();
+                },
+                icon: const Icon(Icons.search, size: 14),
+                label: const Text('Find'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  side: const BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
                 onPressed: _loadFile,
                 icon: const Icon(Icons.refresh, size: 14),
                 label: const Text('Reload'),
@@ -270,6 +502,8 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
             child: CodeEditor(
               controller: _controller,
               scrollController: _scrollController,
+              findController: _findController,
+              findBuilder: _buildFindPanel,
               readOnly: widget.readOnly,
               style: CodeEditorStyle(
                 fontSize: 13,
@@ -277,27 +511,23 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                 backgroundColor: const Color(0xFF1E2127),
                 codeTheme: buildHighlightTheme(widget.filePath),
               ),
-              indicatorBuilder: (
-                context,
-                editingController,
-                chunkController,
-                notifier,
-              ) {
-                return Row(
-                  children: [
-                    DefaultCodeLineNumber(
-                      controller: editingController,
-                      notifier: notifier,
-                    ),
-                    const SizedBox(width: 8),
-                    DefaultCodeChunkIndicator(
-                      width: 16,
-                      controller: chunkController,
-                      notifier: notifier,
-                    ),
-                  ],
-                );
-              },
+              indicatorBuilder:
+                  (context, editingController, chunkController, notifier) {
+                    return Row(
+                      children: [
+                        DefaultCodeLineNumber(
+                          controller: editingController,
+                          notifier: notifier,
+                        ),
+                        const SizedBox(width: 8),
+                        DefaultCodeChunkIndicator(
+                          width: 16,
+                          controller: chunkController,
+                          notifier: notifier,
+                        ),
+                      ],
+                    );
+                  },
             ),
           ),
         ),
