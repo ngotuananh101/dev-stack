@@ -47,10 +47,19 @@ abstract final class BackgroundProcess {
       '//NoLogo',
       files.vbScript.path,
     ]);
-    final childPid = _waitForPid(files.pid);
-    final managed = ManagedBackgroundProcess._(host, childPid);
-    unawaited(managed.exitCode.whenComplete(files.dispose));
-    return managed;
+    // The temp files are only needed to ferry the PID out of the hidden
+    // process. Once we have the PID (or give up waiting for it) they can be
+    // deleted immediately — keeping them around until the *host* exits leaks
+    // the temp dir if the host is killed without its exitCode future ever
+    // completing.
+    int childPidValue;
+    try {
+      childPidValue = await _waitForPid(files.pid);
+    } finally {
+      await files.dispose();
+    }
+    final childPid = Future<int>.value(childPidValue);
+    return ManagedBackgroundProcess._(host, childPid);
   }
 
   static Future<void> stopManaged(ManagedBackgroundProcess process) async {

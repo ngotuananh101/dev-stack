@@ -78,22 +78,30 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
     setState(() => _isSaving = true);
     try {
       if (isEdit) {
-        await ref.read(sitesNotifierProvider.notifier).updateSite(
+        await ref
+            .read(sitesNotifierProvider.notifier)
+            .updateSite(
               id: widget.initialData!.id,
               domain: _domainController.text.trim(),
               rootDir: _rootDirController.text.trim(),
               siteType: _siteType,
               phpAppId: _siteType == 'php' ? _selectedPhpAppId : null,
-              proxyTarget: _siteType == 'proxy' ? _proxyTargetController.text.trim() : null,
+              proxyTarget: _siteType == 'proxy'
+                  ? _proxyTargetController.text.trim()
+                  : null,
               useSsl: _useSsl,
             );
       } else {
-        await ref.read(sitesNotifierProvider.notifier).addSite(
+        await ref
+            .read(sitesNotifierProvider.notifier)
+            .addSite(
               domain: _domainController.text.trim(),
               rootDir: _rootDirController.text.trim(),
               siteType: _siteType,
               phpAppId: _siteType == 'php' ? _selectedPhpAppId : null,
-              proxyTarget: _siteType == 'proxy' ? _proxyTargetController.text.trim() : null,
+              proxyTarget: _siteType == 'proxy'
+                  ? _proxyTargetController.text.trim()
+                  : null,
               useSsl: _useSsl,
             );
       }
@@ -248,7 +256,11 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                       children: [
                         _buildTypeOption('PHP', 'php', LucideIcons.code),
                         const SizedBox(width: 12),
-                        _buildTypeOption('Static', 'static', LucideIcons.fileCode),
+                        _buildTypeOption(
+                          'Static',
+                          'static',
+                          LucideIcons.fileCode,
+                        ),
                         const SizedBox(width: 12),
                         _buildTypeOption('Proxy', 'proxy', LucideIcons.shuffle),
                       ],
@@ -292,7 +304,10 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              child: const Icon(LucideIcons.folderOpen, size: 18),
+                              child: const Icon(
+                                LucideIcons.folderOpen,
+                                size: 18,
+                              ),
                             ),
                           ),
                         ],
@@ -310,8 +325,10 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a target URL';
                           }
-                          if (!value.startsWith('http://') && !value.startsWith('https://')) {
-                            return 'Target must start with http:// or https://';
+                          try {
+                            SitesNotifier.validateProxyTarget(value);
+                          } on ArgumentError catch (e) {
+                            return e.message.toString();
                           }
                           return null;
                         },
@@ -358,8 +375,9 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                                           ),
                                         );
                                       }).toList(),
-                                      onChanged: (val) =>
-                                          setState(() => _selectedPhpAppId = val),
+                                      onChanged: (val) => setState(
+                                        () => _selectedPhpAppId = val,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -540,7 +558,9 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
                 ),
               ),
             ],

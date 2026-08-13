@@ -207,11 +207,15 @@ class AppsNotifier extends _$AppsNotifier {
             await manager.stop(app);
           }
 
-          // Force kill any related processes to be safe
-          await manager.forceKillByNames([
-            app.execFile ?? '',
-            app.cliFile ?? '',
-          ]);
+          // Force-kill only this app's recorded PID (if any). Do NOT use
+          // forceKillByNames([execFile, cliFile]) here — an image-name match
+          // such as "php.exe" would also kill any unrelated PHP process on
+          // the machine.
+          final existingPid = app.servicePid ?? 0;
+          if (existingPid > 0) {
+            await manager.forceKillPid(app.appId, existingPid);
+            app.servicePid = null;
+          }
 
           // Safety delay for Windows file handles
           await Future.delayed(const Duration(seconds: 1));
@@ -379,7 +383,15 @@ class AppsNotifier extends _$AppsNotifier {
         await manager.stop(app);
       }
 
-      // Force kill any related processes to be safe
+      // Stop whatever is still running. Prefer the recorded PID so we never
+      // kill an unrelated process that merely shares an executable name
+      // (e.g. a stray "php.exe"). Fall back to image-name kill only when no
+      // PID is known.
+      final uninstallPid = app.servicePid ?? 0;
+      if (uninstallPid > 0) {
+        await manager.forceKillPid(app.appId, uninstallPid);
+        app.servicePid = null;
+      }
       await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
 
       // Safety delay for Windows file handles
@@ -485,11 +497,15 @@ class AppsNotifier extends _$AppsNotifier {
   Future<void> startService(AppModel app) async {
     final manager = ref.read(appServiceManagerProvider);
     final repository = await ref.read(appsRepositoryProvider.future);
+    // Persist the autoStart flag only AFTER the service actually starts.
+    // Saving it first means a failed start still records "auto-start on boot"
+    // for a service that can't run — a lie that survives restarts.
+    final previousAutoStart = app.autoStartService;
     try {
+      await manager.start(app, onStatusChange: () => notifyUpdate(force: true));
+
       app.autoStartService = true;
       await repository.save(app);
-
-      await manager.start(app, onStatusChange: () => notifyUpdate(force: true));
 
       // Sync configs if it's a webserver starting
       if (app.categories.contains('webserver')) {
@@ -500,6 +516,8 @@ class AppsNotifier extends _$AppsNotifier {
 
       notifyUpdate(force: true);
     } catch (e) {
+      // Restore the flag so a failed start doesn't poison persisted state.
+      app.autoStartService = previousAutoStart;
       AppLogger.error('Error starting service: $e');
     }
   }
@@ -507,13 +525,16 @@ class AppsNotifier extends _$AppsNotifier {
   Future<void> stopService(AppModel app) async {
     final manager = ref.read(appServiceManagerProvider);
     final repository = await ref.read(appsRepositoryProvider.future);
+    final previousAutoStart = app.autoStartService;
     try {
+      await manager.stop(app);
+
       app.autoStartService = false;
       await repository.save(app);
 
-      await manager.stop(app);
       notifyUpdate(force: true);
     } catch (e) {
+      app.autoStartService = previousAutoStart;
       AppLogger.error('Error stopping service: $e');
     }
   }
@@ -565,7 +586,10 @@ class AppsNotifier extends _$AppsNotifier {
     notifyUpdate(force: true);
   }
 
-  Future<void> restartService(AppModel app) async {
+  Future<void> restartService(
+    AppModel app, {
+    bool rethrowOnError = false,
+  }) async {
     final manager = ref.read(appServiceManagerProvider);
     try {
       await manager.restart(
@@ -575,6 +599,12 @@ class AppsNotifier extends _$AppsNotifier {
       notifyUpdate(force: true);
     } catch (e) {
       AppLogger.error('Error restarting service: $e');
+      // By default this is fire-and-forget from UI buttons, so we don't
+      // surface the failure. Callers that must know whether the restart
+      // actually succeeded (e.g. the webserver restart coalescer in
+      // SitesNotifier) pass [rethrowOnError: true] so a silent "success"
+      // can't mask a failed reload of config changes.
+      if (rethrowOnError) rethrow;
     }
   }
 

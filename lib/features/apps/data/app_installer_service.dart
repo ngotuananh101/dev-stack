@@ -497,8 +497,9 @@ class AppInstallerService {
 
     final binDir = Directory(p.join(installPath, 'bin'));
     if (!binDir.existsSync()) {
-      logInfo('Bin directory not found, skipping initialization');
-      return;
+      throw Exception(
+        'Database bin directory not found at $binDir; cannot initialize.',
+      );
     }
 
     String? initExec;
@@ -531,15 +532,35 @@ class AppInstallerService {
         if (result.exitCode == 0) {
           logInfo('Database initialized successfully.');
         } else {
+          // A non-zero init exit means the data directory is NOT initialized.
+          // Surface this as a failure rather than letting install() report
+          // success — otherwise the app is marked "installed" but the engine
+          // can never start (empty/corrupt data dir) with a cryptic later error
+          // and no record that init failed.
           logInfo('Initialization returned non-zero code: ${result.exitCode}');
           logInfo('Output: ${result.stdout}');
           logInfo('Error: ${result.stderr}');
+          throw Exception(
+            'Database initialization failed (exit code ${result.exitCode}): '
+            '${result.stderr}',
+          );
         }
       } catch (e) {
+        // Re-throw the Exception we just built; for any other Process error,
+        // wrap it so the install surfaces a clear failure rather than
+        // silently leaving an uninitialized data directory.
         logInfo('Error during database initialization: $e');
+        if (e is Exception) {
+          rethrow;
+        }
+        throw Exception('Database initialization failed: $e');
       }
     } else {
-      logInfo('Could not find database initialization executable.');
+      // No init executable means we cannot set up a working data dir — fail
+      // loudly instead of marking the engine installed-but-broken.
+      throw Exception(
+        'Database initialization executable not found in $binDir',
+      );
     }
   }
 
@@ -566,14 +587,17 @@ class AppInstallerService {
 
     final binDir = Directory(p.join(installPath, 'bin'));
     if (!binDir.existsSync()) {
-      logInfo('Bin directory not found, skipping initialization');
-      return;
+      throw Exception(
+        'PostgreSQL bin directory not found at $binDir; cannot initialize.',
+      );
     }
 
     final initdbExec = File(p.join(binDir.path, 'initdb.exe'));
     if (!initdbExec.existsSync()) {
-      logInfo('initdb.exe not found, skipping initialization');
-      return;
+      throw Exception(
+        'initdb.exe not found at ${initdbExec.path}; cannot initialize the '
+        'PostgreSQL cluster.',
+      );
     }
 
     final passwordFile = File(p.join(dataDir.path, 'postgres-password.txt'));
@@ -635,9 +659,17 @@ class AppInstallerService {
         logInfo('Initialization returned non-zero code: ${result.exitCode}');
         logInfo('Output: ${result.stdout}');
         logInfo('Error: ${result.stderr}');
+        throw Exception(
+          'PostgreSQL initialization failed (exit code ${result.exitCode}): '
+          '${result.stderr}',
+        );
       }
     } catch (e) {
       logInfo('Error during PostgreSQL initialization: $e');
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('PostgreSQL initialization failed: $e');
     }
   }
 
@@ -1037,6 +1069,23 @@ security:
       appId.contains('mariadb') ||
       appId.contains('postgresql');
 
+  /// Resolves the FastCGI port a PHP binary listens on.
+  ///
+  /// Only matches the exact `php<MAJOR><MINOR>` naming convention used by the
+  /// app catalog (e.g. ``php82`` -> 9082). Anything else (``php8``, ``php8.2``,
+  /// or an unknown appId) falls back to the safe default ``9000`` — never an
+  /// arbitrary number extracted from the id with a greedy ``\d+`` match, which
+  /// silently produced wrong ports for non-conforming ids.
+  static int phpPortFor(String appId) {
+    final match = RegExp(r'^php(\d)(\d)$').firstMatch(appId);
+    if (match == null) return 9000;
+    final major = int.tryParse(match.group(1)!);
+    final minor = int.tryParse(match.group(2)!);
+    if (major == null || minor == null) return 9000;
+    final port = int.parse('90$major$minor');
+    return (port >= 1024 && port <= 65535) ? port : 9000;
+  }
+
   /// Moves the version-keyed data directory from [oldVersion] to [newVersion]
   /// so an updated engine keeps the user's existing databases.
   ///
@@ -1362,10 +1411,7 @@ security:
       if (customPort.isNotEmpty) {
         phpPort = customPort;
       } else {
-        final versionMatch = RegExp(r'\d+').firstMatch(php.appId);
-        if (versionMatch != null) {
-          phpPort = '90${versionMatch.group(0)}';
-        }
+        phpPort = AppInstallerService.phpPortFor(php.appId).toString();
       }
     }
 

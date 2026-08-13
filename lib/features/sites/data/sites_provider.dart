@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/database/isar_provider.dart';
@@ -6,6 +8,7 @@ import '../domain/site_model.dart';
 import '../domain/batch_models.dart';
 import 'package:isar/isar.dart';
 import '../../apps/data/apps_provider.dart';
+import '../../apps/data/app_installer_service.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/config/webserver_bind_policy.dart';
@@ -20,22 +23,147 @@ part 'sites_provider.g.dart';
 class SitesNotifier extends _$SitesNotifier {
   final _hostsRepo = HostsRepository();
 
-  /// Validates domain name to prevent config injection
-  bool _isValidDomain(String domain) {
-    if (domain.isEmpty || domain.length > 253) return false;
-    return RegExp(
+  /// Coalesces overlapping webserver restarts. Without this, a batch create or
+  /// a rapid sequence of add/edit/delete calls would spawn several concurrent
+  /// `restartService` loops on the same webservers — racing for ports and
+  /// thrashing the process tree. The first caller does the work; concurrent
+  /// callers await the same future and get the same outcome.
+  Completer<void>? _restartCompleter;
+
+  /// Extracts a display version like `8.2` from a PHP app id like `php82`.
+  ///
+  /// The legacy code used `RegExp(r'\d+').firstMatch(phpAppId)` which yielded
+  /// `"82"` — and `site_table.dart` then rendered `PHP 82`. This helper inserts
+  /// the dot: a 2-digit run becomes `8.2`, a 3-digit run becomes `8.2.1`,
+  /// and an already-dotted run (`php8.2`) is passed through. Returns null when
+  /// the id carries no digits.
+  @visibleForTesting
+  static String? phpVersionFromAppId(String phpAppId) {
+    final match = RegExp(r'[\d.]+').firstMatch(phpAppId);
+    if (match == null) return null;
+    var digits = match.group(0)!;
+    if (digits.isEmpty) return null;
+    // Already dotted (e.g. "8.2") — normalize away repeated/trailing dots.
+    if (digits.contains('.')) {
+      return digits
+          .replaceAll(RegExp(r'\.+'), '.')
+          .replaceFirst(RegExp(r'\.$'), '');
+    }
+    // Bare digit run: split into major.minor(.patch). PHP app ids in this
+    // project are 2-digit (php82, php74) -> "8.2", "7.4". A 3-digit run is
+    // treated as major.minor.patch (php821 -> "8.2.1").
+    if (digits.length <= 1) return digits;
+    if (digits.length == 2) {
+      return '${digits[0]}.${digits[1]}';
+    }
+    final major = digits[0];
+    final minor = digits[1];
+    final patch = digits.substring(2);
+    return '$major.$minor.$patch';
+  }
+
+  /// Validates a domain name to prevent config injection and path traversal.
+  ///
+  /// A domain is used to build vhost/SSL file names (`<domain>.conf`,
+  /// `<domain>.crt`, `<domain>.key`) and is interpolated into webserver
+  /// directives. It must therefore be a bare hostname: no path separators, no
+  /// dots used as a directory component (`..`), no file extension dot-pattern,
+  /// and no characters that could break a directive.
+  ///
+  /// Returns the domain on success; throws [ArgumentError] otherwise. This is
+  /// the data-layer guard used at create/batch time AND re-checked whenever a
+  /// stored domain is used to derive a file path (e.g. saveConfig/saveSslFile)
+  /// — a record that predates validation, or one mutated by another caller,
+  /// is re-validated before it can reach the filesystem.
+  @visibleForTesting
+  static String validateDomain(String domain) {
+    if (domain.isEmpty || domain.length > 253) {
+      throw ArgumentError('Invalid domain: "$domain"');
+    }
+    final ok = RegExp(
       r'^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$',
     ).hasMatch(domain);
+    if (!ok) {
+      throw ArgumentError('Invalid domain: "$domain"');
+    }
+    return domain;
+  }
+
+  /// Validates domain name to prevent config injection
+  bool _isValidDomain(String domain) {
+    try {
+      validateDomain(domain);
+      return true;
+    } on ArgumentError {
+      return false;
+    }
   }
 
   /// Validates and clamps PHP port to valid range
   int _safePhpPort(String? phpAppId) {
     if (phpAppId == null) return 9000;
-    final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
-    if (versionMatch == null) return 9000;
-    final candidate = int.tryParse('90${versionMatch.group(0)}');
-    if (candidate == null || candidate < 1024 || candidate > 65535) return 9000;
-    return candidate;
+    return AppInstallerService.phpPortFor(phpAppId);
+  }
+
+  /// Validates a proxy target before it is interpolated into nginx
+  /// ``proxy_pass`` / Apache ``ProxyPass``. The value must be a syntactically
+  /// valid http(s) URL and must not contain any character that could terminate
+  /// or branch a webserver directive (newline, semicolon, braces, control
+  /// chars). This is the data-layer guard; the UI validator is a convenience
+  /// only — a stored value from before validation, or any other caller, is
+  /// re-checked here and again at config-generation time.
+  static String validateProxyTarget(String value) {
+    if (value.isEmpty) {
+      throw ArgumentError('Proxy target must not be empty');
+    }
+    // No whitespace/control or directive-breaking characters may appear.
+    // Allowed: visible ASCII (0x21..0x7E) minus the nginx/Apache
+    // metacharacters ';', '{', '}'.
+    final ok =
+        RegExp(r'^[\x21-\x7E]+$').hasMatch(value) &&
+        !value.contains(RegExp(r'[;{}\x00-\x1F\x7F]'));
+    if (!ok) {
+      throw ArgumentError(
+        'Proxy target contains illegal characters (whitespace, control, '
+        '";", "{", or "}")',
+      );
+    }
+    final uri = Uri.tryParse(value);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      throw ArgumentError('Proxy target must be a valid URL with a host');
+    }
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') {
+      throw ArgumentError(
+        'Proxy target scheme must be http or https (got "$scheme")',
+      );
+    }
+    return value;
+  }
+
+  /// Validates a site root directory before it is interpolated into nginx
+  /// ``root "..."`` / Apache ``DocumentRoot "..."``. A double quote, newline,
+  /// or other control character could terminate the quoted directive and
+  /// inject a new webserver directive, so they are rejected here at the
+  /// data layer (the UI's existsSync check is a convenience only). Windows
+  /// MAX_PATH is 260; we cap at 248 to leave room for appended segments.
+  static String validateRootDir(String value) {
+    if (value.isEmpty) {
+      throw ArgumentError('Root directory must not be empty');
+    }
+    if (value.length > 248) {
+      throw ArgumentError('Root directory path is too long (max 248)');
+    }
+    // Reject any character that could break out of the double-quoted
+    // directive: double-quote, backtick, or any control char (newline, CR,
+    // tab, NUL, ...).
+    if (value.contains(RegExp(r'["`\x00-\x1F\x7F]'))) {
+      throw ArgumentError(
+        'Root directory contains illegal characters (quotes, backtick, or '
+        'control characters)',
+      );
+    }
+    return value;
   }
 
   @override
@@ -57,14 +185,24 @@ class SitesNotifier extends _$SitesNotifier {
       throw ArgumentError('Invalid domain name: $domain');
     }
 
+    // rootDir is interpolated into a double-quoted webserver directive; reject
+    // any character that could break out of it before it reaches storage or a
+    // generated vhost file.
+    validateRootDir(rootDir);
+
+    if (siteType == 'proxy') {
+      // proxyTarget is interpolated into webserver config; validate before it
+      // reaches storage or a generated vhost file.
+      validateProxyTarget(proxyTarget ?? '');
+    }
+
     final isar = await ref.read(isarProvider.future);
 
     String? phpVersion;
     int? phpPort;
 
     if (siteType == 'php' && phpAppId != null) {
-      final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
-      phpVersion = versionMatch?.group(0) ?? '82';
+      phpVersion = phpVersionFromAppId(phpAppId) ?? '82';
       phpPort = _safePhpPort(phpAppId);
     }
 
@@ -83,12 +221,21 @@ class SitesNotifier extends _$SitesNotifier {
       await isar.siteModels.put(site);
     });
 
-    if (useSsl) {
-      await _generateSslWithRetry(site);
-    }
+    try {
+      if (useSsl) {
+        await _generateSslWithRetry(site);
+      }
 
-    // Generate Vhost files
-    await _generateVhostFiles(site);
+      // Generate Vhost files
+      await _generateVhostFiles(site);
+    } catch (e) {
+      // The site row was already persisted, but its vhost/cert generation
+      // failed — rolling back the row keeps the DB in sync with the
+      // filesystem so the user can retry cleanly instead of being left with
+      // an orphaned record that has no vhost file.
+      await isar.writeTxn(() => isar.siteModels.delete(site.id));
+      rethrow;
+    }
 
     await _finalize(restartWebserver: restartWebserver);
   }
@@ -152,11 +299,29 @@ class SitesNotifier extends _$SitesNotifier {
         continue;
       }
 
+      // Batch create does not support proxy sites: a proxy site needs a
+      // per-site proxyTarget (and validateProxyTarget on it), and
+      // BatchSiteSpec carries none. Rather than persist a proxy row with a
+      // null target that would then fail vhost generation and orphan itself,
+      // skip proxy specs explicitly so the caller sees them as skipped.
+      if (spec.siteType == 'proxy') {
+        skipped++;
+        continue;
+      }
+
+      // rootDir is interpolated into webserver config; skip specs whose root
+      // would break out of the quoted directive rather than persisting them.
+      try {
+        validateRootDir(spec.rootDir);
+      } catch (_) {
+        skipped++;
+        continue;
+      }
+
       String? phpVersion;
       int? phpPort;
       if (spec.siteType == 'php' && spec.phpAppId != null) {
-        final versionMatch = RegExp(r'\d+').firstMatch(spec.phpAppId!);
-        phpVersion = versionMatch?.group(0) ?? '82';
+        phpVersion = phpVersionFromAppId(spec.phpAppId!) ?? '82';
         phpPort = _safePhpPort(spec.phpAppId);
       }
 
@@ -239,6 +404,11 @@ class SitesNotifier extends _$SitesNotifier {
     final oldSite = await isar.siteModels.get(id);
     if (oldSite == null) return;
 
+    if (siteType == 'proxy') {
+      validateProxyTarget(proxyTarget ?? '');
+    }
+    validateRootDir(rootDir);
+
     // Remove old vhost files if domain changed
     if (oldSite.domain != domain) {
       await _removeVhostFiles(oldSite);
@@ -248,8 +418,7 @@ class SitesNotifier extends _$SitesNotifier {
     int? phpPort;
 
     if (siteType == 'php' && phpAppId != null) {
-      final versionMatch = RegExp(r'\d+').firstMatch(phpAppId);
-      phpVersion = versionMatch?.group(0) ?? '82';
+      phpVersion = phpVersionFromAppId(phpAppId) ?? '82';
       phpPort = _safePhpPort(phpAppId);
     }
 
@@ -271,6 +440,20 @@ class SitesNotifier extends _$SitesNotifier {
 
     if (useSsl) {
       await ref.read(sslServiceProvider.notifier).generateSiteCert(domain);
+    } else if (oldSite.useSsl && oldSite.domain == domain) {
+      // SSL was toggled off and the domain didn't change (a domain change is
+      // already handled by _removeVhostFiles above). Clean up the stale cert
+      // files for the current domain so they don't linger or get reused when
+      // SSL is later re-enabled.
+      try {
+        final sslNotifier = ref.read(sslServiceProvider.notifier);
+        final certDir = Directory(sslNotifier.getSiteCertDir(domain));
+        if (certDir.existsSync()) await certDir.delete(recursive: true);
+      } catch (e) {
+        ref
+            .read(logServiceProvider)
+            .warning('Could not remove SSL cert for $domain: $e');
+      }
     }
 
     // Generate/Update Vhost files
@@ -284,12 +467,25 @@ class SitesNotifier extends _$SitesNotifier {
     final site = await isar.siteModels.get(id);
 
     if (site != null) {
-      // Remove Vhost files
-      await _removeVhostFiles(site);
-
+      // Delete the DB row FIRST so a locked log/cert file can never block the
+      // deletion: the site always disappears from the app, and a leftover
+      // file is benign (cleared on a later regen or manually). The previous
+      // order (files → DB) could leave the site fully in place — row +
+      // routing hosts entry — when a file delete threw.
       await isar.writeTxn(() async {
         await isar.siteModels.delete(id);
       });
+
+      try {
+        await _removeVhostFiles(site);
+      } catch (e) {
+        ref
+            .read(logServiceProvider)
+            .warning(
+              'Site $id deleted but some vhost/cert/log files could '
+              'not be removed (they may be in use): $e',
+            );
+      }
 
       await _finalize(restartWebserver: restartWebserver);
     }
@@ -381,6 +577,10 @@ class SitesNotifier extends _$SitesNotifier {
   }
 
   Future<void> saveConfig(SiteModel site, String type, String content) async {
+    // Re-validate the stored domain before it reaches the filesystem: a stale
+    // or externally-mutated record must not escape the vhosts dir via a
+    // traversal-shaped domain. The content is user-authored config by design.
+    validateDomain(site.domain);
     final dir = type == 'nginx' ? 'nginx' : 'apache';
     final file = File(p.join(AppConfig.vhostsDir, dir, '${site.domain}.conf'));
     await file.writeAsString(content);
@@ -388,6 +588,7 @@ class SitesNotifier extends _$SitesNotifier {
   }
 
   Future<Map<String, String>> getSslFiles(SiteModel site) async {
+    validateDomain(site.domain);
     final sslNotifier = ref.read(sslServiceProvider.notifier);
     final certFile = File(sslNotifier.getSiteCertPath(site.domain));
     final keyFile = File(sslNotifier.getSiteKeyPath(site.domain));
@@ -399,6 +600,7 @@ class SitesNotifier extends _$SitesNotifier {
   }
 
   Future<void> saveSslFile(SiteModel site, String type, String content) async {
+    validateDomain(site.domain);
     final sslNotifier = ref.read(sslServiceProvider.notifier);
     final path = type == 'cert'
         ? sslNotifier.getSiteCertPath(site.domain)
@@ -408,6 +610,7 @@ class SitesNotifier extends _$SitesNotifier {
   }
 
   Future<Map<String, String>> getLogs(SiteModel site) async {
+    validateDomain(site.domain);
     final logsDir = p.join(AppConfig.baseDir, 'logs', site.domain);
 
     final nAccess = File(p.join(logsDir, 'nginx_access.log'));
@@ -439,7 +642,19 @@ class SitesNotifier extends _$SitesNotifier {
   /// refresh provider state from the DB, and restart webservers.
   Future<void> _finalize({bool restartWebserver = true}) async {
     final isar = await ref.read(isarProvider.future);
-    await _updateHostsFile();
+    final hostsOk = await _updateHostsFile();
+    if (!hostsOk) {
+      // Don't throw — batch paths must keep going so partial work still takes
+      // effect. But surface the failure loudly so the user knows their domains
+      // won't resolve until the hosts file is written (e.g. UAC was declined).
+      ref
+          .read(logServiceProvider)
+          .error(
+            'Failed to update the Windows hosts file (UAC declined or not admin?). '
+            'Sites were created but their domains will not resolve until this is '
+            'fixed. Re-run the operation as admin or approve the UAC prompt.',
+          );
+    }
     state = AsyncValue.data(
       await isar.siteModels.where().sortByCreatedAtDesc().findAll(),
     );
@@ -448,7 +663,7 @@ class SitesNotifier extends _$SitesNotifier {
     }
   }
 
-  Future<void> _updateHostsFile() async {
+  Future<bool> _updateHostsFile() async {
     final isar = await ref.read(isarProvider.future);
     final allSites = await isar.siteModels.where().findAll();
 
@@ -465,10 +680,15 @@ class SitesNotifier extends _$SitesNotifier {
       domainLines,
     );
 
-    await _hostsRepo.saveHostsRaw(hostsContent);
+    // Propagate the write result so callers can surface a failure instead of
+    // silently creating sites whose domains won't resolve.
+    return _hostsRepo.saveHostsRaw(hostsContent);
   }
 
   Future<void> _generateVhostFiles(SiteModel site) async {
+    // Re-validate stored rootDir: records may predate the data-layer guard, so
+    // a stored path with a quote/newline can never reach a vhost directive.
+    validateRootDir(site.rootDir);
     final rootDirUnix = site.rootDir.replaceAll('\\', '/');
     final sslNotifier = ref.read(sslServiceProvider.notifier);
     final settings = await ref.read(settingsNotifierProvider.future);
@@ -530,8 +750,10 @@ class SitesNotifier extends _$SitesNotifier {
       config += '\n';
 
       if (site.siteType == 'proxy') {
+        // Re-validate stored value: records may predate the data-layer guard.
+        final safeTarget = validateProxyTarget(site.proxyTarget ?? '');
         config += '    location / {\n';
-        config += '        proxy_pass ${site.proxyTarget};\n';
+        config += '        proxy_pass $safeTarget;\n';
         config += '        proxy_set_header Host \$host;\n';
         config += '        proxy_set_header X-Real-IP \$remote_addr;\n';
         config +=
@@ -599,9 +821,11 @@ class SitesNotifier extends _$SitesNotifier {
       config += '\n';
 
       if (site.siteType == 'proxy') {
+        // Re-validate stored value: records may predate the data-layer guard.
+        final safeTarget = validateProxyTarget(site.proxyTarget ?? '');
         config += '    ProxyPreserveHost On\n';
-        config += '    ProxyPass / ${site.proxyTarget}/\n';
-        config += '    ProxyPassReverse / ${site.proxyTarget}/\n';
+        config += '    ProxyPass / $safeTarget/\n';
+        config += '    ProxyPassReverse / $safeTarget/\n';
       } else {
         config += '    <Directory "$rootDirUnix">\n';
         config += '        Options Indexes FollowSymLinks\n';
@@ -656,10 +880,27 @@ class SitesNotifier extends _$SitesNotifier {
   /// restarts installed webservers once. Used when the LAN bind policy changes.
   Future<void> regenerateAllVhosts({bool restartWebserver = true}) async {
     final isar = await ref.read(isarProvider.future);
+    final logger = ref.read(logServiceProvider);
     final sites = await isar.siteModels.where().findAll();
 
+    // One bad site (e.g. a stale proxy target that no longer passes
+    // validateProxyTarget) must not abort regeneration for every other site.
+    // Collect failures, keep going, and restart webservers for the work that
+    // succeeded.
+    final failed = <String>[];
     for (final site in sites) {
-      await _generateVhostFiles(site);
+      try {
+        await _generateVhostFiles(site);
+      } catch (e) {
+        failed.add(site.domain);
+        logger.error('Failed to regenerate vhost for ${site.domain}: $e');
+      }
+    }
+    if (failed.isNotEmpty) {
+      logger.warning(
+        'regenerateAllVhosts skipped ${failed.length} site(s) due to errors: '
+        '${failed.join(', ')}',
+      );
     }
 
     if (restartWebserver) {
@@ -668,19 +909,41 @@ class SitesNotifier extends _$SitesNotifier {
   }
 
   Future<void> restartWebservers() async {
-    final appsNotifier = ref.read(appsNotifierProvider.notifier);
-    final apps = ref.read(appsNotifierProvider).value ?? [];
+    // Coalesce overlapping calls: if a restart is already in flight, wait for
+    // it instead of starting a second concurrent loop over the same servers.
+    final existing = _restartCompleter;
+    if (existing != null) {
+      await existing.future;
+      return;
+    }
+    final completer = _restartCompleter = Completer<void>();
+    try {
+      final appsNotifier = ref.read(appsNotifierProvider.notifier);
+      final apps = ref.read(appsNotifierProvider).value ?? [];
 
-    final webservers = apps
-        .where(
-          (a) =>
-              a.isInstalled &&
-              (a.appId.contains('nginx') || a.appId.contains('apache')),
-        )
-        .toList();
+      final webservers = apps
+          .where(
+            (a) =>
+                a.isInstalled &&
+                (a.appId.contains('nginx') || a.appId.contains('apache')),
+          )
+          .toList();
 
-    for (final ws in webservers) {
-      await appsNotifier.restartService(ws);
+      for (final ws in webservers) {
+        // rethrowOnError so a failed reload can't masquerade as success —
+        // config changes would otherwise silently not take effect.
+        await appsNotifier.restartService(ws, rethrowOnError: true);
+      }
+      completer.complete();
+    } catch (e, st) {
+      completer.completeError(e, st);
+      rethrow;
+    } finally {
+      // Only clear once the future has resolved so callers that arrived during
+      // the run got the same result; a fresh call after this point starts new.
+      if (identical(_restartCompleter, completer)) {
+        _restartCompleter = null;
+      }
     }
   }
 }

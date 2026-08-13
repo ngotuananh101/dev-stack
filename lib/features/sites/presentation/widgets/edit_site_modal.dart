@@ -96,9 +96,7 @@ class _EditSiteModalState extends ConsumerState<EditSiteModal> {
   Widget _buildTabBar() {
     return Container(
       height: 48,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-      ),
+      decoration: const BoxDecoration(color: AppColors.surface),
       child: const Align(
         alignment: Alignment.centerLeft,
         child: TabBar(
@@ -138,7 +136,9 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
     super.initState();
     _domainController = TextEditingController(text: widget.site.domain);
     _rootDirController = TextEditingController(text: widget.site.rootDir);
-    _proxyTargetController = TextEditingController(text: widget.site.proxyTarget ?? '');
+    _proxyTargetController = TextEditingController(
+      text: widget.site.proxyTarget ?? '',
+    );
     _siteType = widget.site.siteType;
     _useSsl = widget.site.useSsl;
   }
@@ -180,7 +180,9 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
             rootDir: _rootDirController.text.trim(),
             siteType: _siteType,
             phpAppId: _siteType == 'php' ? _selectedPhpAppId : null,
-            proxyTarget: _siteType == 'proxy' ? _proxyTargetController.text.trim() : null,
+            proxyTarget: _siteType == 'proxy'
+                ? _proxyTargetController.text.trim()
+                : null,
             useSsl: _useSsl,
           );
       if (mounted) {
@@ -213,7 +215,9 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
             .toList();
         if (_selectedPhpAppId == null && phpApps.isNotEmpty) {
           final match = phpApps.indexWhere(
-            (a) => widget.site.phpVersion != null && a.appId.contains(widget.site.phpVersion!),
+            (a) =>
+                widget.site.phpVersion != null &&
+                a.appId.contains(widget.site.phpVersion!),
           );
           _selectedPhpAppId = match != -1
               ? phpApps[match].appId
@@ -297,8 +301,10 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                       if (value == null || value.isEmpty) {
                         return 'Please enter a target URL';
                       }
-                      if (!value.startsWith('http://') && !value.startsWith('https://')) {
-                        return 'Target must start with http:// or https://';
+                      try {
+                        SitesNotifier.validateProxyTarget(value);
+                      } on ArgumentError catch (e) {
+                        return e.message.toString();
                       }
                       return null;
                     },
@@ -316,12 +322,16 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                             _buildLabel('PHP Version'),
                             Container(
                               height: 48,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: AppColors.border.withValues(alpha: 0.5),
+                                  color: AppColors.border.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                               ),
                               child: DropdownButtonHideUnderline(
@@ -434,7 +444,9 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
                 ),
               ),
             ],

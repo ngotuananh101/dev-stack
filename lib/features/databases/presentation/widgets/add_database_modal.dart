@@ -47,7 +47,13 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
 
   void _onNameChanged() {
     if (_userController.text.isEmpty ||
-        _userController.text == _nameController.text.substring(0, _nameController.text.isNotEmpty ? _nameController.text.length - 1 : 0)) {
+        _userController.text ==
+            _nameController.text.substring(
+              0,
+              _nameController.text.isNotEmpty
+                  ? _nameController.text.length - 1
+                  : 0,
+            )) {
       _userController.text = _nameController.text;
     }
   }
@@ -68,24 +74,30 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
     setState(() => _isCreating = true);
     try {
       final dbName = _nameController.text.trim();
-      final userName = _userController.text.trim().isEmpty ? dbName : _userController.text.trim();
+      final userName = _userController.text.trim().isEmpty
+          ? dbName
+          : _userController.text.trim();
 
       if (isEdit) {
-        await ref.read(databasesNotifierProvider.notifier).updateDatabase(
-          app: widget.engine,
-          record: widget.initialData!,
-          newUser: userName,
-          newPassword: _passController.text,
-          newNote: _noteController.text.trim(),
-        );
+        await ref
+            .read(databasesNotifierProvider.notifier)
+            .updateDatabase(
+              app: widget.engine,
+              record: widget.initialData!,
+              newUser: userName,
+              newPassword: _passController.text,
+              newNote: _noteController.text.trim(),
+            );
       } else {
-        await ref.read(databasesNotifierProvider.notifier).addDatabase(
-          app: widget.engine,
-          name: dbName,
-          user: userName,
-          password: _passController.text,
-          note: _noteController.text.trim(),
-        );
+        await ref
+            .read(databasesNotifierProvider.notifier)
+            .addDatabase(
+              app: widget.engine,
+              name: dbName,
+              user: userName,
+              password: _passController.text,
+              note: _noteController.text.trim(),
+            );
       }
       widget.onClose();
     } catch (e) {
@@ -125,12 +137,17 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
           children: [
             // Header
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 12.0,
+              ),
               child: Row(
                 children: [
-                  const Icon(LucideIcons.database,
-                      size: 20, color: AppColors.primary),
+                  const Icon(
+                    LucideIcons.database,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -158,8 +175,11 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                   ),
                   IconButton(
                     onPressed: widget.onClose,
-                    icon: const Icon(LucideIcons.x,
-                        size: 18, color: AppColors.textMuted),
+                    icon: const Icon(
+                      LucideIcons.x,
+                      size: 18,
+                      color: AppColors.textMuted,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     splashRadius: 20,
@@ -169,127 +189,147 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
             ),
             const Divider(color: AppColors.border, height: 1),
 
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('Database Name'),
+                    _buildTextField(
+                      controller: _nameController,
+                      hint: 'e.g. my_project_db',
+                      icon: LucideIcons.tag,
+                      enabled: !isEdit,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a database name';
+                        }
+                        if (!RegExp(r'^[a-zA-Z0-9_$]+$').hasMatch(value)) {
+                          return 'Only alphanumeric, _, and \$ are allowed';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('Username'),
+                              _buildTextField(
+                                controller: _userController,
+                                hint: 'Same as DB name',
+                                icon: LucideIcons.user,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Required';
+                                  }
+                                  if (!RegExp(
+                                    r'^[A-Za-z][A-Za-z0-9_]*$',
+                                  ).hasMatch(value)) {
+                                    return 'Letters, digits, _ only; start with a letter';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('Password'),
+                              _buildTextField(
+                                controller: _passController,
+                                hint: 'Leave empty if none',
+                                icon: LucideIcons.key,
+                                isPassword: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _buildLabel('Note (Optional)'),
+                    _buildTextField(
+                      controller: _noteController,
+                      hint: 'Description or project name',
+                      icon: LucideIcons.fileText,
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Divider(color: AppColors.border, height: 1),
+
+            // Footer
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 12.0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  _buildLabel('Database Name'),
-                  _buildTextField(
-                    controller: _nameController,
-                    hint: 'e.g. my_project_db',
-                    icon: LucideIcons.tag,
-                    enabled: !isEdit,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a database name';
-                      }
-                      if (!RegExp(r'^[a-zA-Z0-9_$]+$').hasMatch(value)) {
-                        return 'Only alphanumeric, _, and \$ are allowed';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('Username'),
-                            _buildTextField(
-                              controller: _userController,
-                              hint: 'Same as DB name',
-                              icon: LucideIcons.user,
-                            ),
-                          ],
-                        ),
+                  OutlinedButton(
+                    onPressed: widget.onClose,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('Password'),
-                            _buildTextField(
-                              controller: _passController,
-                              hint: 'Leave empty if none',
-                              icon: LucideIcons.key,
-                              isPassword: true,
-                            ),
-                          ],
-                        ),
+                      side: const BorderSide(
+                        color: AppColors.border,
+                        width: 0.5,
                       ),
-                    ],
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontSize: AppTextSize.xs,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  _buildLabel('Note (Optional)'),
-                  _buildTextField(
-                    controller: _noteController,
-                    hint: 'Description or project name',
-                    icon: LucideIcons.fileText,
-                    maxLines: 2,
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: _isCreating ? null : _handleCreate,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: Text(
+                      _isCreating
+                          ? (isEdit ? 'Updating...' : 'Creating...')
+                          : (isEdit ? 'Update Database' : 'Create Database'),
+                      style: const TextStyle(
+                        fontSize: AppTextSize.xs,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-          const Divider(color: AppColors.border, height: 1),
-
-          // Footer
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: widget.onClose,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                    side: const BorderSide(color: AppColors.border, width: 0.5),
-                  ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      fontSize: AppTextSize.xs,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _isCreating ? null : _handleCreate,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 12),
-                  ),
-                  child: Text(
-                    _isCreating
-                        ? (isEdit ? 'Updating...' : 'Creating...')
-                        : (isEdit ? 'Update Database' : 'Create Database'),
-                    style: const TextStyle(
-                      fontSize: AppTextSize.xs,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildLabel(String label) {
     return Padding(
@@ -330,8 +370,10 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
         prefixIcon: Icon(icon, size: 16, color: AppColors.textMuted),
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.border),

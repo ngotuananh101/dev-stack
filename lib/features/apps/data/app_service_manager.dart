@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
+import 'app_installer_service.dart';
 import '../../../core/services/background_process.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/config/app_config.dart';
@@ -17,7 +18,7 @@ part 'app_service_manager.g.dart';
 AppServiceManager appServiceManager(Ref ref) {
   final logger = ref.read(logServiceProvider);
   final manager = AppServiceManager(logger);
-  ref.onDispose(manager.dispose);
+  ref.onDispose(() => unawaited(manager.dispose()));
   return manager;
 }
 
@@ -26,6 +27,12 @@ class AppServiceManager {
   final Map<String, ManagedBackgroundProcess> _processes = {};
   final Map<String, AppModel> _activeApps = {};
   final Map<String, List<StreamSubscription<String>>> _logSubscriptions = {};
+
+  /// Set true by [dispose]. Once disposed, late-firing process-exit callbacks
+  /// must NOT touch the shared maps or invoke caller-supplied status callbacks
+  /// (which typically capture widget state that is already torn down), or they
+  /// cause use-after-dispose errors / orphaned notifications.
+  bool _disposed = false;
 
   AppServiceManager(this._logger);
 
@@ -36,6 +43,141 @@ class AppServiceManager {
   }
 
   bool isRunning(String appId) => _processes.containsKey(appId);
+
+  /// Tears down all in-memory state for [appId] after its process has exited
+  /// (or is being stopped): removes the process + log subscriptions, marks the
+  /// app stopped, and notifies the caller. Returns true if cleanup ran.
+  ///
+  /// Returns false (no-op) when the manager has been disposed — a late exit
+  /// callback firing after teardown must not touch the (now-empty) maps or
+  /// invoke the caller's [onStatusChange], which likely captures dead widget
+  /// state.
+  bool _finalizeExit({
+    required String appId,
+    AppModel? activeApp,
+    VoidCallback? onStatusChange,
+  }) {
+    if (_disposed) return false;
+    _processes.remove(appId);
+    final subscriptions = _logSubscriptions.remove(appId);
+    // Subscription cancellation is async; the caller awaits it where needed.
+    // Here we only synchronously drop the reference.
+    if (subscriptions != null) {
+      for (final s in subscriptions) {
+        unawaited(s.cancel());
+      }
+    }
+    _activeApps.remove(appId);
+    if (activeApp != null) {
+      activeApp.serviceStatus = 'stopped';
+      activeApp.servicePid = null;
+    }
+    onStatusChange?.call();
+    return true;
+  }
+
+  /// Test-only entry around [_finalizeExit] so the disposed-guard can be
+  /// exercised without spawning a real process.
+  @visibleForTesting
+  bool finalizeExitForTest({
+    required String appId,
+    required AppModel activeApp,
+    required VoidCallback onStatusChange,
+  }) {
+    _activeApps[appId] = activeApp;
+    activeApp.servicePid = 1;
+    activeApp.serviceStatus = 'running';
+    return _finalizeExit(
+      appId: appId,
+      activeApp: activeApp,
+      onStatusChange: onStatusChange,
+    );
+  }
+
+  /// Test-only setter for the disposed flag.
+  @visibleForTesting
+  void markDisposedForTest() => _disposed = true;
+
+  /// Parses a `host:port` string (e.g. `127.0.0.1:9000`) into a record, or
+  /// returns null if it doesn't carry a usable port.
+  @visibleForTesting
+  static ({String host, int port})? parseHostPort(String address) {
+    final idx = address.lastIndexOf(':');
+    if (idx <= 0 || idx == address.length - 1) return null;
+    final port = int.tryParse(address.substring(idx + 1));
+    if (port == null || port <= 0 || port > 65535) return null;
+    var host = address.substring(0, idx);
+    if (host.isEmpty) return null;
+    // Strip IPv6 brackets for the netstat comparison.
+    if (host.startsWith('[') && host.endsWith(']')) {
+      host = host.substring(1, host.length - 1);
+    }
+    return (host: host, port: port);
+  }
+
+  /// Runs `netstat -ano` and throws a descriptive [Exception] if any of the
+  /// [requiredSockets] is already held by a listening process. Best-effort:
+  /// if netstat cannot be run, the conflict check is skipped (the start
+  /// attempt proceeds as before) rather than blocking every service.
+  Future<void> _checkPortConflicts(
+    List<({String host, int port})> requiredSockets,
+    String appName,
+  ) async {
+    if (requiredSockets.isEmpty || !Platform.isWindows) return;
+    final ProcessResult res;
+    try {
+      res = await Process.run('netstat', ['-ano']);
+    } catch (_) {
+      // netstat unavailable — don't gate startup on it.
+      return;
+    }
+    if (res.exitCode != 0) return;
+    final sockets = parseListeningSockets(res.stdout.toString());
+    for (final s in requiredSockets) {
+      if (portIsHeld(host: s.host, port: s.port, listeningSockets: sockets)) {
+        throw Exception(
+          'Port ${s.port} on ${s.host} is already in use by another process. '
+          'Stop that process or change the port for $appName before starting.',
+        );
+      }
+    }
+  }
+
+  /// Parses the stdout of Windows `netstat -ano` into the set of
+  /// `host:port` sockets currently in the LISTENING state. IPv6 sockets are
+  /// kept in their `[::]:port` form. Non-LISTENING rows are ignored.
+  @visibleForTesting
+  static Set<String> parseListeningSockets(String netstatOutput) {
+    final result = <String>{};
+    for (final raw in netstatOutput.split('\n')) {
+      final line = raw.trim();
+      if (!line.contains('TCP')) continue;
+      if (!line.contains('LISTENING')) continue;
+      // Columns are whitespace-separated; Local Address is the 2nd token.
+      final tokens = line.split(RegExp(r'\s+'));
+      if (tokens.length < 2) continue;
+      final local = tokens[1];
+      if (local.contains(':')) result.add(local);
+    }
+    return result;
+  }
+
+  /// Returns true if [port] on [host] is already taken by a listening socket.
+  /// A wildcard bind (`0.0.0.0:port` or `[::]:port`) covers any host, so it
+  /// also counts as holding `127.0.0.1:port`.
+  @visibleForTesting
+  static bool portIsHeld({
+    required String host,
+    required int port,
+    required Set<String> listeningSockets,
+  }) {
+    final exact = '$host:$port';
+    final wildcardV4 = '0.0.0.0:$port';
+    final wildcardV6 = '[::]:$port';
+    return listeningSockets.contains(exact) ||
+        listeningSockets.contains(wildcardV4) ||
+        listeningSockets.contains(wildcardV6);
+  }
 
   void syncAppState(AppModel newApp) {
     if (_activeApps.containsKey(newApp.appId)) {
@@ -70,23 +212,21 @@ class AppServiceManager {
           .last
           .toLowerCase();
 
+      // Sockets this service will try to bind, for a pre-flight conflict check.
+      final requiredSockets = <({String host, int port})>[];
+
       Map<String, String>? env;
       if (fileName == 'php-cgi.exe' || fileName == 'php.exe') {
         // Dynamic port based on version or extraInfo: php82 -> 9082
         String port = app.extraInfo['port']?.toString() ?? '';
         if (port.isEmpty) {
-          port = '9000';
-          final versionMatch = RegExp(r'\d+').firstMatch(app.appId);
-          if (versionMatch != null) {
-            final candidate = int.tryParse('90${versionMatch.group(0)}');
-            if (candidate != null && candidate >= 1024 && candidate <= 65535) {
-              port = candidate.toString();
-            }
-          }
+          port = AppInstallerService.phpPortFor(app.appId).toString();
         }
 
         final bindAddress =
             app.extraInfo['bind_address']?.toString() ?? '127.0.0.1';
+
+        requiredSockets.add((host: bindAddress, port: int.tryParse(port) ?? 0));
 
         if (fileName == 'php-cgi.exe') {
           args = ['-b', '$bindAddress:$port'];
@@ -168,6 +308,11 @@ class AppServiceManager {
           '--secret-key',
           secretKey,
         ];
+
+        for (final addr in [address, consoleAddress]) {
+          final parsed = parseHostPort(addr);
+          if (parsed != null) requiredSockets.add(parsed);
+        }
       } else if (fileName == 'meilisearch.exe') {
         final confFile = File(p.join(workingDir, 'config.toml'));
         if (confFile.existsSync()) {
@@ -190,6 +335,11 @@ class AppServiceManager {
           fileName == 'nginx.exe' ||
           fileName == 'httpd.exe' ||
           fileName == 'apache.exe';
+
+      // Pre-flight: fail fast with a clear message if a required port is taken,
+      // instead of spawning a process that dies silently on bind.
+      await _checkPortConflicts(requiredSockets, app.name);
+
       final process = runsDetached
           ? await BackgroundProcess.start(
               execPath,
@@ -225,19 +375,13 @@ class AppServiceManager {
         final activeApp = _activeApps[app.appId];
         _logger.info('Service ${app.name} exited with code $code');
         AppLogger.info('[${app.name}] Exited with code $code');
-        _processes.remove(app.appId);
-        final subscriptions = _logSubscriptions.remove(app.appId);
-        if (subscriptions != null) {
-          for (final subscription in subscriptions) {
-            await subscription.cancel();
-          }
-        }
-        _activeApps.remove(app.appId);
-        if (activeApp != null) {
-          activeApp.serviceStatus = 'stopped';
-          activeApp.servicePid = null;
-        }
-        onStatusChange?.call();
+        // Guarded: if dispose() already tore the manager down, a late exit
+        // must be a no-op rather than poking dead state/callbacks.
+        _finalizeExit(
+          appId: app.appId,
+          activeApp: activeApp,
+          onStatusChange: onStatusChange,
+        );
       });
 
       if (!runsDetached) {
@@ -289,37 +433,49 @@ class AppServiceManager {
   }
 
   Future<void> stop(AppModel app) async {
+    if (_disposed) return;
     _logger.info('Stopping service: ${app.name}');
     app.serviceStatus = 'stopping';
 
-    final process = _processes[app.appId];
-    if (process != null) {
-      if (Platform.isWindows) {
-        // Dùng /T để giết toàn bộ cây tiến trình (tránh sót worker processes)
-        await BackgroundProcess.stopManaged(process);
-      } else {
-        process.kill();
-      }
+    try {
+      final process = _processes[app.appId];
+      if (process != null) {
+        try {
+          if (Platform.isWindows) {
+            // Dùng /T để giết toàn bộ cây tiến trình (tránh sót worker processes)
+            await BackgroundProcess.stopManaged(process);
+          } else {
+            process.kill();
+          }
+        } catch (e) {
+          // Kill failed (process already gone, access denied, ...). Don't let
+          // that strand the service in 'stopping' — fall through to cleanup.
+          _logger.warning('Kill failed for ${app.name}: $e');
+        }
 
-      try {
-        await process.exitCode.timeout(const Duration(seconds: 3));
-      } catch (_) {}
-    }
-
-    _processes.remove(app.appId);
-    final subscriptions = _logSubscriptions.remove(app.appId);
-    if (subscriptions != null) {
-      for (final subscription in subscriptions) {
-        await subscription.cancel();
+        try {
+          await process.exitCode.timeout(const Duration(seconds: 3));
+        } catch (_) {}
       }
+    } finally {
+      // Drop the process from the map BEFORE finalizing so the (possibly
+      // already-fired) exit handler's _finalizeExit sees nothing to double-do.
+      _processes.remove(app.appId);
+      final subscriptions = _logSubscriptions.remove(app.appId);
+      if (subscriptions != null) {
+        for (final subscription in subscriptions) {
+          await subscription.cancel();
+        }
+      }
+      final activeApp = _activeApps[app.appId] ?? app;
+      activeApp.serviceStatus = 'stopped';
+      activeApp.servicePid = null;
+      _activeApps.remove(app.appId);
     }
-    final activeApp = _activeApps[app.appId] ?? app;
-    activeApp.serviceStatus = 'stopped';
-    activeApp.servicePid = null;
-    _activeApps.remove(app.appId);
   }
 
-  void dispose() {
+  Future<void> dispose() async {
+    _disposed = true;
     for (final subscriptions in _logSubscriptions.values) {
       for (final subscription in subscriptions) {
         unawaited(subscription.cancel());
@@ -327,8 +483,20 @@ class AppServiceManager {
     }
     _logSubscriptions.clear();
 
+    // Kill each managed process by its *real* child PID via stopManaged, not
+    // just the wscript host — otherwise detached webservers (nginx/apache)
+    // survive dispose and keep holding their ports.
     for (final process in _processes.values) {
-      process.kill();
+      try {
+        if (Platform.isWindows) {
+          await BackgroundProcess.stopManaged(process);
+        } else {
+          process.kill();
+        }
+      } catch (_) {
+        // Best-effort during teardown.
+        process.kill();
+      }
     }
     _processes.clear();
     _activeApps.clear();
@@ -340,6 +508,25 @@ class AppServiceManager {
       const Duration(milliseconds: 500),
     ); // Give it a moment to release ports
     await start(app, onStatusChange: onStatusChange);
+  }
+
+  /// Force-kills a *specific, known* PID rather than every process that shares
+  /// an image name. This is what update/uninstall should call: it avoids the
+  /// collateral damage of `taskkill /IM php.exe`, which would kill any other
+  /// process running under that generic executable name.
+  Future<void> forceKillPid(String appId, int pid) async {
+    if (pid <= 0) {
+      _logger.warning('No PID recorded for $appId; skipping force kill.');
+      return;
+    }
+    _logger.info('Force killing PID $pid for $appId');
+    if (Platform.isWindows) {
+      try {
+        await BackgroundProcess.run('taskkill', ['/F', '/PID', pid.toString()]);
+      } catch (e) {
+        _logger.warning('Failed to kill PID $pid: $e');
+      }
+    }
   }
 
   Future<void> forceKillByNames(List<String> names) async {

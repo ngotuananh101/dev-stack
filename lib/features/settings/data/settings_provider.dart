@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../../core/services/background_process.dart';
 import 'package:path/path.dart' as p;
 import 'package:isar/isar.dart';
@@ -15,6 +16,37 @@ part 'settings_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 class SettingsNotifier extends _$SettingsNotifier {
+  /// Replaces [oldDir] with [newDir] inside [value], but only where [oldDir]
+  /// appears as a complete path-segment prefix — i.e. followed by a path
+  /// separator (`/` or `\`) or the end of the string. This avoids the
+  /// substring-replacement corruption that a plain `replaceAll` causes when
+  /// [oldDir] is a prefix of [newDir] (e.g. `C:\Dev` -> `C:\DevStack` would
+  /// turn `C:\DevStack` into `C:\DevStackStack`) or when an unrelated sibling
+  /// path like `C:\DevTools` shares the prefix.
+  ///
+  /// Both the backslash and forward-slash variants of [oldDir] are matched, so
+  /// callers can pass either form and both config styles are handled.
+  @visibleForTesting
+  static String replacePathPrefix(String value, String oldDir, String newDir) {
+    String doReplace(String oldForm, String newForm, String input) {
+      if (oldForm.isEmpty) return input;
+      final escaped = RegExp.escape(oldForm);
+      // Match oldForm only when followed by a path separator or end-of-string.
+      // `$` (not `\z`) because Dart RegExp does not support `\z`; multiline is
+      // off so `$` means absolute end-of-string.
+      final re = RegExp(escaped + r'(?=[/\\]|$)');
+      return input.replaceAll(re, newForm);
+    }
+
+    var out = doReplace(oldDir, newDir, value);
+    final oldFwd = oldDir.replaceAll('\\', '/');
+    final newFwd = newDir.replaceAll('\\', '/');
+    if (oldFwd != oldDir) {
+      out = doReplace(oldFwd, newFwd, out);
+    }
+    return out;
+  }
+
   @override
   Future<AppSettings> build() async {
     final isar = await ref.watch(isarProvider.future);
@@ -147,12 +179,6 @@ class SettingsNotifier extends _$SettingsNotifier {
     String oldDir,
     String newDir,
   ) async {
-    // Prepare both backslash and forward-slash variants
-    final oldBackslash = oldDir; // C:\Ponta
-    final newBackslash = newDir; // D:\MyStack
-    final oldForwardSlash = oldDir.replaceAll('\\', '/'); // C:/Ponta
-    final newForwardSlash = newDir.replaceAll('\\', '/'); // D:/MyStack
-
     await for (final entity in dir.list(recursive: true)) {
       if (entity is! File) continue;
 
@@ -162,22 +188,14 @@ class SettingsNotifier extends _$SettingsNotifier {
 
       try {
         String content = await entity.readAsString();
-        bool modified = false;
 
-        // Replace forward-slash paths (nginx/apache config style)
-        if (content.contains(oldForwardSlash)) {
-          content = content.replaceAll(oldForwardSlash, newForwardSlash);
-          modified = true;
-        }
+        // Path-segment-aware replacement handles both backslash and
+        // forward-slash forms in one pass and avoids prefix-collision
+        // corruption (e.g. C:\Dev inside C:\DevStack).
+        final rewritten = replacePathPrefix(content, oldDir, newDir);
 
-        // Replace backslash paths (Windows style, php.ini, bat files)
-        if (content.contains(oldBackslash)) {
-          content = content.replaceAll(oldBackslash, newBackslash);
-          modified = true;
-        }
-
-        if (modified) {
-          await entity.writeAsString(content);
+        if (rewritten != content) {
+          await entity.writeAsString(rewritten);
           AppLogger.info('Rewrote paths in: ${entity.path}');
         }
       } catch (e) {
@@ -200,17 +218,32 @@ class SettingsNotifier extends _$SettingsNotifier {
         for (final app in apps) {
           bool modified = false;
 
-          if (app.location.contains(oldDir)) {
-            app.location = app.location.replaceAll(oldDir, newDir);
+          final newLocation = replacePathPrefix(app.location, oldDir, newDir);
+          if (newLocation != app.location) {
+            app.location = newLocation;
             modified = true;
           }
-          if (app.execFilePath != null && app.execFilePath!.contains(oldDir)) {
-            app.execFilePath = app.execFilePath!.replaceAll(oldDir, newDir);
-            modified = true;
+          if (app.execFilePath != null) {
+            final rewritten = replacePathPrefix(
+              app.execFilePath!,
+              oldDir,
+              newDir,
+            );
+            if (rewritten != app.execFilePath) {
+              app.execFilePath = rewritten;
+              modified = true;
+            }
           }
-          if (app.cliFilePath != null && app.cliFilePath!.contains(oldDir)) {
-            app.cliFilePath = app.cliFilePath!.replaceAll(oldDir, newDir);
-            modified = true;
+          if (app.cliFilePath != null) {
+            final rewritten = replacePathPrefix(
+              app.cliFilePath!,
+              oldDir,
+              newDir,
+            );
+            if (rewritten != app.cliFilePath) {
+              app.cliFilePath = rewritten;
+              modified = true;
+            }
           }
 
           if (modified) {
@@ -226,8 +259,9 @@ class SettingsNotifier extends _$SettingsNotifier {
     if (sites.isNotEmpty) {
       await isar.writeTxn(() async {
         for (final site in sites) {
-          if (site.rootDir.contains(oldDir)) {
-            site.rootDir = site.rootDir.replaceAll(oldDir, newDir);
+          final newRoot = replacePathPrefix(site.rootDir, oldDir, newDir);
+          if (newRoot != site.rootDir) {
+            site.rootDir = newRoot;
             await isar.siteModels.put(site);
             AppLogger.info('Updated DB paths for site: ${site.domain}');
           }
@@ -249,8 +283,10 @@ class SettingsNotifier extends _$SettingsNotifier {
 
       if (result.exitCode == 0) {
         final currentPath = (result.stdout as String).trim();
-        if (currentPath.contains(oldDir)) {
-          final newPath = currentPath.replaceAll(oldDir, newDir);
+        // Path-segment-aware: C:\Dev\bin -> C:\DevStack\bin but
+        // C:\DevTools\bin is left untouched.
+        final newPath = replacePathPrefix(currentPath, oldDir, newDir);
+        if (newPath != currentPath) {
           await BackgroundProcess.run(
             'powershell',
             [
@@ -278,21 +314,25 @@ class SettingsNotifier extends _$SettingsNotifier {
 
         if (envResult.exitCode == 0) {
           final envValue = (envResult.stdout as String).trim();
-          if (envValue.isNotEmpty && envValue.contains(oldDir)) {
-            final newEnvValue = envValue.replaceAll(oldDir, newDir);
-            await BackgroundProcess.run(
-              'powershell',
-              [
-                '-NoProfile',
-                '-Command',
-                '[Environment]::SetEnvironmentVariable(\$env:DEVSTACK_ENVVAR, \$env:DEVSTACK_SETVALUE, "User")',
-              ],
-              environment: {
-                'DEVSTACK_ENVVAR': envVar,
-                'DEVSTACK_SETVALUE': newEnvValue,
-              },
-            );
-            AppLogger.info('Updated env var $envVar: $envValue → $newEnvValue');
+          if (envValue.isNotEmpty) {
+            final newEnvValue = replacePathPrefix(envValue, oldDir, newDir);
+            if (newEnvValue != envValue) {
+              await BackgroundProcess.run(
+                'powershell',
+                [
+                  '-NoProfile',
+                  '-Command',
+                  '[Environment]::SetEnvironmentVariable(\$env:DEVSTACK_ENVVAR, \$env:DEVSTACK_SETVALUE, "User")',
+                ],
+                environment: {
+                  'DEVSTACK_ENVVAR': envVar,
+                  'DEVSTACK_SETVALUE': newEnvValue,
+                },
+              );
+              AppLogger.info(
+                'Updated env var $envVar: $envValue → $newEnvValue',
+              );
+            }
           }
         }
       }

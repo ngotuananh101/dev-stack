@@ -442,7 +442,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
             ElevatedButton(
-              onPressed: () => exit(0),
+              onPressed: () async {
+                // Stop running services gracefully before tearing down the
+                // process. exit(0) alone skips stopAllServicesQuietly() and
+                // orphans detached webservers (nginx/apache) holding their
+                // ports, which then conflict with the new base directory on
+                // the next launch.
+                try {
+                  await ref
+                      .read(appsNotifierProvider.notifier)
+                      .stopAllServicesQuietly();
+                } catch (_) {}
+                if (ctx.mounted) Navigator.of(ctx).pop();
+                exit(0);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accent,
                 foregroundColor: Colors.white,
