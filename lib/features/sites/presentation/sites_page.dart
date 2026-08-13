@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../../../../core/theme/app_colors.dart';
-import '../../hosts/presentation/hosts_editor_dialog.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import 'widgets/site_table.dart';
 import '../domain/site_model.dart';
@@ -120,25 +119,6 @@ class _SitesPageState extends ConsumerState<SitesPage> {
           icon: const Icon(LucideIcons.folderPlus, size: 16),
           label: const Text(
             'Batch Create',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-        ),
-        const SizedBox(width: 12),
-        ElevatedButton.icon(
-          onPressed: () => HostsEditorDialog.show(context),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.surface,
-            foregroundColor: AppColors.textPrimary,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: AppColors.border),
-            ),
-            elevation: 0,
-          ),
-          icon: const Icon(LucideIcons.fileText, size: 16),
-          label: const Text(
-            'Edit Hosts',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ),

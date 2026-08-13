@@ -8,7 +8,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
 import '../../../shared/utils/app_dialogs.dart';
 import '../../apps/data/apps_provider.dart';
-import '../../hosts/presentation/hosts_editor_dialog.dart';
 import '../../sites/data/sites_provider.dart';
 import '../../../core/services/ssl_service.dart';
 import '../data/settings_provider.dart';
@@ -70,14 +69,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   title: 'Site Configuration',
                   icon: LucideIcons.globe,
                   children: [
-                    _buildActionSetting(
-                      title: 'Edit Hosts File',
-                      subtitle: 'Edit the Windows hosts file',
-                      icon: LucideIcons.fileText,
-                      actionLabel: 'Edit',
-                      onTap: () => _editHostsFile(context),
-                    ),
-                    const Divider(color: AppColors.border, height: 32),
                     _buildDropdownSetting(
                       title: 'Default PHP Version',
                       subtitle:
@@ -1102,10 +1093,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   void _showSystemInfo(BuildContext context) {
     showDialog(context: context, builder: (context) => const SystemInfoModal());
-  }
-
-  Future<void> _editHostsFile(BuildContext context) async {
-    await HostsEditorDialog.show(context);
   }
 }
 

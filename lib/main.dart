@@ -13,6 +13,7 @@ import 'features/apps/presentation/apps_page.dart';
 import 'features/apps/data/apps_provider.dart';
 import 'features/logs/presentation/logs_page.dart';
 import 'features/databases/presentation/databases_page.dart';
+import 'features/hosts/presentation/hosts_page.dart';
 import 'features/settings/presentation/settings_page.dart';
 import 'features/sites/presentation/sites_page.dart';
 import 'core/services/window_service.dart';
@@ -130,12 +131,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     switch (tab) {
       case NavigationTab.apps:
         return const AppsPage();
+      case NavigationTab.sites:
+        return const SitesPage();
       case NavigationTab.logs:
         return const LogsPage();
       case NavigationTab.databases:
         return const DatabasesPage();
-      case NavigationTab.sites:
-        return const SitesPage();
+      case NavigationTab.hosts:
+        return const HostsPage();
       case NavigationTab.settings:
         return const SettingsPage();
     }
