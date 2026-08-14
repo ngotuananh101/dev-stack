@@ -249,8 +249,7 @@ class CompactAppsTable extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                app.installedVersion?.toLowerCase() ==
-                                        'latest'
+                                app.installedVersion?.toLowerCase() == 'latest'
                                     ? 'latest'
                                     : 'v${app.installedVersion}',
                                 style: const TextStyle(
@@ -436,7 +435,12 @@ class CompactAppsTable extends StatelessWidget {
   }
 
   Widget _buildPathToggle(AppModel app) {
-    if (!app.isInstalled || app.cliFilePath == null || app.appId == 'pyenv') {
+    // phpMyAdmin has no CLI binary to expose on PATH — it's a web app served
+    // through the webserver, not an executable. Hide the toggle for it.
+    if (!app.isInstalled ||
+        app.cliFilePath == null ||
+        app.appId == 'pyenv' ||
+        app.appId == 'phpMyAdmin') {
       return const SizedBox.shrink();
     }
 

@@ -34,7 +34,31 @@ class AppServiceManager {
   /// cause use-after-dispose errors / orphaned notifications.
   bool _disposed = false;
 
-  AppServiceManager(this._logger);
+  /// Abstraction over [Process.run] so [forceKillPid] / [forceKillByNames]
+  /// can be tested without spawning real `taskkill` calls. Defaults to the
+  /// real implementation in [BackgroundProcess.run].
+  final Future<List<String>> Function(String, List<String>)? _runProcess;
+
+  /// Injectable host check (defaults to [Platform.isWindows]) so the
+  /// Windows-only kill paths can be exercised in tests on any host.
+  final bool Function() _isWindows;
+
+  AppServiceManager(
+    this._logger, {
+    Future<List<String>> Function(String, List<String>)? runProcess,
+    bool Function()? platformIsWindows,
+  }) : _runProcess = runProcess,
+       _isWindows = platformIsWindows ?? (() => Platform.isWindows);
+
+  /// Runs an executable via the injected runner (tests) or [BackgroundProcess.run]
+  /// (production). Returns stdout lines.
+  Future<List<String>> _run(String exec, List<String> args) async {
+    final runner = _runProcess;
+    if (runner != null) return runner(exec, args);
+    final result = await BackgroundProcess.run(exec, args);
+    final out = result.stdout?.toString() ?? '';
+    return const LineSplitter().convert(out);
+  }
 
   String _generateSecret({int length = 32}) {
     final random = Random.secure();
@@ -520,9 +544,15 @@ class AppServiceManager {
       return;
     }
     _logger.info('Force killing PID $pid for $appId');
-    if (Platform.isWindows) {
+    if (_isWindows()) {
       try {
-        await BackgroundProcess.run('taskkill', ['/F', '/PID', pid.toString()]);
+        // /T is critical: the recorded service PID may be a hidden launcher/
+        // wrapper (e.g. the wscript host used to start webservers detached),
+        // NOT the real worker (php-cgi.exe / mysqld). Killing only the
+        // wrapper PID leaves the worker alive, still holding DLL/file handles
+        // inside the app folder — which then makes the version-swap delete
+        // fail with "Access is denied (errno 5)". /T kills the whole tree.
+        await _run('taskkill', ['/F', '/T', '/PID', pid.toString()]);
       } catch (e) {
         _logger.warning('Failed to kill PID $pid: $e');
       }
@@ -530,7 +560,7 @@ class AppServiceManager {
   }
 
   Future<void> forceKillByNames(List<String> names) async {
-    if (!Platform.isWindows) return;
+    if (!_isWindows()) return;
 
     for (final name in names) {
       if (name.trim().isEmpty) continue;
@@ -544,7 +574,7 @@ class AppServiceManager {
       _logger.info('Force killing processes by name: $taskName');
       try {
         // /F - force, /IM - image name, /T - child processes
-        await BackgroundProcess.run('taskkill', ['/F', '/IM', taskName, '/T']);
+        await _run('taskkill', ['/F', '/IM', taskName, '/T']);
       } catch (e) {
         _logger.warning('Failed to kill task $taskName: $e');
       }

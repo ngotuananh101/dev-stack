@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:re_highlight/styles/atom-one-dark.dart';
 
@@ -87,7 +88,21 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   }
 
   void _onChanged() {
-    if (!_dirty) setState(() => _dirty = true);
+    if (_dirty) return;
+    _dirty = true;
+    // re_editor's CodeEditor sets the controller's delegate during its own
+    // initState, which fires notifyListeners while the framework is still
+    // building this widget tree. Calling setState synchronously then throws
+    // "setState/markNeedsBuild called during build". Defer to the next frame
+    // so the dirty indicator flips without crashing the build phase.
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadFile() async {

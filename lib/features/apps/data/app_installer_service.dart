@@ -1062,6 +1062,80 @@ security:
   @visibleForTesting
   static void Function()? debugCopyFailure;
 
+  /// Recursively deletes [directory], retrying on Windows "Access is denied
+  /// (errno 5)" with a short backoff. Even after a process tree is killed,
+  /// Windows can hold a DLL/file handle for a few hundred ms; a single
+  /// `delete(recursive: true)` then fails and aborts an entire version swap.
+  /// Retrying lets the OS release the lingering handle instead of surfacing
+  /// a hard failure to the user.
+  ///
+  /// Only Access Denied is retried — other errors (disk full, path not found,
+  /// permission policy) are surfaced immediately since retrying won't help.
+  ///
+  /// [attemptDelete] is overridable purely for tests; production leaves it null
+  /// and the real `Directory.delete(recursive: true)` is used.
+  Future<void> _deleteRecursiveWithRetries(
+    Directory directory, {
+    int maxAttempts = 5,
+    Duration delayBetweenAttempts = const Duration(milliseconds: 300),
+    Future<void> Function(Directory)? attemptDelete,
+  }) async {
+    final deleter = attemptDelete ?? (d) => d.delete(recursive: true);
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await deleter(directory);
+        return;
+      } catch (e) {
+        if (attempt == maxAttempts || !_isAccessDenied(e)) rethrow;
+        _logger.warning(
+          'Delete attempt $attempt/$maxAttempts for ${directory.path} failed '
+          'with Access Denied (errno 5); retrying in '
+          '${delayBetweenAttempts.inMilliseconds}ms. ($e)',
+        );
+        await Future<void>.delayed(delayBetweenAttempts);
+      }
+    }
+  }
+
+  /// True when [error] represents a Windows Access Denied (errno 5) on delete.
+  /// We match both [PathAccessException] (thrown by `Directory.delete`) and a
+  /// raw [FileSystemException] carrying the OS errno, since the surface type
+  /// can vary across Dart SDK patch levels.
+  bool _isAccessDenied(Object error) {
+    int? errno;
+    String message = '';
+    OSError? osError;
+    if (error is PathAccessException) {
+      osError = error.osError;
+      errno = osError?.errorCode;
+      message = error.message;
+    } else if (error is FileSystemException) {
+      osError = error.osError;
+      errno = osError?.errorCode;
+      message = error.message;
+    }
+    if (errno == 5) return true;
+    final m = message.toLowerCase();
+    return m.contains('access is denied') || m.contains('access denied');
+  }
+
+  /// Test seam for [_deleteRecursiveWithRetries]. Lets a test inject the
+  /// actual delete behavior (to simulate a transient lock that releases after
+  /// one failure) without touching the real filesystem inside the retry loop.
+  @visibleForTesting
+  Future<void> deleteDirectoryWithRetriesForTest(
+    Directory directory, {
+    required Future<void> Function(Directory) attemptDelete,
+    int maxAttempts = 5,
+    Duration delayBetweenAttempts = const Duration(milliseconds: 300),
+  }) => _deleteRecursiveWithRetries(
+    directory,
+    maxAttempts: maxAttempts,
+    delayBetweenAttempts: delayBetweenAttempts,
+    attemptDelete: attemptDelete,
+  );
+
   /// True when [appId] keeps its data in a version-keyed directory
   /// (`<dataDir>/<appId>-<version>`) that must be carried across a version swap.
   static bool hasVersionedDataDir(String appId) =>
@@ -1239,7 +1313,7 @@ security:
     final directory = Directory(path);
     if (directory.existsSync()) {
       _logger.info('Deleting directory: $path');
-      await directory.delete(recursive: true);
+      await _deleteRecursiveWithRetries(directory);
     }
 
     if (!deleteData) {
