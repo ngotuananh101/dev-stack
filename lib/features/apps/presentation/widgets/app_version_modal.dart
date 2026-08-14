@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../domain/app_conflict_policy.dart';
 import '../../domain/app_model.dart';
 import '../../data/app_version_provider.dart';
 import '../../data/apps_provider.dart';
@@ -96,41 +97,13 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
       error: (_, _) => widget.app,
     );
 
-    // Check for mutually exclusive application pairs (MySQL/MariaDB, Nginx/Apache)
-    final appId = widget.app.appId.toLowerCase();
-    final groupName = widget.app.groupName?.toLowerCase() ?? '';
-    
-    final conflictPairs = {
-      'mysql': 'mariadb',
-      'mariadb': 'mysql',
-      'nginx': 'apache',
-      'apache': 'nginx',
-    };
-
-    String? otherGroup;
-    for (final entry in conflictPairs.entries) {
-      if (appId.contains(entry.key) || groupName.contains(entry.key)) {
-        otherGroup = entry.value;
-        break;
-      }
-    }
-
-    AppModel? conflictingApp;
-    if (!widget.isUpdate && otherGroup != null) {
-      final conflictPattern = otherGroup; // Capture for predicate
-      appsAsync.whenData((list) {
-        try {
-          conflictingApp = list.firstWhere(
-            (a) =>
-                ((a.groupName?.toLowerCase() ?? '').contains(conflictPattern) ||
-                    a.appId.toLowerCase().contains(conflictPattern)) &&
-                a.isInstalled,
+    // Port-sharing web servers and database alternatives are mutually exclusive.
+    final conflictingApp = widget.isUpdate
+        ? null
+        : AppConflictPolicy.firstInstalledConflict(
+            widget.app,
+            appsAsync.valueOrNull ?? const <AppModel>[],
           );
-        } catch (_) {
-          conflictingApp = null;
-        }
-      });
-    }
 
     // Show progress if installing OR if just finished installing
     final isInProgress = appState.status == 'installing' || 
