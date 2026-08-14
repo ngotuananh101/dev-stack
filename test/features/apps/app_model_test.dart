@@ -165,6 +165,16 @@ void main() {
 
       expect(app.isService, isTrue);
     });
+    test('isService returns true for Caddy webserver category', () {
+      final app = AppModel(
+        appId: 'caddy',
+        name: 'Caddy',
+        categories: ['webserver'],
+      );
+
+      expect(app.isService, isTrue);
+    });
+
 
     test('isService returns true for webserver category', () {
       final app = AppModel(

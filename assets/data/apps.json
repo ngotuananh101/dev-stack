@@ -376,6 +376,23 @@
       }
     },
     {
+      "id": "caddy",
+      "name": "Caddy",
+      "description": "Fast, extensible web server with a simple configuration",
+      "category": "webserver",
+      "group_name": "webserver",
+      "exec_file": "caddy.exe",
+      "cli_file": "caddy.exe",
+      "repo": "caddyserver/caddy",
+      "versions": {
+        "2.11.4": "https://github.com/caddyserver/caddy/releases/download/v2.11.4/caddy_2.11.4_windows_amd64.zip",
+        "2.11.3": "https://github.com/caddyserver/caddy/releases/download/v2.11.3/caddy_2.11.3_windows_amd64.zip",
+        "2.11.2": "https://github.com/caddyserver/caddy/releases/download/v2.11.2/caddy_2.11.2_windows_amd64.zip",
+        "2.11.1": "https://github.com/caddyserver/caddy/releases/download/v2.11.1/caddy_2.11.1_windows_amd64.zip",
+        "2.11.0": "https://github.com/caddyserver/caddy/releases/download/v2.11.0/caddy_2.11.0_windows_amd64.zip"
+      }
+    },
+    {
       "id": "nginx",
       "name": "Nginx",
       "description": "Lightweight, less memory, concurrent ability",
