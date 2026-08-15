@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'apps_provider.dart';
 
@@ -31,10 +32,61 @@ class AppVersionInfo {
 class AppVersions extends _$AppVersions {
   static const _nodeReleaseIndexUrl =
       'https://nodejs.org/download/release/index.json';
+  static const _nodeScheduleUrl =
+      'https://raw.githubusercontent.com/nodejs/Release/main/schedule.json';
 
   @override
   Future<AppVersionInfo> build(String appId) async {
     return await _loadVersions(appId);
+  }
+
+  /// Keeps only LTS lines that are still current: a version stays tagged
+  /// while its major's support window has not ended. Node.js keeps several
+  /// majors in LTS at once (e.g. 22 and 24 in 2026), so this is per-major,
+  /// not "latest LTS only".
+  ///
+  /// [schedule] maps major keys like `v22` to entries with an `end` date
+  /// (nodejs/Release schedule.json). When it is null/empty (offline), the
+  /// newest LTS major is kept as a best-effort fallback.
+  @visibleForTesting
+  static Map<String, String> filterCurrentLts(
+    Map<String, String> labels,
+    Map<String, dynamic>? schedule, {
+    DateTime? now,
+  }) {
+    if (labels.isEmpty) return {};
+    final today = now ?? DateTime.now();
+
+    int? majorOf(String version) => int.tryParse(version.split('.').first);
+
+    if (schedule == null || schedule.isEmpty) {
+      final newest = labels.keys
+          .map(majorOf)
+          .whereType<int>()
+          .fold<int?>(null, (a, b) => a == null || b > a ? b : a);
+      if (newest == null) return labels;
+      return Map.fromEntries(
+        labels.entries.where((e) => majorOf(e.key) == newest),
+      );
+    }
+
+    final endByMajor = <int, DateTime>{};
+    schedule.forEach((key, value) {
+      final major = int.tryParse(key.replaceFirst(RegExp(r'^v'), ''));
+      final end = value is Map ? value['end']?.toString() : null;
+      if (major == null || end == null || end.isEmpty) return;
+      final parsed = DateTime.tryParse(end);
+      if (parsed != null) endByMajor[major] = parsed;
+    });
+
+    return Map.fromEntries(
+      labels.entries.where((e) {
+        final major = majorOf(e.key);
+        final end = major == null ? null : endByMajor[major];
+        // Unknown majors (schedule gap) are dropped rather than guessed.
+        return end != null && !today.isAfter(end);
+      }),
+    );
   }
 
   Future<void> refresh() async {
@@ -70,24 +122,42 @@ class AppVersions extends _$AppVersions {
   /// 1. Node.js release API for Node apps (source of truth)
   /// 2. Catalog `lts` / `lts_labels` as offline fallback
   ///
-  /// Never infer LTS from "latest" or even major numbers.
+  /// Never infer LTS from "latest" or even major numbers. Labels are then
+  /// narrowed to still-supported LTS lines via the Node.js release schedule,
+  /// so EOL majors (e.g. Hydrogen/18 after 2025-04-30) stop showing a badge.
   Future<Map<String, String>> _resolveLtsLabels(
     String appId,
     List<String> versions,
     Map<String, dynamic> extraInfo,
   ) async {
     final isNodeApp =
-        appId.toLowerCase().contains('nodejs') ||
-        appId.toLowerCase() == 'node';
+        appId.toLowerCase().contains('nodejs') || appId.toLowerCase() == 'node';
 
     if (isNodeApp) {
       final apiLabels = await _fetchNodeLtsLabelsFromApi(versions);
       if (apiLabels.isNotEmpty) {
-        return apiLabels;
+        final schedule = await _fetchNodeSchedule();
+        return filterCurrentLts(apiLabels, schedule);
       }
     }
 
     return _catalogLtsLabels(extraInfo);
+  }
+
+  Future<Map<String, dynamic>?> _fetchNodeSchedule() async {
+    try {
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 20),
+        ),
+      );
+      final response = await dio.get<Map<String, dynamic>>(_nodeScheduleUrl);
+      return response.data;
+    } catch (_) {
+      // Offline: filterCurrentLts falls back to the newest LTS major.
+      return null;
+    }
   }
 
   Map<String, String> _catalogLtsLabels(Map<String, dynamic> extraInfo) {
