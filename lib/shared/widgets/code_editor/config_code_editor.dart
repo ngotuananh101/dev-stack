@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:re_highlight/styles/atom-one-dark.dart';
 
@@ -16,6 +17,25 @@ import 'language_for_config.dart';
 /// and parses highlighting in an isolate); this is UX feedback only, NOT a
 /// cutoff.
 const int kLargeFileBytes = 2 * 1024 * 1024; // 2 MB
+
+/// Adds Ctrl+H as an extra activator for the replace panel (VS Code /
+/// browser convention). re_editor only binds Ctrl+Alt+F by default and
+/// leaves Ctrl+H unused, so this conflicts with nothing.
+class _EditorShortcutsActivators extends CodeShortcutsActivatorsBuilder {
+  const _EditorShortcutsActivators();
+
+  @override
+  List<ShortcutActivator>? build(CodeShortcutType type) {
+    final defaults = const DefaultCodeShortcutsActivatorsBuilder().build(type);
+    if (type == CodeShortcutType.replace) {
+      return [
+        ...?defaults,
+        const SingleActivator(LogicalKeyboardKey.keyH, control: true),
+      ];
+    }
+    return defaults;
+  }
+}
 
 /// A reusable in-app code editor for config files, built on [re_editor].
 ///
@@ -185,7 +205,8 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
     );
   }
 
-  /// Find/replace panel shown on top of the editor (Ctrl+F / Ctrl+Alt+F).
+  /// Find/replace panel shown on top of the editor (Ctrl+F / Ctrl+Alt+F /
+  /// Ctrl+H).
   /// re_editor provides all the logic via [CodeFindController]; this only
   /// builds the UI: find + replace inputs, match counter, prev/next,
   /// replace/replace-all, and case/regex toggles.
@@ -535,6 +556,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
               scrollController: _scrollController,
               findController: _findController,
               findBuilder: _buildFindPanel,
+              shortcutsActivatorsBuilder: const _EditorShortcutsActivators(),
               readOnly: widget.readOnly,
               style: CodeEditorStyle(
                 fontSize: 13,
