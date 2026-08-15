@@ -78,4 +78,68 @@ void main() {
       expect(AppVersions.filterCurrentLts({}, {}, now: now), isEmpty);
     });
   });
+
+  group('AppVersions.labelsFromSchedule', () {
+    final now = DateTime(2026, 8, 15);
+    const schedule = {
+      'v18': {
+        'start': '2022-04-19',
+        'lts': '2022-10-25',
+        'end': '2025-04-30',
+        'codename': 'Hydrogen',
+      },
+      'v22': {
+        'start': '2024-04-24',
+        'lts': '2024-10-29',
+        'end': '2027-04-30',
+        'codename': 'Jod',
+      },
+      'v24': {
+        'start': '2025-05-06',
+        'lts': '2025-10-28',
+        'end': '2028-04-30',
+        'codename': 'Krypton',
+      },
+      // Odd major: no lts/codename fields, never LTS.
+      'v25': {'start': '2025-10-15', 'end': '2026-06-01'},
+      // Future LTS line: lts date not reached yet.
+      'v26': {
+        'start': '2026-04-21',
+        'lts': '2026-10-27',
+        'end': '2029-04-30',
+        'codename': 'Next',
+      },
+    };
+
+    test('derives codenames only for majors inside their LTS window', () {
+      final result = AppVersions.labelsFromSchedule(schedule, [
+        '25.9.0',
+        '24.15.0',
+        '22.22.2',
+        '18.20.8',
+      ], now: now);
+
+      expect(result, {'24.15.0': 'Krypton', '22.22.2': 'Jod'});
+    });
+
+    test('includes a line on its first LTS day and last day', () {
+      final firstDay = AppVersions.labelsFromSchedule(schedule, [
+        '24.1.0',
+      ], now: DateTime(2025, 10, 28));
+      expect(firstDay, {'24.1.0': 'Krypton'});
+
+      final lastDay = AppVersions.labelsFromSchedule(schedule, [
+        '22.99.0',
+      ], now: DateTime(2027, 4, 30));
+      expect(lastDay, {'22.99.0': 'Jod'});
+    });
+
+    test('returns empty for empty schedule or versions', () {
+      expect(
+        AppVersions.labelsFromSchedule({}, ['22.22.2'], now: now),
+        isEmpty,
+      );
+      expect(AppVersions.labelsFromSchedule(schedule, [], now: now), isEmpty);
+    });
+  });
 }

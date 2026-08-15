@@ -1,5 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'apps_provider.dart';
 
@@ -89,6 +94,50 @@ class AppVersions extends _$AppVersions {
     );
   }
 
+  /// Derives LTS labels straight from the nodejs/Release schedule: a
+  /// catalog version is LTS when its major has an `lts` date that has
+  /// passed and an `end` date that has not. Odd majors carry no `lts`
+  /// field and are never LTS. This replaces fetching the full release
+  /// index (~1 MB) for the common online case.
+  @visibleForTesting
+  static Map<String, String> labelsFromSchedule(
+    Map<String, dynamic> schedule,
+    List<String> versions, {
+    DateTime? now,
+  }) {
+    if (schedule.isEmpty || versions.isEmpty) return {};
+    final today = now ?? DateTime.now();
+
+    final windows = <int, (DateTime, DateTime, String)>{};
+    schedule.forEach((key, value) {
+      if (value is! Map) return;
+      final major = int.tryParse(key.replaceFirst(RegExp(r'^v'), ''));
+      final lts = DateTime.tryParse(value['lts']?.toString() ?? '');
+      final end = DateTime.tryParse(value['end']?.toString() ?? '');
+      final codename = value['codename']?.toString().trim();
+      if (major == null ||
+          lts == null ||
+          end == null ||
+          codename == null ||
+          codename.isEmpty) {
+        return;
+      }
+      windows[major] = (lts, end, codename);
+    });
+
+    final labels = <String, String>{};
+    for (final version in versions) {
+      final major = int.tryParse(version.split('.').first);
+      final window = major == null ? null : windows[major];
+      if (window == null) continue;
+      final (lts, end, codename) = window;
+      if (!today.isBefore(lts) && !today.isAfter(end)) {
+        labels[version] = codename;
+      }
+    }
+    return labels;
+  }
+
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _loadVersions(appId));
@@ -119,12 +168,13 @@ class AppVersions extends _$AppVersions {
   }
 
   /// LTS labels come from real metadata only:
-  /// 1. Node.js release API for Node apps (source of truth)
-  /// 2. Catalog `lts` / `lts_labels` as offline fallback
+  /// 1. Node.js release schedule (tiny, cached 24h) derives labels directly
+  /// 2. Node.js release index as a fallback when the schedule is unusable
+  /// 3. Catalog `lts` / `lts_labels` as offline fallback
   ///
-  /// Never infer LTS from "latest" or even major numbers. Labels are then
-  /// narrowed to still-supported LTS lines via the Node.js release schedule,
-  /// so EOL majors (e.g. Hydrogen/18 after 2025-04-30) stop showing a badge.
+  /// Never infer LTS from "latest" or even major numbers. Labels are
+  /// narrowed to still-supported LTS lines, so EOL majors (e.g.
+  /// Hydrogen/18 after 2025-04-30) stop showing a badge.
   Future<Map<String, String>> _resolveLtsLabels(
     String appId,
     List<String> versions,
@@ -134,9 +184,14 @@ class AppVersions extends _$AppVersions {
         appId.toLowerCase().contains('nodejs') || appId.toLowerCase() == 'node';
 
     if (isNodeApp) {
+      final schedule = await _nodeSchedule();
+      if (schedule != null) {
+        final labels = labelsFromSchedule(schedule, versions);
+        if (labels.isNotEmpty) return labels;
+      }
+
       final apiLabels = await _fetchNodeLtsLabelsFromApi(versions);
       if (apiLabels.isNotEmpty) {
-        final schedule = await _fetchNodeSchedule();
         return filterCurrentLts(apiLabels, schedule);
       }
     }
@@ -144,8 +199,21 @@ class AppVersions extends _$AppVersions {
     return _catalogLtsLabels(extraInfo);
   }
 
-  Future<Map<String, dynamic>?> _fetchNodeSchedule() async {
+  /// Node.js release schedule, cached for 24h in the app support directory.
+  /// The schedule changes only when a new major ships, so a day-old copy is
+  /// always good enough for LTS window checks.
+  Future<Map<String, dynamic>?> _nodeSchedule() async {
     try {
+      final dir = await getApplicationSupportDirectory();
+      final cacheFile = File(p.join(dir.path, 'node_schedule.json'));
+      if (cacheFile.existsSync()) {
+        final age = DateTime.now().difference(cacheFile.lastModifiedSync());
+        if (age < const Duration(hours: 24)) {
+          final cached = jsonDecode(cacheFile.readAsStringSync());
+          if (cached is Map<String, dynamic>) return cached;
+        }
+      }
+
       final dio = Dio(
         BaseOptions(
           connectTimeout: const Duration(seconds: 10),
@@ -153,9 +221,17 @@ class AppVersions extends _$AppVersions {
         ),
       );
       final response = await dio.get<Map<String, dynamic>>(_nodeScheduleUrl);
-      return response.data;
+      final data = response.data;
+      if (data != null) {
+        try {
+          await cacheFile.writeAsString(jsonEncode(data));
+        } catch (_) {
+          // Cache write failure is not fatal; the fetched copy still works.
+        }
+      }
+      return data;
     } catch (_) {
-      // Offline: filterCurrentLts falls back to the newest LTS major.
+      // Offline with no cache: caller falls back to the release index.
       return null;
     }
   }
