@@ -10,6 +10,21 @@ $indent    roll_keep 5
 $indent    roll_keep_for 720h
 $indent}''';
 
+  /// Builds one site block. Caddy refuses an explicit `http://` address
+  /// mixed with a `tls` directive, so HTTP and HTTPS addresses must be
+  /// emitted as separate blocks.
+  static String _siteBlock({
+    required String address,
+    required String bindAddress,
+    required String body,
+    String? tlsLine,
+  }) =>
+      '''$address {
+    bind $bindAddress${tlsLine ?? ''}
+$body
+}
+''';
+
   static String mainConfig({
     required String webRoot,
     required String bindAddress,
@@ -24,13 +39,31 @@ $indent}''';
       throw ArgumentError('Certificate and key must be provided together');
     }
     final hasTls = certPath != null;
-    final addresses = [
-      WebserverBindPolicy.caddySiteAddress('localhost', ssl: false),
-      if (hasTls) WebserverBindPolicy.caddySiteAddress('localhost', ssl: true),
-    ].join(', ');
-    final tls = certPath != null
+    final tlsLine = hasTls
         ? '\n    tls "${_path(certPath)}" "${_path(keyPath!)}"'
-        : '';
+        : null;
+    final body =
+        '''    root * "${_path(webRoot)}"
+    file_server
+    log {
+${_fileLog(localhostAccessLogPath, indent: '        ')}
+        format console
+    }
+    import "${_path(integrationsGlob)}"''';
+    final blocks = [
+      _siteBlock(
+        address: WebserverBindPolicy.caddySiteAddress('localhost', ssl: false),
+        bindAddress: bindAddress,
+        body: body,
+      ),
+      if (hasTls)
+        _siteBlock(
+          address: WebserverBindPolicy.caddySiteAddress('localhost', ssl: true),
+          bindAddress: bindAddress,
+          body: body,
+          tlsLine: tlsLine,
+        ),
+    ].join('\n');
 
     return '''{
     auto_https off
@@ -42,17 +75,7 @@ ${_fileLog(runtimeErrorLogPath, indent: '        ')}
     }
 }
 
-$addresses {
-    bind $bindAddress$tls
-    root * "${_path(webRoot)}"
-    file_server
-    log {
-${_fileLog(localhostAccessLogPath, indent: '        ')}
-        format console
-    }
-    import "${_path(integrationsGlob)}"
-}
-
+$blocks
 import "${_path(vhostsGlob)}"
 ''';
   }
@@ -82,14 +105,6 @@ import "${_path(vhostsGlob)}"
       throw ArgumentError('SSL sites require a certificate and key');
     }
 
-    final addresses = [
-      WebserverBindPolicy.caddySiteAddress(domain, ssl: false),
-      if (useSsl) WebserverBindPolicy.caddySiteAddress(domain, ssl: true),
-    ].join(', ');
-    final tls = useSsl
-        ? '\n    tls "${_path(certPath!)}" "${_path(keyPath!)}"'
-        : '';
-
     final handlers = switch (siteType) {
       'proxy' => '    reverse_proxy $proxyTarget',
       'php' =>
@@ -100,16 +115,30 @@ import "${_path(vhostsGlob)}"
         '''    root * "${_path(rootDir)}"
     file_server''',
     };
-
-    return '''$addresses {
-    bind $bindAddress$tls
-$handlers
+    final body =
+        '''$handlers
     log {
 ${_fileLog(accessLogPath, indent: '        ')}
         format console
-    }
-}
-''';
+    }''';
+    final tlsLine = useSsl
+        ? '\n    tls "${_path(certPath!)}" "${_path(keyPath!)}"'
+        : null;
+
+    return [
+      _siteBlock(
+        address: WebserverBindPolicy.caddySiteAddress(domain, ssl: false),
+        bindAddress: bindAddress,
+        body: body,
+      ),
+      if (useSsl)
+        _siteBlock(
+          address: WebserverBindPolicy.caddySiteAddress(domain, ssl: true),
+          bindAddress: bindAddress,
+          body: body,
+          tlsLine: tlsLine,
+        ),
+    ].join('\n');
   }
 
   static String phpMyAdminIntegration({

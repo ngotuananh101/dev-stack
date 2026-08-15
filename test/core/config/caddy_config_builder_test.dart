@@ -37,7 +37,11 @@ void main() {
         keyPath: r'C:\Ponta\certs\localhost.key',
       );
 
-      expect(config, contains('http://localhost, https://localhost {'));
+      // Caddy rejects an explicit http:// address mixed with a tls
+      // directive, so TLS mode must emit separate HTTP and HTTPS blocks.
+      expect(config, contains('http://localhost {'));
+      expect(config, contains('https://localhost {'));
+      expect(config, isNot(contains('http://localhost, https://localhost')));
       expect(config, contains('bind 0.0.0.0'));
       expect(
         config,
@@ -46,6 +50,7 @@ void main() {
           '"C:/Ponta/certs/localhost.key"',
         ),
       );
+      expect('tls '.allMatches(config).length, 1);
     });
   });
 
@@ -110,9 +115,13 @@ void main() {
         accessLogPath: r'C:\Ponta\logs\secure.test\caddy_access.log',
       );
 
-      expect(config, startsWith('http://secure.test, https://secure.test {'));
+      // Separate blocks: Caddy refuses http:// + https:// addresses
+      // sharing one block with a tls directive.
+      expect(config, startsWith('http://secure.test {'));
+      expect(config, contains('https://secure.test {'));
       expect(config, contains('bind 0.0.0.0'));
       expect(config, contains('tls "C:/Ponta/certs/secure.test.crt"'));
+      expect('tls '.allMatches(config).length, 1);
     });
 
     test('rejects incomplete type-specific arguments', () {
