@@ -203,6 +203,39 @@ class AppServiceManager {
         listeningSockets.contains(wildcardV6);
   }
 
+  @visibleForTesting
+  static bool runsDetachedExecutable(String fileName) => const {
+    'nginx.exe',
+    'httpd.exe',
+    'apache.exe',
+    'caddy.exe',
+  }.contains(fileName.toLowerCase());
+
+  @visibleForTesting
+  static List<String> argumentsForExecutable(
+    String fileName,
+    String workingDir,
+  ) {
+    if (fileName.toLowerCase() == 'caddy.exe') {
+      return [
+        'run',
+        '--config',
+        p.join(workingDir, 'Caddyfile'),
+        '--adapter',
+        'caddyfile',
+      ];
+    }
+    return <String>[];
+  }
+
+  @visibleForTesting
+  static List<({String host, int port})> requiredSocketsForExecutable(
+    String fileName,
+  ) {
+    if (fileName.toLowerCase() != 'caddy.exe') return const [];
+    return [(host: '*', port: 80), (host: '*', port: 443)];
+  }
+
   void syncAppState(AppModel newApp) {
     if (_activeApps.containsKey(newApp.appId)) {
       final oldApp = _activeApps[newApp.appId]!;
@@ -227,14 +260,14 @@ class AppServiceManager {
 
     try {
       final workingDir = exeFile.parent.path;
-
-      // Specific arguments for certain apps
-      List<String> args = [];
       String execPath = app.execFilePath!;
       final fileName = exeFile.path
           .split(Platform.pathSeparator)
           .last
           .toLowerCase();
+
+      // Specific arguments for certain apps
+      List<String> args = argumentsForExecutable(fileName, workingDir);
 
       // Sockets this service will try to bind, for a pre-flight conflict check.
       final requiredSockets = <({String host, int port})>[];
@@ -355,10 +388,9 @@ class AppServiceManager {
         args = ['-D', dataDir];
       }
 
-      final runsDetached =
-          fileName == 'nginx.exe' ||
-          fileName == 'httpd.exe' ||
-          fileName == 'apache.exe';
+      requiredSockets.addAll(requiredSocketsForExecutable(fileName));
+
+      final runsDetached = runsDetachedExecutable(fileName);
 
       // Pre-flight: fail fast with a clear message if a required port is taken,
       // instead of spawning a process that dies silently on bind.
