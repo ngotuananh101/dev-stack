@@ -59,7 +59,8 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   bool get _isWebserver =>
       widget.app.groupName == 'webserver' ||
       widget.app.appId.toLowerCase().contains('nginx') ||
-      widget.app.appId.toLowerCase().contains('apache');
+      widget.app.appId.toLowerCase().contains('apache') ||
+      widget.app.appId.toLowerCase().contains('caddy');
 
   bool get _isRedis =>
       widget.app.groupName == 'redis' ||
