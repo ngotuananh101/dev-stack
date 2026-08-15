@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -685,36 +686,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         const SizedBox(width: 24),
         SizedBox(
           width: 200,
-          child: TextFormField(
-            key: ValueKey('$title-$value'),
-            initialValue: value,
-            onChanged: onChanged,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: AppTextSize.xs,
-              fontFamily: 'JetBrainsMono',
-            ),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: AppColors.surfaceLight,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.accent),
-              ),
-            ),
-          ),
+          child: _DebouncedTextField(value: value, onChanged: onChanged),
         ),
       ],
     );
@@ -1106,4 +1078,95 @@ class _StatusAction {
     required this.color,
     required this.onTap,
   });
+}
+
+/// Text field that keeps its own controller and focus while typing, and only
+/// pushes changes to [onChanged] after the user stops typing for a short
+/// delay. Saving on every keystroke used to rebuild the field (its key
+/// changed with the value) and drop focus mid-input.
+class _DebouncedTextField extends StatefulWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  const _DebouncedTextField({required this.value, required this.onChanged});
+
+  @override
+  State<_DebouncedTextField> createState() => _DebouncedTextFieldState();
+}
+
+class _DebouncedTextFieldState extends State<_DebouncedTextField> {
+  static const _debounceDuration = Duration(milliseconds: 500);
+
+  late final TextEditingController _controller;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(_DebouncedTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync external changes (e.g. settings reloaded) without clobbering the
+    // text while the user is typing: skip when a save is still pending or
+    // an IME composition (Vietnamese input) is in progress.
+    final pendingSave = _debounce?.isActive ?? false;
+    if (pendingSave || _controller.value.composing.isValid) return;
+    if (widget.value != _controller.text) {
+      _controller.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    // Flush a pending save so the last keystrokes are not lost when the
+    // user navigates away right after typing.
+    if (_debounce?.isActive ?? false) {
+      _debounce?.cancel();
+      widget.onChanged(_controller.text);
+    }
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleChange(String text) {
+    _debounce?.cancel();
+    _debounce = Timer(_debounceDuration, () => widget.onChanged(text));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: _controller,
+      onChanged: _handleChange,
+      style: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: AppTextSize.xs,
+        fontFamily: 'JetBrainsMono',
+      ),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AppColors.surfaceLight,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.accent),
+        ),
+      ),
+    );
+  }
 }
