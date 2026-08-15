@@ -29,22 +29,25 @@ void main() {
       );
     });
 
-    test('rejects newlines and semicolons that break nginx directives', () {
-      expect(
-        () => SitesNotifier.validateProxyTarget(
-          'http://evil.com/;\n} location /secret {',
-        ),
-        throwsA(isA<ArgumentError>()),
-      );
-      expect(
-        () => SitesNotifier.validateProxyTarget('http://evil.com/;bad'),
-        throwsA(isA<ArgumentError>()),
-      );
-      expect(
-        () => SitesNotifier.validateProxyTarget('http://evil.com\nbad'),
-        throwsA(isA<ArgumentError>()),
-      );
-    });
+    test(
+      'rejects characters that break nginx, Apache, or Caddy directives',
+      () {
+        expect(
+          () => SitesNotifier.validateProxyTarget(
+            'http://evil.com/;\n} location /secret {',
+          ),
+          throwsA(isA<ArgumentError>()),
+        );
+        expect(
+          () => SitesNotifier.validateProxyTarget('http://evil.com/;bad'),
+          throwsA(isA<ArgumentError>()),
+        );
+        expect(
+          () => SitesNotifier.validateProxyTarget('http://evil.com\nbad'),
+          throwsA(isA<ArgumentError>()),
+        );
+      },
+    );
 
     test('rejects empty or schemeless values', () {
       expect(

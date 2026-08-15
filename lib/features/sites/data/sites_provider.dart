@@ -11,6 +11,7 @@ import '../../apps/data/apps_provider.dart';
 import '../../apps/data/app_installer_service.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/config/caddy_config_builder.dart';
 import '../../../core/config/webserver_bind_policy.dart';
 import '../../settings/data/settings_provider.dart';
 import '../../hosts/data/hosts_repository.dart';
@@ -89,6 +90,22 @@ class SitesNotifier extends _$SitesNotifier {
     return domain;
   }
 
+  @visibleForTesting
+  static const Set<String> editableWebserverTypes = {
+    'nginx',
+    'apache',
+    'caddy',
+  };
+
+  @visibleForTesting
+  static String vhostConfigPath(String type, String domain) {
+    validateDomain(domain);
+    if (!editableWebserverTypes.contains(type)) {
+      throw ArgumentError('Unsupported webserver config type: $type');
+    }
+    return p.join(AppConfig.vhostsDir, type, '$domain.conf');
+  }
+
   /// Validates domain name to prevent config injection
   bool _isValidDomain(String domain) {
     try {
@@ -106,18 +123,18 @@ class SitesNotifier extends _$SitesNotifier {
   }
 
   /// Validates a proxy target before it is interpolated into nginx
-  /// ``proxy_pass`` / Apache ``ProxyPass``. The value must be a syntactically
-  /// valid http(s) URL and must not contain any character that could terminate
-  /// or branch a webserver directive (newline, semicolon, braces, control
-  /// chars). This is the data-layer guard; the UI validator is a convenience
-  /// only — a stored value from before validation, or any other caller, is
-  /// re-checked here and again at config-generation time.
+  /// ``proxy_pass`` / Apache ``ProxyPass`` / Caddy ``reverse_proxy``. The value
+  /// must be a syntactically valid http(s) URL and must not contain any
+  /// character that could terminate or branch a webserver directive (newline,
+  /// semicolon, braces, control chars). This is the data-layer guard; the UI
+  /// validator is a convenience only — a stored value from before validation,
+  /// or any other caller, is re-checked here and again at config-generation time.
   static String validateProxyTarget(String value) {
     if (value.isEmpty) {
       throw ArgumentError('Proxy target must not be empty');
     }
     // No whitespace/control or directive-breaking characters may appear.
-    // Allowed: visible ASCII (0x21..0x7E) minus the nginx/Apache
+    // Allowed: visible ASCII (0x21..0x7E) minus the nginx/Apache/Caddy
     // metacharacters ';', '{', '}'.
     final ok =
         RegExp(r'^[\x21-\x7E]+$').hasMatch(value) &&
@@ -142,11 +159,12 @@ class SitesNotifier extends _$SitesNotifier {
   }
 
   /// Validates a site root directory before it is interpolated into nginx
-  /// ``root "..."`` / Apache ``DocumentRoot "..."``. A double quote, newline,
-  /// or other control character could terminate the quoted directive and
-  /// inject a new webserver directive, so they are rejected here at the
-  /// data layer (the UI's existsSync check is a convenience only). Windows
-  /// MAX_PATH is 260; we cap at 248 to leave room for appended segments.
+  /// ``root "..."`` / Apache ``DocumentRoot "..."`` / Caddy ``root * "..."``.
+  /// A double quote, newline, or other control character could terminate the
+  /// quoted directive and inject a new webserver directive, so they are
+  /// rejected here at the data layer (the UI's existsSync check is a
+  /// convenience only). Windows MAX_PATH is 260; we cap at 248 to leave room
+  /// for appended segments.
   static String validateRootDir(String value) {
     if (value.isEmpty) {
       throw ArgumentError('Root directory must not be empty');
@@ -561,28 +579,19 @@ class SitesNotifier extends _$SitesNotifier {
   // --- File Management for Edit Modal ---
 
   Future<Map<String, String>> getConfigs(SiteModel site) async {
-    final nginxFile = File(
-      p.join(AppConfig.vhostsDir, 'nginx', '${site.domain}.conf'),
-    );
-    final apacheFile = File(
-      p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'),
-    );
-
-    return {
-      'nginx': await nginxFile.exists() ? await nginxFile.readAsString() : '',
-      'apache': await apacheFile.exists()
-          ? await apacheFile.readAsString()
-          : '',
-    };
+    final result = <String, String>{};
+    for (final type in editableWebserverTypes) {
+      final file = File(vhostConfigPath(type, site.domain));
+      result[type] = await file.exists() ? await file.readAsString() : '';
+    }
+    return result;
   }
 
   Future<void> saveConfig(SiteModel site, String type, String content) async {
     // Re-validate the stored domain before it reaches the filesystem: a stale
     // or externally-mutated record must not escape the vhosts dir via a
     // traversal-shaped domain. The content is user-authored config by design.
-    validateDomain(site.domain);
-    final dir = type == 'nginx' ? 'nginx' : 'apache';
-    final file = File(p.join(AppConfig.vhostsDir, dir, '${site.domain}.conf'));
+    final file = File(vhostConfigPath(type, site.domain));
     await file.writeAsString(content);
     await restartWebservers();
   }
@@ -617,6 +626,8 @@ class SitesNotifier extends _$SitesNotifier {
     final nError = File(p.join(logsDir, 'nginx_error.log'));
     final aAccess = File(p.join(logsDir, 'apache_access.log'));
     final aError = File(p.join(logsDir, 'apache_error.log'));
+    final cAccess = File(p.join(logsDir, 'caddy_access.log'));
+    final cError = File(p.join(AppConfig.logsDir, 'caddy_error.log'));
 
     Future<String> readLastLines(File file, [int lines = 100]) async {
       if (!await file.exists()) return 'Log file not found';
@@ -630,6 +641,8 @@ class SitesNotifier extends _$SitesNotifier {
       'nginx_error': await readLastLines(nError),
       'apache_access': await readLastLines(aAccess),
       'apache_error': await readLastLines(aError),
+      'caddy_access': await readLastLines(cAccess),
+      'caddy_error': await readLastLines(cError),
     };
   }
 
@@ -700,6 +713,9 @@ class SitesNotifier extends _$SitesNotifier {
 
     final apacheDir = Directory(p.join(AppConfig.vhostsDir, 'apache'));
     if (!apacheDir.existsSync()) await apacheDir.create(recursive: true);
+
+    final caddyDir = Directory(p.join(AppConfig.vhostsDir, 'caddy'));
+    if (!caddyDir.existsSync()) await caddyDir.create(recursive: true);
 
     // Ensure logs directory exists
     final logsDir = Directory(p.join(AppConfig.baseDir, 'logs', site.domain));
@@ -853,18 +869,40 @@ class SitesNotifier extends _$SitesNotifier {
       apacheConfig += '</IfModule>\n';
     }
     await apacheVhostFile.writeAsString(apacheConfig);
+
+    // --- 3. Caddy Vhost ---
+    final caddyVhostFile = File(vhostConfigPath('caddy', site.domain));
+    final certPath = site.useSsl
+        ? sslNotifier.getSiteCertPath(site.domain)
+        : null;
+    final keyPath = site.useSsl
+        ? sslNotifier.getSiteKeyPath(site.domain)
+        : null;
+    final safeTarget = site.siteType == 'proxy'
+        ? validateProxyTarget(site.proxyTarget ?? '')
+        : null;
+    final caddyConfig = CaddyConfigBuilder.siteConfig(
+      domain: validateDomain(site.domain),
+      bindAddress: WebserverBindPolicy.caddyBind(
+        allowLanAccess: allowLanAccess,
+      ),
+      rootDir: rootDirUnix,
+      siteType: site.siteType,
+      phpPort: site.phpPort,
+      proxyTarget: safeTarget,
+      useSsl: site.useSsl,
+      certPath: certPath,
+      keyPath: keyPath,
+      accessLogPath: p.join(logsDir.path, 'caddy_access.log'),
+    );
+    await caddyVhostFile.writeAsString(caddyConfig);
   }
 
   Future<void> _removeVhostFiles(SiteModel site) async {
-    final nginxVhostFile = File(
-      p.join(AppConfig.vhostsDir, 'nginx', '${site.domain}.conf'),
-    );
-    if (nginxVhostFile.existsSync()) await nginxVhostFile.delete();
-
-    final apacheVhostFile = File(
-      p.join(AppConfig.vhostsDir, 'apache', '${site.domain}.conf'),
-    );
-    if (apacheVhostFile.existsSync()) await apacheVhostFile.delete();
+    for (final type in editableWebserverTypes) {
+      final file = File(vhostConfigPath(type, site.domain));
+      if (file.existsSync()) await file.delete();
+    }
 
     // Remove SSL directory
     final sslNotifier = ref.read(sslServiceProvider.notifier);
@@ -925,7 +963,9 @@ class SitesNotifier extends _$SitesNotifier {
           .where(
             (a) =>
                 a.isInstalled &&
-                (a.appId.contains('nginx') || a.appId.contains('apache')),
+                (a.appId.contains('nginx') ||
+                    a.appId.contains('apache') ||
+                    a.appId.contains('caddy')),
           )
           .toList();
 
