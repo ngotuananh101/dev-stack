@@ -11,16 +11,12 @@ import 'package:re_highlight/languages/yaml.dart';
 void main() {
   group('languageForConfigPath', () {
     test('maps nginx config to the nginx mode', () {
-      final mode = languageForConfigPath(
-        r'C:\apps\nginx\conf\nginx.conf',
-      );
+      final mode = languageForConfigPath(r'C:\apps\nginx\conf\nginx.conf');
       expect(mode, same(langNginx));
     });
 
     test('maps apache config to the apache mode', () {
-      final mode = languageForConfigPath(
-        r'C:\apps\Apache24\conf\httpd.conf',
-      );
+      final mode = languageForConfigPath(r'C:\apps\Apache24\conf\httpd.conf');
       expect(mode, same(langApache));
     });
 
@@ -29,7 +25,10 @@ void main() {
     });
 
     test('maps mongod.cfg and redis conf to the ini mode', () {
-      expect(languageForConfigPath(r'C:\apps\mongodb\mongod.cfg'), same(langIni));
+      expect(
+        languageForConfigPath(r'C:\apps\mongodb\mongod.cfg'),
+        same(langIni),
+      );
       expect(
         languageForConfigPath(r'C:\apps\redis\redis.windows.conf'),
         same(langIni),
@@ -37,7 +36,10 @@ void main() {
     });
 
     test('maps config.toml to the ini mode (no dedicated toml mode)', () {
-      expect(languageForConfigPath(r'C:\apps\meili\config.toml'), same(langIni));
+      expect(
+        languageForConfigPath(r'C:\apps\meili\config.toml'),
+        same(langIni),
+      );
     });
 
     test('maps json configs to the json mode', () {
@@ -62,6 +64,13 @@ void main() {
       );
     });
 
+    test('maps Caddyfile to plaintext because no Caddy grammar is bundled', () {
+      expect(
+        languageForConfigPath(r'C:\apps\caddy\Caddyfile'),
+        same(langPlaintext),
+      );
+    });
+
     test('maps the Windows hosts file to the plaintext mode', () {
       expect(
         languageForConfigPath(r'C:\Windows\System32\drivers\etc\hosts'),
@@ -70,7 +79,10 @@ void main() {
     });
 
     test('falls back to plaintext for unknown/extensionless paths', () {
-      expect(languageForConfigPath(r'C:\some\random\file'), same(langPlaintext));
+      expect(
+        languageForConfigPath(r'C:\some\random\file'),
+        same(langPlaintext),
+      );
       expect(languageForConfigPath('noext'), same(langPlaintext));
       expect(languageForConfigPath(''), same(langPlaintext));
     });

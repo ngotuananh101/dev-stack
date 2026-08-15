@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../domain/site_model.dart';
 import '../../../apps/data/apps_provider.dart';
 import '../../data/sites_provider.dart';
+import '../site_editor_options.dart';
 
 class EditSiteModal extends ConsumerStatefulWidget {
   final SiteModel site;
@@ -559,9 +560,13 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
         children: [
           Row(
             children: [
-              _buildTypeButton('nginx', 'Nginx'),
-              const SizedBox(width: 8),
-              _buildTypeButton('apache', 'Apache'),
+              for (var i = 0; i < siteConfigEditorOptions.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                _buildTypeButton(
+                  siteConfigEditorOptions[i].id,
+                  siteConfigEditorOptions[i].label,
+                ),
+              ],
               const Spacer(),
               ElevatedButton.icon(
                 onPressed: _saveConfig,
@@ -858,32 +863,28 @@ class _LogTabState extends ConsumerState<_LogTab> {
   }
 
   Widget _buildLogSelect() {
-    final items = [
-      {'id': 'nginx_access', 'label': 'Nginx Access'},
-      {'id': 'nginx_error', 'label': 'Nginx Error'},
-      {'id': 'apache_access', 'label': 'Apache Access'},
-      {'id': 'apache_error', 'label': 'Apache Error'},
-    ];
-
-    return Row(
-      children: items.map((item) {
-        final isSelected = _selectedLog == item['id'];
-        return Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: ChoiceChip(
-            label: Text(item['label']!),
-            selected: isSelected,
-            onSelected: (val) {
-              if (val) setState(() => _selectedLog = item['id']!);
-            },
-            selectedColor: AppColors.accent.withValues(alpha: 0.2),
-            labelStyle: TextStyle(
-              color: isSelected ? AppColors.accent : AppColors.textSecondary,
-              fontSize: 12,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: siteLogOptions.map((item) {
+          final isSelected = _selectedLog == item.id;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(item.label),
+              selected: isSelected,
+              onSelected: (value) {
+                if (value) setState(() => _selectedLog = item.id);
+              },
+              selectedColor: AppColors.accent.withValues(alpha: 0.2),
+              labelStyle: TextStyle(
+                color: isSelected ? AppColors.accent : AppColors.textSecondary,
+                fontSize: 12,
+              ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 }

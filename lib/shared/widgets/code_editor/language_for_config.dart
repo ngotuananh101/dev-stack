@@ -23,6 +23,7 @@ Mode languageForConfigPath(String path) {
   // File-name based mapping (extension alone is ambiguous).
   if (name == 'nginx.conf') return langNginx;
   if (name == 'httpd.conf' || name == 'apache.conf') return langApache;
+  if (name == 'caddyfile') return langPlaintext;
   if (name == 'hosts') return langPlaintext;
   if (name.endsWith('.php') || name.endsWith('.inc.php')) return langPhp;
 

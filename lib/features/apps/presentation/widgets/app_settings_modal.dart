@@ -13,6 +13,7 @@ import '../../../../core/services/log_service.dart';
 import '../../domain/app_model.dart';
 import '../../data/php_settings_provider.dart';
 import '../../data/apps_provider.dart';
+import '../../data/webserver_settings_provider.dart';
 
 class AppSettingsModal extends ConsumerStatefulWidget {
   final AppModel app;
@@ -193,16 +194,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       return p.join(location, 'my.ini');
     }
 
-    if (_isWebserver) {
-      final appId = app.appId.toLowerCase();
-      if (appId.contains('nginx')) {
-        return p.join(location, 'conf', 'nginx.conf');
-      } else if (appId.contains('apache')) {
-        final nestedPath = p.join(location, 'Apache24', 'conf', 'httpd.conf');
-        if (File(nestedPath).existsSync()) return nestedPath;
-        return p.join(location, 'conf', 'httpd.conf');
-      }
-    }
+    if (_isWebserver) return webserverConfigFileFor(app)?.path;
 
     if (_isRedis) {
       final winPath = p.join(location, 'redis.windows.conf');
@@ -236,7 +228,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   Future<bool> _saveConfigFile(String content) async {
     final path = _getConfigFilePath();
     if (path == null) {
-      AppLogger.warning('Cannot save config: path not resolved for ${widget.app.appId}');
+      AppLogger.warning(
+        'Cannot save config: path not resolved for ${widget.app.appId}',
+      );
       return false;
     }
     try {
@@ -467,7 +461,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (_isPostgresql) return 'postgresql.conf';
     if (_isDb) return 'my.ini';
     if (_isWebserver) {
-      return widget.app.appId.contains('nginx') ? 'nginx.conf' : 'httpd.conf';
+      final id = widget.app.appId.toLowerCase();
+      if (id.contains('caddy')) return 'Caddyfile';
+      if (id.contains('nginx')) return 'nginx.conf';
+      return 'httpd.conf';
     }
     if (_isRedis) return 'redis.conf';
     if (_isMongodb) return 'mongod.cfg';

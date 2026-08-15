@@ -39,6 +39,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
       return Icons.code;
     } else if (widget.app.appId.contains('mysql')) {
       return Icons.storage;
+    } else if (widget.app.appId.contains('caddy')) {
+      return Icons.dns;
     } else if (widget.app.appId.contains('nginx')) {
       return Icons.cloud;
     }
@@ -55,6 +57,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     if (id.contains('mariadb')) return 'mariadb';
     if (id.contains('mongodb')) return 'mongodb';
     if (id.contains('postgresql')) return 'postgre';
+    if (id.contains('caddy')) return 'caddy';
     if (id.contains('nginx')) return 'nginx';
     if (id.contains('apache')) return 'apache';
     if (id.contains('redis')) return 'redis';
@@ -76,6 +79,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
       return const Color(0xFF4479A1);
     } else if (widget.app.appId.contains('postgresql')) {
       return const Color(0xFF336791);
+    } else if (widget.app.appId.contains('caddy')) {
+      return const Color(0xFF1F8C5B);
     } else if (widget.app.appId.contains('nginx')) {
       return const Color(0xFF009639);
     } else if (widget.app.appId.contains('meilisearch')) {
@@ -91,8 +96,10 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
 
     // Find current app state in notifier list
     final appState = appsAsync.when(
-      data: (list) => list.firstWhere((a) => a.appId == widget.app.appId,
-          orElse: () => widget.app),
+      data: (list) => list.firstWhere(
+        (a) => a.appId == widget.app.appId,
+        orElse: () => widget.app,
+      ),
       loading: () => widget.app,
       error: (_, _) => widget.app,
     );
@@ -106,8 +113,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           );
 
     // Show progress if installing OR if just finished installing
-    final isInProgress = appState.status == 'installing' || 
-                        (appState.status == 'installed' && appState.installLogs.isNotEmpty);
+    final isInProgress =
+        appState.status == 'installing' ||
+        (appState.status == 'installed' && appState.installLogs.isNotEmpty);
 
     return Container(
       width: 550, // Slightly wider for logs
@@ -134,11 +142,11 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             _buildProgressSection(appState)
           else
             versionsAsync.when(
-            data: (versionInfo) =>
-                _buildVersionSelection(versionInfo, conflictingApp),
-            loading: () => _buildLoadingState(),
-            error: (error, stack) => _buildErrorState(error.toString()),
-          ),
+              data: (versionInfo) =>
+                  _buildVersionSelection(versionInfo, conflictingApp),
+              loading: () => _buildLoadingState(),
+              error: (error, stack) => _buildErrorState(error.toString()),
+            ),
           const Divider(color: AppColors.border, height: 1),
           // Footer
           _buildFooter(isInProgress, appState, conflictingApp),
@@ -157,7 +165,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
   Widget _buildProgressSection(AppModel app) {
     final isDone = app.status == 'installed';
     final progress = isDone ? 1.0 : (app.installProgress ?? 0.0);
-    final status = isDone ? 'Installation Completed' : (app.installStatus ?? 'Installing...');
+    final status = isDone
+        ? 'Installation Completed'
+        : (app.installStatus ?? 'Installing...');
 
     String progressText = status;
     if (!isDone && app.downloadedBytes != null && app.totalBytes != null) {
@@ -279,11 +289,11 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                 Text(
                   isInProgress
                       ? (widget.isUpdate
-                          ? 'Updating ${widget.app.name}...'
-                          : 'Installing ${widget.app.name}...')
+                            ? 'Updating ${widget.app.name}...'
+                            : 'Installing ${widget.app.name}...')
                       : (widget.isUpdate
-                          ? 'Updating to patch version'
-                          : 'Select version to install'),
+                            ? 'Updating to patch version'
+                            : 'Select version to install'),
                   style: TextStyle(
                     fontSize: AppTextSize.xxs,
                     color: AppColors.textMuted,
@@ -298,7 +308,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
   }
 
   Widget _buildVersionSelection(
-      AppVersionInfo versionInfo, AppModel? conflictingApp) {
+    AppVersionInfo versionInfo,
+    AppModel? conflictingApp,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -338,12 +350,17 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
               decoration: BoxDecoration(
                 color: AppColors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.error.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      color: AppColors.error, size: 20),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -492,8 +509,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: AppTextSize.sm,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                         color: isSelected
                             ? AppColors.textPrimary
                             : AppColors.textSecondary,
@@ -535,7 +553,10 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
   }
 
   Widget _buildFooter(
-      bool isInProgress, AppModel appState, AppModel? conflictingApp) {
+    bool isInProgress,
+    AppModel appState,
+    AppModel? conflictingApp,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: Row(
@@ -545,8 +566,10 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             OutlinedButton(
               onPressed: widget.onClose,
               style: OutlinedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 side: const BorderSide(color: AppColors.border, width: 0.5),
               ),
               child: const Text(
@@ -569,8 +592,10 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
               ),
               child: Text(
                 widget.isUpdate
@@ -590,8 +615,10 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                     ? AppColors.success
                     : AppColors.textMuted,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
               ),
               child: Text(
                 appState.status == 'installed'

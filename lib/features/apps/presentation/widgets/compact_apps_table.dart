@@ -49,6 +49,7 @@ class CompactAppsTable extends StatelessWidget {
     if (appId.contains('elasticsearch')) {
       return Icons.search_rounded;
     }
+    if (appId.contains('caddy')) return Icons.dns;
     return Icons.apps;
   }
 
@@ -63,6 +64,7 @@ class CompactAppsTable extends StatelessWidget {
     if (id.contains('mariadb')) return 'mariadb';
     if (id.contains('mongodb')) return 'mongodb';
     if (id.contains('postgresql')) return 'postgre';
+    if (id.contains('caddy')) return 'caddy';
     if (id.contains('nginx')) return 'nginx';
     if (id.contains('apache')) return 'apache';
     if (id.contains('redis')) return 'redis';
@@ -78,6 +80,9 @@ class CompactAppsTable extends StatelessWidget {
   }
 
   Color _getIconColor(String appId) {
+    if (appId.contains('caddy')) {
+      return const Color(0xFF1F8C5B);
+    }
     if (appId.contains('nginx') && appId.contains('waf')) {
       return const Color(0xFF4169E1);
     }
