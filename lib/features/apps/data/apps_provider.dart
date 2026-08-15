@@ -101,7 +101,7 @@ class AppsNotifier extends _$AppsNotifier {
 
           if (!hasWebServer || !hasPhp) {
             final error = !hasWebServer
-                ? 'Please install Nginx or Apache first.'
+                ? 'Please install Nginx, Apache, or Caddy first.'
                 : 'Please install at least one PHP version first.';
             app.addLog('Error: $error');
             throw Exception(error);

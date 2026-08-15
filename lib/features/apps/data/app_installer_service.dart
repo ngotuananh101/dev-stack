@@ -11,6 +11,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/config/caddy_config_builder.dart';
 import '../../../core/config/webserver_bind_policy.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/services/path_service.dart';
@@ -45,6 +46,15 @@ class AppInstallerService {
   );
 
   AppInstallerService(this._logger, this._ref);
+
+  @visibleForTesting
+  static bool isWebserverApp(AppModel app) {
+    final id = app.appId.toLowerCase();
+    return app.groupName == 'webserver' ||
+        id.contains('nginx') ||
+        id.contains('apache') ||
+        id.contains('caddy');
+  }
 
   String _generateSecret({int length = 32}) {
     final random = Random.secure();
@@ -198,9 +208,7 @@ class AppInstallerService {
       }
 
       // 7. Post-installation: Configure Web Servers
-      if (app.groupName == 'webserver' ||
-          app.appId.contains('nginx') ||
-          app.appId.contains('apache')) {
+      if (isWebserverApp(app)) {
         onProgress?.call(0.97, 'Configuring web server...');
         await _configureWebserver(app, installPath, logInfo);
       }
@@ -696,6 +704,23 @@ class AppInstallerService {
       await apacheVhosts.create(recursive: true);
     }
 
+    final caddyVhosts = Directory(p.join(AppConfig.vhostsDir, 'caddy'));
+    final caddyIntegrations = Directory(
+      p.join(caddyVhosts.path, 'integrations'),
+    );
+    for (final dir in [caddyVhosts, caddyIntegrations]) {
+      if (!dir.existsSync()) {
+        logInfo('Creating Caddy directory: ${dir.path}');
+        await dir.create(recursive: true);
+      }
+    }
+
+    final logsDir = Directory(AppConfig.logsDir);
+    final localhostLogs = Directory(p.join(AppConfig.logsDir, 'localhost'));
+    for (final dir in [logsDir, localhostLogs]) {
+      if (!dir.existsSync()) await dir.create(recursive: true);
+    }
+
     // Add default index.html
     final indexHtml = File(p.join(wwwDir.path, 'index.html'));
     await indexHtml.writeAsString('''<!DOCTYPE html>
@@ -754,6 +779,31 @@ class AppInstallerService {
 
       await confFile.writeAsString(nginxConfig);
       logInfo('Nginx configuration generated successfully.');
+    } else if (app.appId.toLowerCase().contains('caddy')) {
+      final caddyFile = File(p.join(installPath, 'Caddyfile'));
+      final certPath = sslNotifier.getSiteCertPath('localhost');
+      final keyPath = sslNotifier.getSiteKeyPath('localhost');
+      final config = CaddyConfigBuilder.mainConfig(
+        webRoot: webRoot,
+        bindAddress: bindAddress,
+        vhostsGlob: p.join(AppConfig.vhostsDir, 'caddy', '*.conf'),
+        integrationsGlob: p.join(
+          AppConfig.vhostsDir,
+          'caddy',
+          'integrations',
+          '*.conf',
+        ),
+        localhostAccessLogPath: p.join(
+          AppConfig.logsDir,
+          'localhost',
+          'caddy_access.log',
+        ),
+        runtimeErrorLogPath: p.join(AppConfig.logsDir, 'caddy_error.log'),
+        certPath: isSslInstalled ? certPath : null,
+        keyPath: isSslInstalled ? keyPath : null,
+      );
+      await caddyFile.writeAsString(config);
+      logInfo('Caddyfile generated successfully.');
     } else if (app.appId.contains('apache')) {
       // Apache Lounge zips often contain an 'Apache24' subfolder
       String apacheRoot = installPath;
@@ -1038,11 +1088,7 @@ security:
     Function(String) logInfo,
   ) async {
     final webServers = allApps
-        .where(
-          (a) =>
-              a.isInstalled &&
-              (a.appId.contains('nginx') || a.appId.contains('apache')),
-        )
+        .where((app) => app.isInstalled && isWebserverApp(app))
         .toList();
 
     for (final ws in webServers) {
@@ -1370,9 +1416,7 @@ security:
     }
 
     final isPMA = currentApp.appId == 'phpMyAdmin';
-    final isWebServer =
-        currentApp.appId.contains('nginx') ||
-        currentApp.appId.contains('apache');
+    final isWebServer = isWebserverApp(currentApp);
 
     if (!isPMA && !isWebServer) return;
 
@@ -1399,11 +1443,7 @@ security:
       webServers = [currentApp];
     } else {
       webServers = allApps
-          .where(
-            (a) =>
-                a.isInstalled &&
-                (a.appId.contains('nginx') || a.appId.contains('apache')),
-          )
+          .where((app) => app.isInstalled && isWebserverApp(app))
           .toList();
     }
 
@@ -1441,6 +1481,8 @@ security:
       try {
         if (ws.appId.contains('nginx')) {
           await _configurePhpMyAdminInNginx(ws, phpMyAdmin, bestPhp, log);
+        } else if (ws.appId.contains('caddy')) {
+          await _configurePhpMyAdminInCaddy(ws, phpMyAdmin, bestPhp, log);
         } else if (ws.appId.contains('apache')) {
           await _configurePhpMyAdminInApache(ws, phpMyAdmin, log);
         }
@@ -1513,6 +1555,41 @@ location /phpmyadmin {
     await pmaConfFile.writeAsString(pmaConfig);
     log(
       'Created Nginx config for phpMyAdmin at ${pmaConfFile.path} (PHP Port: $phpPort)',
+    );
+  }
+
+  Future<void> _configurePhpMyAdminInCaddy(
+    AppModel caddy,
+    AppModel pma,
+    AppModel? php,
+    Function(String) log,
+  ) async {
+    if (caddy.location == null || pma.location == null) return;
+
+    final integrationsDir = Directory(
+      p.join(AppConfig.vhostsDir, 'caddy', 'integrations'),
+    );
+    if (!integrationsDir.existsSync()) {
+      await integrationsDir.create(recursive: true);
+    }
+
+    var phpPort = 9000;
+    if (php != null) {
+      phpPort =
+          int.tryParse(php.extraInfo['port']?.toString() ?? '') ??
+          AppInstallerService.phpPortFor(php.appId);
+    }
+
+    final pmaRoot = _resolvePmaWebRoot(pma.location!);
+    final config = CaddyConfigBuilder.phpMyAdminIntegration(
+      rootDir: pmaRoot,
+      phpPort: phpPort,
+    );
+    final configFile = File(p.join(integrationsDir.path, 'phpmyadmin.conf'));
+    await configFile.writeAsString(config);
+    log(
+      'Created Caddy config for phpMyAdmin at ${configFile.path} '
+      '(PHP Port: $phpPort)',
     );
   }
 
