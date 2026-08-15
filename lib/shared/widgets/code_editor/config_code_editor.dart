@@ -215,8 +215,13 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
         ? 'No results'
         : '${index < 0 ? 0 : index + 1}/$matchCount';
 
+    // Content height: 8px padding top/bottom + 32px input row, plus a
+    // 6px gap and a second 32px row in replace mode. re_editor reserves
+    // exactly this height, so keep it tight instead of a fixed 120px.
+    final height = value.replaceMode ? 86.0 : 48.0;
+
     return PreferredSize(
-      preferredSize: const Size.fromHeight(120),
+      preferredSize: Size.fromHeight(height),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -335,10 +340,20 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: readOnly ? null : controller.replaceMatch,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 32),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     child: const Text('Replace'),
                   ),
                   TextButton(
                     onPressed: readOnly ? null : controller.replaceAllMatches,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 32),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     child: const Text('Replace All'),
                   ),
                 ],
