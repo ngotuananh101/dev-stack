@@ -18,6 +18,11 @@ void main() {
         WebserverBindPolicy.apacheVirtualHost(80, allowLanAccess: false),
         '127.0.0.1:80',
       );
+      expect(WebserverBindPolicy.caddyBind(allowLanAccess: false), '127.0.0.1');
+      expect(
+        WebserverBindPolicy.caddySiteAddress('example.test', ssl: false),
+        'http://example.test',
+      );
     });
 
     test('binds to every interface only when LAN access is enabled', () {
@@ -29,6 +34,11 @@ void main() {
       expect(
         WebserverBindPolicy.apacheVirtualHost(443, allowLanAccess: true),
         '0.0.0.0:443',
+      );
+      expect(WebserverBindPolicy.caddyBind(allowLanAccess: true), '0.0.0.0');
+      expect(
+        WebserverBindPolicy.caddySiteAddress('example.test', ssl: true),
+        'https://example.test',
       );
     });
 

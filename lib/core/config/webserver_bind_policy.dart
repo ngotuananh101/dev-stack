@@ -9,6 +9,12 @@ abstract final class WebserverBindPolicy {
     bool ssl = false,
   }) => '${address(allowLanAccess: allowLanAccess)}:$port${ssl ? ' ssl' : ''}';
 
+  static String caddyBind({required bool allowLanAccess}) =>
+      address(allowLanAccess: allowLanAccess);
+
+  static String caddySiteAddress(String domain, {required bool ssl}) =>
+      '${ssl ? 'https' : 'http'}://$domain';
+
   static String apacheVirtualHost(int port, {required bool allowLanAccess}) =>
       '${address(allowLanAccess: allowLanAccess)}:$port';
 
