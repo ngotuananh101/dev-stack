@@ -32,17 +32,15 @@ void main() {
 
     test('finds either installed server conflict for Caddy', () {
       expect(
-        AppConflictPolicy.firstInstalledConflict(
-          app('caddy'),
-          [app('apache', installed: true)],
-        )?.appId,
+        AppConflictPolicy.firstInstalledConflict(app('caddy'), [
+          app('apache', installed: true),
+        ])?.appId,
         'apache',
       );
       expect(
-        AppConflictPolicy.firstInstalledConflict(
-          app('caddy'),
-          [app('nginx', installed: true)],
-        )?.appId,
+        AppConflictPolicy.firstInstalledConflict(app('caddy'), [
+          app('nginx', installed: true),
+        ])?.appId,
         'nginx',
       );
     });
