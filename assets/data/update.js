@@ -338,6 +338,16 @@ let baseDataObject = {
       cli_file: "httpd.exe",
     },
     {
+      id: "caddy",
+      name: "Caddy",
+      description: "Fast, extensible web server with a simple configuration",
+      category: "webserver",
+      group_name: "webserver",
+      exec_file: "caddy.exe",
+      cli_file: "caddy.exe",
+      repo: "caddyserver/caddy",
+    },
+    {
       id: "php85",
       name: "PHP 8.5",
       description: "Hypertext Preprocessor v8.5",
