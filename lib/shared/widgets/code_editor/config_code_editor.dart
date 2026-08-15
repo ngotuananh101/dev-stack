@@ -189,162 +189,163 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   /// re_editor provides all the logic via [CodeFindController]; this only
   /// builds the UI: find + replace inputs, match counter, prev/next,
   /// replace/replace-all, and case/regex toggles.
+  ///
+  /// The preferred height must collapse to zero while the panel is closed:
+  /// re_editor reserves top padding equal to `preferredSize.height` whether
+  /// or not the panel is open, so a fixed height would leave a blank strip
+  /// above the code at all times. re_editor rebuilds whenever the controller
+  /// notifies, so reading [CodeFindController.value] here stays in sync.
   PreferredSizeWidget _buildFindPanel(
     BuildContext context,
     CodeFindController controller,
     bool readOnly,
   ) {
+    final value = controller.value;
+    if (value == null) {
+      return const PreferredSize(
+        preferredSize: Size.zero,
+        child: SizedBox.shrink(),
+      );
+    }
+
+    final result = value.result;
+    final matchCount = result?.matches.length ?? 0;
+    final index = result?.index ?? -1;
+    final counter = matchCount == 0
+        ? 'No results'
+        : '${index < 0 ? 0 : index + 1}/$matchCount';
+
     return PreferredSize(
       preferredSize: const Size.fromHeight(120),
-      child: ValueListenableBuilder<CodeFindValue?>(
-        valueListenable: controller,
-        builder: (context, value, _) {
-          // re_editor keeps the widget mounted but hides it visually when
-          // the value is null (panel closed).
-          if (value == null) return const SizedBox.shrink();
-
-          final result = value.result;
-          final matchCount = result?.matches.length ?? 0;
-          final index = result?.index ?? -1;
-          final counter = matchCount == 0
-              ? 'No results'
-              : '${index < 0 ? 0 : index + 1}/$matchCount';
-
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF252830),
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF252830),
+          border: Border(bottom: BorderSide(color: AppColors.border)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Find row
+            Row(
               children: [
-                // Find row
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 32,
-                        child: TextField(
-                          controller: controller.findInputController,
-                          focusNode: controller.findInputFocusNode,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                            hintText: 'Find',
-                            hintStyle: const TextStyle(
-                              color: AppColors.textMuted,
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFF1E2127),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(6),
-                              borderSide: BorderSide(color: AppColors.border),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    _toggleButton(
-                      label: 'Aa',
-                      active: value.option.caseSensitive,
-                      tooltip: 'Match case (Ctrl+Alt+C)',
-                      onTap: controller.toggleCaseSensitive,
-                    ),
-                    const SizedBox(width: 4),
-                    _toggleButton(
-                      label: '.*',
-                      active: value.option.regex,
-                      tooltip: 'Regex (Ctrl+Alt+R)',
-                      onTap: controller.toggleRegex,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      counter,
+                Expanded(
+                  child: SizedBox(
+                    height: 32,
+                    child: TextField(
+                      controller: controller.findInputController,
+                      focusNode: controller.findInputFocusNode,
                       style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    _iconButton(
-                      icon: Icons.keyboard_arrow_up,
-                      tooltip: 'Previous (Shift+Enter)',
-                      onTap: controller.previousMatch,
-                    ),
-                    _iconButton(
-                      icon: Icons.keyboard_arrow_down,
-                      tooltip: 'Next (Enter)',
-                      onTap: controller.nextMatch,
-                    ),
-                    _iconButton(
-                      icon: Icons.close,
-                      tooltip: 'Close (Esc)',
-                      onTap: controller.close,
-                    ),
-                  ],
-                ),
-                // Replace row (only in replace mode)
-                if (value.replaceMode) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 32,
-                          child: TextField(
-                            controller: controller.replaceInputController,
-                            focusNode: controller.replaceInputFocusNode,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                            ),
-                            decoration: InputDecoration(
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 6,
-                              ),
-                              hintText: 'Replace',
-                              hintStyle: const TextStyle(
-                                color: AppColors.textMuted,
-                              ),
-                              filled: true,
-                              fillColor: const Color(0xFF1E2127),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(6),
-                                borderSide: BorderSide(color: AppColors.border),
-                              ),
-                            ),
-                          ),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        hintText: 'Find',
+                        hintStyle: const TextStyle(color: AppColors.textMuted),
+                        filled: true,
+                        fillColor: const Color(0xFF1E2127),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: BorderSide(color: AppColors.border),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      TextButton(
-                        onPressed: readOnly ? null : controller.replaceMatch,
-                        child: const Text('Replace'),
-                      ),
-                      TextButton(
-                        onPressed: readOnly
-                            ? null
-                            : controller.replaceAllMatches,
-                        child: const Text('Replace All'),
-                      ),
-                    ],
+                    ),
                   ),
-                ],
+                ),
+                const SizedBox(width: 8),
+                _toggleButton(
+                  label: 'Aa',
+                  active: value.option.caseSensitive,
+                  tooltip: 'Match case (Ctrl+Alt+C)',
+                  onTap: controller.toggleCaseSensitive,
+                ),
+                const SizedBox(width: 4),
+                _toggleButton(
+                  label: '.*',
+                  active: value.option.regex,
+                  tooltip: 'Regex (Ctrl+Alt+R)',
+                  onTap: controller.toggleRegex,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  counter,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _iconButton(
+                  icon: Icons.keyboard_arrow_up,
+                  tooltip: 'Previous (Shift+Enter)',
+                  onTap: controller.previousMatch,
+                ),
+                _iconButton(
+                  icon: Icons.keyboard_arrow_down,
+                  tooltip: 'Next (Enter)',
+                  onTap: controller.nextMatch,
+                ),
+                _iconButton(
+                  icon: Icons.close,
+                  tooltip: 'Close (Esc)',
+                  onTap: controller.close,
+                ),
               ],
             ),
-          );
-        },
+            // Replace row (only in replace mode)
+            if (value.replaceMode) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 32,
+                      child: TextField(
+                        controller: controller.replaceInputController,
+                        focusNode: controller.replaceInputFocusNode,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
+                          hintText: 'Replace',
+                          hintStyle: const TextStyle(
+                            color: AppColors.textMuted,
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFF1E2127),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide(color: AppColors.border),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: readOnly ? null : controller.replaceMatch,
+                    child: const Text('Replace'),
+                  ),
+                  TextButton(
+                    onPressed: readOnly ? null : controller.replaceAllMatches,
+                    child: const Text('Replace All'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
