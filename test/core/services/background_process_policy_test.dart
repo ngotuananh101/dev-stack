@@ -93,8 +93,11 @@ void main() {
         isFalse,
         reason: 'mkcert must run without creating a console window',
       );
-      expect(serviceSource, contains("fileName == 'nginx.exe'"));
-      expect(serviceSource, contains("fileName == 'httpd.exe'"));
+      expect(
+        serviceSource,
+        contains('runsDetachedExecutable('),
+        reason: 'webservers must be launched detached via the shared policy',
+      );
       expect(
         serviceSource,
         contains('BackgroundProcess.start('),
