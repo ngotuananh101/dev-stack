@@ -27,6 +27,11 @@ Future<AppsRepository> appsRepository(Ref ref) async {
 
 @riverpod
 class AppsNotifier extends _$AppsNotifier {
+  /// Remote catalog source, refreshed via [updateCatalog] / the manual
+  /// "Update list" button and on app startup when online.
+  static const catalogUrl =
+      'https://gist.githubusercontent.com/ngotuananh101/d2e69956bc2030b0bcf27707aef9e9cd/raw/apps.json';
+
   @override
   Future<List<AppModel>> build() async {
     final repository = await ref.watch(appsRepositoryProvider.future);
@@ -469,6 +474,23 @@ class AppsNotifier extends _$AppsNotifier {
       await refresh();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+    }
+  }
+
+  /// Silent startup catalog refresh: waits for the initial load, then
+  /// re-downloads the catalog if the network allows it. Unlike
+  /// [updateCatalog] it never flips the state to loading or error, so the
+  /// UI keeps showing the current list and offline startups are a no-op.
+  Future<void> autoUpdateCatalog() async {
+    try {
+      await ref.read(appsNotifierProvider.future);
+      final repository = await ref.read(appsRepositoryProvider.future);
+      await repository.updateAppListFromUrl(catalogUrl);
+      await refresh();
+      AppLogger.info('App catalog auto-updated on startup');
+    } catch (e) {
+      // Offline or unreachable catalog: keep the existing list as-is.
+      AppLogger.info('App catalog auto-update skipped: $e');
     }
   }
 

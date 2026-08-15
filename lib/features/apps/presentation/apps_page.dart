@@ -21,6 +21,19 @@ class _AppsPageState extends ConsumerState<AppsPage> {
   String? _selectedCategory;
   int _currentPage = 1;
   final int _itemsPerPage = 9;
+  bool _didAutoRefreshCatalog = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Try refreshing the app catalog once per launch when online; failures
+    // are silent (offline keeps the cached/bundled list).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_didAutoRefreshCatalog) return;
+      _didAutoRefreshCatalog = true;
+      ref.read(appsNotifierProvider.notifier).autoUpdateCatalog();
+    });
+  }
 
   List<AppModel> _filterApps(List<AppModel> apps) {
     var filtered = apps;
@@ -56,6 +69,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
 
     return counts;
   }
+
   @override
   Widget build(BuildContext context) {
     final appsAsync = ref.watch(appsNotifierProvider);
@@ -122,7 +136,10 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                             AppDialogs.showError(
                               context,
                               title: 'Action Failed',
-                              message: e.toString().replaceFirst('Exception: ', ''),
+                              message: e.toString().replaceFirst(
+                                'Exception: ',
+                                '',
+                              ),
                             );
                           }
                         },
@@ -130,11 +147,13 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                           await ref
                               .read(appsNotifierProvider.notifier)
                               .togglePath(app);
-                          
+
                           if (!context.mounted) return;
-                          final status = app.isAddedToPath ? 'Added to' : 'Removed from';
+                          final status = app.isAddedToPath
+                              ? 'Added to'
+                              : 'Removed from';
                           AppDialogs.showToast(
-                            context, 
+                            context,
                             '${app.name} $status system PATH',
                           );
                         },
@@ -157,9 +176,12 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                           await ref
                               .read(appsNotifierProvider.notifier)
                               .changeDefaultPhp(appId);
-                          
+
                           if (!context.mounted) return;
-                          AppDialogs.showToast(context, 'Set as Default PHP successful');
+                          AppDialogs.showToast(
+                            context,
+                            'Set as Default PHP successful',
+                          );
                         },
                         onOpen: (app) async {
                           await ref
@@ -197,12 +219,10 @@ class _AppsPageState extends ConsumerState<AppsPage> {
   Future<void> _handleUpdateList() async {
     try {
       final notifier = ref.read(appsNotifierProvider.notifier);
-      await notifier.updateCatalog(
-        'https://gist.githubusercontent.com/ngotuananh101/d2e69956bc2030b0bcf27707aef9e9cd/raw/apps.json',
-      );
-      
+      await notifier.updateCatalog(AppsNotifier.catalogUrl);
+
       if (!mounted) return;
-      
+
       AppDialogs.showSuccess(
         context: context,
         title: 'Success',
@@ -210,7 +230,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      
+
       AppDialogs.showError(
         context,
         title: 'Update Failed',
