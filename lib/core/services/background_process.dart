@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 /// Runs non-interactive child processes without creating console windows.
 abstract final class BackgroundProcess {
@@ -133,12 +134,24 @@ abstract final class BackgroundProcess {
     }
   }
 
-  /// Runs a command with Windows elevation. The UAC consent dialog remains
-  /// visible, while PowerShell and the elevated console stay hidden.
+  @visibleForTesting
+  static ({String executable, List<String> arguments}) buildLinuxElevatedArgs(
+    String executable,
+    List<String> arguments,
+  ) {
+    return (executable: 'pkexec', arguments: [executable, ...arguments]);
+  }
+
+  /// Runs a command with elevation (UAC on Windows, pkexec on Linux).
   static Future<ProcessResult> runElevated(
     String executable,
     List<String> arguments,
   ) async {
+    if (Platform.isLinux) {
+      final elevated = buildLinuxElevatedArgs(executable, arguments);
+      return Process.run(elevated.executable, elevated.arguments);
+    }
+
     if (!Platform.isWindows) return run(executable, arguments);
 
     final files = await _HiddenProcessFiles.create();
