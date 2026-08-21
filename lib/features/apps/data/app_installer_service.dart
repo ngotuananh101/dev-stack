@@ -56,6 +56,51 @@ class AppInstallerService {
         id.contains('caddy');
   }
 
+  @visibleForTesting
+  static List<String> buildTarExtractArgs(
+    String archivePath,
+    String destDir, {
+    bool stripComponents = false,
+  }) {
+    return [
+      '-xf',
+      archivePath,
+      '-C',
+      destDir,
+      if (stripComponents) '--strip-components=1',
+    ];
+  }
+
+  @visibleForTesting
+  static bool isTarArchive(String urlOrPath) {
+    if (urlOrPath.isEmpty) return false;
+    final uri = Uri.tryParse(urlOrPath);
+    final path = (uri != null && uri.path.isNotEmpty) ? uri.path : urlOrPath;
+    final lower = path.toLowerCase();
+    return lower.endsWith('.tar.gz') ||
+        lower.endsWith('.tar.xz') ||
+        lower.endsWith('.tar.bz2') ||
+        lower.endsWith('.tgz') ||
+        lower.endsWith('.tar');
+  }
+
+  @visibleForTesting
+  static Future<void> ensureLinuxPermissions(
+    String targetPath, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    Function(String)? logInfo,
+  }) async {
+    final runner = runProcess ?? Process.run;
+    try {
+      final res = await runner('chmod', ['-R', '755', targetPath]);
+      if (res.exitCode != 0) {
+        logInfo?.call('chmod returned code ${res.exitCode}: ${res.stderr}');
+      }
+    } catch (e) {
+      logInfo?.call('Warning: Could not set permissions on $targetPath: $e');
+    }
+  }
+
   String _generateSecret({int length = 32}) {
     final random = Random.secure();
     final bytes = List<int>.generate(length, (_) => random.nextInt(256));
@@ -95,7 +140,8 @@ class AppInstallerService {
     onProgress?.call(0.1, 'Downloading...');
 
     final uri = Uri.parse(url);
-    final extension = p.extension(uri.path).toLowerCase();
+    final isTar = isTarArchive(url);
+    final extension = isTar ? '.tar' : p.extension(uri.path).toLowerCase();
     final isZip = extension == '.zip';
     final isExe = extension == '.exe';
 
@@ -124,11 +170,27 @@ class AppInstallerService {
       logInfo('Download completed for ${app.name}');
       onProgress?.call(0.8, 'Download completed');
 
-      if (isZip) {
+      if (isTar) {
+        logInfo('Extracting tar archive for ${app.name}');
+        onProgress?.call(0.82, 'Extracting...');
+        final args = buildTarExtractArgs(tempFile.path, installPath);
+        final result = await Process.run('tar', args);
+        if (result.exitCode != 0) {
+          logError('Tar extraction failed (exit code ${result.exitCode}): ${result.stderr}');
+          throw Exception('Tar extraction failed: ${result.stderr}');
+        }
+        if (Platform.isLinux) {
+          await ensureLinuxPermissions(installPath, logInfo: logInfo);
+        }
+        onProgress?.call(0.9, 'Extracted');
+      } else if (isZip) {
         logInfo('Extracting ZIP for ${app.name}');
         onProgress?.call(0.82, 'Extracting...');
         final bytes = await tempFile.readAsBytes();
         await _extractZip(bytes, installPath, onLog);
+        if (Platform.isLinux) {
+          await ensureLinuxPermissions(installPath, logInfo: logInfo);
+        }
         onProgress?.call(0.9, 'Extracted');
       } else if (isExe) {
         logInfo('Handling executable binary for ${app.name}');
@@ -140,6 +202,9 @@ class AppInstallerService {
 
         logInfo('Copying binary to: ${targetFile.path}');
         await tempFile.copy(targetFile.path);
+        if (Platform.isLinux) {
+          await ensureLinuxPermissions(installPath, logInfo: logInfo);
+        }
         onProgress?.call(0.9, 'Binary ready');
       } else {
         // Fallback for other formats or if extension is missing
@@ -151,6 +216,9 @@ class AppInstallerService {
           onProgress?.call(0.82, 'Extracting...');
           final bytes = await tempFile.readAsBytes();
           await _extractZip(bytes, installPath, onLog);
+          if (Platform.isLinux) {
+            await ensureLinuxPermissions(installPath, logInfo: logInfo);
+          }
           onProgress?.call(0.9, 'Extracted');
         } catch (e) {
           logError('Failed to extract as ZIP: $e');
