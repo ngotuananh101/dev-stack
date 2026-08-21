@@ -1,9 +1,15 @@
 import 'dart:io';
 import 'package:dev_stack/core/services/background_process.dart';
 import 'package:dev_stack/core/services/log_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 class HostsRepository {
-  static const String hostsPath = r'C:\Windows\System32\drivers\etc\hosts';
+  @visibleForTesting
+  static String resolveHostsPath({required bool isLinux}) =>
+      isLinux ? '/etc/hosts' : r'C:\Windows\System32\drivers\etc\hosts';
+
+  static String get hostsPath => resolveHostsPath(isLinux: Platform.isLinux);
 
   Future<String> readHostsRaw() async {
     try {
@@ -32,23 +38,44 @@ class HostsRepository {
       AppLogger.error('Direct write failed, trying elevation... $e');
     }
 
-    // 2. Elevate only the copy operation. The PowerShell host itself runs
-    // hidden; Windows may still show the required UAC consent dialog.
+    // 2. Elevate only the copy operation.
     try {
-      final tempFile = File('${Directory.systemTemp.path}\\hosts_temp');
+      final tempFile = File(p.join(Directory.systemTemp.path, 'hosts_temp'));
       await tempFile.writeAsString(content);
 
-      final escapedTempPath = tempFile.path.replaceAll("'", "''");
-      final escapedHostsPath = hostsPath.replaceAll("'", "''");
-      final result = await BackgroundProcess.runElevatedPowerShell(
-        "Copy-Item -LiteralPath '$escapedTempPath' "
-        "-Destination '$escapedHostsPath' -Force",
-      );
+      if (Platform.isLinux) {
+        final result = await BackgroundProcess.runElevated('cp', [
+          tempFile.path,
+          hostsPath,
+        ]);
+        try {
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+          }
+        } catch (_) {}
 
-      if (result.exitCode == 0) {
-        return true;
+        if (result.exitCode == 0) {
+          return true;
+        }
+        AppLogger.error('Elevated hosts write failed: ${result.stderr}');
+      } else {
+        final escapedTempPath = tempFile.path.replaceAll("'", "''");
+        final escapedHostsPath = hostsPath.replaceAll("'", "''");
+        final result = await BackgroundProcess.runElevatedPowerShell(
+          "Copy-Item -LiteralPath '$escapedTempPath' "
+          "-Destination '$escapedHostsPath' -Force",
+        );
+        try {
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+          }
+        } catch (_) {}
+
+        if (result.exitCode == 0) {
+          return true;
+        }
+        AppLogger.error('Elevated hosts write failed: ${result.stderr}');
       }
-      AppLogger.error('Elevated hosts write failed: ${result.stderr}');
     } catch (e) {
       AppLogger.error('Elevation failed: $e');
     }
@@ -58,6 +85,10 @@ class HostsRepository {
 
   Future<bool> checkAdmin() async {
     try {
+      if (Platform.isLinux) {
+        final result = await Process.run('id', ['-u']);
+        return result.exitCode == 0 && result.stdout.toString().trim() == '0';
+      }
       final result = await Process.run('net', ['session']);
       return result.exitCode == 0;
     } catch (_) {
@@ -90,3 +121,4 @@ class HostsRepository {
     return '${hostsContent.trim()}\n\n$newBlock\n';
   }
 }
+

@@ -17,7 +17,7 @@ class HostsPage extends ConsumerStatefulWidget {
 }
 
 class _HostsPageState extends ConsumerState<HostsPage> {
-  static const String _hostsPath = HostsRepository.hostsPath;
+  final String _hostsPath = HostsRepository.hostsPath;
 
   Future<bool> _save(String content) async {
     final notifier = ref.read(hostsNotifierProvider.notifier);
