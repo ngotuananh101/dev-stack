@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
@@ -14,19 +15,25 @@ class AppsRepository {
 
   AppsRepository(this.isar);
 
+  @visibleForTesting
+  static String catalogFileNameFor({required bool isLinux}) {
+    return isLinux ? 'apps-linux.json' : 'apps.json';
+  }
+
   Future<List<AppModel>> getAll() async {
     try {
       // 1. Load marketplace data
       String response;
+      final catalogFileName = catalogFileNameFor(isLinux: Platform.isLinux);
       final supportDir = await getApplicationSupportDirectory();
-      final localFile = File(p.join(supportDir.path, 'apps.json'));
+      final localFile = File(p.join(supportDir.path, catalogFileName));
 
       if (await localFile.exists()) {
         AppLogger.info('Loading apps from local storage: ${localFile.path}');
         response = await localFile.readAsString();
       } else {
-        AppLogger.info('Loading apps from assets bundle');
-        response = await rootBundle.loadString('assets/data/apps.json');
+        AppLogger.info('Loading apps from assets bundle: $catalogFileName');
+        response = await rootBundle.loadString('assets/data/$catalogFileName');
       }
 
       final data = json.decode(response);
@@ -106,14 +113,15 @@ class AppsRepository {
       // If it's a RangeError or corruption, try to delete local cache to force a fresh load next time
       if (e is RangeError || e.toString().contains('RangeError')) {
         try {
+          final catalogFileName = catalogFileNameFor(isLinux: Platform.isLinux);
           final supportDir = await getApplicationSupportDirectory();
-          final localFile = File(p.join(supportDir.path, 'apps.json'));
+          final localFile = File(p.join(supportDir.path, catalogFileName));
           if (await localFile.exists()) {
             await localFile.delete();
-            AppLogger.info('Deleted corrupted apps.json');
+            AppLogger.info('Deleted corrupted $catalogFileName');
           }
         } catch (err) {
-          AppLogger.error('Failed to delete corrupted apps.json: $err');
+          AppLogger.error('Failed to delete corrupted catalog: $err');
         }
       }
 
@@ -192,11 +200,12 @@ class AppsRepository {
         final jsonString = data is String ? data : jsonEncode(data);
 
         // Save to local support directory for runtime persistence
+        final catalogFileName = catalogFileNameFor(isLinux: Platform.isLinux);
         final supportDir = await getApplicationSupportDirectory();
-        final localFile = File(p.join(supportDir.path, 'apps.json'));
+        final localFile = File(p.join(supportDir.path, catalogFileName));
         await localFile.writeAsString(jsonString);
 
-        AppLogger.info('Successfully updated apps list');
+        AppLogger.info('Successfully updated apps list ($catalogFileName)');
       }
     } catch (e) {
       AppLogger.error('Error updating app list: $e');
