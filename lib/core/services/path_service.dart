@@ -24,13 +24,114 @@ class PathService {
 
   /// Returns the on-disk shim file paths for a command under [binDir].
   ///
-  /// Includes `.bat`, `.cmd`, and an extensionless POSIX shell wrapper.
-  static List<String> shimPathsFor(String binDir, String commandName) {
+  /// On Linux, returns a single extensionless path.
+  /// On Windows, includes `.bat`, `.cmd`, and an extensionless POSIX shell wrapper.
+  static List<String> shimPathsFor(
+    String binDir,
+    String commandName, {
+    bool? isLinux,
+  }) {
+    final linux = isLinux ?? Platform.isLinux;
+    if (linux) {
+      return [p.join(binDir, commandName)];
+    }
     return [
       p.join(binDir, '$commandName.bat'),
       p.join(binDir, '$commandName.cmd'),
       p.join(binDir, commandName),
     ];
+  }
+
+  /// Formats the `export PATH="..."` line for Linux shell profiles.
+  static String linuxProfileExportLine(String binDir) {
+    return 'export PATH="$binDir:\$PATH"';
+  }
+
+  /// Checks if [binDir] is already exported in the given shell profile [content].
+  /// Ignores commented lines starting with '#'.
+  static bool isBinInProfileContent(String content, String binDir) {
+    if (content.isEmpty) return false;
+    final lines = content.split('\n');
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('#')) continue;
+      if (trimmed.contains(binDir)) return true;
+    }
+    return false;
+  }
+
+  /// Standard Linux shell profile files to search in [homeDir].
+  static List<String> linuxShellProfilePaths(String homeDir) {
+    return [
+      p.join(homeDir, '.bashrc'),
+      p.join(homeDir, '.zshrc'),
+      p.join(homeDir, '.profile'),
+    ];
+  }
+
+  /// Creates a Linux executable symlink or fallback shell wrapper in [binDir].
+  static Future<void> createLinuxSymlinkOrShim(
+    String binDir,
+    String commandName,
+    String targetPath,
+  ) async {
+    final linkPath = p.join(binDir, commandName);
+    final linkEntity = Link(linkPath);
+    final fileEntity = File(linkPath);
+
+    // Delete existing link or file if present
+    if (linkEntity.existsSync()) {
+      linkEntity.deleteSync();
+    } else if (fileEntity.existsSync()) {
+      fileEntity.deleteSync();
+    }
+
+    try {
+      linkEntity.createSync(targetPath);
+    } catch (_) {
+      // If symlink creation fails (e.g. unsupported filesystem), fallback to shell wrapper script
+      final script = '#!/usr/bin/env sh\nexec ${shellSingleQuote(targetPath)} "\$@"\n';
+      await fileEntity.writeAsString(script);
+      if (Platform.isLinux) {
+        await Process.run('chmod', ['755', linkPath]);
+      }
+    }
+  }
+
+  /// Helper to ensure Linux shell profile contains [binDir].
+  Future<void> ensureLinuxProfilePath({
+    String? homeDir,
+    String? binDirOverride,
+  }) async {
+    final home = homeDir ?? Platform.environment['HOME'] ?? '';
+    if (home.isEmpty) return;
+
+    final targetBinDir = binDirOverride ?? binDir;
+    final exportLine = linuxProfileExportLine(targetBinDir);
+    final profilePaths = linuxShellProfilePaths(home);
+
+    bool modifiedAny = false;
+    for (final profilePath in profilePaths) {
+      final file = File(profilePath);
+      if (file.existsSync()) {
+        final content = await file.readAsString();
+        if (!isBinInProfileContent(content, targetBinDir)) {
+          final prefix = (content.isNotEmpty && !content.endsWith('\n')) ? '\n' : '';
+          await file.writeAsString('$prefix$exportLine\n', mode: FileMode.append);
+          _logger.info('Added $targetBinDir to $profilePath');
+          modifiedAny = true;
+        } else {
+          modifiedAny = true; // Already present
+        }
+      }
+    }
+
+    // If none of the profile files existed, create ~/.profile
+    if (!modifiedAny) {
+      final defaultProfile = File(p.join(home, '.profile'));
+      await defaultProfile.writeAsString('$exportLine\n', mode: FileMode.append);
+      _logger.info('Created and added $targetBinDir to ${defaultProfile.path}');
+    }
   }
 
   /// Returns the `cmd.exe` / `.bat` / `.cmd` shim content that forwards
@@ -78,11 +179,16 @@ class PathService {
         '\n';
   }
 
-  /// Đảm bảo thư mục C:\Ponta\bin tồn tại và nằm trong User PATH
+  /// Đảm bảo thư mục bin tồn tại và nằm trong PATH
   Future<void> ensurePontaBinInPath() async {
     try {
       if (!Directory(binDir).existsSync()) {
         Directory(binDir).createSync(recursive: true);
+      }
+
+      if (Platform.isLinux) {
+        await ensureLinuxProfilePath();
+        return;
       }
 
       final result = await BackgroundProcess.run('powershell', [
@@ -133,6 +239,11 @@ class PathService {
   /// Thêm một đường dẫn trực tiếp vào User PATH
   Future<void> addRawPathToUserPath(String pathToAdd) async {
     try {
+      if (Platform.isLinux) {
+        await ensureLinuxProfilePath(binDirOverride: pathToAdd);
+        return;
+      }
+
       final result = await BackgroundProcess.run('powershell', [
         '-NoProfile',
         '-Command',
@@ -169,6 +280,21 @@ class PathService {
   Future<void> setUserEnvVar(String name, String value) async {
     try {
       _logger.info('Setting User Environment Variable: $name = $value');
+      if (Platform.isLinux) {
+        final home = Platform.environment['HOME'] ?? '';
+        if (home.isNotEmpty) {
+          final profilePaths = linuxShellProfilePaths(home);
+          final exportLine = 'export $name="$value"';
+          for (final profilePath in profilePaths) {
+            final file = File(profilePath);
+            if (file.existsSync()) {
+              await file.writeAsString('$exportLine\n', mode: FileMode.append);
+            }
+          }
+        }
+        return;
+      }
+
       await BackgroundProcess.run('powershell', [
         '-NoProfile',
         '-Command',
@@ -184,6 +310,20 @@ class PathService {
   /// Xóa một đường dẫn trực tiếp khỏi User PATH
   Future<void> removeRawPathFromUserPath(String pathToRemove) async {
     try {
+      if (Platform.isLinux) {
+        final home = Platform.environment['HOME'] ?? '';
+        if (home.isEmpty) return;
+        for (final profilePath in linuxShellProfilePaths(home)) {
+          final file = File(profilePath);
+          if (file.existsSync()) {
+            final lines = await file.readAsLines();
+            final filtered = lines.where((l) => !l.contains(pathToRemove)).toList();
+            await file.writeAsString('${filtered.join('\n')}\n');
+          }
+        }
+        return;
+      }
+
       final result = await BackgroundProcess.run('powershell', [
         '-NoProfile',
         '-Command',
@@ -220,6 +360,20 @@ class PathService {
   Future<void> removeUserEnvVar(String name) async {
     try {
       _logger.info('Removing User Environment Variable: $name');
+      if (Platform.isLinux) {
+        final home = Platform.environment['HOME'] ?? '';
+        if (home.isEmpty) return;
+        for (final profilePath in linuxShellProfilePaths(home)) {
+          final file = File(profilePath);
+          if (file.existsSync()) {
+            final lines = await file.readAsLines();
+            final filtered = lines.where((l) => !l.startsWith('export $name=')).toList();
+            await file.writeAsString('${filtered.join('\n')}\n');
+          }
+        }
+        return;
+      }
+
       await BackgroundProcess.run('powershell', [
         '-NoProfile',
         '-Command',
@@ -231,7 +385,7 @@ class PathService {
     }
   }
 
-  /// Tạo file shim (.bat) cho app
+  /// Tạo file shim / symlink cho app
   Future<void> addAppToPath(AppModel app) async {
     if (app.cliFilePath == null) {
       _logger.error('Cannot add ${app.name} to PATH: cliFilePath is null');
@@ -240,9 +394,46 @@ class PathService {
 
     await ensurePontaBinInPath();
 
-    final shimName = app.appId; // Sử dụng appId làm lệnh chính (vd: nodejs.bat)
+    final shimName = app.appId; // Sử dụng appId làm lệnh chính (vd: nodejs / nodejs.bat)
     final cliName = p.basenameWithoutExtension(app.cliFile ?? app.appId);
 
+    if (Platform.isLinux) {
+      await createLinuxSymlinkOrShim(binDir, shimName, app.cliFilePath!);
+      if (cliName != shimName) {
+        await createLinuxSymlinkOrShim(binDir, cliName, app.cliFilePath!);
+      }
+
+      // Special handling for Node.js on Linux
+      if (app.appId.contains('nodejs')) {
+        final nodeDir = p.dirname(app.cliFilePath!);
+        final npmBin = p.join(nodeDir, 'npm');
+        final npxBin = p.join(nodeDir, 'npx');
+        final corepackBin = p.join(nodeDir, 'corepack');
+
+        if (File(npmBin).existsSync() || Link(npmBin).existsSync()) {
+          await createLinuxSymlinkOrShim(binDir, 'npm', npmBin);
+          try {
+            await Process.run(npmBin, ['config', 'set', 'prefix', binDir, '-g']);
+            _logger.info('Set npm global prefix to $binDir');
+          } catch (e) {
+            _logger.error('Failed to set npm global prefix on Linux: $e');
+          }
+        }
+
+        if (File(npxBin).existsSync() || Link(npxBin).existsSync()) {
+          await createLinuxSymlinkOrShim(binDir, 'npx', npxBin);
+        }
+
+        if (File(corepackBin).existsSync() || Link(corepackBin).existsSync()) {
+          await createLinuxSymlinkOrShim(binDir, 'corepack', corepackBin);
+        }
+      }
+
+      _logger.info('Created Linux symlinks/shims for ${app.name} in $binDir');
+      return;
+    }
+
+    // Windows implementation
     // Tạo shim cho appId
     await _createShimSet(shimName, app.cliFilePath!);
 
@@ -321,10 +512,52 @@ class PathService {
     _logger.info('Created shims for ${app.name} in $binDir');
   }
 
-  /// Xóa file shim của app
+  /// Xóa file shim / symlink của app
   Future<void> removeAppFromPath(AppModel app) async {
     final shimName = app.appId;
     final cliName = p.basenameWithoutExtension(app.cliFile ?? app.appId);
+
+    if (Platform.isLinux) {
+      final pathsToDelete = [
+        ...shimPathsFor(binDir, shimName, isLinux: true),
+        if (cliName != shimName) ...shimPathsFor(binDir, cliName, isLinux: true),
+      ];
+
+      for (final path in pathsToDelete) {
+        final link = Link(path);
+        final file = File(path);
+        if (link.existsSync()) {
+          try {
+            link.deleteSync();
+          } catch (_) {}
+        } else if (file.existsSync()) {
+          try {
+            file.deleteSync();
+          } catch (_) {}
+        }
+      }
+
+      if (app.appId.contains('nodejs')) {
+        for (final extraCmd in ['npm', 'npx', 'corepack']) {
+          final pth = p.join(binDir, extraCmd);
+          final link = Link(pth);
+          final file = File(pth);
+          if (link.existsSync()) {
+            try {
+              link.deleteSync();
+            } catch (_) {}
+          } else if (file.existsSync()) {
+            try {
+              file.deleteSync();
+            } catch (_) {}
+          }
+        }
+        await _cleanNpmGlobals();
+      }
+
+      _logger.info('Removed Linux shims for ${app.name} from $binDir');
+      return;
+    }
 
     await _deleteShimSet(shimName);
 
