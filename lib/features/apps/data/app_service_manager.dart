@@ -497,12 +497,7 @@ class AppServiceManager {
       final process = _processes[app.appId];
       if (process != null) {
         try {
-          if (Platform.isWindows) {
-            // Dùng /T để giết toàn bộ cây tiến trình (tránh sót worker processes)
-            await BackgroundProcess.stopManaged(process);
-          } else {
-            process.kill();
-          }
+          await BackgroundProcess.stopManaged(process);
         } catch (e) {
           // Kill failed (process already gone, access denied, ...). Don't let
           // that strand the service in 'stopping' — fall through to cleanup.
@@ -544,11 +539,7 @@ class AppServiceManager {
     // survive dispose and keep holding their ports.
     for (final process in _processes.values) {
       try {
-        if (Platform.isWindows) {
-          await BackgroundProcess.stopManaged(process);
-        } else {
-          process.kill();
-        }
+        await BackgroundProcess.stopManaged(process);
       } catch (_) {
         // Best-effort during teardown.
         process.kill();

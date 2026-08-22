@@ -63,9 +63,29 @@ abstract final class BackgroundProcess {
     return ManagedBackgroundProcess._(host, childPid);
   }
 
-  static Future<void> stopManaged(ManagedBackgroundProcess process) async {
-    if (!Platform.isWindows) {
-      process.kill();
+  @visibleForTesting
+  static ({String executable, List<String> arguments}) buildLinuxKillArgs(int pid) {
+    return (executable: 'kill', arguments: ['-TERM', '--', '-$pid']);
+  }
+
+  static Future<void> stopManaged(
+    ManagedBackgroundProcess process, {
+    bool? isWindows,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+  }) async {
+    final onWindows = isWindows ?? Platform.isWindows;
+    if (!onWindows) {
+      final pid = process.pid;
+      final runner = runProcess ?? Process.run;
+      final killCmd = buildLinuxKillArgs(pid);
+      try {
+        final res = await runner(killCmd.executable, killCmd.arguments);
+        if (res.exitCode != 0) {
+          process.kill(ProcessSignal.sigterm);
+        }
+      } catch (_) {
+        process.kill(ProcessSignal.sigterm);
+      }
       return;
     }
 

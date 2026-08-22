@@ -173,6 +173,7 @@ class AppInstallerService {
       if (isTar) {
         logInfo('Extracting tar archive for ${app.name}');
         onProgress?.call(0.82, 'Extracting...');
+        await Directory(installPath).create(recursive: true);
         final args = buildTarExtractArgs(tempFile.path, installPath);
         final result = await Process.run('tar', args);
         if (result.exitCode != 0) {

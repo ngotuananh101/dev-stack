@@ -39,8 +39,10 @@ class HostsRepository {
     }
 
     // 2. Elevate only the copy operation.
+    Directory? tempDir;
     try {
-      final tempFile = File(p.join(Directory.systemTemp.path, 'hosts_temp'));
+      tempDir = await Directory.systemTemp.createTemp('ponta_hosts_');
+      final tempFile = File(p.join(tempDir.path, 'hosts'));
       await tempFile.writeAsString(content);
 
       if (Platform.isLinux) {
@@ -48,11 +50,6 @@ class HostsRepository {
           tempFile.path,
           hostsPath,
         ]);
-        try {
-          if (await tempFile.exists()) {
-            await tempFile.delete();
-          }
-        } catch (_) {}
 
         if (result.exitCode == 0) {
           return true;
@@ -65,11 +62,6 @@ class HostsRepository {
           "Copy-Item -LiteralPath '$escapedTempPath' "
           "-Destination '$escapedHostsPath' -Force",
         );
-        try {
-          if (await tempFile.exists()) {
-            await tempFile.delete();
-          }
-        } catch (_) {}
 
         if (result.exitCode == 0) {
           return true;
@@ -78,6 +70,12 @@ class HostsRepository {
       }
     } catch (e) {
       AppLogger.error('Elevation failed: $e');
+    } finally {
+      if (tempDir != null && tempDir.existsSync()) {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
+      }
     }
 
     return false;

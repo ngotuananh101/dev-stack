@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'background_process.dart';
 import 'log_service.dart';
@@ -11,7 +10,7 @@ import '../config/app_config.dart';
 part 'path_service.g.dart';
 
 @riverpod
-PathService pathService(Ref ref) {
+PathService pathService(PathServiceRef ref) {
   final logger = ref.read(logServiceProvider);
   return PathService(logger);
 }

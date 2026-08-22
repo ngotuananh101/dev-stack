@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -12,7 +11,7 @@ part 'log_service.g.dart';
 final AppLogger = LogService();
 
 @riverpod
-LogService logService(Ref ref) {
+LogService logService(LogServiceRef ref) {
   return AppLogger;
 }
 
