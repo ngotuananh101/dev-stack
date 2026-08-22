@@ -28,9 +28,15 @@ Future<AppsRepository> appsRepository(Ref ref) async {
 @riverpod
 class AppsNotifier extends _$AppsNotifier {
   /// Remote catalog source, refreshed via [updateCatalog] / the manual
-  /// "Update list" button and on app startup when online.
-  static const catalogUrl =
-      'https://gist.githubusercontent.com/ngotuananh101/d2e69956bc2030b0bcf27707aef9e9cd/raw/apps.json';
+  /// "Update list" button and on app startup when online. The filename
+  /// segment always matches the OS-specific catalog file, so a Linux
+  /// auto-update can never overwrite apps-linux.json with Windows data.
+  static const String _catalogBaseUrl =
+      'https://gist.githubusercontent.com/ngotuananh101/'
+      'd2e69956bc2030b0bcf27707aef9e9cd/raw';
+
+  static String get catalogUrl =>
+      '$_catalogBaseUrl/${AppsRepository.catalogFileNameFor(isLinux: Platform.isLinux)}';
 
   @override
   Future<List<AppModel>> build() async {
