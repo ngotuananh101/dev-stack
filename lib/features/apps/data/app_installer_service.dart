@@ -1861,33 +1861,48 @@ Alias /phpmyadmin "$pmaPathUnix/"
     String installPath,
     Function(String) logInfo,
   ) async {
-    logInfo('Configuring pyenv-win environment variables and PATH...');
+    if (Platform.isWindows) {
+      logInfo('Configuring pyenv-win environment variables and PATH...');
 
-    final pathService = _ref.read(pathServiceProvider);
-    final pyenvWinDir = p.join(installPath, 'pyenv-win');
+      final pathService = _ref.read(pathServiceProvider);
+      final pyenvWinDir = p.join(installPath, 'pyenv-win');
 
-    // Check if pyenv-win directory exists
-    if (!Directory(pyenvWinDir).existsSync()) {
+      // Check if pyenv-win directory exists
+      if (!Directory(pyenvWinDir).existsSync()) {
+        logInfo(
+          'Warning: pyenv-win directory not found at $pyenvWinDir. Skipping detailed config.',
+        );
+        return;
+      }
+
+      final binDir = p.join(pyenvWinDir, 'bin');
+      final shimsDir = p.join(pyenvWinDir, 'shims');
+
+      // Set environment variables
+      await pathService.setUserEnvVar('PYENV', pyenvWinDir);
+      await pathService.setUserEnvVar('PYENV_HOME', pyenvWinDir);
+      await pathService.setUserEnvVar('PYENV_ROOT', pyenvWinDir);
+
+      // Add to PATH
+      await pathService.addRawPathToUserPath(binDir);
+      await pathService.addRawPathToUserPath(shimsDir);
+
       logInfo(
-        'Warning: pyenv-win directory not found at $pyenvWinDir. Skipping detailed config.',
+        'pyenv-win configuration completed. Please restart your terminal/IDE to apply changes.',
       );
       return;
     }
 
-    final binDir = p.join(pyenvWinDir, 'bin');
-    final shimsDir = p.join(pyenvWinDir, 'shims');
-
-    // Set environment variables
-    await pathService.setUserEnvVar('PYENV', pyenvWinDir);
-    await pathService.setUserEnvVar('PYENV_HOME', pyenvWinDir);
-    await pathService.setUserEnvVar('PYENV_ROOT', pyenvWinDir);
-
-    // Add to PATH
-    await pathService.addRawPathToUserPath(binDir);
-    await pathService.addRawPathToUserPath(shimsDir);
-
+    // Linux: real pyenv (github.com/pyenv/pyenv) — the master.zip layout is
+    // bin/pyenv + libexec/pyenv-* directly under installPath (no pyenv-win/
+    // nesting); shims activate via `pyenv init` in the shell rc.
+    final pathService = _ref.read(pathServiceProvider);
+    await pathService.setUserEnvVar('PYENV_ROOT', installPath);
+    await pathService.addRawPathToUserPath(p.join(installPath, 'bin'));
+    await pathService.addRawPathToUserPath(p.join(installPath, 'shims'));
     logInfo(
-      'pyenv-win configuration completed. Please restart your terminal/IDE to apply changes.',
+      'pyenv configured. Add `eval "\$(pyenv init -)"` to your shell rc '
+      'for full shim activation.',
     );
   }
 
@@ -1895,23 +1910,33 @@ Alias /phpmyadmin "$pmaPathUnix/"
     String installPath,
     Function(String) logInfo,
   ) async {
-    logInfo('Cleaning up pyenv-win environment variables and PATH...');
+    if (Platform.isWindows) {
+      logInfo('Cleaning up pyenv-win environment variables and PATH...');
 
+      final pathService = _ref.read(pathServiceProvider);
+      final pyenvWinDir = p.join(installPath, 'pyenv-win');
+      final binDir = p.join(pyenvWinDir, 'bin');
+      final shimsDir = p.join(pyenvWinDir, 'shims');
+
+      // Remove environment variables
+      await pathService.removeUserEnvVar('PYENV');
+      await pathService.removeUserEnvVar('PYENV_HOME');
+      await pathService.removeUserEnvVar('PYENV_ROOT');
+
+      // Remove from PATH
+      await pathService.removeRawPathFromUserPath(binDir);
+      await pathService.removeRawPathFromUserPath(shimsDir);
+
+      logInfo('pyenv-win cleanup completed.');
+      return;
+    }
+
+    logInfo('Cleaning up pyenv environment variables and PATH...');
     final pathService = _ref.read(pathServiceProvider);
-    final pyenvWinDir = p.join(installPath, 'pyenv-win');
-    final binDir = p.join(pyenvWinDir, 'bin');
-    final shimsDir = p.join(pyenvWinDir, 'shims');
-
-    // Remove environment variables
-    await pathService.removeUserEnvVar('PYENV');
-    await pathService.removeUserEnvVar('PYENV_HOME');
     await pathService.removeUserEnvVar('PYENV_ROOT');
-
-    // Remove from PATH
-    await pathService.removeRawPathFromUserPath(binDir);
-    await pathService.removeRawPathFromUserPath(shimsDir);
-
-    logInfo('pyenv-win cleanup completed.');
+    await pathService.removeRawPathFromUserPath(p.join(installPath, 'bin'));
+    await pathService.removeRawPathFromUserPath(p.join(installPath, 'shims'));
+    logInfo('pyenv cleanup completed.');
   }
 
   Future<void> _configureRustFS(
@@ -2061,18 +2086,33 @@ Alias /phpmyadmin "$pmaPathUnix/"
     }
   }
 
+  /// Per-user Composer global bin directory for global packages.
+  @visibleForTesting
+  static String composerGlobalBinDir({
+    bool? isWindows,
+    String? home,
+    String? appData,
+  }) {
+    final windows = isWindows ?? Platform.isWindows;
+    final context = windows ? p.windows : p.posix;
+    if (windows) {
+      final dir = appData ?? Platform.environment['APPDATA'];
+      if (dir == null || dir.isEmpty) return '';
+      return context.join(dir, 'Composer', 'vendor', 'bin');
+    }
+    final homeDir = home ?? Platform.environment['HOME'] ?? '';
+    if (homeDir.isEmpty) return '';
+    return context.join(homeDir, '.config', 'composer', 'vendor', 'bin');
+  }
+
   Future<void> _ensureComposerGlobalBinInPath(Function(String) logInfo) async {
     final pathService = _ref.read(pathServiceProvider);
     await pathService.ensurePontaBinInPath();
 
-    final appData = Platform.environment['APPDATA'];
-    if (appData != null) {
-      final composerBinPath = p.join(appData, 'Composer', 'vendor', 'bin');
-      await pathService.addRawPathToUserPath(composerBinPath);
-      logInfo(
-        'Added Composer global bin directory to User PATH: $composerBinPath',
-      );
-    }
+    final composerBinPath = composerGlobalBinDir();
+    if (composerBinPath.isEmpty) return;
+    await pathService.addRawPathToUserPath(composerBinPath);
+    logInfo('Added Composer global bin directory to PATH: $composerBinPath');
   }
 
   Future<void> _writeComposerWrappers(Function(String) logInfo) async {
@@ -2104,6 +2144,12 @@ Alias /phpmyadmin "$pmaPathUnix/"
       r'exec php "$composer_phar" "$@"'
       '\n',
     );
+    if (Platform.isLinux) {
+      final shim = File(p.join(PathService.binDir, 'composer'));
+      if (shim.existsSync()) {
+        await Process.run('chmod', ['755', shim.path]);
+      }
+    }
     final legacyPowerShellShim = File(
       p.join(PathService.binDir, 'composer.ps1'),
     );
