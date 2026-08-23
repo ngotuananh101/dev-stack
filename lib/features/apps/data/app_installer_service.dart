@@ -1904,6 +1904,7 @@ Alias /phpmyadmin "$pmaPathUnix/"
     // bin/pyenv + libexec/pyenv-* directly under installPath (no pyenv-win/
     // nesting); shims activate via `pyenv init` in the shell rc.
     final pathService = _ref.read(pathServiceProvider);
+    await ensureLinuxPermissions(installPath, logInfo: logInfo);
     await pathService.setUserEnvVar('PYENV_ROOT', installPath);
     await pathService.addRawPathToUserPath(p.join(installPath, 'bin'));
     await pathService.addRawPathToUserPath(p.join(installPath, 'shims'));
