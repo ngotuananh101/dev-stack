@@ -58,12 +58,31 @@ class AppInstallerService {
 
   /// Resolves a database maintenance tool inside `<installPath>/bin`,
   /// preferring the Windows `.exe` spelling and falling back to the bare ELF
-  /// name so Linux layouts (mysqld, mariadb-install-db, initdb) resolve.
+  /// name so Linux layouts (mysqld, mariadb-install-db, initdb, percona-postgresql) resolve.
   @visibleForTesting
   static String resolveDbTool(String installPath, String name) {
     final bin = p.join(installPath, 'bin');
     final exe = File(p.join(bin, '$name.exe'));
     if (exe.existsSync()) return exe.path;
+    final bare = File(p.join(bin, name));
+    if (bare.existsSync()) return bare.path;
+
+    // Check potential subdirectories (e.g. percona-postgresql17/bin)
+    try {
+      final dir = Directory(installPath);
+      if (dir.existsSync()) {
+        for (final entity in dir.listSync()) {
+          if (entity is Directory) {
+            final subBin = p.join(entity.path, 'bin');
+            final subExe = File(p.join(subBin, '$name.exe'));
+            if (subExe.existsSync()) return subExe.path;
+            final subBare = File(p.join(subBin, name));
+            if (subBare.existsSync()) return subBare.path;
+          }
+        }
+      }
+    } catch (_) {}
+
     return p.join(bin, name);
   }
 
@@ -472,6 +491,36 @@ class AppInstallerService {
       // Delete the now empty nested directory
       await subDir.delete();
       logInfo('Flattening completed.');
+    } else {
+      // Handle multi-folder bundles like Percona PostgreSQL (e.g. percona-postgresql17/)
+      final perconaDir = entities
+          .whereType<Directory>()
+          .where(
+            (d) => RegExp(
+              r'^percona-postgresql\d+',
+              caseSensitive: false,
+            ).hasMatch(p.basename(d.path)),
+          )
+          .firstOrNull;
+
+      if (perconaDir != null &&
+          !Directory(p.join(targetPath, 'bin')).existsSync()) {
+        logInfo(
+          'Detected Percona PostgreSQL structure: ${p.basename(perconaDir.path)}. Promoting binaries...',
+        );
+        final subEntities = await perconaDir.list().toList();
+        for (final entity in subEntities) {
+          final newPath = p.join(targetPath, p.basename(entity.path));
+          try {
+            if (!Directory(newPath).existsSync() &&
+                !File(newPath).existsSync()) {
+              await entity.rename(newPath);
+            }
+          } catch (e) {
+            logInfo('Warning: Could not promote ${entity.path}: $e');
+          }
+        }
+      }
     }
   }
 
@@ -740,13 +789,6 @@ class AppInstallerService {
     }
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
-    }
-
-    final binDir = Directory(p.join(installPath, 'bin'));
-    if (!binDir.existsSync()) {
-      throw Exception(
-        'PostgreSQL bin directory not found at $binDir; cannot initialize.',
-      );
     }
 
     final initdbPath = resolveDbTool(installPath, 'initdb');
