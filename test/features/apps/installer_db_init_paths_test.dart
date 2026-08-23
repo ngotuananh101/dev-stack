@@ -23,13 +23,5 @@ void main() {
       final got = AppInstallerService.resolveDbTool(tmp.path, 'initdb');
       expect(p.basename(got), equals('initdb'));
     });
-
-    test('resolves tool in subdirectories (Percona distribution layout)', () {
-      final subBin = Directory(p.join(tmp.path, 'percona-postgresql17', 'bin'))..createSync(recursive: true);
-      File(p.join(subBin.path, 'initdb')).writeAsStringSync('');
-      final got = AppInstallerService.resolveDbTool(tmp.path, 'initdb');
-      expect(p.basename(got), equals('initdb'));
-      expect(File(got).existsSync(), isTrue);
-    });
   });
 }

@@ -96,15 +96,15 @@ void main() {
       expect(ids, isNot(contains('redis')));
     });
 
-    test('postgresql points at Percona prebuilt tarballs', () async {
+    test('postgresql points at Zonky prebuilt jars on Maven Central', () async {
       final apps = await loadApps();
       final pg = apps.firstWhere((a) => a['id'] == 'postgresql');
       final versions = pg['versions'] as Map<String, dynamic>;
       expect(versions, isNotEmpty);
       for (final url in versions.values) {
-        expect(url, startsWith('https://downloads.percona.com/downloads/postgresql-distribution-'));
-        expect(url, contains('percona-postgresql-'));
-        expect(url, endsWith('.tar.gz'));
+        expect(url, startsWith('https://repo1.maven.org/maven2/'));
+        expect(url, contains('embedded-postgres-binaries-linux-amd64'));
+        expect(url, endsWith('.jar'));
       }
     });
 

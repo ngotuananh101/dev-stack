@@ -217,18 +217,14 @@
     {
       "id": "postgresql",
       "name": "PostgreSQL",
-      "description": "Advanced open source relational database (Percona Distribution).",
+      "description": "Advanced open source relational database.",
       "category": "database",
       "group_name": "database",
       "exec_file": "postgres",
       "cli_file": "psql",
       "versions": {
-        "17.11": "https://downloads.percona.com/downloads/postgresql-distribution-17/17.11/binary/tarball/percona-postgresql-17.11-ssl3-linux-x86_64.tar.gz",
-        "17.2": "https://downloads.percona.com/downloads/postgresql-distribution-17/17.2/binary/tarball/percona-postgresql-17.2-ssl3-linux-x86_64.tar.gz",
-        "16.15": "https://downloads.percona.com/downloads/postgresql-distribution-16/16.15/binary/tarball/percona-postgresql-16.15-ssl3-linux-x86_64.tar.gz",
-        "16.6": "https://downloads.percona.com/downloads/postgresql-distribution-16/16.6/binary/tarball/percona-postgresql-16.6-ssl3-linux-x86_64.tar.gz",
-        "16.4": "https://downloads.percona.com/downloads/postgresql-distribution-16/16.4/binary/tarball/percona-postgresql-16.4-ssl3-linux-x86_64.tar.gz",
-        "15.19": "https://downloads.percona.com/downloads/postgresql-distribution-15/15.19/binary/tarball/percona-postgresql-15.19-ssl3-linux-x86_64.tar.gz"
+        "17.2": "https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/17.2.0/embedded-postgres-binaries-linux-amd64-17.2.0.jar",
+        "16.6": "https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/16.6.0/embedded-postgres-binaries-linux-amd64-16.6.0.jar"
       }
     },
     {

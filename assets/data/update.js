@@ -398,26 +398,21 @@ const fetchersLinux = {
   },
 
   async postgresql() {
-    // Percona Distribution for PostgreSQL Linux prebuilt tarballs
-    // URL pattern: https://downloads.percona.com/downloads/postgresql-distribution-{major}/{version}/binary/tarball/percona-postgresql-{version}-ssl3-linux-x86_64.tar.gz
+    const res = await fetch(
+      "https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/maven-metadata.xml",
+    );
+    const xml = await res.text();
+    const matches = [...xml.matchAll(/<version>(.*?)<\/version>/g)].map(
+      (m) => m[1],
+    );
     const versions = {};
-    const releases = [
-      { major: "17", versions: ["17.11", "17.2", "17.1", "17.0"] },
-      { major: "16", versions: ["16.15", "16.6", "16.4", "16.2", "16.1"] },
-      { major: "15", versions: ["15.19", "15.9", "15.6", "15.4"] },
-    ];
-
-    for (const group of releases) {
-      for (const ver of group.versions) {
-        const url = `https://downloads.percona.com/downloads/postgresql-distribution-${group.major}/${ver}/binary/tarball/percona-postgresql-${ver}-ssl3-linux-x86_64.tar.gz`;
-        try {
-          const res = await fetch(url, { method: "HEAD" });
-          if (res.status === 200) {
-            versions[ver] = url;
-          }
-        } catch (_) {}
-      }
-    }
+    matches.forEach((ver) => {
+      // Version e.g. 17.2.0 -> key 17.2 or 17.2.0
+      const parts = ver.split(".");
+      const key = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : ver;
+      versions[key] =
+        `https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/${ver}/embedded-postgres-binaries-linux-amd64-${ver}.jar`;
+    });
     return versions;
   },
 
