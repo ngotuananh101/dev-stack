@@ -55,8 +55,9 @@ class SettingsNotifier extends _$SettingsNotifier {
       final settings = await isar.appSettings.where().findFirst();
 
       if (settings == null) {
-        // Initialize default settings
-        final defaultSettings = AppSettings();
+        // Initialize default settings with platform-aware base directory
+        final defaultSettings = AppSettings()
+          ..baseDir = AppConfig.defaultBaseDir;
         await isar.writeTxn(() async {
           await isar.appSettings.put(defaultSettings);
         });
@@ -69,11 +70,12 @@ class SettingsNotifier extends _$SettingsNotifier {
       // If reading fails (e.g. RangeError due to schema mismatch), clear and reset
       await isar.writeTxn(() async {
         await isar.appSettings.clear();
-        final defaultSettings = AppSettings();
+        final defaultSettings = AppSettings()
+          ..baseDir = AppConfig.defaultBaseDir;
         await isar.appSettings.put(defaultSettings);
         return defaultSettings;
       });
-      return AppSettings();
+      return AppSettings()..baseDir = AppConfig.defaultBaseDir;
     }
   }
 
