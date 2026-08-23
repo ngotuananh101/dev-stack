@@ -339,10 +339,18 @@ class AppServiceManager {
         } else {
           args = ['-S', '$bindAddress:$port'];
         }
-      } else if (fileName == 'redis-server') {
-        final confFile = File(p.join(workingDir, 'redis.windows.conf'));
-        if (confFile.existsSync()) {
-          args = [confFile.path];
+      } else if (fileName == 'redis-server' || fileName == 'valkey-server') {
+        final candidates = [
+          p.join(workingDir, 'valkey.conf'),
+          p.join(workingDir, 'redis.conf'),
+          p.join(workingDir, 'redis.windows.conf'),
+        ];
+        for (final confPath in candidates) {
+          final confFile = File(confPath);
+          if (confFile.existsSync()) {
+            args = [confFile.path];
+            break;
+          }
         }
       } else if (fileName == 'mysqld' || fileName == 'mariadbd') {
         // Force output to console for capturing logs

@@ -396,6 +396,32 @@ const fetchersLinux = {
     return versions;
   },
 
+  async redis() {
+    // Valkey official prebuilt Linux binary tarballs from download.valkey.io
+    const versions = {};
+    const candidateVersions = [
+      "9.1.1", "9.1.0", "9.0.5", "9.0.4", "9.0.0",
+      "8.1.9", "8.1.8", "8.1.7", "8.1.0",
+      "8.0.3", "8.0.2", "8.0.1", "8.0.0",
+      "7.2.7", "7.2.6", "7.2.5", "7.2.4"
+    ];
+    const distros = ["jammy", "focal", "noble"];
+
+    for (const ver of candidateVersions) {
+      for (const d of distros) {
+        const url = `https://download.valkey.io/releases/valkey-${ver}-${d}-x86_64.tar.gz`;
+        try {
+          const res = await fetch(url, { method: "HEAD" });
+          if (res.status === 200) {
+            versions[ver] = url;
+            break;
+          }
+        } catch (_) {}
+      }
+    }
+    return versions;
+  },
+
   async mongodb() {
     const res = await fetch("https://downloads.mongodb.org/current.json");
     const json = await res.json();
@@ -837,6 +863,15 @@ let baseLinuxApps = [
     cli_file: "mariadb",
     default_username: "root",
     default_password: "",
+  },
+  {
+    id: "redis",
+    name: "Redis (Valkey)",
+    description: "High-performance in-memory data structure store (Valkey engine).",
+    category: "database",
+    group_name: "redis",
+    exec_file: "valkey-server",
+    cli_file: "valkey-cli",
   },
   {
     id: "mongodb",

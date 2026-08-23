@@ -14,6 +14,10 @@ void main() {
         'redis-server',
       );
       expect(
+        AppServiceManager.normalizeExecutableName('valkey-server'),
+        'valkey-server',
+      );
+      expect(
         AppServiceManager.normalizeExecutableName('php-cgi.exe'),
         'php-cgi',
       );

@@ -92,8 +92,19 @@ void main() {
       final apps = await loadApps();
       final ids = apps.map((a) => a['id'] as String).toSet();
       expect(ids, contains('nginx')); // Nginx is supported via Jirutka static binaries
+      expect(ids, contains('redis')); // Redis is supported via Valkey prebuilt binaries
       expect(ids, isNot(contains('apache')));
-      expect(ids, isNot(contains('redis')));
+    });
+
+    test('redis points at Valkey prebuilt Linux tarballs', () async {
+      final apps = await loadApps();
+      final redis = apps.firstWhere((a) => a['id'] == 'redis');
+      final versions = redis['versions'] as Map<String, dynamic>;
+      expect(versions, isNotEmpty);
+      for (final url in versions.values) {
+        expect(url, startsWith('https://download.valkey.io/releases/valkey-'));
+        expect(url, endsWith('.tar.gz'));
+      }
     });
 
     test('nginx points at Jirutka static Linux binaries', () async {

@@ -217,6 +217,21 @@
       }
     },
     {
+      "id": "redis",
+      "name": "Redis (Valkey)",
+      "description": "High-performance in-memory data structure store (Valkey engine).",
+      "category": "database",
+      "group_name": "redis",
+      "exec_file": "valkey-server",
+      "cli_file": "valkey-cli",
+      "versions": {
+        "8.0.3": "https://download.valkey.io/releases/valkey-8.0.3-jammy-x86_64.tar.gz",
+        "8.0.1": "https://download.valkey.io/releases/valkey-8.0.1-jammy-x86_64.tar.gz",
+        "7.2.7": "https://download.valkey.io/releases/valkey-7.2.7-jammy-x86_64.tar.gz",
+        "7.2.6": "https://download.valkey.io/releases/valkey-7.2.6-jammy-x86_64.tar.gz"
+      }
+    },
+    {
       "id": "mongodb",
       "name": "MongoDB",
       "description": "NoSQL document-oriented database.",
