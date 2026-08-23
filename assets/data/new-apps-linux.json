@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "lastUpdated": "2026-08-23T16:33:21.774Z",
+  "lastUpdated": "2026-08-23T17:16:51.618Z",
   "apps": [
     {
       "id": "pyenv",
@@ -389,6 +389,22 @@
         "11.4.13": "http://downloads.mariadb.org/rest-api/mariadb/11.4.13/mariadb-11.4.13-linux-systemd-x86_64.tar.gz",
         "10.11.19": "http://downloads.mariadb.org/rest-api/mariadb/10.11.19/mariadb-10.11.19-linux-systemd-x86_64.tar.gz",
         "10.6.28": "http://downloads.mariadb.org/rest-api/mariadb/10.6.28/mariadb-10.6.28-linux-systemd-x86_64.tar.gz"
+      }
+    },
+    {
+      "id": "redis",
+      "name": "Redis (Valkey)",
+      "description": "High-performance in-memory data structure store (Valkey engine).",
+      "category": "database",
+      "group_name": "redis",
+      "exec_file": "valkey-server",
+      "cli_file": "valkey-cli",
+      "versions": {
+        "9.1.1": "https://download.valkey.io/releases/valkey-9.1.1-{distro}-x86_64.tar.gz",
+        "9.0.5": "https://download.valkey.io/releases/valkey-9.0.5-{distro}-x86_64.tar.gz",
+        "8.1.9": "https://download.valkey.io/releases/valkey-8.1.9-{distro}-x86_64.tar.gz",
+        "8.0.3": "https://download.valkey.io/releases/valkey-8.0.3-{distro}-x86_64.tar.gz",
+        "7.2.7": "https://download.valkey.io/releases/valkey-7.2.7-{distro}-x86_64.tar.gz"
       }
     },
     {
