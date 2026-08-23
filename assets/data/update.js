@@ -724,7 +724,7 @@ let baseLinuxApps = [
     exec_file: null,
     cli_file: "pyenv",
     versions: {
-      latest: "https://github.com/pyenv/pyenv/archive/refs/heads/master.zip",
+      latest: "https://github.com/pyenv/pyenv/archive/refs/heads/master.tar.gz",
     },
   },
   {

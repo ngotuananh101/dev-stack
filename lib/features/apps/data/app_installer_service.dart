@@ -492,7 +492,7 @@ class AppInstallerService {
       final entities = await dir.list(recursive: true).toList();
 
       for (final entity in entities) {
-        if (entity is File) {
+        if (entity is File || entity is Link) {
           final filename = p.basename(entity.path);
 
           if (execName != null &&
@@ -1900,9 +1900,38 @@ Alias /phpmyadmin "$pmaPathUnix/"
       return;
     }
 
-    // Linux: real pyenv (github.com/pyenv/pyenv) — the master.zip layout is
-    // bin/pyenv + libexec/pyenv-* directly under installPath (no pyenv-win/
-    // nesting); shims activate via `pyenv init` in the shell rc.
+    // Linux: real pyenv (github.com/pyenv/pyenv).
+    // If bin/pyenv was extracted from a zip as a plain text file containing
+    // "../libexec/pyenv", replace it with a valid executable shell launcher
+    // or symlink so running bin/pyenv invokes libexec/pyenv directly.
+    final binPyenv = File(p.join(installPath, 'bin', 'pyenv'));
+    final libexecPyenv = File(p.join(installPath, 'libexec', 'pyenv'));
+    if (binPyenv.existsSync() && libexecPyenv.existsSync()) {
+      try {
+        final isLink = FileSystemEntity.isLinkSync(binPyenv.path);
+        if (!isLink) {
+          final content = binPyenv.readAsStringSync().trim();
+          if (content == '../libexec/pyenv' || content == 'libexec/pyenv') {
+            // Write a robust POSIX launcher script that locates libexec relative to itself
+            binPyenv.writeAsStringSync(
+              '#!/bin/sh\n'
+              'resolve_link() {\n'
+              '  \$(type -p greadlink readlink | head -1) "\$1" 2>/dev/null || true\n'
+              '}\n'
+              'SELF="\${BASH_SOURCE[0]:-\$0}"\n'
+              'while [ -L "\$SELF" ]; do\n'
+              '  SELF="\$(resolve_link "\$SELF")"\n'
+              'done\n'
+              'BIN_DIR="\$(cd "\$(dirname "\$SELF")" && pwd)"\n'
+              'exec "\$BIN_DIR/../libexec/pyenv" "\$@"\n',
+            );
+          }
+        }
+      } catch (e) {
+        logInfo('Warning: Could not check/repair pyenv launcher: $e');
+      }
+    }
+
     final pathService = _ref.read(pathServiceProvider);
     await ensureLinuxPermissions(installPath, logInfo: logInfo);
     await pathService.setUserEnvVar('PYENV_ROOT', installPath);

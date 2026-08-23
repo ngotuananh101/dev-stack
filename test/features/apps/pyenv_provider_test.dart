@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dev_stack/features/apps/data/pyenv_provider.dart';
 
@@ -32,6 +33,41 @@ void main() {
         env['Path'],
         contains(r'C:\Ponta\apps\pyenv\pyenv-win\bin'),
       );
+    });
+  });
+
+  group('Pyenv Executable Resolution', () {
+    late Directory tmpDir;
+
+    setUp(() {
+      tmpDir = Directory.systemTemp.createTempSync('pyenv_test_');
+    });
+
+    tearDown(() {
+      if (tmpDir.existsSync()) {
+        tmpDir.deleteSync(recursive: true);
+      }
+    });
+
+    test('prefers libexec/pyenv on Linux if present', () {
+      final libexecDir = Directory('${tmpDir.path}/libexec')..createSync(recursive: true);
+      File('${libexecDir.path}/pyenv').writeAsStringSync('#!/bin/sh\n');
+
+      final resolved = PyenvNotifier.resolvePyenvExecutable(
+        installPath: tmpDir.path,
+        isWindows: false,
+      );
+
+      expect(resolved, contains('libexec/pyenv'));
+    });
+
+    test('resolves windows bat path on Windows', () {
+      final resolved = PyenvNotifier.resolvePyenvExecutable(
+        installPath: r'C:\Ponta\apps\pyenv',
+        isWindows: true,
+      );
+
+      expect(resolved, contains(r'pyenv-win\bin\pyenv.bat'));
     });
   });
 

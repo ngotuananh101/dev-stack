@@ -133,6 +133,30 @@ class PyenvNotifier extends _$PyenvNotifier {
     return result;
   }
 
+  /// Resolves the concrete executable to invoke for pyenv commands.
+  /// On Linux, preferring `<installPath>/libexec/pyenv` or `<installPath>/bin/pyenv`
+  /// ensures it executes the core script directly even if symlinks are unresolvable.
+  @visibleForTesting
+  static String resolvePyenvExecutable({
+    required String installPath,
+    String? cliFilePath,
+    bool? isWindows,
+  }) {
+    final windows = isWindows ?? Platform.isWindows;
+    if (windows) {
+      return cliFilePath ?? p.windows.join(installPath, 'pyenv-win', 'bin', 'pyenv.bat');
+    }
+
+    // On Linux, check libexec/pyenv first (the real script), then bin/pyenv
+    final libexec = p.posix.join(installPath, 'libexec', 'pyenv');
+    if (File(libexec).existsSync()) return libexec;
+
+    final bin = p.posix.join(installPath, 'bin', 'pyenv');
+    if (File(bin).existsSync() || Link(bin).existsSync()) return bin;
+
+    return cliFilePath ?? bin;
+  }
+
   Future<AppModel?> _getPyenvApp() async {
     final apps = await ref.read(appsNotifierProvider.future);
     return apps.where((a) => a.appId == 'pyenv').firstOrNull;
@@ -140,7 +164,11 @@ class PyenvNotifier extends _$PyenvNotifier {
 
   Future<String?> _getPyenvPath() async {
     final pyenvApp = await _getPyenvApp();
-    return pyenvApp?.cliFilePath;
+    if (pyenvApp == null || pyenvApp.location == null) return pyenvApp?.cliFilePath;
+    return resolvePyenvExecutable(
+      installPath: pyenvApp.location!,
+      cliFilePath: pyenvApp.cliFilePath,
+    );
   }
 
   Future<Map<String, String>?> _getEnvironment() async {
