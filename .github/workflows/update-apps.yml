@@ -26,9 +26,12 @@ jobs:
           GIST_ID: ${{ secrets.GIST_ID }}   # ID của Gist bạn đã tạo
         run: |
           if [ -n "$GIST_ID" ]; then
-            echo "Gist ID detected. Attempting to update..."
-            # Update both apps.json (Windows) and apps-linux.json (Linux)
-            gh gist edit "$GIST_ID" -f "apps.json" assets/data/new-apps.json -f "apps-linux.json" assets/data/new-apps-linux.json
+            echo "Gist ID detected. Updating apps.json and apps-linux.json..."
+            # Use GitHub REST API to atomically update or add files to the multi-file gist
+            gh api -X PATCH "gists/$GIST_ID" \
+              -F "files[apps.json][content]=@assets/data/new-apps.json" \
+              -F "files[apps-linux.json][content]=@assets/data/new-apps-linux.json"
+            echo "Gist updated successfully."
           else
             echo "Error: GIST_ID is missing from Secrets."
             exit 1
