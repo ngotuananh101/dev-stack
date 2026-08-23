@@ -207,8 +207,8 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                         if (value == null || value.isEmpty) {
                           return 'Please enter a database name';
                         }
-                        if (!RegExp(r'^[a-zA-Z0-9_$]+$').hasMatch(value)) {
-                          return 'Only alphanumeric, _, and \$ are allowed';
+                        if (!RegExp(r'^[A-Za-z][A-Za-z0-9_]*$').hasMatch(value)) {
+                          return 'Letters, digits, _ only; must start with a letter';
                         }
                         return null;
                       },

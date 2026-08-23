@@ -44,6 +44,12 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     });
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _refreshDatabases() {
     if (selectedEngine != null) {
       if (selectedEngine!.appId.contains('redis')) {
