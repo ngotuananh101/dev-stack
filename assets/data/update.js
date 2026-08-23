@@ -339,7 +339,7 @@ const fetchersLinux = {
         )
         .forEach((item) => {
           versions[item.version] =
-            `https://jirutka.github.io/${item.filename}`;
+            `https://jirutka.github.io/nginx-binaries/${item.filename}`;
         });
     }
     return versions;

@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "lastUpdated": "2026-08-23T12:37:37.212Z",
+  "lastUpdated": "2026-08-23T16:33:21.774Z",
   "apps": [
     {
       "id": "pyenv",
@@ -11,7 +11,7 @@
       "exec_file": null,
       "cli_file": "pyenv",
       "versions": {
-        "latest": "https://github.com/pyenv/pyenv/archive/refs/heads/master.zip"
+        "latest": "https://github.com/pyenv/pyenv/archive/refs/heads/master.tar.gz"
       }
     },
     {
@@ -263,6 +263,31 @@
         "2.9.1": "https://github.com/caddyserver/caddy/releases/download/v2.9.1/caddy_2.9.1_linux_amd64.tar.gz",
         "2.8.4": "https://github.com/caddyserver/caddy/releases/download/v2.8.4/caddy_2.8.4_linux_amd64.tar.gz",
         "2.7.6": "https://github.com/caddyserver/caddy/releases/download/v2.7.6/caddy_2.7.6_linux_amd64.tar.gz"
+      }
+    },
+    {
+      "id": "nginx",
+      "name": "Nginx",
+      "description": "Lightweight, less memory, concurrent ability",
+      "category": "webserver",
+      "group_name": "webserver",
+      "exec_file": "nginx",
+      "cli_file": "nginx",
+      "versions": {
+        "1.31.4": "https://jirutka.github.io/nginx-binaries/nginx-1.31.4-x86_64-linux",
+        "1.30.4": "https://jirutka.github.io/nginx-binaries/nginx-1.30.4-x86_64-linux",
+        "1.29.8": "https://jirutka.github.io/nginx-binaries/nginx-1.29.8-x86_64-linux",
+        "1.28.3": "https://jirutka.github.io/nginx-binaries/nginx-1.28.3-x86_64-linux",
+        "1.27.5": "https://jirutka.github.io/nginx-binaries/nginx-1.27.5-x86_64-linux",
+        "1.26.3": "https://jirutka.github.io/nginx-binaries/nginx-1.26.3-x86_64-linux",
+        "1.25.5": "https://jirutka.github.io/nginx-binaries/nginx-1.25.5-x86_64-linux",
+        "1.24.0": "https://jirutka.github.io/nginx-binaries/nginx-1.24.0-x86_64-linux",
+        "1.23.4": "https://jirutka.github.io/nginx-binaries/nginx-1.23.4-x86_64-linux",
+        "1.22.1": "https://jirutka.github.io/nginx-binaries/nginx-1.22.1-x86_64-linux",
+        "1.21.6": "https://jirutka.github.io/nginx-binaries/nginx-1.21.6-x86_64-linux",
+        "1.20.2": "https://jirutka.github.io/nginx-binaries/nginx-1.20.2-x86_64-linux",
+        "1.19.10": "https://jirutka.github.io/nginx-binaries/nginx-1.19.10-x86_64-linux",
+        "1.18.0": "https://jirutka.github.io/nginx-binaries/nginx-1.18.0-x86_64-linux"
       }
     },
     {
