@@ -311,6 +311,65 @@ class SiteTable extends ConsumerWidget {
     );
   }
 
+  @visibleForTesting
+  static ({String executable, List<String> arguments, bool runInShell})
+      buildTerminalLaunchSpec({
+    required bool isLinux,
+    required String sitePath,
+    String? phpDir,
+    String? domain,
+  }) {
+    final title =
+        domain != null ? 'DevStack Terminal for $domain' : 'DevStack Terminal';
+    if (!isLinux) {
+      String psCommand = '';
+      if (phpDir != null) {
+        psCommand += '\$env:PATH = "$phpDir;" + \$env:PATH; ';
+      }
+      psCommand += 'Clear-Host; ';
+      psCommand +=
+          'Write-Host "==========================================" -ForegroundColor Cyan; ';
+      psCommand +=
+          'Write-Host " $title" -ForegroundColor White; ';
+      psCommand +=
+          'Write-Host "==========================================" -ForegroundColor Cyan; ';
+      if (phpDir != null) {
+        psCommand += 'Write-Host "PHP Path : $phpDir" -ForegroundColor DarkGray; ';
+      }
+      psCommand += 'Write-Host "Site Path: $sitePath" -ForegroundColor DarkGray; ';
+      psCommand += 'Write-Host ""; ';
+      if (phpDir != null) {
+        psCommand += 'php -v; Write-Host ""; ';
+      }
+      return (
+        executable: 'start',
+        arguments: ['powershell', '-NoExit', '-Command', psCommand],
+        runInShell: true,
+      );
+    }
+
+    // Linux terminal launch
+    String bashInit = '';
+    if (phpDir != null) {
+      bashInit += 'export PATH="$phpDir:\$PATH"; ';
+    }
+    bashInit +=
+        'echo "=========================================="; '
+        'echo " $title"; '
+        'echo "=========================================="; '
+        'echo "Site Path: $sitePath"; ';
+    if (phpDir != null) {
+      bashInit += 'echo "PHP Path : $phpDir"; php -v; ';
+    }
+    bashInit += 'echo ""; exec bash';
+
+    return (
+      executable: 'x-terminal-emulator',
+      arguments: ['-e', 'bash', '-c', bashInit],
+      runInShell: false,
+    );
+  }
+
   Future<void> _openTerminal(SiteModel site, WidgetRef ref) async {
     final phpApps =
         ref
@@ -331,39 +390,37 @@ class SiteTable extends ConsumerWidget {
     }
 
     final workingDir = site.rootDir;
-    String psCommand = '';
-
-    if (phpDir != null) {
-      psCommand += '\$env:PATH = "$phpDir;" + \$env:PATH; ';
-    }
-
-    psCommand += 'Clear-Host; ';
-    psCommand +=
-        'Write-Host "==========================================" -ForegroundColor Cyan; ';
-    psCommand +=
-        'Write-Host " DevStack Terminal for ${site.domain}" -ForegroundColor White; ';
-    psCommand +=
-        'Write-Host "==========================================" -ForegroundColor Cyan; ';
-
-    if (phpDir != null) {
-      psCommand +=
-          'Write-Host "PHP Path : $phpDir" -ForegroundColor DarkGray; ';
-    }
-    psCommand +=
-        'Write-Host "Site Path: $workingDir" -ForegroundColor DarkGray; ';
-    psCommand += 'Write-Host ""; ';
-
-    if (phpDir != null) {
-      psCommand += 'php -v; Write-Host ""; ';
-    }
+    final launchSpec = buildTerminalLaunchSpec(
+      isLinux: Platform.isLinux,
+      sitePath: workingDir,
+      phpDir: phpDir,
+      domain: site.domain,
+    );
 
     try {
-      await Process.start(
-        'start',
-        ['powershell', '-NoExit', '-Command', psCommand],
-        workingDirectory: workingDir,
-        runInShell: true,
-      );
+      if (Platform.isLinux) {
+        // Attempt x-terminal-emulator, fallback to gnome-terminal / xterm
+        try {
+          await Process.start(
+            launchSpec.executable,
+            launchSpec.arguments,
+            workingDirectory: workingDir,
+          );
+        } catch (_) {
+          await Process.start(
+            'xterm',
+            ['-e', 'bash', '-c', launchSpec.arguments.last],
+            workingDirectory: workingDir,
+          );
+        }
+      } else {
+        await Process.start(
+          launchSpec.executable,
+          launchSpec.arguments,
+          workingDirectory: workingDir,
+          runInShell: launchSpec.runInShell,
+        );
+      }
     } catch (e) {
       AppLogger.error('Failed to open terminal for ${site.domain}: $e');
     }
