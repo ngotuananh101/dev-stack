@@ -147,16 +147,23 @@ class AppServiceManager {
     List<({String host, int port})> requiredSockets,
     String appName,
   ) async {
-    if (requiredSockets.isEmpty || !Platform.isWindows) return;
+    if (requiredSockets.isEmpty) return;
     final ProcessResult res;
     try {
-      res = await Process.run('netstat', ['-ano']);
+      if (Platform.isWindows) {
+        res = await Process.run('netstat', ['-ano']);
+      } else if (Platform.isLinux) {
+        res = await Process.run('ss', ['-tulpn']);
+      } else {
+        return;
+      }
     } catch (_) {
-      // netstat unavailable — don't gate startup on it.
-      return;
+      return; // probe unavailable — don't gate startup on it
     }
     if (res.exitCode != 0) return;
-    final sockets = parseListeningSockets(res.stdout.toString());
+    final sockets = Platform.isWindows
+        ? parseListeningSockets(res.stdout.toString())
+        : parseListeningSocketsLinux(res.stdout.toString());
     for (final s in requiredSockets) {
       if (portIsHeld(host: s.host, port: s.port, listeningSockets: sockets)) {
         throw Exception(
@@ -165,6 +172,32 @@ class AppServiceManager {
         );
       }
     }
+  }
+
+  /// Parses `ss -tulpn` stdout into listening `host:port` sockets. A literal
+  /// `*:port` local address expands to BOTH IPv4 (`0.0.0.0:port`) and IPv6
+  /// (`[::]:port`) wildcards so it matches any required bind host.
+  @visibleForTesting
+  static Set<String> parseListeningSocketsLinux(String ssOutput) {
+    final result = <String>{};
+    for (final raw in ssOutput.split('\n')) {
+      final tokens = raw.trim().split(RegExp(r'\s+'));
+      if (tokens.length < 4 || tokens[0] != 'LISTEN') continue;
+      final local = tokens[3];
+      final idx = local.lastIndexOf(':');
+      if (idx <= 0) continue;
+      var host = local.substring(0, idx);
+      final port = local.substring(idx + 1);
+      if (int.tryParse(port) == null) continue;
+      if (host == '*') {
+        result
+          ..add('0.0.0.0:$port')
+          ..add('[::]:$port');
+      } else {
+        result.add(local);
+      }
+    }
+    return result;
   }
 
   /// Parses the stdout of Windows `netstat -ano` into the set of
@@ -203,20 +236,27 @@ class AppServiceManager {
         listeningSockets.contains(wildcardV6);
   }
 
+  /// Lowercases and strips a trailing Windows extension so Windows
+  /// (`caddy.exe`) and Linux (`caddy`) dispatch identically.
+  @visibleForTesting
+  static String normalizeExecutableName(String fileName) => fileName
+      .toLowerCase()
+      .replaceFirst(RegExp(r'\.(exe|bat|cmd)$'), '');
+
   @visibleForTesting
   static bool runsDetachedExecutable(String fileName) => const {
-    'nginx.exe',
-    'httpd.exe',
-    'apache.exe',
-    'caddy.exe',
-  }.contains(fileName.toLowerCase());
+        'nginx',
+        'httpd',
+        'apache',
+        'caddy',
+      }.contains(normalizeExecutableName(fileName));
 
   @visibleForTesting
   static List<String> argumentsForExecutable(
     String fileName,
     String workingDir,
   ) {
-    if (fileName.toLowerCase() == 'caddy.exe') {
+    if (normalizeExecutableName(fileName) == 'caddy') {
       return [
         'run',
         '--config',
@@ -232,7 +272,7 @@ class AppServiceManager {
   static List<({String host, int port})> requiredSocketsForExecutable(
     String fileName,
   ) {
-    if (fileName.toLowerCase() != 'caddy.exe') return const [];
+    if (normalizeExecutableName(fileName) != 'caddy') return const [];
     return [(host: '*', port: 80), (host: '*', port: 443)];
   }
 
@@ -261,10 +301,9 @@ class AppServiceManager {
     try {
       final workingDir = exeFile.parent.path;
       String execPath = app.execFilePath!;
-      final fileName = exeFile.path
-          .split(Platform.pathSeparator)
-          .last
-          .toLowerCase();
+      final fileName = normalizeExecutableName(
+        exeFile.path.split(Platform.pathSeparator).last,
+      );
 
       // Specific arguments for certain apps
       List<String> args = argumentsForExecutable(fileName, workingDir);
@@ -273,7 +312,7 @@ class AppServiceManager {
       final requiredSockets = <({String host, int port})>[];
 
       Map<String, String>? env;
-      if (fileName == 'php-cgi.exe' || fileName == 'php.exe') {
+      if (fileName == 'php-cgi' || fileName == 'php') {
         // Dynamic port based on version or extraInfo: php82 -> 9082
         String port = app.extraInfo['port']?.toString() ?? '';
         if (port.isEmpty) {
@@ -285,22 +324,22 @@ class AppServiceManager {
 
         requiredSockets.add((host: bindAddress, port: int.tryParse(port) ?? 0));
 
-        if (fileName == 'php-cgi.exe') {
+        if (fileName == 'php-cgi') {
           args = ['-b', '$bindAddress:$port'];
         } else {
           args = ['-S', '$bindAddress:$port'];
         }
-      } else if (fileName == 'redis-server.exe') {
+      } else if (fileName == 'redis-server') {
         final confFile = File(p.join(workingDir, 'redis.windows.conf'));
         if (confFile.existsSync()) {
           args = [confFile.path];
         }
-      } else if (fileName == 'mysqld.exe' || fileName == 'mariadbd.exe') {
+      } else if (fileName == 'mysqld' || fileName == 'mariadbd') {
         // Force output to console for capturing logs
         final version = app.installedVersion ?? 'unknown';
         final dataDir = p.join(AppConfig.dataDir, '${app.appId}-$version');
         args = ['--console', '--datadir=${dataDir.replaceAll('\\', '/')}'];
-      } else if (fileName == 'mongod.exe') {
+      } else if (fileName == 'mongod') {
         // Look for mongod.cfg in the same directory as mongod.exe or its parent
         final confFile = File(p.join(workingDir, 'mongod.cfg'));
         if (confFile.existsSync()) {
@@ -314,7 +353,7 @@ class AppServiceManager {
             args = ['--config', parentConf.path];
           }
         }
-      } else if (fileName == 'rustfs.exe') {
+      } else if (fileName == 'rustfs') {
         final dataDir = p.join(AppConfig.dataDir, 'rustfs');
         final confFile = File(p.join(dataDir, 'config.json'));
 
@@ -370,7 +409,7 @@ class AppServiceManager {
           final parsed = parseHostPort(addr);
           if (parsed != null) requiredSockets.add(parsed);
         }
-      } else if (fileName == 'meilisearch.exe') {
+      } else if (fileName == 'meilisearch') {
         final confFile = File(p.join(workingDir, 'config.toml'));
         if (confFile.existsSync()) {
           args = ['--config-file-path', confFile.path];
@@ -379,10 +418,10 @@ class AppServiceManager {
         // Ensure db-path is set to our managed data directory if not in config
         // Actually, Meilisearch defaults to ./data.ms, better to be explicit or let config handle it.
         // For now, if config exists, we use it. If not, we might want to pass --db-path.
-      } else if (fileName == 'elasticsearch.bat') {
+      } else if (fileName == 'elasticsearch') {
         // No special environment or args needed anymore as we edit the config in the app dir
         // but still point data to our managed data dir inside the yml.
-      } else if (fileName == 'postgres.exe') {
+      } else if (fileName == 'postgres') {
         final version = app.installedVersion ?? 'unknown';
         final dataDir = p.join(AppConfig.dataDir, '${app.appId}-$version');
         args = ['-D', dataDir];
@@ -567,6 +606,14 @@ class AppServiceManager {
       return;
     }
     _logger.info('Force killing PID $pid for $appId');
+    if (!Platform.isWindows) {
+      try {
+        await _run('kill', ['-9', '$pid']);
+      } catch (e) {
+        _logger.warning('Failed to kill PID $pid: $e');
+      }
+      return;
+    }
     if (_isWindows()) {
       try {
         // /T is critical: the recorded service PID may be a hidden launcher/
@@ -583,6 +630,19 @@ class AppServiceManager {
   }
 
   Future<void> forceKillByNames(List<String> names) async {
+    if (!Platform.isWindows) {
+      for (final name in names) {
+        if (name.trim().isEmpty) continue;
+        _logger.info('Force killing processes by name: $name');
+        try {
+          await _run('pkill', ['-9', '-x', name]);
+        } catch (e) {
+          _logger.warning('Failed to kill task $name: $e');
+        }
+      }
+      return;
+    }
+
     if (!_isWindows()) return;
 
     for (final name in names) {
