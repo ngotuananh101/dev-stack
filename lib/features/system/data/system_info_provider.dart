@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -18,22 +19,41 @@ class SystemInfoNotifier extends _$SystemInfoNotifier {
     state = await AsyncValue.guard(() => _fetchSystemInfo());
   }
 
-  Future<SystemInfo> _fetchSystemInfo() async {
-    // 1. Get raw systeminfo output using Process.run instead of Shell()
-    final result = await Process.run('systeminfo', []);
-    final rawOutput = result.stdout.toString();
+  @visibleForTesting
+  static Future<({String rawOutput, String frameworkLabel})>
+      collectPlatformInfo({
+    bool? isWindows,
+    Future<ProcessResult> Function(String, List<String>)? run,
+  }) async {
+    final windows = isWindows ?? Platform.isWindows;
+    final runner = run ?? Process.run;
+    try {
+      final res = windows
+          ? await runner('systeminfo', [])
+          : await runner('uname', ['-a']);
+      return (
+        rawOutput: res.stdout.toString(),
+        frameworkLabel: windows ? 'Flutter (Windows)' : 'Flutter (Linux)',
+      );
+    } catch (_) {
+      return (
+        rawOutput: windows ? '' : 'system info unavailable',
+        frameworkLabel: windows ? 'Flutter (Windows)' : 'Flutter (Linux)',
+      );
+    }
+  }
 
-    // 2. Get App details
+  Future<SystemInfo> _fetchSystemInfo() async {
+    final platformInfo = await collectPlatformInfo();
+
     final packageInfo = await PackageInfo.fromPlatform();
-    
-    // 3. Get paths
     final appDir = Directory.current.path;
     final supportDir = await getApplicationSupportDirectory();
 
     return SystemInfo(
-      rawOutput: rawOutput,
+      rawOutput: platformInfo.rawOutput,
       appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
-      frameworkVersion: 'Flutter (Windows)',
+      frameworkVersion: platformInfo.frameworkLabel,
       dartVersion: Platform.version.split(' ')[0],
       databaseVersion: 'Isar 3.1.0',
       engineVersion: 'Chromium-based (Flutter)',
@@ -43,3 +63,4 @@ class SystemInfoNotifier extends _$SystemInfoNotifier {
     );
   }
 }
+
