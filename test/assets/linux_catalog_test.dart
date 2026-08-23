@@ -6,6 +6,12 @@ import 'package:dev_stack/features/apps/data/apps_repository.dart';
 
 void main() {
   group('Linux App Catalog (apps-linux.json)', () {
+    Future<List<Map<String, dynamic>>> loadApps() async {
+      final raw = await File('assets/data/apps-linux.json').readAsString();
+      return ((jsonDecode(raw) as Map<String, dynamic>)['apps'] as List)
+          .cast<Map<String, dynamic>>();
+    }
+
     test('apps-linux.json exists and parses as valid JSON', () async {
       final file = File('assets/data/apps-linux.json');
       expect(await file.exists(), isTrue, reason: 'assets/data/apps-linux.json should exist');
@@ -27,8 +33,6 @@ void main() {
       final essentialIds = [
         'nodejs',
         'caddy',
-        'nginx',
-        'redis',
         'mysql',
         'pyenv',
       ];
@@ -80,6 +84,39 @@ void main() {
                 reason: 'Linux cli_file $cli for $id should not have .bat extension');
           }
         }
+      }
+    });
+
+    test('linux catalog excludes source-only apps pending prebuilt sources',
+        () async {
+      final apps = await loadApps();
+      final ids = apps.map((a) => a['id'] as String).toSet();
+      expect(ids, isNot(contains('nginx')));
+      expect(ids, isNot(contains('apache')));
+      expect(ids, isNot(contains('redis')));
+    });
+
+    test('postgresql points at Zonky prebuilt jars on Maven Central', () async {
+      final apps = await loadApps();
+      final pg = apps.firstWhere((a) => a['id'] == 'postgresql');
+      final versions = pg['versions'] as Map<String, dynamic>;
+      expect(versions, isNotEmpty);
+      for (final url in versions.values) {
+        expect(url, startsWith('https://repo1.maven.org/maven2/'));
+        expect(url, contains('embedded-postgres-binaries-linux-amd64'));
+        expect(url, endsWith('.jar'));
+      }
+    });
+
+    test('static-php entries expose the CLI binary as exec_file', () async {
+      final apps = await loadApps();
+      final phpApps = apps.where(
+          (a) => (a['id'] as String).startsWith('php') && a['id'] != 'phpMyAdmin');
+      expect(phpApps, isNotEmpty);
+      for (final app in phpApps) {
+        expect(app['exec_file'], equals('php'),
+            reason: '${app['id']} ships the static-php-cli CLI binary');
+        expect(app['cli_file'], equals('php'));
       }
     });
 

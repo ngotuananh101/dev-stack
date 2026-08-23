@@ -119,38 +119,12 @@
       }
     },
     {
-      "id": "nginx",
-      "name": "Nginx",
-      "description": "Lightweight, less memory, concurrent ability",
-      "category": "webserver",
-      "group_name": "webserver",
-      "exec_file": "nginx",
-      "cli_file": "nginx",
-      "repo": "nginx/nginx",
-      "versions": {
-        "1.26.3": "https://freenginx.org/download/freenginx-1.26.3.tar.gz",
-        "1.25.5": "https://nginx.org/download/nginx-1.25.5.tar.gz"
-      }
-    },
-    {
-      "id": "apache",
-      "name": "Apache",
-      "description": "World No. 1 web server",
-      "category": "webserver",
-      "group_name": "webserver",
-      "exec_file": "httpd",
-      "cli_file": "httpd",
-      "versions": {
-        "2.4.62": "https://dlcdn.apache.org/httpd/httpd-2.4.62.tar.gz"
-      }
-    },
-    {
       "id": "php85",
       "name": "PHP 8.5",
       "description": "Hypertext Preprocessor v8.5",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php-fpm",
+      "exec_file": "php",
       "cli_file": "php",
       "prefix": "8.5",
       "versions": {
@@ -163,7 +137,7 @@
       "description": "Hypertext Preprocessor v8.4",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php-fpm",
+      "exec_file": "php",
       "cli_file": "php",
       "prefix": "8.4",
       "versions": {
@@ -176,7 +150,7 @@
       "description": "Hypertext Preprocessor v8.3",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php-fpm",
+      "exec_file": "php",
       "cli_file": "php",
       "prefix": "8.3",
       "versions": {
@@ -189,7 +163,7 @@
       "description": "Hypertext Preprocessor v8.2",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php-fpm",
+      "exec_file": "php",
       "cli_file": "php",
       "prefix": "8.2",
       "versions": {
@@ -228,19 +202,6 @@
       }
     },
     {
-      "id": "redis",
-      "name": "Redis",
-      "description": "In-memory data structure store.",
-      "category": "database",
-      "group_name": "redis",
-      "exec_file": "redis-server",
-      "cli_file": "redis-cli",
-      "versions": {
-        "7.4.2": "https://github.com/redis/redis/archive/refs/tags/7.4.2.tar.gz",
-        "7.2.7": "https://github.com/redis/redis/archive/refs/tags/7.2.7.tar.gz"
-      }
-    },
-    {
       "id": "mongodb",
       "name": "MongoDB",
       "description": "NoSQL document-oriented database.",
@@ -262,8 +223,8 @@
       "exec_file": "postgres",
       "cli_file": "psql",
       "versions": {
-        "17.2": "https://ftp.postgresql.org/pub/source/v17.2/postgresql-17.2.tar.gz",
-        "16.6": "https://ftp.postgresql.org/pub/source/v16.6/postgresql-16.6.tar.gz"
+        "17.2": "https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/17.2.0/embedded-postgres-binaries-linux-amd64-17.2.0.jar",
+        "16.6": "https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/16.6.0/embedded-postgres-binaries-linux-amd64-16.6.0.jar"
       }
     },
     {
