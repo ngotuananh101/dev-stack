@@ -56,6 +56,17 @@ class AppInstallerService {
         id.contains('caddy');
   }
 
+  /// Resolves a database maintenance tool inside `<installPath>/bin`,
+  /// preferring the Windows `.exe` spelling and falling back to the bare ELF
+  /// name so Linux layouts (mysqld, mariadb-install-db, initdb) resolve.
+  @visibleForTesting
+  static String resolveDbTool(String installPath, String name) {
+    final bin = p.join(installPath, 'bin');
+    final exe = File(p.join(bin, '$name.exe'));
+    if (exe.existsSync()) return exe.path;
+    return p.join(bin, name);
+  }
+
   @visibleForTesting
   static List<String> buildTarExtractArgs(
     String archivePath,
@@ -649,7 +660,7 @@ class AppInstallerService {
     List<String> args = [];
 
     if (app.appId.contains('mysql')) {
-      initExec = p.join(binDir.path, 'mysqld.exe');
+      initExec = resolveDbTool(installPath, 'mysqld');
       args = [
         '--initialize-insecure',
         '--console',
@@ -657,15 +668,18 @@ class AppInstallerService {
       ];
     } else if (app.appId.contains('mariadb')) {
       // MariaDB uses mysql_install_db or mariadb-install-db
-      final mdbInstall = File(p.join(binDir.path, 'mariadb-install-db.exe'));
-      final mysqlInstall = File(p.join(binDir.path, 'mysql_install_db.exe'));
+      final mdbInstall = File(resolveDbTool(installPath, 'mariadb-install-db'));
+      final mysqlInstall = File(resolveDbTool(installPath, 'mysql_install_db'));
 
       if (mdbInstall.existsSync()) {
         initExec = mdbInstall.path;
       } else if (mysqlInstall.existsSync()) {
         initExec = mysqlInstall.path;
       }
-      args = ['--datadir=${dataDir.path}'];
+      args = [
+        '--datadir=${dataDir.path}',
+        if (Platform.isLinux) '--basedir=$installPath',
+      ];
     }
 
     if (initExec != null && File(initExec).existsSync()) {
@@ -735,11 +749,10 @@ class AppInstallerService {
       );
     }
 
-    final initdbExec = File(p.join(binDir.path, 'initdb.exe'));
-    if (!initdbExec.existsSync()) {
+    final initdbPath = resolveDbTool(installPath, 'initdb');
+    if (!File(initdbPath).existsSync()) {
       throw Exception(
-        'initdb.exe not found at ${initdbExec.path}; cannot initialize the '
-        'PostgreSQL cluster.',
+        'initdb not found at $initdbPath; cannot initialize the cluster.',
       );
     }
 
@@ -762,9 +775,9 @@ class AppInstallerService {
       passwordFile.path,
     ];
 
-    logInfo('Running: ${initdbExec.path} ${args.join(' ')}');
+    logInfo('Running: $initdbPath ${args.join(' ')}');
     try {
-      final result = await Process.run(initdbExec.path, args);
+      final result = await Process.run(initdbPath, args);
       if (result.exitCode == 0) {
         logInfo('PostgreSQL database cluster initialized successfully.');
 
