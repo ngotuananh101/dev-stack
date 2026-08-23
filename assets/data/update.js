@@ -398,6 +398,7 @@ const fetchersLinux = {
 
   async redis() {
     // Valkey official prebuilt Linux binary tarballs from download.valkey.io
+    // Using {distro} placeholder so DevStack automatically resolves to the host's codename (noble/jammy/focal)
     const versions = {};
     const candidateVersions = [
       "9.1.1", "9.1.0", "9.0.5", "9.0.4", "9.0.0",
@@ -405,15 +406,16 @@ const fetchersLinux = {
       "8.0.3", "8.0.2", "8.0.1", "8.0.0",
       "7.2.7", "7.2.6", "7.2.5", "7.2.4"
     ];
-    const distros = ["jammy", "focal", "noble"];
 
     for (const ver of candidateVersions) {
-      for (const d of distros) {
+      // Test availability against jammy/noble/focal
+      for (const d of ["jammy", "noble", "focal"]) {
         const url = `https://download.valkey.io/releases/valkey-${ver}-${d}-x86_64.tar.gz`;
         try {
           const res = await fetch(url, { method: "HEAD" });
           if (res.status === 200) {
-            versions[ver] = url;
+            // Emit template URL with {distro} placeholder
+            versions[ver] = `https://download.valkey.io/releases/valkey-${ver}-{distro}-x86_64.tar.gz`;
             break;
           }
         } catch (_) {}
@@ -439,7 +441,11 @@ const fetchersLinux = {
           !d.archive?.url?.includes("enterprise"),
       );
       if (dl?.archive?.url) {
-        versions[v.version] = dl.archive.url;
+        // Replace concrete target with {mongo_distro} placeholder
+        versions[v.version] = dl.archive.url.replace(
+          /-(ubuntu2204|ubuntu2004|ubuntu2404|debian12)-/,
+          "-{mongo_distro}-",
+        );
       }
     });
     return versions;

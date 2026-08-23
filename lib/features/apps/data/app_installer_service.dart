@@ -15,6 +15,7 @@ import '../../../core/config/caddy_config_builder.dart';
 import '../../../core/config/webserver_bind_policy.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/services/path_service.dart';
+import '../../../core/services/linux_distro_resolver.dart';
 import '../../settings/data/settings_provider.dart';
 
 part 'app_installer_service.g.dart';
@@ -142,11 +143,13 @@ class AppInstallerService {
       onLog?.call('ERROR: $msg');
     }
 
-    final url = app.versionLinks[version];
-    if (url == null || url.isEmpty) {
+    final rawUrl = app.versionLinks[version];
+    if (rawUrl == null || rawUrl.isEmpty) {
       _logger.error('Download URL for ${app.name} version $version not found.');
       throw Exception('Download URL for version $version not found.');
     }
+
+    final url = LinuxDistroResolver.resolveUrl(rawUrl);
 
     final installPath = p.join(defaultBaseDir, app.appId, version);
     final directory = Directory(installPath);
