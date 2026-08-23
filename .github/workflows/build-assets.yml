@@ -1,0 +1,159 @@
+name: Build Assets (Windows & Linux)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_windows:
+        description: 'Build Windows Asset (.zip)'
+        type: boolean
+        default: true
+        required: true
+      build_linux:
+        description: 'Build Linux Asset (Full Bundle .tar.gz & .zip)'
+        type: boolean
+        default: true
+        required: true
+      create_release:
+        description: 'Create GitHub Release with built assets'
+        type: boolean
+        default: false
+        required: false
+      release_tag:
+        description: 'Release tag (e.g. v1.0.0, required if Create Release is true)'
+        type: string
+        default: ''
+        required: false
+
+jobs:
+  build-windows:
+    name: Build Windows (.zip)
+    if: ${{ github.event.inputs.build_windows == 'true' || github.event.inputs.build_windows == true }}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation (if needed)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Package Windows Bundle (.zip)
+        shell: pwsh
+        run: |
+          $buildDir = "build/windows/x64/runner/Release"
+          $outputDir = "dist"
+          New-Item -ItemType Directory -Force -Path $outputDir
+          $zipPath = "$outputDir/dev-stack-windows-x64.zip"
+          Compress-Archive -Path "$buildDir/*" -DestinationPath $zipPath -Force
+          Write-Host "Created Windows artifact: $zipPath"
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-stack-windows-x64
+          path: dist/dev-stack-windows-x64.zip
+          if-no-files-found: error
+
+  build-linux:
+    name: Build Linux (Full Bundle)
+    if: ${{ github.event.inputs.build_linux == 'true' || github.event.inputs.build_linux == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux Build Dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            liblzma-dev \
+            libayatana-appindicator3-dev
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation (if needed)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Enable Linux desktop
+        run: flutter config --enable-linux-desktop
+
+      - name: Build Linux Release
+        run: flutter build linux --release
+
+      - name: Package Linux Bundle (Full tar.gz & zip)
+        run: |
+          mkdir -p dist
+          BUNDLE_DIR="build/linux/x64/release/bundle"
+
+          # Create full tar.gz preserving Linux executable permissions
+          tar -czf dist/dev-stack-linux-x64.tar.gz -C "$BUNDLE_DIR" .
+
+          # Create zip bundle for convenience
+          (cd "$BUNDLE_DIR" && zip -r - .) > dist/dev-stack-linux-x64.zip
+
+          ls -la dist/
+
+      - name: Upload Linux Artifacts (.tar.gz & .zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-stack-linux-x64
+          path: dist/dev-stack-linux-x64.*
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: [build-windows, build-linux]
+    if: ${{ always() && (github.event.inputs.create_release == 'true' || github.event.inputs.create_release == true) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: List Release Assets
+        run: ls -la release-assets/
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          TAG="${RELEASE_TAG:-v$(date +'%Y.%m.%d-%H%M')}"
+          echo "Publishing release with tag: $TAG"
+          gh release create "$TAG" \
+            release-assets/* \
+            --title "DevStack $TAG" \
+            --notes "Automated release build for Windows (.zip) and Linux (full bundle .tar.gz / .zip)." \
+            --draft=false \
+            --prerelease=false
