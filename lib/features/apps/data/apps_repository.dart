@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
@@ -15,7 +14,6 @@ class AppsRepository {
 
   AppsRepository(this.isar);
 
-  @visibleForTesting
   static String catalogFileNameFor({required bool isLinux}) {
     return isLinux ? 'apps-linux.json' : 'apps.json';
   }

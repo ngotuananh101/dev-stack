@@ -84,6 +84,14 @@ class AppInstallerService {
         lower.endsWith('.tar');
   }
 
+  /// True when [urlOrPath] is a Zonky embedded-postgres-binaries jar: a zip
+  /// wrapper whose payload is a single `.txz` holding the actual PG install.
+  @visibleForTesting
+  static bool isZonkyPgJar(String urlOrPath) {
+    final lower = urlOrPath.toLowerCase();
+    return lower.endsWith('.jar') && lower.contains('embedded-postgres-binaries');
+  }
+
   @visibleForTesting
   static Future<void> ensureLinuxPermissions(
     String targetPath, {
@@ -144,11 +152,20 @@ class AppInstallerService {
     final extension = isTar ? '.tar' : p.extension(uri.path).toLowerCase();
     final isZip = extension == '.zip';
     final isExe = extension == '.exe';
+    final isZonky = Platform.isLinux &&
+        app.appId.contains('postgresql') &&
+        isZonkyPgJar(url);
+    // Raw prebuilt Linux binaries (e.g. meilisearch) arrive with no archive
+    // extension; on Windows the legacy fallback treats unknown types as ZIP.
+    final isRawBinary =
+        Platform.isLinux && !isTar && !isZip && !isExe && !isZonky;
+    final downloadExt =
+        isZonky ? '.jar' : (extension.isEmpty ? '.bin' : extension);
 
     final tempDir = await Directory.systemTemp.createTemp(
       'ponta-${app.appId}-',
     );
-    final tempFile = File(p.join(tempDir.path, 'download$extension'));
+    final tempFile = File(p.join(tempDir.path, 'download$downloadExt'));
 
     try {
       await _dio.download(
@@ -170,7 +187,22 @@ class AppInstallerService {
       logInfo('Download completed for ${app.name}');
       onProgress?.call(0.8, 'Download completed');
 
-      if (isTar) {
+      if (isZonky) {
+        logInfo('Extracting Zonky PostgreSQL bundle for ${app.name}');
+        onProgress?.call(0.82, 'Extracting...');
+        await Directory(installPath).create(recursive: true);
+        await _extractZonkyJar(tempFile, installPath, onLog);
+        await ensureLinuxPermissions(installPath, logInfo: logInfo);
+        onProgress?.call(0.9, 'Extracted');
+      } else if (isRawBinary) {
+        logInfo('Handling raw Linux binary for ${app.name}');
+        onProgress?.call(0.85, 'Moving binary...');
+        final fileName = app.execFile ?? p.basename(uri.path);
+        final targetFile = File(p.join(installPath, fileName));
+        await tempFile.copy(targetFile.path);
+        await ensureLinuxPermissions(installPath, logInfo: logInfo);
+        onProgress?.call(0.9, 'Binary ready');
+      } else if (isTar) {
         logInfo('Extracting tar archive for ${app.name}');
         onProgress?.call(0.82, 'Extracting...');
         await Directory(installPath).create(recursive: true);
@@ -326,6 +358,40 @@ class AppInstallerService {
     } finally {
       if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);
+      }
+    }
+  }
+
+  /// Extracts a Zonky PG jar: unzip to a scratch dir, then `tar -xf` the
+  /// inner `.txz` (which has NO wrapping top-level folder) into [installPath].
+  Future<void> _extractZonkyJar(
+    File jarFile,
+    String installPath,
+    void Function(String)? onLog,
+  ) async {
+    final scratch = await Directory.systemTemp.createTemp('ponta_zonky_');
+    try {
+      final bytes = await jarFile.readAsBytes();
+      await _extractZip(bytes, scratch.path, onLog);
+      final txzs = scratch
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.toLowerCase().endsWith('.txz'))
+          .toList();
+      if (txzs.isEmpty) {
+        throw Exception(
+            'No .txz payload found inside Zonky jar ${jarFile.path}');
+      }
+      final result = await Process.run(
+        'tar',
+        buildTarExtractArgs(txzs.first.path, installPath),
+      );
+      if (result.exitCode != 0) {
+        throw Exception('Zonky txz extraction failed: ${result.stderr}');
+      }
+    } finally {
+      if (scratch.existsSync()) {
+        await scratch.delete(recursive: true);
       }
     }
   }
