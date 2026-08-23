@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
 import '../../features/settings/data/settings_provider.dart';
@@ -25,35 +26,81 @@ class SslService extends _$SslService {
 
   bool get isInstalled => state.value ?? false;
 
-  String get mkcertPath {
-    final binPath = p.join(AppConfig.binDir, 'mkcert.exe');
-    if (File(binPath).existsSync()) {
-      return binPath;
+  /// Bundled mkcert asset name for the host platform. Windows keeps the
+  /// legacy unversioned `mkcert.exe`; Linux picks the versioned binary whose
+  /// architecture matches the Dart VM (`Platform.version` embeds `linux_x64`,
+  /// `linux_arm64`, ...), defaulting to amd64.
+  @visibleForTesting
+  static String mkcertAssetBasename({bool? isLinux, String? dartVersion}) {
+    final linux = isLinux ?? Platform.isLinux;
+    if (!linux) return 'mkcert.exe';
+    final version = dartVersion ?? Platform.version;
+    if (version.contains('arm64')) return 'mkcert-v1.4.4-linux-arm64';
+    if (RegExp(r'arm(?!64)').hasMatch(version)) {
+      return 'mkcert-v1.4.4-linux-arm';
     }
+    return 'mkcert-v1.4.4-linux-amd64';
+  }
 
-    final devPath = p.join(
-      Directory.current.path,
-      'assets',
-      'bin',
-      'mkcert.exe',
-    );
-    if (File(devPath).existsSync()) {
+  String get mkcertPath {
+    final binCopy = p.join(AppConfig.binDir, 'mkcert');
+    final assetName = mkcertAssetBasename();
+
+    // Windows resolution is unchanged: prefer an installed copy, then the
+    // dev/prod asset copies of mkcert.exe.
+    if (!Platform.isLinux) {
+      final binPath = p.join(AppConfig.binDir, 'mkcert.exe');
+      if (File(binPath).existsSync()) return binPath;
+
+      final devPath = p.join(
+          Directory.current.path, 'assets', 'bin', 'mkcert.exe');
+      if (File(devPath).existsSync()) return devPath;
+
+      final prodPath = p.join(
+        p.dirname(Platform.resolvedExecutable),
+        'data',
+        'flutter_assets',
+        'assets',
+        'bin',
+        'mkcert.exe',
+      );
+      if (File(prodPath).existsSync()) return prodPath;
       return devPath;
     }
 
-    final prodPath = p.join(
-      p.dirname(Platform.resolvedExecutable),
-      'data',
-      'flutter_assets',
-      'assets',
-      'bin',
-      'mkcert.exe',
-    );
-    if (File(prodPath).existsSync()) {
-      return prodPath;
-    }
+    // Linux: asset-bundle files are not executable, so materialise a copy
+    // into ~/.ponta/bin and mark it +x. Re-copy when the asset changed size
+    // (version upgrade).
+    final candidates = [
+      p.join(AppConfig.binDir, assetName),
+      p.join(Directory.current.path, 'assets', 'bin', assetName),
+      p.join(
+        p.dirname(Platform.resolvedExecutable),
+        'data',
+        'flutter_assets',
+        'assets',
+        'bin',
+        assetName,
+      ),
+    ];
+    final source = candidates
+        .map((p) => File(p))
+        .firstWhere((f) => f.existsSync(), orElse: () => File(''));
+    if (source.path.isEmpty) return binCopy;
 
-    return devPath;
+    try {
+      final target = File(binCopy);
+      final needsCopy = !target.existsSync() ||
+          target.lengthSync() != source.lengthSync();
+      if (needsCopy) {
+        if (!Directory(AppConfig.binDir).existsSync()) {
+          Directory(AppConfig.binDir).createSync(recursive: true);
+        }
+        source.copySync(binCopy);
+        Process.runSync('chmod', ['755', binCopy]);
+      }
+    } catch (_) {}
+    return binCopy;
   }
 
   Future<bool> checkStatus() async {
@@ -69,11 +116,12 @@ class SslService extends _$SslService {
       // Now verify the CA is actually installed in the system trust store
       // We do this by attempting to generate a test certificate and checking
       // if mkcert warns about the CA not being installed
+      final nullDevice = Platform.isWindows ? 'nul' : '/dev/null';
       final testResult = await BackgroundProcess.run(mkcertPath, [
         '-cert-file',
-        'nul',
+        nullDevice,
         '-key-file',
-        'nul',
+        nullDevice,
         'test.local',
       ]);
 
@@ -171,7 +219,7 @@ class SslService extends _$SslService {
 
     try {
       if (!File(mkcertPath).existsSync()) {
-        AppLogger.info('mkcert.exe not found at $mkcertPath');
+        AppLogger.info('mkcert binary not found at $mkcertPath');
         return;
       }
 
