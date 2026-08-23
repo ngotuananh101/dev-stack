@@ -39,7 +39,7 @@ void main() {
   });
 
   group('parseListeningSocketsLinux', () {
-    test('collects LISTEN rows and expands wildcard stars', () {
+    test('collects LISTEN rows and expands wildcard stars (5-column format)', () {
       const ss =
           'State  Recv-Q Send-Q Local Address:Port Peer Address:Port\n'
           'LISTEN 0      128        127.0.0.1:9082      0.0.0.0:*   \n'
@@ -55,6 +55,37 @@ void main() {
       ); // '*' expands to both wildcards
       expect(sockets.contains('[::]:443'), isTrue);
       expect(sockets.any((s) => s.contains(':22')), isFalse);
+    });
+
+    test('parses standard 7-column ss -tulpn output with tcp/udp prefix', () {
+      const ss =
+          'Netid State  Recv-Q Send-Q  Local Address:Port   Peer Address:Port Process\n'
+          'tcp   LISTEN 0      128         127.0.0.1:9082        0.0.0.0:*     users:(("php-cgi",pid=123,fd=3))\n'
+          'tcp   LISTEN 0      511           0.0.0.0:80          0.0.0.0:*     users:(("caddy",pid=456,fd=4))\n'
+          'tcp   LISTEN 0      4096             [::]:443            [::]:*     users:(("caddy",pid=456,fd=5))\n'
+          'udp   UNCONN 0      0             0.0.0.0:5353        0.0.0.0:*     users:(("avahi-daemon",pid=789,fd=6))\n'
+          'tcp   ESTAB  0      0          10.0.0.2:22         10.0.0.1:5000  users:(("sshd",pid=101,fd=3))\n';
+      final sockets = AppServiceManager.parseListeningSocketsLinux(ss);
+      expect(sockets, contains('127.0.0.1:9082'));
+      expect(sockets, contains('0.0.0.0:80'));
+      expect(sockets, contains('[::]:443'));
+      expect(sockets.contains('0.0.0.0:5353'), isFalse);
+      expect(sockets.any((s) => s.contains(':22')), isFalse);
+    });
+
+    test('handles edge cases such as empty lines, malformed lines, and invalid ports', () {
+      const ss =
+          '\n'
+          '   \n'
+          'LISTEN\n'
+          'LISTEN 0\n'
+          'LISTEN 0 128\n'
+          'tcp LISTEN 0 128 invalid-no-port 0.0.0.0:*\n'
+          'tcp LISTEN 0 128 127.0.0.1:not_a_port 0.0.0.0:*\n'
+          'tcp LISTEN 0 128 :8080 0.0.0.0:*\n'
+          'tcp LISTEN 0 128 0.0.0.0:3306 0.0.0.0:*\n';
+      final sockets = AppServiceManager.parseListeningSocketsLinux(ss);
+      expect(sockets, equals({'0.0.0.0:3306'}));
     });
   });
 }

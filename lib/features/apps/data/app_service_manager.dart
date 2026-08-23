@@ -182,8 +182,9 @@ class AppServiceManager {
     final result = <String>{};
     for (final raw in ssOutput.split('\n')) {
       final tokens = raw.trim().split(RegExp(r'\s+'));
-      if (tokens.length < 4 || tokens[0] != 'LISTEN') continue;
-      final local = tokens[3];
+      final listenIdx = tokens.indexOf('LISTEN');
+      if (listenIdx == -1 || tokens.length <= listenIdx + 3) continue;
+      final local = tokens[listenIdx + 3];
       final idx = local.lastIndexOf(':');
       if (idx <= 0) continue;
       var host = local.substring(0, idx);
@@ -632,12 +633,13 @@ class AppServiceManager {
   Future<void> forceKillByNames(List<String> names) async {
     if (!Platform.isWindows) {
       for (final name in names) {
-        if (name.trim().isEmpty) continue;
-        _logger.info('Force killing processes by name: $name');
+        final normalized = normalizeExecutableName(name.trim());
+        if (normalized.isEmpty) continue;
+        _logger.info('Force killing processes by name: $normalized');
         try {
-          await _run('pkill', ['-9', '-x', name]);
+          await _run('pkill', ['-9', '-x', normalized]);
         } catch (e) {
-          _logger.warning('Failed to kill task $name: $e');
+          _logger.warning('Failed to kill task $normalized: $e');
         }
       }
       return;
