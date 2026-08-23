@@ -62,10 +62,10 @@ jobs:
           Compress-Archive -Path "$buildDir/*" -DestinationPath $zipPath -Force
           Write-Host "Created Windows artifact: $zipPath"
 
-      - name: Upload Windows Artifact
+      - name: Upload Windows (.zip)
         uses: actions/upload-artifact@v4
         with:
-          name: dev-stack-windows-x64
+          name: dev-stack-windows-x64-zip
           path: dist/dev-stack-windows-x64.zip
           if-no-files-found: error
 
@@ -156,11 +156,25 @@ jobs:
 
           ls -lh dist/
 
-      - name: Upload Linux Artifacts (.AppImage, .tar.gz & .zip)
+      - name: Upload Linux AppImage
         uses: actions/upload-artifact@v4
         with:
-          name: dev-stack-linux-x64
-          path: dist/dev-stack-linux-x64.*
+          name: dev-stack-linux-x64-appimage
+          path: dist/dev-stack-linux-x64.AppImage
+          if-no-files-found: error
+
+      - name: Upload Linux tar.gz
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-stack-linux-x64-tar
+          path: dist/dev-stack-linux-x64.tar.gz
+          if-no-files-found: error
+
+      - name: Upload Linux zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-stack-linux-x64-zip
+          path: dist/dev-stack-linux-x64.zip
           if-no-files-found: error
 
   release:
