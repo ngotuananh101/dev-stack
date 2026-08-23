@@ -20,15 +20,15 @@ jobs:
       - name: Run update script
         run: node assets/data/update.js
 
-      - name: Update Gist
+      - name: Update Gist (Windows & Linux catalogs)
         env:
           GH_TOKEN: ${{ secrets.GIST_PAT }} # Cần Personal Access Token có quyền 'gist'
           GIST_ID: ${{ secrets.GIST_ID }}   # ID của Gist bạn đã tạo
         run: |
           if [ -n "$GIST_ID" ]; then
             echo "Gist ID detected. Attempting to update..."
-            # Truyền trực tiếp đường dẫn file local vào tham số của lệnh gh
-            gh gist edit "$GIST_ID" -f "apps.json" assets/data/new-apps.json
+            # Update both apps.json (Windows) and apps-linux.json (Linux)
+            gh gist edit "$GIST_ID" -f "apps.json" assets/data/new-apps.json -f "apps-linux.json" assets/data/new-apps-linux.json
           else
             echo "Error: GIST_ID is missing from Secrets."
             exit 1
