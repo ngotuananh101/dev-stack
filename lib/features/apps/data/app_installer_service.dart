@@ -1741,6 +1741,22 @@ location /phpmyadmin {
     );
   }
 
+  @visibleForTesting
+  static String buildApachePmaConfig(String pmaPathUnix, {int phpPort = 9000}) {
+    return '''
+# phpMyAdmin Configuration
+Alias /phpmyadmin "$pmaPathUnix/"
+<Directory "$pmaPathUnix/">
+    Options Indexes FollowSymLinks MultiViews
+    AllowOverride All
+    Require all granted
+    <FilesMatch \\.php\$>
+        SetHandler "proxy:fcgi://127.0.0.1:$phpPort"
+    </FilesMatch>
+</Directory>
+''';
+  }
+
   Future<void> _configurePhpMyAdminInApache(
     AppModel apache,
     AppModel pma,
@@ -1759,16 +1775,7 @@ location /phpmyadmin {
     final pmaWebRoot = _resolvePmaWebRoot(pmaPath);
     final pmaPathUnix = pmaWebRoot.replaceAll('\\', '/');
 
-    final pmaConfig =
-        '''
-# phpMyAdmin Configuration
-Alias /phpmyadmin "$pmaPathUnix/"
-<Directory "$pmaPathUnix/">
-    Options Indexes FollowSymLinks MultiViews
-    AllowOverride All
-    Require all granted
-</Directory>
-''';
+    final pmaConfig = buildApachePmaConfig(pmaPathUnix);
 
     await pmaConfFile.writeAsString(pmaConfig);
     log('Created Apache config for phpMyAdmin at ${pmaConfFile.path}');
