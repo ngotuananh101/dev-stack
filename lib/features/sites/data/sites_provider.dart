@@ -647,7 +647,9 @@ class SitesNotifier extends _$SitesNotifier {
   }
 
   Future<void> regenerateSsl(SiteModel site) async {
-    await ref.read(sslServiceProvider.notifier).generateSiteCert(site.domain);
+    await ref
+        .read(sslServiceProvider.notifier)
+        .generateSiteCert(site.domain, force: true);
     await restartWebservers();
   }
 
