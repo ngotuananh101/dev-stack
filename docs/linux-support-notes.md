@@ -1,7 +1,8 @@
 # Linux Support — Known Limitations & Follow-ups
 
 ## Catalog scope (as of 2026-08-23)
-- **Nginx, Apache, Redis** are intentionally ABSENT from `apps-linux.json`:
+- **Nginx** uses Jakub Jirutka static Linux binaries (`jirutka/nginx-binaries`).
+- **Apache, Redis** are intentionally ABSENT from `apps-linux.json`:
   upstream publishes no official portable prebuilt Linux binaries. Re-add
   only when a trustworthy signed source exists.
 - **PostgreSQL** uses Zonky embedded binaries (Maven Central), unpacked from

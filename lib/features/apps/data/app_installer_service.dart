@@ -906,6 +906,36 @@ class AppInstallerService {
     }
 
     if (app.appId.contains('nginx')) {
+      final confDir = Directory(p.join(installPath, 'conf'));
+      if (!confDir.existsSync()) {
+        await confDir.create(recursive: true);
+      }
+      final logsDir = Directory(p.join(installPath, 'logs'));
+      if (!logsDir.existsSync()) {
+        await logsDir.create(recursive: true);
+      }
+      final tempDir = Directory(p.join(installPath, 'temp'));
+      if (!tempDir.existsSync()) {
+        await tempDir.create(recursive: true);
+      }
+      final mimeFile = File(p.join(confDir.path, 'mime.types'));
+      if (!mimeFile.existsSync()) {
+        await mimeFile.writeAsString('''types {
+    text/html                             html htm shtml;
+    text/css                              css;
+    text/xml                              xml;
+    image/gif                             gif;
+    image/jpeg                            jpeg jpg;
+    application/javascript                js;
+    application/json                      json;
+    image/png                             png;
+    image/svg+xml                         svg svgz;
+    image/x-icon                          ico;
+    font/woff                             woff;
+    font/woff2                            woff2;
+}''');
+      }
+
       final confFile = File(p.join(installPath, 'conf', 'nginx.conf'));
       logInfo('Generating fresh Nginx configuration...');
 

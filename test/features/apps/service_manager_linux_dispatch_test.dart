@@ -36,6 +36,16 @@ void main() {
       );
       expect(args, containsAll(['run', '--adapter', 'caddyfile']));
     });
+
+    test('nginx gets run args and socket requirements', () {
+      final sockets = AppServiceManager.requiredSocketsForExecutable('nginx');
+      expect(sockets, hasLength(2));
+      final args = AppServiceManager.argumentsForExecutable(
+        'nginx',
+        '/opt/ponta/apps/nginx/1.30.4',
+      );
+      expect(args, containsAll(['-p', '/opt/ponta/apps/nginx/1.30.4/', '-c', '/opt/ponta/apps/nginx/1.30.4/conf/nginx.conf']));
+    });
   });
 
   group('parseListeningSocketsLinux', () {

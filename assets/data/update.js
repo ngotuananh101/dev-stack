@@ -323,6 +323,28 @@ const fetchersLinux = {
     return versions;
   },
 
+  async nginx() {
+    // Static Nginx binaries for Linux from Jakub Jirutka (Alpine/musl static builds)
+    const res = await fetch("https://jirutka.github.io/nginx-binaries/index.json");
+    const data = await res.json();
+    const versions = {};
+    if (data && Array.isArray(data.contents)) {
+      data.contents
+        .filter(
+          (item) =>
+            item.os === "linux" &&
+            item.arch === "x86_64" &&
+            item.name === "nginx" &&
+            !item.variant,
+        )
+        .forEach((item) => {
+          versions[item.version] =
+            `https://jirutka.github.io/${item.filename}`;
+        });
+    }
+    return versions;
+  },
+
   async mysql() {
     const regex = /^(\d+\.\d+\.\d+)$/;
     const versions = {};
@@ -744,6 +766,15 @@ let baseLinuxApps = [
     group_name: "webserver",
     exec_file: "caddy",
     cli_file: "caddy",
+  },
+  {
+    id: "nginx",
+    name: "Nginx",
+    description: "Lightweight, less memory, concurrent ability",
+    category: "webserver",
+    group_name: "webserver",
+    exec_file: "nginx",
+    cli_file: "nginx",
   },
   {
     id: "php85",

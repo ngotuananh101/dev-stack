@@ -257,7 +257,8 @@ class AppServiceManager {
     String fileName,
     String workingDir,
   ) {
-    if (normalizeExecutableName(fileName) == 'caddy') {
+    final name = normalizeExecutableName(fileName);
+    if (name == 'caddy') {
       return [
         'run',
         '--config',
@@ -266,6 +267,11 @@ class AppServiceManager {
         'caddyfile',
       ];
     }
+    if (name == 'nginx') {
+      final prefix = workingDir.replaceAll('\\', '/');
+      final conf = p.join(workingDir, 'conf', 'nginx.conf').replaceAll('\\', '/');
+      return ['-p', '$prefix/', '-c', conf];
+    }
     return <String>[];
   }
 
@@ -273,7 +279,10 @@ class AppServiceManager {
   static List<({String host, int port})> requiredSocketsForExecutable(
     String fileName,
   ) {
-    if (normalizeExecutableName(fileName) != 'caddy') return const [];
+    final name = normalizeExecutableName(fileName);
+    if (name != 'caddy' && name != 'nginx' && name != 'httpd' && name != 'apache') {
+      return const [];
+    }
     return [(host: '*', port: 80), (host: '*', port: 443)];
   }
 

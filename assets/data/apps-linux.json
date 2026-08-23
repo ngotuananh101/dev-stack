@@ -119,6 +119,21 @@
       }
     },
     {
+      "id": "nginx",
+      "name": "Nginx",
+      "description": "Lightweight, less memory, concurrent ability (Static binary).",
+      "category": "webserver",
+      "group_name": "webserver",
+      "exec_file": "nginx",
+      "cli_file": "nginx",
+      "versions": {
+        "1.31.4": "https://jirutka.github.io/nginx-binaries/bin/nginx-1.31.4-x86_64-linux",
+        "1.30.4": "https://jirutka.github.io/nginx-binaries/bin/nginx-1.30.4-x86_64-linux",
+        "1.28.3": "https://jirutka.github.io/nginx-binaries/bin/nginx-1.28.3-x86_64-linux",
+        "1.26.3": "https://jirutka.github.io/nginx-binaries/bin/nginx-1.26.3-x86_64-linux"
+      }
+    },
+    {
       "id": "php85",
       "name": "PHP 8.5",
       "description": "Hypertext Preprocessor v8.5",
