@@ -6,7 +6,7 @@ part of 'rustfs_settings_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$rustFSSettingsHash() => r'af818cf9355a329203e639b6ce465882061b73e5';
+String _$rustFSSettingsHash() => r'4c9e52b88583ccb6b481992f01745ca518102a7a';
 
 /// See also [RustFSSettings].
 @ProviderFor(RustFSSettings)

@@ -77,6 +77,12 @@ class AppsRepository {
               extraInfoJson = jsonEncode(catalogExtra);
             }
 
+            // Parse package_manager_commands if present
+            String? packageManagerCommandsJson;
+            if (json['package_manager_commands'] != null) {
+              packageManagerCommandsJson = jsonEncode(json['package_manager_commands']);
+            }
+
             return AppModel(
               appId: appId,
               name: json['name'],
@@ -87,6 +93,8 @@ class AppsRepository {
               cliFile: json['cli_file'],
               versions: versionKeys.isNotEmpty ? versionKeys : ['latest'],
               versionLinksJson: jsonEncode(versionsMap),
+              installMethod: json['install_method'],
+              packageManagerCommandsJson: packageManagerCommandsJson,
               defaultUsername: json['default_username'],
               defaultPassword: json['default_password'],
               // Merge state from DB

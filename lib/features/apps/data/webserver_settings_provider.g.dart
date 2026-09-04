@@ -6,7 +6,7 @@ part of 'webserver_settings_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$webserverSettingsHash() => r'7952cf3ee4dccdd3726e2d555fe31ffb7b77cc9d';
+String _$webserverSettingsHash() => r'3a6629721f7ddc8938d7ab4edb9d3c8d1dc2e13f';
 
 /// See also [WebserverSettings].
 @ProviderFor(WebserverSettings)

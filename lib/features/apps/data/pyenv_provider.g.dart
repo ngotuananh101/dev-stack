@@ -6,7 +6,7 @@ part of 'pyenv_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pyenvNotifierHash() => r'b5939d071965ff3f04204c9a6a04ce7b01be4317';
+String _$pyenvNotifierHash() => r'fef3472d91f4495c5fe7db856d4bc8318cc91290';
 
 /// See also [PyenvNotifier].
 @ProviderFor(PyenvNotifier)

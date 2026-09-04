@@ -143,6 +143,17 @@ class AppInstallerService {
       onLog?.call('ERROR: $msg');
     }
 
+    // Check if this app uses package manager installation
+    if (app.installMethod == 'package_manager' && Platform.isLinux) {
+      return await _installViaPackageManager(
+        app,
+        version,
+        onProgress: onProgress,
+        logInfo: logInfo,
+        logError: logError,
+      );
+    }
+
     final rawUrl = app.versionLinks[version];
     if (rawUrl == null || rawUrl.isEmpty) {
       _logger.error('Download URL for ${app.name} version $version not found.');
@@ -2314,5 +2325,183 @@ Alias /phpmyadmin "$pmaPathUnix/"
       }
     }
     _logger.info('Removed Composer wrappers');
+  }
+
+  /// Install app via system package manager (apt, dnf, etc.)
+  /// Used for PHP on Linux where prebuilt binaries are not available
+  Future<String> _installViaPackageManager(
+    AppModel app,
+    String version, {
+    InstallationProgressCallback? onProgress,
+    required Function(String) logInfo,
+    required Function(String) logError,
+  }) async {
+    logInfo('Installing ${app.name} via package manager...');
+    onProgress?.call(0.1, 'Detecting distribution...');
+
+    // 1. Detect Linux distribution
+    final distro = await _detectLinuxDistro(logInfo);
+    logInfo('Detected Linux distribution: $distro');
+
+    // 2. Get commands for this distro
+    final commands = app.packageManagerCommands[distro];
+    if (commands == null || commands.isEmpty) {
+      logError('No package manager commands found for distro: $distro');
+      throw Exception(
+        'Unsupported Linux distribution: $distro. '
+        'Please install ${app.name} manually using your package manager.',
+      );
+    }
+
+    // 3. Run installation commands
+    logInfo('Running ${commands.length} installation commands...');
+    onProgress?.call(0.2, 'Installing packages...');
+
+    for (var i = 0; i < commands.length; i++) {
+      final cmd = commands[i];
+      logInfo('[$i/${commands.length}] Running: $cmd');
+
+      final progress = 0.2 + (i / commands.length) * 0.6; // 20% to 80%
+      onProgress?.call(progress, 'Running: ${cmd.split(' ').first}...');
+
+      try {
+        final result = await Process.run(
+          'sh',
+          ['-c', cmd],
+          runInShell: true,
+        );
+
+        if (result.exitCode != 0) {
+          logError('Command failed with exit code ${result.exitCode}');
+          logError('STDOUT: ${result.stdout}');
+          logError('STDERR: ${result.stderr}');
+          throw Exception('Installation command failed: $cmd\n${result.stderr}');
+        }
+
+        if (result.stdout.toString().isNotEmpty) {
+          logInfo('Output: ${result.stdout}');
+        }
+      } catch (e) {
+        logError('Failed to run command: $cmd');
+        logError('Error: $e');
+        rethrow;
+      }
+    }
+
+    onProgress?.call(0.85, 'Finding installed executable...');
+
+    // 4. Find installed PHP executable
+    logInfo('Locating installed ${app.name} executable...');
+    final execPath = await _findInstalledPhp(app.execFile ?? 'php', logInfo);
+
+    if (execPath == null) {
+      logError('Could not find ${app.execFile} after installation');
+      throw Exception(
+        'Installation completed but ${app.execFile} not found in PATH. '
+        'You may need to restart your terminal or add it manually.',
+      );
+    }
+
+    logInfo('Found ${app.name} at: $execPath');
+    app.execFilePath = execPath;
+    app.cliFilePath = execPath;
+
+    onProgress?.call(0.95, 'Verifying installation...');
+
+    // 5. Verify installation
+    try {
+      final result = await Process.run(execPath, ['--version']);
+      logInfo('Version check: ${result.stdout}');
+    } catch (e) {
+      logError('Failed to verify installation: $e');
+    }
+
+    onProgress?.call(1.0, 'Completed');
+
+    // Return a pseudo install path for package manager installations
+    final installPath = '/usr/bin';
+    logInfo('Successfully installed ${app.name} via package manager');
+    return installPath;
+  }
+
+  /// Detect Linux distribution from /etc/os-release
+  Future<String> _detectLinuxDistro(Function(String) logInfo) async {
+    try {
+      final osRelease = File('/etc/os-release');
+      if (!osRelease.existsSync()) {
+        logInfo('Warning: /etc/os-release not found, defaulting to ubuntu');
+        return 'ubuntu';
+      }
+
+      final content = await osRelease.readAsString();
+      final lines = content.split('\n');
+
+      String? id;
+      String? idLike;
+
+      for (final line in lines) {
+        if (line.startsWith('ID=')) {
+          id = line.substring(3).replaceAll('"', '').trim().toLowerCase();
+        } else if (line.startsWith('ID_LIKE=')) {
+          idLike = line.substring(8).replaceAll('"', '').trim().toLowerCase();
+        }
+      }
+
+      // Map distribution ID to our supported distros
+      if (id == 'ubuntu' || idLike?.contains('ubuntu') == true) {
+        return 'ubuntu';
+      } else if (id == 'debian' || idLike?.contains('debian') == true) {
+        return 'debian';
+      } else if (id == 'centos' || id == 'rhel' || id == 'fedora' ||
+                 idLike?.contains('centos') == true ||
+                 idLike?.contains('rhel') == true ||
+                 idLike?.contains('fedora') == true) {
+        return 'centos';
+      }
+
+      // Default to ubuntu for Debian-based, centos for RedHat-based
+      if (idLike?.contains('debian') == true) {
+        return 'ubuntu';
+      } else if (idLike?.contains('rhel') == true ||
+                 idLike?.contains('fedora') == true) {
+        return 'centos';
+      }
+
+      logInfo('Unknown distribution ID: $id, ID_LIKE: $idLike, defaulting to ubuntu');
+      return 'ubuntu';
+    } catch (e) {
+      logInfo('Error detecting distro: $e, defaulting to ubuntu');
+      return 'ubuntu';
+    }
+  }
+
+  /// Find installed PHP executable in system PATH
+  Future<String?> _findInstalledPhp(String phpName, Function(String) logInfo) async {
+    try {
+      // Try 'which' command first
+      final result = await Process.run('which', [phpName]);
+      if (result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty) {
+        return result.stdout.toString().trim();
+      }
+
+      // Fallback: check common locations
+      final commonPaths = [
+        '/usr/bin/$phpName',
+        '/usr/local/bin/$phpName',
+        '/opt/php/bin/$phpName',
+      ];
+
+      for (final path in commonPaths) {
+        if (File(path).existsSync()) {
+          logInfo('Found $phpName at: $path');
+          return path;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      logInfo('Error finding $phpName: $e');
+      return null;
+    }
   }
 }

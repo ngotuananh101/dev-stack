@@ -6,16 +6,15 @@ part of 'ssl_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sslServiceHash() => r'f5d51b3a8c5048bfb768c38af819c6211ff36ed7';
+String _$sslServiceHash() => r'ac09de1c3245db5b4e3bbcf4d1040cc677fbed26';
 
 /// See also [SslService].
 @ProviderFor(SslService)
 final sslServiceProvider = AsyncNotifierProvider<SslService, bool>.internal(
   SslService.new,
   name: r'sslServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$sslServiceHash,
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$sslServiceHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );

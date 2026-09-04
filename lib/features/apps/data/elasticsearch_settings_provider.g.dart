@@ -7,7 +7,7 @@ part of 'elasticsearch_settings_provider.dart';
 // **************************************************************************
 
 String _$elasticsearchSettingsHash() =>
-    r'bb4aea3339cf907276a76dba9930aa29d04be433';
+    r'6196244f48455993d976ab3d8ea1857571a205c7';
 
 /// See also [ElasticsearchSettings].
 @ProviderFor(ElasticsearchSettings)

@@ -12,14 +12,14 @@ String _$windowServiceHash() => r'e4dd351ce12fb634640adab2c831d82fa736fe8a';
 @ProviderFor(WindowService)
 final windowServiceProvider =
     AsyncNotifierProvider<WindowService, void>.internal(
-      WindowService.new,
-      name: r'windowServiceProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$windowServiceHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+  WindowService.new,
+  name: r'windowServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$windowServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
 typedef _$WindowService = AsyncNotifier<void>;
 // ignore_for_file: type=lint

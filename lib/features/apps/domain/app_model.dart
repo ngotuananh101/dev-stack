@@ -17,6 +17,10 @@ class AppModel {
   String? defaultPassword;
   String? extraInfoJson;
 
+  // Package manager installation (Linux)
+  String? installMethod; // 'download', 'package_manager', 'manual'
+  String? packageManagerCommandsJson; // JSON map: distro -> list of commands
+
   // UI/State properties
   String? selectedVersion;
 
@@ -90,6 +94,25 @@ class AppModel {
     extraInfoJson = json.encode(info);
   }
 
+  Map<String, List<String>> get packageManagerCommands {
+    if (packageManagerCommandsJson == null) return {};
+    try {
+      final decoded = json.decode(packageManagerCommandsJson!) as Map<String, dynamic>;
+      return decoded.map((key, value) {
+        if (value is List) {
+          return MapEntry(key, value.cast<String>());
+        }
+        return MapEntry(key, <String>[]);
+      });
+    } catch (_) {
+      return {};
+    }
+  }
+
+  set packageManagerCommands(Map<String, List<String>> commands) {
+    packageManagerCommandsJson = json.encode(commands);
+  }
+
   bool get hasUpdateAvailable {
     if (!isInstalled || installedVersion == null || versions.isEmpty) {
       return false;
@@ -140,6 +163,8 @@ class AppModel {
     this.cliFile,
     this.versions = const ['latest'],
     this.versionLinksJson,
+    this.installMethod,
+    this.packageManagerCommandsJson,
     this.selectedVersion,
     this.location,
     this.status,

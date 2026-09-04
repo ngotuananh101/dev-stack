@@ -6,16 +6,15 @@ part of 'path_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pathServiceHash() => r'361905b8f9eb32e074735a15f146f1dc4eb13bbd';
+String _$pathServiceHash() => r'0340d1f02911547c6c3fa108da9fc66e8c9f4def';
 
 /// See also [pathService].
 @ProviderFor(pathService)
 final pathServiceProvider = AutoDisposeProvider<PathService>.internal(
   pathService,
   name: r'pathServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$pathServiceHash,
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$pathServiceHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
