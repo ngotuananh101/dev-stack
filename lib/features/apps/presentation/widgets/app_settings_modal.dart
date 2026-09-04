@@ -486,7 +486,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             _buildInfoRow(
               Icons.folder_open,
               'Location',
-              widget.app.location ?? 'Unknown',
+              widget.app.location == 'system_package'
+                  ? 'System package (managed by your OS)'
+                  : widget.app.location ?? 'Unknown',
             ),
             _buildInfoRow(
               Icons.new_releases_outlined,

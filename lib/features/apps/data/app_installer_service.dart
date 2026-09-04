@@ -16,6 +16,7 @@ import '../../../core/config/webserver_bind_policy.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/services/path_service.dart';
 import '../../../core/services/linux_distro_resolver.dart';
+import 'package_command_validator.dart';
 import '../../settings/data/settings_provider.dart';
 
 part 'app_installer_service.g.dart';
@@ -2327,8 +2328,18 @@ Alias /phpmyadmin "$pmaPathUnix/"
     _logger.info('Removed Composer wrappers');
   }
 
+  /// Marker returned as installPath for package-manager installations.
+  /// These apps have no Ponta-managed directory; settings providers must
+  /// treat this as "no local config file" (location-based File() lookups
+  /// fail exists() and return null gracefully).
+  static const String systemPackageMarker = 'system_package';
+
   /// Install app via system package manager (apt, dnf, etc.)
-  /// Used for PHP on Linux where prebuilt binaries are not available
+  /// Used for PHP on Linux where prebuilt binaries are not available.
+  ///
+  /// All commands come from catalog JSON (possibly a user-supplied catalog
+  /// URL), so each one is validated by [PackageCommandValidator] before
+  /// execution — fail-closed, installation aborts on the first rejection.
   Future<String> _installViaPackageManager(
     AppModel app,
     String version, {
@@ -2339,9 +2350,9 @@ Alias /phpmyadmin "$pmaPathUnix/"
     logInfo('Installing ${app.name} via package manager...');
     onProgress?.call(0.1, 'Detecting distribution...');
 
-    // 1. Detect Linux distribution
-    final distro = await _detectLinuxDistro(logInfo);
-    logInfo('Detected Linux distribution: $distro');
+    // 1. Detect Linux distribution family via the shared resolver
+    final distro = LinuxDistroResolver.detectFamily();
+    logInfo('Detected Linux distribution family: $distro');
 
     // 2. Get commands for this distro
     final commands = app.packageManagerCommands[distro];
@@ -2353,15 +2364,42 @@ Alias /phpmyadmin "$pmaPathUnix/"
       );
     }
 
-    // 3. Run installation commands
-    logInfo('Running ${commands.length} installation commands...');
+    // 3. Resolve template placeholders ({codename}, {distro}, ...) in Dart —
+    // never via shell substitution, which the validator forbids.
+    final resolvedCommands = commands
+        .map((cmd) => LinuxDistroResolver.resolveUrl(cmd))
+        .toList();
+    final missingCodename = resolvedCommands.any((c) => c.contains('{codename}'));
+    if (missingCodename) {
+      // resolveUrl handles {distro}/{mongo_distro}; {codename} needs detectCodename
+      final codename = LinuxDistroResolver.detectCodename();
+      for (var i = 0; i < resolvedCommands.length; i++) {
+        resolvedCommands[i] = resolvedCommands[i].replaceAll('{codename}', codename);
+      }
+    }
+
+    // 4. Validate every command before running any of them (fail-closed)
+    final errors = PackageCommandValidator.validateAll(resolvedCommands);
+    if (errors.isNotEmpty) {
+      logError('Catalog commands rejected by security validation:');
+      for (final err in errors) {
+        logError('  - $err');
+      }
+      throw Exception(
+        'Installation aborted: catalog commands failed security validation. '
+        'The catalog may be corrupted or from an untrusted source.',
+      );
+    }
+
+    // 5. Run installation commands
+    logInfo('Running ${resolvedCommands.length} installation commands...');
     onProgress?.call(0.2, 'Installing packages...');
 
-    for (var i = 0; i < commands.length; i++) {
-      final cmd = commands[i];
-      logInfo('[$i/${commands.length}] Running: $cmd');
+    for (var i = 0; i < resolvedCommands.length; i++) {
+      final cmd = resolvedCommands[i];
+      logInfo('[$i/${resolvedCommands.length}] Running: $cmd');
 
-      final progress = 0.2 + (i / commands.length) * 0.6; // 20% to 80%
+      final progress = 0.2 + (i / resolvedCommands.length) * 0.6; // 20% to 80%
       onProgress?.call(progress, 'Running: ${cmd.split(' ').first}...');
 
       try {
@@ -2390,14 +2428,15 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
     onProgress?.call(0.85, 'Finding installed executable...');
 
-    // 4. Find installed PHP executable
+    // 6. Find installed executable
     logInfo('Locating installed ${app.name} executable...');
-    final execPath = await _findInstalledPhp(app.execFile ?? 'php', logInfo);
+    final execName = app.execFile ?? 'php';
+    final execPath = await _findInstalledPhp(execName, logInfo);
 
     if (execPath == null) {
-      logError('Could not find ${app.execFile} after installation');
+      logError('Could not find $execName after installation');
       throw Exception(
-        'Installation completed but ${app.execFile} not found in PATH. '
+        'Installation completed but $execName not found in PATH. '
         'You may need to restart your terminal or add it manually.',
       );
     }
@@ -2408,15 +2447,23 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
     onProgress?.call(0.95, 'Verifying installation...');
 
-    // 5. Verify installation
-    try {
-      final result = await Process.run(execPath, ['--version']);
-      logInfo('Version check: ${result.stdout}');
-    } catch (e) {
-      logError('Failed to verify installation: $e');
+    // 7. Verify the executable actually runs — a failed --version means a
+    // broken install; surface it instead of reporting success.
+    final verify = await Process.run(execPath, ['--version']);
+    if (verify.exitCode != 0) {
+      logError(
+        '$execName --version exited with code ${verify.exitCode}: '
+        '${verify.stderr}',
+      );
+      throw Exception(
+        'Installed $execName failed verification (--version returned '
+        'exit code ${verify.exitCode}). The package installation may be '
+        'incomplete.',
+      );
     }
+    logInfo('Version check: ${verify.stdout}');
 
-    // 6. Install Composer for PHP apps
+    // 8. Install Composer for PHP apps
     if (app.groupName == 'php') {
       onProgress?.call(0.98, 'Installing Composer...');
       logInfo('Installing Composer for PHP...');
@@ -2431,64 +2478,11 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
     onProgress?.call(1.0, 'Completed');
 
-    // Return a pseudo install path for package manager installations
-    final installPath = '/usr/bin';
     logInfo('Successfully installed ${app.name} via package manager');
-    return installPath;
+    return systemPackageMarker;
   }
 
-  /// Detect Linux distribution from /etc/os-release
-  Future<String> _detectLinuxDistro(Function(String) logInfo) async {
-    try {
-      final osRelease = File('/etc/os-release');
-      if (!osRelease.existsSync()) {
-        logInfo('Warning: /etc/os-release not found, defaulting to ubuntu');
-        return 'ubuntu';
-      }
-
-      final content = await osRelease.readAsString();
-      final lines = content.split('\n');
-
-      String? id;
-      String? idLike;
-
-      for (final line in lines) {
-        if (line.startsWith('ID=')) {
-          id = line.substring(3).replaceAll('"', '').trim().toLowerCase();
-        } else if (line.startsWith('ID_LIKE=')) {
-          idLike = line.substring(8).replaceAll('"', '').trim().toLowerCase();
-        }
-      }
-
-      // Map distribution ID to our supported distros
-      if (id == 'ubuntu' || idLike?.contains('ubuntu') == true) {
-        return 'ubuntu';
-      } else if (id == 'debian' || idLike?.contains('debian') == true) {
-        return 'debian';
-      } else if (id == 'centos' || id == 'rhel' || id == 'fedora' ||
-                 idLike?.contains('centos') == true ||
-                 idLike?.contains('rhel') == true ||
-                 idLike?.contains('fedora') == true) {
-        return 'centos';
-      }
-
-      // Default to ubuntu for Debian-based, centos for RedHat-based
-      if (idLike?.contains('debian') == true) {
-        return 'ubuntu';
-      } else if (idLike?.contains('rhel') == true ||
-                 idLike?.contains('fedora') == true) {
-        return 'centos';
-      }
-
-      logInfo('Unknown distribution ID: $id, ID_LIKE: $idLike, defaulting to ubuntu');
-      return 'ubuntu';
-    } catch (e) {
-      logInfo('Error detecting distro: $e, defaulting to ubuntu');
-      return 'ubuntu';
-    }
-  }
-
-  /// Find installed PHP executable in system PATH
+  /// Find installed executable in system PATH and common locations.
   Future<String?> _findInstalledPhp(String phpName, Function(String) logInfo) async {
     try {
       // Try 'which' command first

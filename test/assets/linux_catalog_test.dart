@@ -54,12 +54,35 @@ void main() {
         final versions = app['versions'] as Map<String, dynamic>;
         expect(versions, isNotEmpty, reason: 'App $id should have at least one version');
 
+        final isPackageManager = app['install_method'] == 'package_manager';
         for (final entry in versions.entries) {
           expect(entry.key, isNotEmpty, reason: 'Version key in $id should not be empty');
           expect(entry.value, isA<String>(),
-              reason: 'Version ${entry.key} URL in $id must be string');
-          expect((entry.value as String).startsWith('http'), isTrue,
-              reason: 'Version ${entry.key} URL in $id must start with http/https');
+              reason: 'Version ${entry.key} value in $id must be string');
+          if (isPackageManager) {
+            // Package-manager apps use a sentinel value instead of a URL
+            expect(entry.value, equals('package_manager'),
+                reason: 'Version ${entry.key} of package_manager app $id '
+                    'must use the package_manager sentinel');
+          } else {
+            expect((entry.value as String).startsWith('http'), isTrue,
+                reason: 'Version ${entry.key} URL in $id must start with http/https');
+          }
+        }
+
+        // Package-manager apps must ship per-distro commands
+        if (isPackageManager) {
+          final cmds = app['package_manager_commands'];
+          expect(cmds, isA<Map<String, dynamic>>(),
+              reason: 'package_manager app $id must define package_manager_commands');
+          final cmdMap = cmds as Map<String, dynamic>;
+          expect(cmdMap.keys, containsAll(['ubuntu', 'debian', 'centos']),
+              reason: 'package_manager app $id must cover ubuntu/debian/centos');
+          for (final list in cmdMap.values) {
+            expect(list, isA<List>(), reason: 'Commands in $id must be a list');
+            expect((list as List), isNotEmpty,
+                reason: 'Distro command list in $id must not be empty');
+          }
         }
 
         // Exec / CLI file checks
@@ -130,15 +153,40 @@ void main() {
       }
     });
 
-    test('static-php entries expose the CLI binary as exec_file', () async {
+    test('php entries use package_manager install with versioned exec_file',
+        () async {
       final apps = await loadApps();
       final phpApps = apps.where(
           (a) => (a['id'] as String).startsWith('php') && a['id'] != 'phpMyAdmin');
       expect(phpApps, isNotEmpty);
       for (final app in phpApps) {
-        expect(app['exec_file'], equals('php'),
-            reason: '${app['id']} ships the static-php-cli CLI binary');
-        expect(app['cli_file'], equals('php'));
+        expect(app['install_method'], equals('package_manager'),
+            reason: '${app['id']} installs via system package manager on Linux');
+        // Versioned binary (php8.5, php8.4, ...) provided by distro packages
+        final exec = app['exec_file'] as String?;
+        expect(exec, isNotNull, reason: '${app['id']} must define exec_file');
+        expect(exec, matches(RegExp(r'^php[\d.]+$')),
+            reason: '${app['id']} exec_file should be versioned (e.g. php8.5)');
+      }
+    });
+
+    test('package_manager php commands contain no shell substitution', () async {
+      final apps = await loadApps();
+      final phpApps = apps.where(
+          (a) => (a['id'] as String).startsWith('php') && a['id'] != 'phpMyAdmin');
+      for (final app in phpApps) {
+        final cmds = app['package_manager_commands'] as Map<String, dynamic>;
+        for (final list in cmds.values) {
+          for (final cmd in (list as List).cast<String>()) {
+            expect(cmd.contains(r'$('), isFalse,
+                reason: '${app['id']} command uses shell substitution: $cmd');
+            expect(cmd.contains('`'), isFalse,
+                reason: '${app['id']} command uses backticks: $cmd');
+            expect(cmd.contains('lsb_release'), isFalse,
+                reason: '${app['id']} must use {codename} placeholder, '
+                    'not lsb_release: $cmd');
+          }
+        }
       }
     });
 

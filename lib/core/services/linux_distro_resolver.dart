@@ -27,7 +27,6 @@ class LinuxDistroResolver {
   }
 
   /// Detects the distro codename (e.g. noble, jammy, focal, bookworm).
-  @visibleForTesting
   static String detectCodename({String? osReleaseContent, bool? isLinux}) {
     final linux = isLinux ?? Platform.isLinux;
     if (!linux) return 'jammy';
@@ -132,5 +131,53 @@ class LinuxDistroResolver {
         .replaceAll('{mongo_distro}', mongoDistro);
 
     return resolved;
+  }
+
+  /// Maps `/etc/os-release` ID/ID_LIKE to the package-manager family used by
+  /// `package_manager_commands` keys in the catalog: `ubuntu`, `debian`, or
+  /// `centos`. Unknown distros fall back to `ubuntu` (the largest derivative
+  /// family). Returns `unknown` only when detection is impossible (non-Linux
+  /// or unreadable os-release) — callers decide their own fallback.
+  static String detectFamily({String? osReleaseContent, bool? isLinux}) {
+    final linux = isLinux ?? Platform.isLinux;
+    if (!linux) return 'unknown';
+
+    try {
+      String content = osReleaseContent ?? '';
+      if (content.isEmpty) {
+        final file = File('/etc/os-release');
+        if (file.existsSync()) {
+          content = file.readAsStringSync();
+        }
+      }
+      if (content.isEmpty) return 'ubuntu';
+
+      final parsed = parseOsRelease(content);
+      final id = (parsed['ID'] ?? '').toLowerCase();
+      final idLike = (parsed['ID_LIKE'] ?? '').toLowerCase();
+
+      // Ubuntu family (includes derivatives like linuxmint, pop, neon)
+      if (id == 'ubuntu' || idLike.contains('ubuntu')) return 'ubuntu';
+      // Debian proper (surv.org repo flow differs from the Ubuntu PPA flow)
+      if (id == 'debian' || idLike.contains('debian')) return 'debian';
+      // RedHat family (rhel, rocky, almalinux, fedora, ol, centos derivatives)
+      if (id == 'centos' ||
+          id == 'rhel' ||
+          id == 'fedora' ||
+          id == 'rocky' ||
+          id == 'almalinux' ||
+          id == 'ol' ||
+          idLike.contains('centos') ||
+          idLike.contains('rhel') ||
+          idLike.contains('fedora')) {
+        return 'centos';
+      }
+
+      // ID_LIKE with multiple values (e.g. "debian ubuntu") — first match wins
+      // in the order above, so reaching here means no known family.
+      return 'ubuntu';
+    } catch (_) {
+      return 'ubuntu';
+    }
   }
 }

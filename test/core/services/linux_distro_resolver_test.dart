@@ -150,4 +150,89 @@ VERSION_CODENAME=bookworm
       expect(LinuxDistroResolver.resolveUrl(url), equals(url));
     });
   });
+
+  group('LinuxDistroResolver - Package Manager Family Detection', () {
+    test('maps ubuntu and derivatives to ubuntu family', () {
+      expect(
+        LinuxDistroResolver.detectFamily(
+          osReleaseContent: 'ID=ubuntu\nID_LIKE=debian',
+          isLinux: true,
+        ),
+        equals('ubuntu'),
+      );
+      expect(
+        LinuxDistroResolver.detectFamily(
+          osReleaseContent: 'ID=linuxmint\nID_LIKE="ubuntu debian"',
+          isLinux: true,
+        ),
+        equals('ubuntu'),
+      );
+      expect(
+        LinuxDistroResolver.detectFamily(
+          osReleaseContent: 'ID=pop\nID_LIKE="ubuntu debian"',
+          isLinux: true,
+        ),
+        equals('ubuntu'),
+      );
+    });
+
+    test('maps debian proper to debian family (sury.org flow)', () {
+      expect(
+        LinuxDistroResolver.detectFamily(
+          osReleaseContent: 'ID=debian\nID_LIKE=""',
+          isLinux: true,
+        ),
+        equals('debian'),
+      );
+    });
+
+    test('maps rhel-family distros to centos family', () {
+      for (final content in [
+        'ID=centos\nID_LIKE="rhel fedora"',
+        'ID=rhel',
+        'ID=rocky\nID_LIKE="rhel centos fedora"',
+        'ID=almalinux\nID_LIKE="rhel centos fedora"',
+        'ID=fedora\nID_LIKE=""',
+        'ID=ol\nID_LIKE="fedora"',
+      ]) {
+        expect(
+          LinuxDistroResolver.detectFamily(osReleaseContent: content, isLinux: true),
+          equals('centos'),
+          reason: 'os-release "$content" should map to centos family',
+        );
+      }
+    });
+
+    test('ubuntu ID_LIKE wins over debian (mint uses PPA flow, not sury)', () {
+      // linuxmint has ID_LIKE="ubuntu debian" — must match ubuntu first
+      expect(
+        LinuxDistroResolver.detectFamily(
+          osReleaseContent: 'ID=linuxmint\nID_LIKE="ubuntu debian"',
+          isLinux: true,
+        ),
+        equals('ubuntu'),
+      );
+    });
+
+    test('unknown distro falls back to ubuntu family', () {
+      expect(
+        LinuxDistroResolver.detectFamily(
+          osReleaseContent: 'ID=arch\nID_LIKE=arch',
+          isLinux: true,
+        ),
+        equals('ubuntu'),
+      );
+    });
+
+    test('non-Linux and empty content return safe fallbacks', () {
+      expect(
+        LinuxDistroResolver.detectFamily(isLinux: false),
+        equals('unknown'),
+      );
+      expect(
+        LinuxDistroResolver.detectFamily(osReleaseContent: '', isLinux: true),
+        equals('ubuntu'),
+      );
+    });
+  });
 }
