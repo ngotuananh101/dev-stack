@@ -832,6 +832,56 @@ class AppInstallerService {
     }
   }
 
+  /// Sets Linux capability CAP_NET_BIND_SERVICE for webserver binaries
+  /// to allow binding privileged ports (< 1024) without root.
+  Future<void> _setLinuxCapabilityForWebserver(
+    String executablePath,
+    Function(String) logInfo,
+  ) async {
+    if (!Platform.isLinux) return;
+
+    final execFile = File(executablePath);
+    if (!execFile.existsSync()) {
+      logInfo('Warning: Executable not found at $executablePath, skipping capability setup');
+      return;
+    }
+
+    logInfo('Setting CAP_NET_BIND_SERVICE capability for ${p.basename(executablePath)}...');
+
+    try {
+      // First, try with sudo (most common)
+      final result = await Process.run('sudo', [
+        'setcap',
+        'cap_net_bind_service=+ep',
+        executablePath,
+      ]);
+
+      if (result.exitCode == 0) {
+        logInfo('Successfully set capability for ${p.basename(executablePath)}');
+        return;
+      }
+
+      // If sudo failed, try pkexec as fallback
+      logInfo('Sudo failed, trying pkexec...');
+      final pkexecResult = await Process.run('pkexec', [
+        'setcap',
+        'cap_net_bind_service=+ep',
+        executablePath,
+      ]);
+
+      if (pkexecResult.exitCode == 0) {
+        logInfo('Successfully set capability via pkexec for ${p.basename(executablePath)}');
+      } else {
+        logInfo('Warning: Could not set capability. You may need to run manually:');
+        logInfo('  sudo setcap cap_net_bind_service=+ep $executablePath');
+        logInfo('Or configure the webserver to use ports >= 1024 instead of 80/443');
+      }
+    } catch (e) {
+      logInfo('Warning: Could not set capability: $e');
+      logInfo('To fix manually, run: sudo setcap cap_net_bind_service=+ep $executablePath');
+    }
+  }
+
   Future<void> _configureWebserver(
     AppModel app,
     String installPath,
@@ -960,6 +1010,11 @@ class AppInstallerService {
 
       await confFile.writeAsString(nginxConfig);
       logInfo('Nginx configuration generated successfully.');
+
+      // Set Linux capability to bind privileged ports (80, 443)
+      if (Platform.isLinux && app.execFilePath != null) {
+        await _setLinuxCapabilityForWebserver(app.execFilePath!, logInfo);
+      }
     } else if (app.appId.toLowerCase().contains('caddy')) {
       final caddyFile = File(p.join(installPath, 'Caddyfile'));
       final certPath = sslNotifier.getSiteCertPath('localhost');
@@ -985,6 +1040,11 @@ class AppInstallerService {
       );
       await caddyFile.writeAsString(config);
       logInfo('Caddyfile generated successfully.');
+
+      // Set Linux capability to bind privileged ports (80, 443)
+      if (Platform.isLinux && app.execFilePath != null) {
+        await _setLinuxCapabilityForWebserver(app.execFilePath!, logInfo);
+      }
     } else if (app.appId.contains('apache')) {
       // Apache Lounge zips often contain an 'Apache24' subfolder
       String apacheRoot = installPath;
@@ -1138,6 +1198,11 @@ $sslVhostMarker
         }
       } else {
         logInfo('Warning: Could not find Apache httpd.conf to configure.');
+      }
+
+      // Set Linux capability to bind privileged ports (80, 443)
+      if (Platform.isLinux && app.execFilePath != null) {
+        await _setLinuxCapabilityForWebserver(app.execFilePath!, logInfo);
       }
     }
   }
