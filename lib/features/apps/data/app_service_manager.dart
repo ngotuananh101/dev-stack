@@ -298,6 +298,13 @@ class AppServiceManager {
 
   Future<void> start(AppModel app, {VoidCallback? onStatusChange}) async {
     if (isRunning(app.appId)) return;
+
+    // Special handling for package_manager PHP (uses systemctl for PHP-FPM)
+    if (app.installMethod == 'package_manager' && app.groupName == 'php') {
+      await _startPhpFpmViaSystemctl(app, onStatusChange: onStatusChange);
+      return;
+    }
+
     if (app.execFilePath == null) throw Exception('Executable path not found');
 
     final exeFile = File(app.execFilePath!);
@@ -389,7 +396,9 @@ class AppServiceManager {
             accessKey = config['access_key'] ?? accessKey;
             secretKey = config['secret_key'] ?? secretKey;
             consoleEnable = config['console_enable'] ?? consoleEnable;
-          } catch (_) {}
+          } catch (e) {
+            _logger.warning('Failed to parse RustFS config: $e');
+          }
         }
 
         if (accessKey.isEmpty || secretKey.isEmpty) {
@@ -550,6 +559,12 @@ class AppServiceManager {
     _logger.info('Stopping service: ${app.name}');
     app.serviceStatus = 'stopping';
 
+    // Special handling for package_manager PHP (uses systemctl for PHP-FPM)
+    if (app.installMethod == 'package_manager' && app.groupName == 'php') {
+      await _stopPhpFpmViaSystemctl(app);
+      return;
+    }
+
     try {
       final process = _processes[app.appId];
       if (process != null) {
@@ -681,5 +696,123 @@ class AppServiceManager {
         _logger.warning('Failed to kill task $taskName: $e');
       }
     }
+  }
+
+  /// Start PHP-FPM service via systemctl for package_manager installed PHP
+  Future<void> _startPhpFpmViaSystemctl(
+    AppModel app, {
+    VoidCallback? onStatusChange,
+  }) async {
+    if (!Platform.isLinux) {
+      throw Exception('systemctl is only available on Linux');
+    }
+
+    _logger.info('Starting PHP-FPM via systemctl: ${app.name}');
+    app.serviceStatus = 'starting';
+    app.addServiceLog('Starting PHP-FPM service...');
+
+    try {
+      // Determine service name from app version (php82 -> php8.2-fpm)
+      final serviceName = _phpFpmServiceName(app.appId);
+      app.addServiceLog('Service name: $serviceName');
+
+      // Check if service exists
+      final checkResult = await Process.run(
+        'systemctl',
+        ['list-unit-files', serviceName],
+      );
+
+      if (!checkResult.stdout.toString().contains(serviceName)) {
+        throw Exception('PHP-FPM service not found: $serviceName');
+      }
+
+      // Start the service (try user service first, then system)
+      ProcessResult result;
+      try {
+        result = await Process.run('systemctl', ['--user', 'start', serviceName]);
+      } catch (_) {
+        // Fallback to system service
+        result = await Process.run('systemctl', ['start', serviceName]);
+      }
+
+      if (result.exitCode != 0) {
+        app.addServiceLog('Failed to start: ${result.stderr}');
+        throw Exception('Failed to start $serviceName: ${result.stderr}');
+      }
+
+      app.addServiceLog('Service started successfully');
+
+      // Get service PID
+      final pidResult = await Process.run(
+        'systemctl',
+        ['show', '--property=MainPID', '--value', serviceName],
+      );
+
+      if (pidResult.exitCode == 0) {
+        final pidStr = pidResult.stdout.toString().trim();
+        final pid = int.tryParse(pidStr);
+        if (pid != null && pid > 0) {
+          app.servicePid = pid;
+          app.addServiceLog('PID: $pid');
+        }
+      }
+
+      app.serviceStatus = 'running';
+      _activeApps[app.appId] = app;
+      onStatusChange?.call();
+
+    } catch (e) {
+      _logger.error('Failed to start PHP-FPM via systemctl: $e');
+      app.addServiceLog('Error: $e');
+      app.serviceStatus = 'stopped';
+      rethrow;
+    }
+  }
+
+  /// Stop PHP-FPM service via systemctl for package_manager installed PHP
+  Future<void> _stopPhpFpmViaSystemctl(AppModel app) async {
+    if (!Platform.isLinux) return;
+
+    _logger.info('Stopping PHP-FPM via systemctl: ${app.name}');
+    app.serviceStatus = 'stopping';
+    app.addServiceLog('Stopping PHP-FPM service...');
+
+    try {
+      final serviceName = _phpFpmServiceName(app.appId);
+
+      // Stop the service (try user service first, then system)
+      ProcessResult result;
+      try {
+        result = await Process.run('systemctl', ['--user', 'stop', serviceName]);
+      } catch (_) {
+        result = await Process.run('systemctl', ['stop', serviceName]);
+      }
+
+      if (result.exitCode != 0) {
+        app.addServiceLog('Warning: ${result.stderr}');
+      } else {
+        app.addServiceLog('Service stopped successfully');
+      }
+
+    } catch (e) {
+      _logger.warning('Failed to stop PHP-FPM via systemctl: $e');
+      app.addServiceLog('Warning: $e');
+    } finally {
+      app.serviceStatus = 'stopped';
+      app.servicePid = null;
+      _activeApps.remove(app.appId);
+    }
+  }
+
+  /// Get PHP-FPM service name from app ID (php82 -> php8.2-fpm)
+  String _phpFpmServiceName(String appId) {
+    // php82 -> 82 -> 8.2
+    final version = appId.replaceAll('php', '');
+    if (version.length >= 2) {
+      final major = version.substring(0, 1);
+      final minor = version.substring(1);
+      return 'php$major.$minor-fpm';
+    }
+    return 'php-fpm'; // fallback
   }
 }

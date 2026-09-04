@@ -413,7 +413,14 @@ class AppsNotifier extends _$AppsNotifier {
         if (app.appId == 'pyenv') {
           await installer.cleanupPyenv(app.location!, (m) => app.addLog(m));
         }
-        await installer.delete(app.location!, app.appId, app.installedVersion);
+
+        // Skip directory deletion for package_manager apps (they don't have install directories)
+        if (app.installMethod != 'package_manager') {
+          await installer.delete(app.location!, app.appId, app.installedVersion);
+        } else {
+          app.addLog('Package manager app - skipping directory deletion');
+          app.addLog('Note: System packages not removed. Uninstall manually if needed.');
+        }
       }
 
       app.isInstalled = false;

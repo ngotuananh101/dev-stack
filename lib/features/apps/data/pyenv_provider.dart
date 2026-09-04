@@ -198,7 +198,9 @@ class PyenvNotifier extends _$PyenvNotifier {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.warning('Failed to get active pyenv version: $e');
+    }
     return null;
   }
 

@@ -2416,6 +2416,19 @@ Alias /phpmyadmin "$pmaPathUnix/"
       logError('Failed to verify installation: $e');
     }
 
+    // 6. Install Composer for PHP apps
+    if (app.groupName == 'php') {
+      onProgress?.call(0.98, 'Installing Composer...');
+      logInfo('Installing Composer for PHP...');
+      try {
+        await _installComposer(logInfo);
+        logInfo('Composer installed successfully');
+      } catch (e) {
+        logError('Failed to install Composer: $e');
+        // Don't fail the whole installation if Composer fails
+      }
+    }
+
     onProgress?.call(1.0, 'Completed');
 
     // Return a pseudo install path for package manager installations
