@@ -633,29 +633,51 @@ class AppServiceManager {
   /// an image name. This is what update/uninstall should call: it avoids the
   /// collateral damage of `taskkill /IM php.exe`, which would kill any other
   /// process running under that generic executable name.
-  Future<void> forceKillPid(String appId, int pid) async {
+  Future<void> forceKillPid(
+    String appId,
+    int pid, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isWindows,
+  }) async {
     if (pid <= 0) {
       _logger.warning('No PID recorded for $appId; skipping force kill.');
       return;
     }
     _logger.info('Force killing PID $pid for $appId');
-    if (!Platform.isWindows) {
+
+    final effectiveRunner = runProcess ?? (String exec, List<String> args) async {
+      if (_runProcess != null) {
+        final lines = await _runProcess(exec, args);
+        return ProcessResult(pid, 0, lines.join('\n'), '');
+      }
+      return BackgroundProcess.run(exec, args);
+    };
+
+    final onWindows = isWindows ?? Platform.isWindows;
+    if (!onWindows) {
+      bool needFallback = false;
       try {
-        await _run('kill', ['-9', '$pid']);
+        final res = await effectiveRunner('kill', ['-9', '--', '-$pid']);
+        if (res.exitCode != 0) {
+          needFallback = true;
+        }
       } catch (e) {
-        _logger.warning('Failed to kill PID $pid: $e');
+        needFallback = true;
+      }
+
+      if (needFallback) {
+        try {
+          await effectiveRunner('kill', ['-9', '$pid']);
+        } catch (e) {
+          _logger.warning('Failed to kill PID $pid: $e');
+        }
       }
       return;
     }
-    if (_isWindows()) {
+
+    if (isWindows ?? _isWindows()) {
       try {
-        // /T is critical: the recorded service PID may be a hidden launcher/
-        // wrapper (e.g. the wscript host used to start webservers detached),
-        // NOT the real worker (php-cgi.exe / mysqld). Killing only the
-        // wrapper PID leaves the worker alive, still holding DLL/file handles
-        // inside the app folder — which then makes the version-swap delete
-        // fail with "Access is denied (errno 5)". /T kills the whole tree.
-        await _run('taskkill', ['/F', '/T', '/PID', pid.toString()]);
+        await effectiveRunner('taskkill', ['/F', '/T', '/PID', pid.toString()]);
       } catch (e) {
         _logger.warning('Failed to kill PID $pid: $e');
       }
