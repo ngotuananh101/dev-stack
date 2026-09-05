@@ -49,26 +49,26 @@
   - Tách `_extractPayload(...)` xử lý độc lập từng định dạng: Zip, Tar (có validation), Exe, Zonky Jar, Raw Binary.
   - Tách các hàm cấu hình: `_configureDatabases(...)`, `_configureRuntimes(...)`.
 
-- [ ] **Step 1: Viết failing test cho Tar Traversal validation**
+- [x] **Step 1: Viết failing test cho Tar Traversal validation**
   Tạo `test/features/apps/tar_traversal_test.dart`:
   - Test 1: Entry hợp lệ (`bin/nginx`, `conf/nginx.conf`) -> `isSafeTarEntry` trả về true.
   - Test 2: Entry chứa `../` hoặc `..\` (`../../etc/shadow`, `foo/../../bar`) -> trả về false.
   - Test 3: Entry là absolute path (`/etc/passwd`, `C:\Windows\System32`) -> trả về false.
 
-- [ ] **Step 2: Chạy test để xác nhận fail**
+- [x] **Step 2: Chạy test để xác nhận fail**
   Run: `flutter test test/features/apps/tar_traversal_test.dart`
   Expected: FAIL
 
-- [ ] **Step 3: Triển khai validation & chia tách các hàm trong `AppInstallerService`**
+- [x] **Step 3: Triển khai validation & chia tách các hàm trong `AppInstallerService`**
   - Cung cấp `static bool isSafeTarEntry(String entryPath)`.
   - Kiểm tra danh sách entry hoặc thêm cờ an toàn khi trích xuất tar.
   - Tách `_extractPayload` và các nhóm post-installation riêng biệt để giảm độ dài và độ phức tạp của `install()`.
 
-- [ ] **Step 4: Chạy test xác nhận PASS**
+- [x] **Step 4: Chạy test xác nhận PASS**
   Run: `flutter test test/features/apps/tar_traversal_test.dart test/features/apps/installer_linux_tar_test.dart`
   Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add lib/features/apps/data/app_installer_service.dart test/features/apps/tar_traversal_test.dart
   git commit -m "fix(security): prevent tar path traversal and decompose install workflow"
@@ -89,24 +89,24 @@
 - Consumes: `NginxConfigBuilder.buildMainConfig(...)`, `ApacheConfigBuilder.buildMainConfig(...)`
 - Produces: Chuỗi cấu hình webserver chuẩn, tách biệt hoàn toàn khỏi logic cài đặt của `AppInstallerService`.
 
-- [ ] **Step 1: Viết failing test cho `NginxConfigBuilder` & `ApacheConfigBuilder`**
+- [x] **Step 1: Viết failing test cho `NginxConfigBuilder` & `ApacheConfigBuilder`**
   Tạo `test/core/config/nginx_config_builder_test.dart` và `test/core/config/apache_config_builder_test.dart`.
   Kiểm tra các directive cốt lõi (listen port, root, server_name, include vhosts, fastcgi pass).
 
-- [ ] **Step 2: Chạy test xác nhận fail**
+- [x] **Step 2: Chạy test xác nhận fail**
   Run: `flutter test test/core/config/nginx_config_builder_test.dart test/core/config/apache_config_builder_test.dart`
   Expected: FAIL
 
-- [ ] **Step 3: Triển khai các Builder và refactor `AppInstallerService._configureWebserver`**
+- [x] **Step 3: Triển khai các Builder và refactor `AppInstallerService._configureWebserver`**
   - Tạo `NginxConfigBuilder` trong `lib/core/config/nginx_config_builder.dart`.
   - Tạo `ApacheConfigBuilder` trong `lib/core/config/apache_config_builder.dart`.
   - Refactor `_configureWebserver` trong `app_installer_service.dart` gọi các builder này.
 
-- [ ] **Step 4: Chạy test xác nhận PASS**
+- [x] **Step 4: Chạy test xác nhận PASS**
   Run: `flutter test test/core/config/nginx_config_builder_test.dart test/core/config/apache_config_builder_test.dart test/features/apps/installer_apache_pma_test.dart`
   Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add lib/core/config/nginx_config_builder.dart lib/core/config/apache_config_builder.dart lib/features/apps/data/app_installer_service.dart test/core/config/
   git commit -m "refactor(config): modularize Nginx and Apache configuration builders"
@@ -124,14 +124,14 @@
 - Consumes: `IsarInstance.getInstance()`
 - Produces: `Completer<Isar>? _openCompleter` để serialize các lời gọi đồng thời, đảm bảo `Isar.open` chỉ chạy đúng 1 lần duy nhất ngay cả khi nhiều async callers cùng lúc.
 
-- [ ] **Step 1: Viết failing test kiểm tra cơ chế concurrency lock**
+- [x] **Step 1: Viết failing test kiểm tra cơ chế concurrency lock**
   Tạo `test/core/database/isar_concurrency_test.dart` mô phỏng nhiều lời gọi đồng thời qua một mock/synchronizer.
 
-- [ ] **Step 2: Chạy test xác nhận fail**
+- [x] **Step 2: Chạy test xác nhận fail**
   Run: `flutter test test/core/database/isar_concurrency_test.dart`
   Expected: FAIL
 
-- [ ] **Step 3: Triển khai Completer serialization trong `IsarInstance`**
+- [x] **Step 3: Triển khai Completer serialization trong `IsarInstance`**
   ```dart
   static Completer<Isar>? _openCompleter;
 
@@ -157,11 +157,11 @@
   }
   ```
 
-- [ ] **Step 4: Chạy test xác nhận PASS**
+- [x] **Step 4: Chạy test xác nhận PASS**
   Run: `flutter test test/core/database/isar_concurrency_test.dart`
   Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add lib/core/database/isar_provider.dart test/core/database/isar_concurrency_test.dart
   git commit -m "fix(database): serialize IsarInstance.getInstance with Completer to prevent race conditions"
@@ -179,25 +179,25 @@
 - Consumes: `AppsRepository.mergeAppsCatalog(List<dynamic> appsJson, Map<String, InstalledApp> installedMap)`
 - Produces: Tách biệt logic xử lý catalog + installed app thành hàm thuần có thể test độc lập 100% trong môi trường `flutter test` mà không cần `isar.dll`.
 
-- [ ] **Step 1: Viết các test case thực tế trong `test/features/apps/apps_repository_test.dart`**
+- [x] **Step 1: Viết các test case thực tế trong `test/features/apps/apps_repository_test.dart`**
   - Xóa bỏ cờ `skip: 'Requires Isar native library (isar.dll)'`.
   - Test 1: Merge catalog rỗng -> trả về rỗng.
   - Test 2: Merge catalog với app chưa cài -> `isInstalled == false`.
   - Test 3: Merge catalog với app đã cài trong `installedMap` -> map đúng version, status, paths.
   - Test 4: Catalog chứa LTS labels / extra info -> parse đúng `extraInfoJson`.
 
-- [ ] **Step 2: Chạy test xác nhận fail**
+- [x] **Step 2: Chạy test xác nhận fail**
   Run: `flutter test test/features/apps/apps_repository_test.dart`
   Expected: FAIL
 
-- [ ] **Step 3: Triển khai `mergeAppsCatalog` trong `AppsRepository`**
+- [x] **Step 3: Triển khai `mergeAppsCatalog` trong `AppsRepository`**
   Trích xuất logic từ `getAll()` thành `static List<AppModel> mergeAppsCatalog(List<dynamic> appsJson, Map<String, InstalledApp> installedMap)` và gọi nó từ `getAll()`.
 
-- [ ] **Step 4: Chạy test xác nhận PASS**
+- [x] **Step 4: Chạy test xác nhận PASS**
   Run: `flutter test test/features/apps/apps_repository_test.dart`
   Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add lib/features/apps/data/apps_repository.dart test/features/apps/apps_repository_test.dart
   git commit -m "test(apps): unskip and implement unit tests for AppsRepository catalog merging"
@@ -207,13 +207,13 @@
 
 ### Task 5: Kiểm tra Toàn diện & Xác thực Linter (Verification & Static Analysis)
 
-- [ ] **Step 1: Chạy toàn bộ test suite**
+- [x] **Step 1: Chạy toàn bộ test suite**
   Run: `flutter test`
   Expected: Toàn bộ tests PASS (0 failures, 0 skipped không mong muốn).
 
-- [ ] **Step 2: Chạy static analysis**
+- [x] **Step 2: Chạy static analysis**
   Run: `flutter analyze`
   Expected: No issues found!
 
-- [ ] **Step 3: Cập nhật tài liệu kế hoạch Phase 3**
+- [x] **Step 3: Cập nhật tài liệu kế hoạch Phase 3**
   Đánh dấu hoàn thành các checkbox trong `docs/superpowers/plans/2026-09-05-phase-3-architecture-refactoring.md`.
