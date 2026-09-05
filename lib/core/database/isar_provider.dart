@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -11,16 +13,40 @@ part 'isar_provider.g.dart';
 
 class IsarInstance {
   static Isar? _instance;
+  static Completer<Isar>? _openCompleter;
 
-  static Future<Isar> getInstance() async {
-    if (_instance != null) {
+  static Future<Isar> getInstance({
+    @visibleForTesting Future<Isar> Function()? opener,
+  }) async {
+    if (_instance != null && _instance!.isOpen) {
       return _instance!;
     }
 
+    if (_openCompleter != null) {
+      return await _openCompleter!.future;
+    }
+
+    final completer = Completer<Isar>();
+    _openCompleter = completer;
+
+    try {
+      final isar = opener != null ? await opener() : await _openDatabase();
+      _instance = isar;
+      completer.complete(isar);
+      return isar;
+    } catch (e, st) {
+      completer.completeError(e, st);
+      rethrow;
+    } finally {
+      _openCompleter = null;
+    }
+  }
+
+  static Future<Isar> _openDatabase() async {
     final dir = await getApplicationSupportDirectory();
 
     try {
-      _instance = await Isar.open([
+      return await Isar.open([
         InstalledAppSchema,
         DatabaseRecordSchema,
         AppSettingsSchema,
@@ -59,19 +85,19 @@ class IsarInstance {
       // ignore: avoid_print
       print('[Isar] Database reset due to schema/corruption error: $e');
 
-      _instance = await Isar.open([
+      return await Isar.open([
         InstalledAppSchema,
         DatabaseRecordSchema,
         AppSettingsSchema,
         SiteModelSchema,
       ], directory: dir.path);
     }
-    return _instance!;
   }
 
   static Future<void> close() async {
     await _instance?.close();
     _instance = null;
+    _openCompleter = null;
   }
 }
 

@@ -18,6 +18,86 @@ class AppsRepository {
     return isLinux ? 'apps-linux.json' : 'apps.json';
   }
 
+  static List<AppModel> mergeAppsCatalog(
+    List<dynamic> appsJson,
+    Map<String, InstalledApp> installedMap,
+  ) {
+    return appsJson
+        .map((json) {
+          final appId = json['id'];
+          final installed = installedMap[appId];
+
+          List<String> categories = [];
+          if (json['category'] is String) {
+            categories = [json['category']];
+          } else if (json['category'] is List) {
+            categories = List<String>.from(json['category']);
+          }
+
+          final rawVersions = json['versions'];
+          final Map<String, dynamic> versionsMap = rawVersions is Map
+              ? Map<String, dynamic>.from(rawVersions)
+              : {};
+          final versionKeys = versionsMap.keys.toList();
+
+          // Catalog-level extra metadata (e.g. LTS labels) can live under
+          // `extra` / `extra_info`. Prefer installed app overrides when present.
+          Map<String, dynamic> catalogExtra = {};
+          final rawExtra = json['extra'] ?? json['extra_info'];
+          if (rawExtra is Map) {
+            catalogExtra = Map<String, dynamic>.from(rawExtra);
+          } else if (json['lts'] != null || json['lts_labels'] != null) {
+            catalogExtra = {
+              if (json['lts'] != null) 'lts': json['lts'],
+              if (json['lts_labels'] != null)
+                'lts_labels': json['lts_labels'],
+            };
+          }
+
+          String? extraInfoJson = installed?.extraInfoJson;
+          if ((extraInfoJson == null || extraInfoJson.isEmpty) &&
+              catalogExtra.isNotEmpty) {
+            extraInfoJson = jsonEncode(catalogExtra);
+          }
+
+          // Parse package_manager_commands if present
+          String? packageManagerCommandsJson;
+          if (json['package_manager_commands'] != null) {
+            packageManagerCommandsJson = jsonEncode(json['package_manager_commands']);
+          }
+
+          return AppModel(
+            appId: appId,
+            name: json['name'],
+            description: json['description'],
+            categories: categories,
+            groupName: json['group_name'],
+            execFile: json['exec_file'],
+            cliFile: json['cli_file'],
+            versions: versionKeys.isNotEmpty ? versionKeys : ['latest'],
+            versionLinksJson: jsonEncode(versionsMap),
+            installMethod: json['install_method'],
+            packageManagerCommandsJson: packageManagerCommandsJson,
+            defaultUsername: json['default_username'],
+            defaultPassword: json['default_password'],
+            // Merge state from DB
+            isInstalled: installed != null,
+            location: installed?.location,
+            status: installed?.status ?? 'not_installed',
+            installedVersion: installed?.version,
+            installedAt: installed?.installedAt,
+            execFilePath: installed?.execFilePath,
+            cliFilePath: installed?.cliFilePath,
+            isAddedToPath: installed?.addedToPath ?? false,
+            autoStartService: installed?.autoStartService ?? false,
+            isDefault: installed?.isDefault ?? false,
+            extraInfoJson: extraInfoJson,
+          );
+        })
+        .toList()
+        .cast<AppModel>();
+  }
+
   Future<List<AppModel>> getAll() async {
     try {
       // 1. Load marketplace data
@@ -42,77 +122,7 @@ class AppsRepository {
       final installedMap = {for (var a in installedApps) a.appId: a};
 
       // 3. Merge definitions with installation state
-      return appsJson
-          .map((json) {
-            final appId = json['id'];
-            final installed = installedMap[appId];
-
-            List<String> categories = [];
-            if (json['category'] is String) {
-              categories = [json['category']];
-            } else if (json['category'] is List) {
-              categories = List<String>.from(json['category']);
-            }
-
-            final versionsMap = json['versions'] as Map<String, dynamic>? ?? {};
-            final versionKeys = versionsMap.keys.toList();
-
-            // Catalog-level extra metadata (e.g. LTS labels) can live under
-            // `extra` / `extra_info`. Prefer installed app overrides when present.
-            Map<String, dynamic> catalogExtra = {};
-            final rawExtra = json['extra'] ?? json['extra_info'];
-            if (rawExtra is Map) {
-              catalogExtra = Map<String, dynamic>.from(rawExtra);
-            } else if (json['lts'] != null || json['lts_labels'] != null) {
-              catalogExtra = {
-                if (json['lts'] != null) 'lts': json['lts'],
-                if (json['lts_labels'] != null)
-                  'lts_labels': json['lts_labels'],
-              };
-            }
-
-            String? extraInfoJson = installed?.extraInfoJson;
-            if ((extraInfoJson == null || extraInfoJson.isEmpty) &&
-                catalogExtra.isNotEmpty) {
-              extraInfoJson = jsonEncode(catalogExtra);
-            }
-
-            // Parse package_manager_commands if present
-            String? packageManagerCommandsJson;
-            if (json['package_manager_commands'] != null) {
-              packageManagerCommandsJson = jsonEncode(json['package_manager_commands']);
-            }
-
-            return AppModel(
-              appId: appId,
-              name: json['name'],
-              description: json['description'],
-              categories: categories,
-              groupName: json['group_name'],
-              execFile: json['exec_file'],
-              cliFile: json['cli_file'],
-              versions: versionKeys.isNotEmpty ? versionKeys : ['latest'],
-              versionLinksJson: jsonEncode(versionsMap),
-              installMethod: json['install_method'],
-              packageManagerCommandsJson: packageManagerCommandsJson,
-              defaultUsername: json['default_username'],
-              defaultPassword: json['default_password'],
-              // Merge state from DB
-              isInstalled: installed != null,
-              location: installed?.location,
-              status: installed?.status ?? 'not_installed',
-              installedVersion: installed?.version,
-              installedAt: installed?.installedAt,
-              execFilePath: installed?.execFilePath,
-              cliFilePath: installed?.cliFilePath,
-              isAddedToPath: installed?.addedToPath ?? false,
-              autoStartService: installed?.autoStartService ?? false,
-              isDefault: installed?.isDefault ?? false,
-              extraInfoJson: extraInfoJson,
-            );
-          })
-          .toList()
-          .cast<AppModel>();
+      return mergeAppsCatalog(appsJson, installedMap);
     } catch (e, stack) {
       AppLogger.error('Error loading apps: $e\n$stack');
 

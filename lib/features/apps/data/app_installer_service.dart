@@ -12,6 +12,8 @@ import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/config/caddy_config_builder.dart';
+import '../../../core/config/nginx_config_builder.dart';
+import '../../../core/config/apache_config_builder.dart';
 import '../../../core/config/webserver_bind_policy.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/services/path_service.dart';
@@ -95,6 +97,60 @@ class AppInstallerService {
         lower.endsWith('.tar.bz2') ||
         lower.endsWith('.tgz') ||
         lower.endsWith('.tar');
+  }
+
+  /// Checks if a tar entry path is safe from path traversal vulnerabilities.
+  /// Rejects paths that are empty, whitespace, absolute (/ or \), contain
+  /// Windows drive letters (e.g. C:), or contain '..' directory traversal segments.
+  @visibleForTesting
+  static bool isSafeTarEntry(String entryPath) {
+    final trimmed = entryPath.trim();
+    if (trimmed.isEmpty) return false;
+
+    // Reject absolute paths starting with / or \
+    if (trimmed.startsWith('/') || trimmed.startsWith(r'\')) return false;
+
+    // Reject paths with Windows drive letters (e.g. C:, D:)
+    if (RegExp(r'^[a-zA-Z]:').hasMatch(trimmed)) return false;
+
+    // Normalize and split by both POSIX and Windows separators
+    final normalized = trimmed.replaceAll(r'\', '/');
+    final segments = normalized.split('/');
+
+    for (final seg in segments) {
+      if (seg == '..') return false;
+    }
+
+    return true;
+  }
+
+  /// Validates that all entries in a tar archive listing are safe.
+  @visibleForTesting
+  static bool validateTarEntries(List<String> entries) {
+    if (entries.isEmpty) return false;
+    for (final entry in entries) {
+      if (!isSafeTarEntry(entry)) return false;
+    }
+    return true;
+  }
+
+  /// Lists entries in a tar archive via `tar -tf <archivePath>`.
+  @visibleForTesting
+  static Future<List<String>> listTarEntries(
+    String archivePath, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+  }) async {
+    final runner = runProcess ?? Process.run;
+    final result = await runner('tar', ['-tf', archivePath]);
+    if (result.exitCode != 0) {
+      throw Exception('Failed to list tar entries: ${result.stderr}');
+    }
+    final output = result.stdout.toString();
+    return const LineSplitter()
+        .convert(output)
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
   }
 
   /// True when [urlOrPath] is a Zonky embedded-postgres-binaries jar: a zip
@@ -198,102 +254,32 @@ class AppInstallerService {
     final tempFile = File(p.join(tempDir.path, 'download$downloadExt'));
 
     try {
-      await _dio.download(
-        url,
-        tempFile.path,
-        onReceiveProgress: (received, total) {
-          if (total != -1) {
-            final progress = (received / total) * 0.7 + 0.1; // 10% to 80%
-            onProgress?.call(
-              progress,
-              'Downloading...',
-              downloadedBytes: received,
-              totalBytes: total,
-            );
-          }
-        },
+      // Step 2: Download payload
+      await _downloadPayload(url, tempFile, onProgress, logInfo);
+
+      // Step 3: Extract payload
+      await _extractPayload(
+        app: app,
+        tempFile: tempFile,
+        installPath: installPath,
+        uri: uri,
+        isTar: isTar,
+        isZip: isZip,
+        isExe: isExe,
+        isZonky: isZonky,
+        isRawBinary: isRawBinary,
+        extension: extension,
+        onProgress: onProgress,
+        onLog: onLog,
+        logInfo: logInfo,
+        logError: logError,
       );
 
-      logInfo('Download completed for ${app.name}');
-      onProgress?.call(0.8, 'Download completed');
-
-      if (isZonky) {
-        logInfo('Extracting Zonky PostgreSQL bundle for ${app.name}');
-        onProgress?.call(0.82, 'Extracting...');
-        await Directory(installPath).create(recursive: true);
-        await _extractZonkyJar(tempFile, installPath, onLog);
-        await ensureLinuxPermissions(installPath, logInfo: logInfo);
-        onProgress?.call(0.9, 'Extracted');
-      } else if (isRawBinary) {
-        logInfo('Handling raw Linux binary for ${app.name}');
-        onProgress?.call(0.85, 'Moving binary...');
-        final fileName = app.execFile ?? p.basename(uri.path);
-        final targetFile = File(p.join(installPath, fileName));
-        await tempFile.copy(targetFile.path);
-        await ensureLinuxPermissions(installPath, logInfo: logInfo);
-        onProgress?.call(0.9, 'Binary ready');
-      } else if (isTar) {
-        logInfo('Extracting tar archive for ${app.name}');
-        onProgress?.call(0.82, 'Extracting...');
-        await Directory(installPath).create(recursive: true);
-        final args = buildTarExtractArgs(tempFile.path, installPath);
-        final result = await Process.run('tar', args);
-        if (result.exitCode != 0) {
-          logError('Tar extraction failed (exit code ${result.exitCode}): ${result.stderr}');
-          throw Exception('Tar extraction failed: ${result.stderr}');
-        }
-        if (Platform.isLinux) {
-          await ensureLinuxPermissions(installPath, logInfo: logInfo);
-        }
-        onProgress?.call(0.9, 'Extracted');
-      } else if (isZip) {
-        logInfo('Extracting ZIP for ${app.name}');
-        onProgress?.call(0.82, 'Extracting...');
-        final bytes = await tempFile.readAsBytes();
-        await _extractZip(bytes, installPath, onLog);
-        if (Platform.isLinux) {
-          await ensureLinuxPermissions(installPath, logInfo: logInfo);
-        }
-        onProgress?.call(0.9, 'Extracted');
-      } else if (isExe) {
-        logInfo('Handling executable binary for ${app.name}');
-        onProgress?.call(0.85, 'Moving binary...');
-
-        // Use the specified exec_file name if available, otherwise keep original
-        final fileName = app.execFile ?? p.basename(uri.path);
-        final targetFile = File(p.join(installPath, fileName));
-
-        logInfo('Copying binary to: ${targetFile.path}');
-        await tempFile.copy(targetFile.path);
-        if (Platform.isLinux) {
-          await ensureLinuxPermissions(installPath, logInfo: logInfo);
-        }
-        onProgress?.call(0.9, 'Binary ready');
-      } else {
-        // Fallback for other formats or if extension is missing
-        // For now, assume ZIP if unknown to maintain backward compatibility
-        logInfo(
-          'Format $extension not explicitly handled, attempting ZIP extraction...',
-        );
-        try {
-          onProgress?.call(0.82, 'Extracting...');
-          final bytes = await tempFile.readAsBytes();
-          await _extractZip(bytes, installPath, onLog);
-          if (Platform.isLinux) {
-            await ensureLinuxPermissions(installPath, logInfo: logInfo);
-          }
-          onProgress?.call(0.9, 'Extracted');
-        } catch (e) {
-          logError('Failed to extract as ZIP: $e');
-          rethrow;
-        }
-      }
-
-      // 4. Flatten directory if needed
+      // Step 4: Flatten directory if needed
       onProgress?.call(0.92, 'Preparing files...');
       await _flattenDirectory(installPath, logInfo);
 
-      // 5. Detect executable and CLI files
+      // Step 5: Detect executable and CLI files
       logInfo('Detecting executable and CLI files...');
       onProgress?.call(0.94, 'Detecting files...');
       final detected = await _detectFiles(
@@ -307,78 +293,11 @@ class AppInstallerService {
 
       logInfo('Successfully installed ${app.name} to $installPath');
 
-      // 5. Post-installation: Initialize database
-      if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
-        onProgress?.call(0.96, 'Initializing database...');
-        await _initializeDatabase(app, version, installPath, logInfo);
-      }
-
-      // 5b. Post-installation: Initialize PostgreSQL
-      if (app.appId.contains('postgresql')) {
-        onProgress?.call(0.96, 'Initializing PostgreSQL...');
-        await _initializePostgresql(app, version, installPath, logInfo);
-      }
-
-      // 6. Post-installation: Handle PHP configuration
-      if (app.groupName == 'php') {
-        onProgress?.call(0.97, 'Configuring PHP...');
-        final phpIniDev = File(p.join(installPath, 'php.ini-development'));
-        final phpIni = File(p.join(installPath, 'php.ini'));
-
-        if (phpIniDev.existsSync() && !phpIni.existsSync()) {
-          logInfo('Copying php.ini-development to php.ini...');
-          await phpIniDev.copy(phpIni.path);
-          logInfo('Successfully created php.ini');
-          await _tunePhpIni(phpIni, logInfo);
-          await _enableDefaultExtensions(phpIni, installPath, logInfo);
-        }
-
-        // Install Composer if not already installed
-        onProgress?.call(0.98, 'Installing Composer...');
-        await _installComposer(logInfo);
-      }
-
-      // 7. Post-installation: Configure Web Servers
-      if (isWebserverApp(app)) {
-        onProgress?.call(0.97, 'Configuring web server...');
-        await _configureWebserver(app, installPath, logInfo);
-      }
-
-      // 8. Post-installation: Configure MongoDB
-      if (app.appId == 'mongodb') {
-        onProgress?.call(0.97, 'Configuring MongoDB...');
-        await _configureMongodb(app, installPath, logInfo);
-      }
-
-      // 10. Post-installation: Configure Meilisearch
-      if (app.appId == 'meilisearch') {
-        onProgress?.call(0.97, 'Configuring Meilisearch...');
-        await _configureMeilisearch(installPath, logInfo);
-      }
-
-      // 11. Post-installation: Configure Elasticsearch
-      if (app.appId == 'elasticsearch') {
-        onProgress?.call(0.97, 'Configuring Elasticsearch...');
-        await _configureElasticsearch(installPath, logInfo);
-      }
-
-      // 9. Post-installation: Configure phpMyAdmin
-      if (app.appId == 'phpMyAdmin') {
-        onProgress?.call(0.97, 'Configuring phpMyAdmin...');
-        await _configurePhpMyAdmin(installPath, logInfo);
-      }
-
-      // 10. Post-installation: Configure pyenv
-      if (app.appId == 'pyenv') {
-        onProgress?.call(0.97, 'Configuring pyenv...');
-        await _configurePyenv(installPath, logInfo);
-      }
-
-      // 11. Post-installation: Configure RustFS
-      if (app.appId == 'rustfs') {
-        onProgress?.call(0.97, 'Configuring RustFS...');
-        await _configureRustFS(app, installPath, logInfo);
-      }
+      // Step 6: Post-installation configurations
+      await _configureDatabases(app, version, installPath, onProgress, logInfo);
+      await _configureRuntimes(app, installPath, onProgress, logInfo);
+      await _configureStorages(app, installPath, onProgress, logInfo);
+      await _configureServices(app, installPath, onProgress, logInfo);
 
       onProgress?.call(1.0, 'Completed');
       return installPath;
@@ -389,6 +308,336 @@ class AppInstallerService {
       if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);
       }
+    }
+  }
+
+  Future<void> _downloadPayload(
+    String url,
+    File tempFile,
+    InstallationProgressCallback? onProgress,
+    void Function(String) logInfo,
+  ) async {
+    await _dio.download(
+      url,
+      tempFile.path,
+      onReceiveProgress: (received, total) {
+        if (total != -1) {
+          final progress = (received / total) * 0.7 + 0.1; // 10% to 80%
+          onProgress?.call(
+            progress,
+            'Downloading...',
+            downloadedBytes: received,
+            totalBytes: total,
+          );
+        }
+      },
+    );
+    logInfo('Download completed');
+    onProgress?.call(0.8, 'Download completed');
+  }
+
+  Future<void> _extractPayload({
+    required AppModel app,
+    required File tempFile,
+    required String installPath,
+    required Uri uri,
+    required bool isTar,
+    required bool isZip,
+    required bool isExe,
+    required bool isZonky,
+    required bool isRawBinary,
+    required String extension,
+    InstallationProgressCallback? onProgress,
+    InstallationLogCallback? onLog,
+    required void Function(String) logInfo,
+    required void Function(String) logError,
+  }) async {
+    if (isZonky) {
+      await _installFromZonkyJar(
+        app: app,
+        tempFile: tempFile,
+        installPath: installPath,
+        onProgress: onProgress,
+        onLog: onLog,
+        logInfo: logInfo,
+      );
+    } else if (isRawBinary) {
+      await _installRawBinary(
+        app: app,
+        tempFile: tempFile,
+        installPath: installPath,
+        uri: uri,
+        onProgress: onProgress,
+        logInfo: logInfo,
+      );
+    } else if (isTar) {
+      await _installFromTar(
+        app: app,
+        tempFile: tempFile,
+        installPath: installPath,
+        onProgress: onProgress,
+        logInfo: logInfo,
+        logError: logError,
+      );
+    } else if (isZip) {
+      await _installFromZip(
+        app: app,
+        tempFile: tempFile,
+        installPath: installPath,
+        onProgress: onProgress,
+        onLog: onLog,
+        logInfo: logInfo,
+      );
+    } else if (isExe) {
+      await _installFromExe(
+        app: app,
+        tempFile: tempFile,
+        installPath: installPath,
+        uri: uri,
+        onProgress: onProgress,
+        logInfo: logInfo,
+      );
+    } else {
+      // Fallback for other formats or if extension is missing
+      // Assume ZIP to maintain backward compatibility
+      logInfo(
+        'Format $extension not explicitly handled, attempting ZIP extraction...',
+      );
+      try {
+        await _installFromZip(
+          app: app,
+          tempFile: tempFile,
+          installPath: installPath,
+          onProgress: onProgress,
+          onLog: onLog,
+          logInfo: logInfo,
+        );
+      } catch (e) {
+        logError('Failed to extract as ZIP: $e');
+        rethrow;
+      }
+    }
+  }
+
+  Future<void> _installFromZonkyJar({
+    required AppModel app,
+    required File tempFile,
+    required String installPath,
+    InstallationProgressCallback? onProgress,
+    InstallationLogCallback? onLog,
+    required void Function(String) logInfo,
+  }) async {
+    logInfo('Extracting Zonky PostgreSQL bundle for ${app.name}');
+    onProgress?.call(0.82, 'Extracting...');
+    await Directory(installPath).create(recursive: true);
+    await _extractZonkyJar(tempFile, installPath, onLog);
+    await ensureLinuxPermissions(installPath, logInfo: logInfo);
+    onProgress?.call(0.9, 'Extracted');
+  }
+
+  Future<void> _installRawBinary({
+    required AppModel app,
+    required File tempFile,
+    required String installPath,
+    required Uri uri,
+    InstallationProgressCallback? onProgress,
+    required void Function(String) logInfo,
+  }) async {
+    logInfo('Handling raw Linux binary for ${app.name}');
+    onProgress?.call(0.85, 'Moving binary...');
+    final fileName = app.execFile ?? p.basename(uri.path);
+    final targetFile = File(p.join(installPath, fileName));
+    await tempFile.copy(targetFile.path);
+    await ensureLinuxPermissions(installPath, logInfo: logInfo);
+    onProgress?.call(0.9, 'Binary ready');
+  }
+
+  @visibleForTesting
+  Future<void> installFromTarForTesting({
+    required AppModel app,
+    required File tempFile,
+    required String installPath,
+    required void Function(String) logInfo,
+    required void Function(String) logError,
+  }) => _installFromTar(
+    app: app,
+    tempFile: tempFile,
+    installPath: installPath,
+    logInfo: logInfo,
+    logError: logError,
+  );
+
+  Future<void> _installFromTar({
+    required AppModel app,
+    required File tempFile,
+    required String installPath,
+    InstallationProgressCallback? onProgress,
+    required void Function(String) logInfo,
+    required void Function(String) logError,
+  }) async {
+    logInfo('Extracting tar archive for ${app.name}');
+    onProgress?.call(0.82, 'Extracting...');
+
+    // Validate archive entries against Path Traversal (VULN-08)
+    try {
+      final entries = await listTarEntries(tempFile.path);
+      if (!validateTarEntries(entries)) {
+        logError('Path traversal detected in tar archive for ${app.name}');
+        throw Exception(
+          'Security error: Tar archive contains unsafe entry paths (path traversal attempt)',
+        );
+      }
+    } catch (e) {
+      if (e is Exception && e.toString().contains('Security error')) {
+        rethrow;
+      }
+      logInfo('Tar entry pre-validation skipped or failed: $e');
+    }
+
+    await Directory(installPath).create(recursive: true);
+    final args = buildTarExtractArgs(tempFile.path, installPath);
+    final result = await Process.run('tar', args);
+    if (result.exitCode != 0) {
+      logError(
+        'Tar extraction failed (exit code ${result.exitCode}): ${result.stderr}',
+      );
+      throw Exception('Tar extraction failed: ${result.stderr}');
+    }
+    if (Platform.isLinux) {
+      await ensureLinuxPermissions(installPath, logInfo: logInfo);
+    }
+    onProgress?.call(0.9, 'Extracted');
+  }
+
+  Future<void> _installFromZip({
+    required AppModel app,
+    required File tempFile,
+    required String installPath,
+    InstallationProgressCallback? onProgress,
+    InstallationLogCallback? onLog,
+    required void Function(String) logInfo,
+  }) async {
+    logInfo('Extracting ZIP for ${app.name}');
+    onProgress?.call(0.82, 'Extracting...');
+    final bytes = await tempFile.readAsBytes();
+    await _extractZip(bytes, installPath, onLog);
+    if (Platform.isLinux) {
+      await ensureLinuxPermissions(installPath, logInfo: logInfo);
+    }
+    onProgress?.call(0.9, 'Extracted');
+  }
+
+  Future<void> _installFromExe({
+    required AppModel app,
+    required File tempFile,
+    required String installPath,
+    required Uri uri,
+    InstallationProgressCallback? onProgress,
+    required void Function(String) logInfo,
+  }) async {
+    logInfo('Handling executable binary for ${app.name}');
+    onProgress?.call(0.85, 'Moving binary...');
+
+    final fileName = app.execFile ?? p.basename(uri.path);
+    final targetFile = File(p.join(installPath, fileName));
+
+    logInfo('Copying binary to: ${targetFile.path}');
+    await tempFile.copy(targetFile.path);
+    if (Platform.isLinux) {
+      await ensureLinuxPermissions(installPath, logInfo: logInfo);
+    }
+    onProgress?.call(0.9, 'Binary ready');
+  }
+
+  Future<void> _configureDatabases(
+    AppModel app,
+    String version,
+    String installPath,
+    InstallationProgressCallback? onProgress,
+    void Function(String) logInfo,
+  ) async {
+    if (app.appId.contains('mysql') || app.appId.contains('mariadb')) {
+      onProgress?.call(0.96, 'Initializing database...');
+      await _initializeDatabase(app, version, installPath, logInfo);
+    }
+
+    if (app.appId.contains('postgresql')) {
+      onProgress?.call(0.96, 'Initializing PostgreSQL...');
+      await _initializePostgresql(app, version, installPath, logInfo);
+    }
+  }
+
+  Future<void> _configureRuntimes(
+    AppModel app,
+    String installPath,
+    InstallationProgressCallback? onProgress,
+    void Function(String) logInfo,
+  ) async {
+    if (app.groupName == 'php') {
+      onProgress?.call(0.97, 'Configuring PHP...');
+      final phpIniDev = File(p.join(installPath, 'php.ini-development'));
+      final phpIni = File(p.join(installPath, 'php.ini'));
+
+      if (phpIniDev.existsSync() && !phpIni.existsSync()) {
+        logInfo('Copying php.ini-development to php.ini...');
+        await phpIniDev.copy(phpIni.path);
+        logInfo('Successfully created php.ini');
+        await _tunePhpIni(phpIni, logInfo);
+        await _enableDefaultExtensions(phpIni, installPath, logInfo);
+      }
+
+      // Install Composer if not already installed
+      onProgress?.call(0.98, 'Installing Composer...');
+      await _installComposer(logInfo);
+    }
+  }
+
+  Future<void> _configureStorages(
+    AppModel app,
+    String installPath,
+    InstallationProgressCallback? onProgress,
+    void Function(String) logInfo,
+  ) async {
+    if (app.appId == 'mongodb') {
+      onProgress?.call(0.97, 'Configuring MongoDB...');
+      await _configureMongodb(app, installPath, logInfo);
+    }
+
+    if (app.appId == 'rustfs') {
+      onProgress?.call(0.97, 'Configuring RustFS...');
+      await _configureRustFS(app, installPath, logInfo);
+    }
+  }
+
+  Future<void> _configureServices(
+    AppModel app,
+    String installPath,
+    InstallationProgressCallback? onProgress,
+    void Function(String) logInfo,
+  ) async {
+    if (isWebserverApp(app)) {
+      onProgress?.call(0.97, 'Configuring web server...');
+      await _configureWebserver(app, installPath, logInfo);
+    }
+
+    if (app.appId == 'meilisearch') {
+      onProgress?.call(0.97, 'Configuring Meilisearch...');
+      await _configureMeilisearch(installPath, logInfo);
+    }
+
+    if (app.appId == 'elasticsearch') {
+      onProgress?.call(0.97, 'Configuring Elasticsearch...');
+      await _configureElasticsearch(installPath, logInfo);
+    }
+
+    if (app.appId == 'phpMyAdmin') {
+      onProgress?.call(0.97, 'Configuring phpMyAdmin...');
+      await _configurePhpMyAdmin(installPath, logInfo);
+    }
+
+    if (app.appId == 'pyenv') {
+      onProgress?.call(0.97, 'Configuring pyenv...');
+      await _configurePyenv(installPath, logInfo);
     }
   }
 
@@ -1009,39 +1258,28 @@ class AppInstallerService {
       }
       final mimeFile = File(p.join(confDir.path, 'mime.types'));
       if (!mimeFile.existsSync()) {
-        await mimeFile.writeAsString('''types {
-    text/html                             html htm shtml;
-    text/css                              css;
-    text/xml                              xml;
-    image/gif                             gif;
-    image/jpeg                            jpeg jpg;
-    application/javascript                js;
-    application/json                      json;
-    image/png                             png;
-    image/svg+xml                         svg svgz;
-    image/x-icon                          ico;
-    font/woff                             woff;
-    font/woff2                            woff2;
-}''');
+        await mimeFile.writeAsString(NginxConfigBuilder.defaultMimeTypes());
       }
 
       final confFile = File(p.join(installPath, 'conf', 'nginx.conf'));
       logInfo('Generating fresh Nginx configuration...');
 
-      final certPath = sslNotifier
-          .getSiteCertPath('localhost')
-          .replaceAll('\\', '/');
-      final keyPath = sslNotifier
-          .getSiteKeyPath('localhost')
-          .replaceAll('\\', '/');
-      final cleanWebRoot = webRoot.replaceAll('\\', '/');
+      final certPath = sslNotifier.getSiteCertPath('localhost');
+      final keyPath = sslNotifier.getSiteKeyPath('localhost');
 
-      final nginxConfig = _getNginxConfigTemplate(
-        webRoot: cleanWebRoot,
+      final nginxConfig = NginxConfigBuilder.buildMainConfig(
+        webRoot: webRoot,
+        vhostsGlob: p.join(AppConfig.vhostsDir, 'nginx', '*.conf'),
+        integrationsGlob: p.join(
+          AppConfig.vhostsDir,
+          'nginx',
+          'integrations',
+          '*.conf',
+        ),
+        allowLanAccess: allowLanAccess,
         isSslInstalled: isSslInstalled,
         certPath: certPath,
         keyPath: keyPath,
-        allowLanAccess: allowLanAccess,
       );
 
       await confFile.writeAsString(nginxConfig);
@@ -1098,140 +1336,30 @@ class AppInstallerService {
 
       if (confFile.existsSync()) {
         logInfo('Configuring Apache paths in ${confFile.path}...');
-        String content = await confFile.readAsString();
+        final content = await confFile.readAsString();
 
-        final srvRoot = apacheRoot.replaceAll('\\', '/');
+        final certPath = isSslInstalled
+            ? sslNotifier.getSiteCertPath('localhost')
+            : null;
+        final keyPath = isSslInstalled
+            ? sslNotifier.getSiteKeyPath('localhost')
+            : null;
 
-        // 1. Fix SRVROOT (Essential for Apache Lounge binaries)
-        content = content.replaceFirst(
-          RegExp(r'Define\s+SRVROOT\s+".*?"'),
-          'Define SRVROOT "$srvRoot"',
-        );
-
-        // 2. Replace DocumentRoot
-        content = content.replaceFirst(
-          RegExp(r'^DocumentRoot\s+.*$', multiLine: true),
-          'DocumentRoot "$webRoot"',
-        );
-
-        // 3. Replace the corresponding <Directory> block
-        content = content.replaceFirst(
-          RegExp(r'^<Directory\s+"[^/].*?">', multiLine: true),
-          '<Directory "$webRoot">',
-        );
-
-        // 4. Ensure permissions for the new root
-        content = content.replaceFirst(
-          '<Directory "$webRoot">',
-          '<Directory "$webRoot">\n    Options Indexes FollowSymLinks\n    AllowOverride All\n    Require all granted',
-        );
-
-        // 5. Bind only to localhost by default. LAN access must be explicitly
-        // enabled in Settings. Normalize old wildcard/duplicate directives too.
-        content = WebserverBindPolicy.normalizeApacheListeners(
-          content,
+        final updatedContent = ApacheConfigBuilder.buildMainConfig(
+          initialContent: content,
+          serverRoot: apacheRoot,
+          documentRoot: webRoot,
+          vhostsGlob: p.join(AppConfig.vhostsDir, 'apache', '*.conf'),
           allowLanAccess: allowLanAccess,
-          includeSsl: isSslInstalled,
+          isSslInstalled: isSslInstalled,
+          certPath: certPath,
+          keyPath: keyPath,
         );
 
-        // 6. Fix ServerName warning
-        if (!content.contains('ServerName localhost')) {
-          content = content.replaceFirst(
-            RegExp(r'^#?ServerName\s+.*$', multiLine: true),
-            'ServerName localhost:80',
-          );
-        }
-
-        // SSL Configuration for Apache
-        final sslVhostMarker = '# Ponta SSL Virtual Host';
-        if (isSslInstalled) {
-          logInfo('Configuring SSL for Apache...');
-
-          // Enable mod_ssl and socache_shmcb using flexible regex
-          content = content.replaceFirst(
-            RegExp(r'#\s*LoadModule\s+ssl_module\s+modules/mod_ssl.so'),
-            'LoadModule ssl_module modules/mod_ssl.so',
-          );
-          content = content.replaceFirst(
-            RegExp(
-              r'#\s*LoadModule\s+socache_shmcb_module\s+modules/mod_socache_shmcb.so',
-            ),
-            'LoadModule socache_shmcb_module modules/mod_socache_shmcb.so',
-          );
-
-          // Enable proxy modules for PHP-CGI
-          content = content.replaceFirst(
-            RegExp(r'#\s*LoadModule\s+proxy_module\s+modules/mod_proxy.so'),
-            'LoadModule proxy_module modules/mod_proxy.so',
-          );
-          content = content.replaceFirst(
-            RegExp(
-              r'#\s*LoadModule\s+proxy_fcgi_module\s+modules/mod_proxy_fcgi.so',
-            ),
-            'LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so',
-          );
-
-          final certPath = sslNotifier
-              .getSiteCertPath('localhost')
-              .replaceAll('\\', '/');
-          final keyPath = sslNotifier
-              .getSiteKeyPath('localhost')
-              .replaceAll('\\', '/');
-
-          final sslVhost =
-              '''
-$sslVhostMarker
-<IfModule mod_ssl.c>
-<VirtualHost $bindAddress:443>
-    DocumentRoot "$webRoot"
-    ServerName localhost:443
-    SSLEngine on
-    SSLCertificateFile "$certPath"
-    SSLCertificateKeyFile "$keyPath"
-    <Directory "$webRoot">
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-</VirtualHost>
-</IfModule>
-''';
-          // Remove existing vhost if any
-          final existingRegex = RegExp(
-            r'\s*' + RegExp.escape(sslVhostMarker) + r'.*?<\/IfModule>',
-            dotAll: true,
-          );
-          content = content.replaceAll(existingRegex, '');
-
-          content += '\n$sslVhost\n';
-        } else {
-          // Remove SSL config if uninstalled
-          if (content.contains(sslVhostMarker)) {
-            logInfo('Removing SSL config from Apache...');
-            final existingRegex = RegExp(
-              r'\s*' + RegExp.escape(sslVhostMarker) + r'.*?<\/IfModule>',
-              dotAll: true,
-            );
-            content = content.replaceAll(existingRegex, '');
-            // Optionally disable modules but keep it simple for now
-          }
-        }
-
-        await confFile.writeAsString(content);
+        await confFile.writeAsString(updatedContent);
         logInfo(
           'Apache configuration updated (SRVROOT, DocumentRoot, Permissions, SSL).',
         );
-
-        // Include global vhosts
-        String httpdContent = await confFile.readAsString();
-        final vhostsPath = p
-            .join(AppConfig.vhostsDir, 'apache', '*.conf')
-            .replaceAll('\\', '/');
-        if (!httpdContent.contains('IncludeOptional "$vhostsPath"')) {
-          logInfo('Adding global vhosts include to Apache...');
-          httpdContent += '\n# Global Vhosts\nIncludeOptional "$vhostsPath"\n';
-          await confFile.writeAsString(httpdContent);
-        }
       } else {
         logInfo('Warning: Could not find Apache httpd.conf to configure.');
       }
@@ -1241,85 +1369,6 @@ $sslVhostMarker
         await _setLinuxCapabilityForWebserver(app.execFilePath!, logInfo);
       }
     }
-  }
-
-  String _getNginxConfigTemplate({
-    required String webRoot,
-    required bool isSslInstalled,
-    required String certPath,
-    required String keyPath,
-    required bool allowLanAccess,
-  }) {
-    final httpListen = WebserverBindPolicy.nginxListen(
-      80,
-      allowLanAccess: allowLanAccess,
-    );
-    final httpsListen = WebserverBindPolicy.nginxListen(
-      443,
-      allowLanAccess: allowLanAccess,
-      ssl: true,
-    );
-    String sslBlock = '';
-    if (isSslInstalled) {
-      sslBlock =
-          '''
-    # HTTPS server
-    server {
-        listen       $httpsListen;
-        server_name  localhost;
-        root         "$webRoot";
-
-        ssl_certificate      "$certPath";
-        ssl_certificate_key  "$keyPath";
-
-        ssl_session_cache    shared:SSL:1m;
-        ssl_session_timeout  5m;
-
-        ssl_ciphers  HIGH:!aNULL:!MD5;
-        ssl_prefer_server_ciphers  on;
-
-        location / {
-            index  index.html index.htm index.php;
-        }
-
-        # Global Integrations
-        include "${p.join(AppConfig.vhostsDir, 'nginx', 'integrations', '*.conf').replaceAll('\\', '/')}";
-    }''';
-    }
-
-    return '''
-worker_processes  auto;
-
-events {
-    worker_connections  1024;
-}
-
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-    sendfile        on;
-    keepalive_timeout  65;
-
-    # HTTP server
-    server {
-        listen       $httpListen;
-        server_name  localhost;
-        root         "$webRoot";
-
-        location / {
-            index  index.html index.htm index.php;
-        }
-
-        # Global Integrations
-        include "${p.join(AppConfig.vhostsDir, 'nginx', 'integrations', '*.conf').replaceAll('\\', '/')}";
-    }
-
-$sslBlock
-
-    # Global Vhosts
-    include "${p.join(AppConfig.vhostsDir, 'nginx', '*.conf').replaceAll('\\', '/')}";
-}
-''';
   }
 
   Future<void> _configureMongodb(
@@ -1816,23 +1865,10 @@ security:
     final pmaWebRoot = _resolvePmaWebRoot(pmaPath);
     final pmaPathUnix = pmaWebRoot.replaceAll('\\', '/');
 
-    final pmaConfig =
-        '''
-# phpMyAdmin Integration
-location /phpmyadmin {
-    alias "$pmaPathUnix/";
-    index index.php;
-    try_files \$uri \$uri/ /index.php?\$args;
-
-    location ~ ^/phpmyadmin/(.+\\.php)\$ {
-        alias "$pmaPathUnix/\$1";
-        fastcgi_pass 127.0.0.1:$phpPort;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$request_filename;
-    }
-}
-''';
+    final pmaConfig = NginxConfigBuilder.buildPhpMyAdminConfig(
+      rootDir: pmaPathUnix,
+      phpPort: phpPort,
+    );
 
     await pmaConfFile.writeAsString(pmaConfig);
     log(
@@ -1876,20 +1912,8 @@ location /phpmyadmin {
   }
 
   @visibleForTesting
-  static String buildApachePmaConfig(String pmaPathUnix, {int phpPort = 9000}) {
-    return '''
-# phpMyAdmin Configuration
-Alias /phpmyadmin "$pmaPathUnix/"
-<Directory "$pmaPathUnix/">
-    Options Indexes FollowSymLinks MultiViews
-    AllowOverride All
-    Require all granted
-    <FilesMatch \\.php\$>
-        SetHandler "proxy:fcgi://127.0.0.1:$phpPort"
-    </FilesMatch>
-</Directory>
-''';
-  }
+  static String buildApachePmaConfig(String pmaPathUnix, {int phpPort = 9000}) =>
+      ApacheConfigBuilder.buildPhpMyAdminConfig(pmaPathUnix, phpPort: phpPort);
 
   Future<void> _configurePhpMyAdminInApache(
     AppModel apache,
