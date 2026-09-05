@@ -102,6 +102,35 @@
       }
     },
     {
+      "id": "apache",
+      "name": "Apache",
+      "description": "World No. 1 web server",
+      "category": "webserver",
+      "group_name": "webserver",
+      "exec_file": "apache2",
+      "cli_file": "apache2",
+      "install_method": "package_manager",
+      "package_manager_commands": {
+        "ubuntu": [
+          "sudo apt-get update",
+          "sudo apt-get install -y apache2",
+          "sudo systemctl disable --now apache2"
+        ],
+        "debian": [
+          "sudo apt-get update",
+          "sudo apt-get install -y apache2",
+          "sudo systemctl disable --now apache2"
+        ],
+        "centos": [
+          "sudo dnf install -y httpd",
+          "sudo systemctl disable --now httpd"
+        ]
+      },
+      "versions": {
+        "system": "package_manager"
+      }
+    },
+    {
       "id": "caddy",
       "name": "Caddy",
       "description": "Fast, extensible web server with a simple configuration",
@@ -149,7 +178,8 @@
           "sudo apt-get install -y software-properties-common",
           "sudo add-apt-repository -y ppa:ondrej/php",
           "sudo apt-get update",
-          "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip"
+          "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip",
+          "sudo systemctl disable --now php8.5-fpm"
         ],
         "debian": [
           "sudo apt-get update",
@@ -158,14 +188,16 @@
           "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
           "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
           "sudo apt-get update",
-          "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip"
+          "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip",
+          "sudo systemctl disable --now php8.5-fpm"
         ],
         "centos": [
           "sudo dnf install -y epel-release",
           "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
           "sudo dnf module reset -y php",
           "sudo dnf module enable -y php:remi-8.5",
-          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip"
+          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
+          "sudo systemctl disable --now php-fpm"
         ]
       },
       "versions": {
@@ -188,7 +220,8 @@
           "sudo apt-get install -y software-properties-common",
           "sudo add-apt-repository -y ppa:ondrej/php",
           "sudo apt-get update",
-          "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip"
+          "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip",
+          "sudo systemctl disable --now php8.4-fpm"
         ],
         "debian": [
           "sudo apt-get update",
@@ -197,14 +230,16 @@
           "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
           "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
           "sudo apt-get update",
-          "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip"
+          "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip",
+          "sudo systemctl disable --now php8.4-fpm"
         ],
         "centos": [
           "sudo dnf install -y epel-release",
           "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
           "sudo dnf module reset -y php",
           "sudo dnf module enable -y php:remi-8.4",
-          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip"
+          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
+          "sudo systemctl disable --now php-fpm"
         ]
       },
       "versions": {
@@ -227,7 +262,8 @@
           "sudo apt-get install -y software-properties-common",
           "sudo add-apt-repository -y ppa:ondrej/php",
           "sudo apt-get update",
-          "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip"
+          "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip",
+          "sudo systemctl disable --now php8.3-fpm"
         ],
         "debian": [
           "sudo apt-get update",
@@ -236,14 +272,16 @@
           "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
           "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
           "sudo apt-get update",
-          "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip"
+          "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip",
+          "sudo systemctl disable --now php8.3-fpm"
         ],
         "centos": [
           "sudo dnf install -y epel-release",
           "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
           "sudo dnf module reset -y php",
           "sudo dnf module enable -y php:remi-8.3",
-          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip"
+          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
+          "sudo systemctl disable --now php-fpm"
         ]
       },
       "versions": {
@@ -266,7 +304,8 @@
           "sudo apt-get install -y software-properties-common",
           "sudo add-apt-repository -y ppa:ondrej/php",
           "sudo apt-get update",
-          "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip"
+          "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip",
+          "sudo systemctl disable --now php8.2-fpm"
         ],
         "debian": [
           "sudo apt-get update",
@@ -275,14 +314,16 @@
           "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
           "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
           "sudo apt-get update",
-          "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip"
+          "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip",
+          "sudo systemctl disable --now php8.2-fpm"
         ],
         "centos": [
           "sudo dnf install -y epel-release",
           "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
           "sudo dnf module reset -y php",
           "sudo dnf module enable -y php:remi-8.2",
-          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip"
+          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
+          "sudo systemctl disable --now php-fpm"
         ]
       },
       "versions": {
@@ -322,18 +363,31 @@
     },
     {
       "id": "redis",
-      "name": "Redis (Valkey)",
-      "description": "High-performance in-memory data structure store (Valkey engine).",
+      "name": "Redis",
+      "description": "High-performance in-memory data structure store.",
       "category": "database",
       "group_name": "redis",
-      "exec_file": "valkey-server",
-      "cli_file": "valkey-cli",
+      "exec_file": "redis-server",
+      "cli_file": "redis-cli",
+      "install_method": "package_manager",
+      "package_manager_commands": {
+        "ubuntu": [
+          "sudo apt-get update",
+          "sudo apt-get install -y redis-server",
+          "sudo systemctl disable --now redis-server"
+        ],
+        "debian": [
+          "sudo apt-get update",
+          "sudo apt-get install -y redis-server",
+          "sudo systemctl disable --now redis-server"
+        ],
+        "centos": [
+          "sudo dnf install -y redis",
+          "sudo systemctl disable --now redis"
+        ]
+      },
       "versions": {
-        "9.1.1": "https://download.valkey.io/releases/valkey-9.1.1-{distro}-x86_64.tar.gz",
-        "9.0.5": "https://download.valkey.io/releases/valkey-9.0.5-{distro}-x86_64.tar.gz",
-        "8.1.9": "https://download.valkey.io/releases/valkey-8.1.9-{distro}-x86_64.tar.gz",
-        "8.0.3": "https://download.valkey.io/releases/valkey-8.0.3-{distro}-x86_64.tar.gz",
-        "7.2.7": "https://download.valkey.io/releases/valkey-7.2.7-{distro}-x86_64.tar.gz"
+        "system": "package_manager"
       }
     },
     {
@@ -357,9 +411,25 @@
       "group_name": "database",
       "exec_file": "postgres",
       "cli_file": "psql",
+      "install_method": "package_manager",
+      "package_manager_commands": {
+        "ubuntu": [
+          "sudo apt-get update",
+          "sudo apt-get install -y postgresql postgresql-contrib",
+          "sudo systemctl disable --now postgresql"
+        ],
+        "debian": [
+          "sudo apt-get update",
+          "sudo apt-get install -y postgresql postgresql-contrib",
+          "sudo systemctl disable --now postgresql"
+        ],
+        "centos": [
+          "sudo dnf install -y postgresql-server postgresql-contrib",
+          "sudo systemctl disable --now postgresql"
+        ]
+      },
       "versions": {
-        "17.2": "https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/17.2.0/embedded-postgres-binaries-linux-amd64-17.2.0.jar",
-        "16.6": "https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/16.6.0/embedded-postgres-binaries-linux-amd64-16.6.0.jar"
+        "system": "package_manager"
       }
     },
     {

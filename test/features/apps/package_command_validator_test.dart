@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dev_stack/features/apps/data/package_command_validator.dart';
 
@@ -124,6 +126,49 @@ void main() {
           PackageCommandValidator.validate('sudo /tmp/evil_tool'),
           anyOf(contains('not in the allowed list'), contains('not in the allowed system directories')),
         );
+      });
+    });
+
+    group('real linux catalog validation', () {
+      test('all package manager commands in apps-linux.json pass validation', () async {
+        final catalogFile = File('assets/data/apps-linux.json');
+        expect(catalogFile.existsSync(), isTrue);
+        final jsonData = jsonDecode(await catalogFile.readAsString()) as Map<String, dynamic>;
+        final jsonContent = jsonData['apps'] as List<dynamic>;
+
+        final packageManagerApps = jsonContent.where(
+          (app) => app['install_method'] == 'package_manager',
+        );
+
+        final expectedAppIds = {'apache', 'postgresql', 'redis', 'php82', 'php83', 'php84', 'php85'};
+        final foundAppIds = packageManagerApps.map((a) => a['id'] as String).toSet();
+        expect(foundAppIds, containsAll(expectedAppIds));
+
+        for (final app in packageManagerApps) {
+          final commandsMap = app['package_manager_commands'] as Map<String, dynamic>?;
+          expect(commandsMap, isNotNull, reason: '${app['id']} missing package_manager_commands');
+
+          for (final entry in commandsMap!.entries) {
+            final distro = entry.key;
+            final commands = (entry.value as List<dynamic>).cast<String>();
+            // Emulate placeholder resolution for validation
+            final resolved = commands.map((c) => c.replaceAll('{codename}', 'bookworm')).toList();
+            final errors = PackageCommandValidator.validateAll(resolved);
+            expect(
+              errors,
+              isEmpty,
+              reason: 'Commands for ${app['id']} on $distro failed validation: $errors',
+            );
+
+            // Verify systemctl disable command is present
+            final hasDisable = commands.any((c) => c.contains('systemctl disable --now'));
+            expect(
+              hasDisable,
+              isTrue,
+              reason: '${app['id']} on $distro must disable default systemd daemon',
+            );
+          }
+        }
       });
     });
   });

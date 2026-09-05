@@ -396,34 +396,6 @@ const fetchersLinux = {
     return versions;
   },
 
-  async redis() {
-    // Valkey official prebuilt Linux binary tarballs from download.valkey.io
-    // Using {distro} placeholder so DevStack automatically resolves to the host's codename (noble/jammy/focal)
-    const versions = {};
-    const candidateVersions = [
-      "9.1.1", "9.1.0", "9.0.5", "9.0.4", "9.0.0",
-      "8.1.9", "8.1.8", "8.1.7", "8.1.0",
-      "8.0.3", "8.0.2", "8.0.1", "8.0.0",
-      "7.2.7", "7.2.6", "7.2.5", "7.2.4"
-    ];
-
-    for (const ver of candidateVersions) {
-      // Test availability against jammy/noble/focal
-      for (const d of ["jammy", "noble", "focal"]) {
-        const url = `https://download.valkey.io/releases/valkey-${ver}-${d}-x86_64.tar.gz`;
-        try {
-          const res = await fetch(url, { method: "HEAD" });
-          if (res.status === 200) {
-            // Emit template URL with {distro} placeholder
-            versions[ver] = `https://download.valkey.io/releases/valkey-${ver}-{distro}-x86_64.tar.gz`;
-            break;
-          }
-        } catch (_) {}
-      }
-    }
-    return versions;
-  },
-
   async mongodb() {
     const res = await fetch("https://downloads.mongodb.org/current.json");
     const json = await res.json();
@@ -447,25 +419,6 @@ const fetchersLinux = {
           "-{mongo_distro}-",
         );
       }
-    });
-    return versions;
-  },
-
-  async postgresql() {
-    const res = await fetch(
-      "https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/maven-metadata.xml",
-    );
-    const xml = await res.text();
-    const matches = [...xml.matchAll(/<version>(.*?)<\/version>/g)].map(
-      (m) => m[1],
-    );
-    const versions = {};
-    matches.forEach((ver) => {
-      // Version e.g. 17.2.0 -> key 17.2 or 17.2.0
-      const parts = ver.split(".");
-      const key = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : ver;
-      versions[key] =
-        `https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/${ver}/embedded-postgres-binaries-linux-amd64-${ver}.jar`;
     });
     return versions;
   },
@@ -809,6 +762,35 @@ let baseLinuxApps = [
     cli_file: "nginx",
   },
   {
+    id: "apache",
+    name: "Apache",
+    description: "World No. 1 web server",
+    "category": "webserver",
+    group_name: "webserver",
+    exec_file: "apache2",
+    cli_file: "apache2",
+    install_method: "package_manager",
+    package_manager_commands: {
+      ubuntu: [
+        "sudo apt-get update",
+        "sudo apt-get install -y apache2",
+        "sudo systemctl disable --now apache2",
+      ],
+      debian: [
+        "sudo apt-get update",
+        "sudo apt-get install -y apache2",
+        "sudo systemctl disable --now apache2",
+      ],
+      centos: [
+        "sudo dnf install -y httpd",
+        "sudo systemctl disable --now httpd",
+      ],
+    },
+    versions: {
+      system: "package_manager",
+    },
+  },
+  {
     id: "php85",
     name: "PHP 8.5",
     description: "Hypertext Preprocessor v8.5",
@@ -825,6 +807,7 @@ let baseLinuxApps = [
         "sudo add-apt-repository -y ppa:ondrej/php",
         "sudo apt-get update",
         "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip",
+        "sudo systemctl disable --now php8.5-fpm",
       ],
       debian: [
         "sudo apt-get update",
@@ -834,6 +817,7 @@ let baseLinuxApps = [
         "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
         "sudo apt-get update",
         "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip",
+        "sudo systemctl disable --now php8.5-fpm",
       ],
       centos: [
         "sudo dnf install -y epel-release",
@@ -841,6 +825,7 @@ let baseLinuxApps = [
         "sudo dnf module reset -y php",
         "sudo dnf module enable -y php:remi-8.5",
         "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
+        "sudo systemctl disable --now php-fpm",
       ],
     },
     versions: {
@@ -864,6 +849,7 @@ let baseLinuxApps = [
         "sudo add-apt-repository -y ppa:ondrej/php",
         "sudo apt-get update",
         "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip",
+        "sudo systemctl disable --now php8.4-fpm",
       ],
       debian: [
         "sudo apt-get update",
@@ -873,6 +859,7 @@ let baseLinuxApps = [
         "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
         "sudo apt-get update",
         "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip",
+        "sudo systemctl disable --now php8.4-fpm",
       ],
       centos: [
         "sudo dnf install -y epel-release",
@@ -880,6 +867,7 @@ let baseLinuxApps = [
         "sudo dnf module reset -y php",
         "sudo dnf module enable -y php:remi-8.4",
         "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
+        "sudo systemctl disable --now php-fpm",
       ],
     },
     versions: {
@@ -903,6 +891,7 @@ let baseLinuxApps = [
         "sudo add-apt-repository -y ppa:ondrej/php",
         "sudo apt-get update",
         "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip",
+        "sudo systemctl disable --now php8.3-fpm",
       ],
       debian: [
         "sudo apt-get update",
@@ -912,6 +901,7 @@ let baseLinuxApps = [
         "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
         "sudo apt-get update",
         "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip",
+        "sudo systemctl disable --now php8.3-fpm",
       ],
       centos: [
         "sudo dnf install -y epel-release",
@@ -919,6 +909,7 @@ let baseLinuxApps = [
         "sudo dnf module reset -y php",
         "sudo dnf module enable -y php:remi-8.3",
         "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
+        "sudo systemctl disable --now php-fpm",
       ],
     },
     versions: {
@@ -942,6 +933,7 @@ let baseLinuxApps = [
         "sudo add-apt-repository -y ppa:ondrej/php",
         "sudo apt-get update",
         "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip",
+        "sudo systemctl disable --now php8.2-fpm",
       ],
       debian: [
         "sudo apt-get update",
@@ -951,6 +943,7 @@ let baseLinuxApps = [
         "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
         "sudo apt-get update",
         "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip",
+        "sudo systemctl disable --now php8.2-fpm",
       ],
       centos: [
         "sudo dnf install -y epel-release",
@@ -958,6 +951,7 @@ let baseLinuxApps = [
         "sudo dnf module reset -y php",
         "sudo dnf module enable -y php:remi-8.2",
         "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
+        "sudo systemctl disable --now php-fpm",
       ],
     },
     versions: {
@@ -988,12 +982,32 @@ let baseLinuxApps = [
   },
   {
     id: "redis",
-    name: "Redis (Valkey)",
-    description: "High-performance in-memory data structure store (Valkey engine).",
+    name: "Redis",
+    description: "High-performance in-memory data structure store.",
     category: "database",
     group_name: "redis",
-    exec_file: "valkey-server",
-    cli_file: "valkey-cli",
+    exec_file: "redis-server",
+    cli_file: "redis-cli",
+    install_method: "package_manager",
+    package_manager_commands: {
+      ubuntu: [
+        "sudo apt-get update",
+        "sudo apt-get install -y redis-server",
+        "sudo systemctl disable --now redis-server",
+      ],
+      debian: [
+        "sudo apt-get update",
+        "sudo apt-get install -y redis-server",
+        "sudo systemctl disable --now redis-server",
+      ],
+      centos: [
+        "sudo dnf install -y redis",
+        "sudo systemctl disable --now redis",
+      ],
+    },
+    versions: {
+      system: "package_manager",
+    },
   },
   {
     id: "mongodb",
@@ -1012,6 +1026,26 @@ let baseLinuxApps = [
     group_name: "database",
     exec_file: "postgres",
     cli_file: "psql",
+    install_method: "package_manager",
+    package_manager_commands: {
+      ubuntu: [
+        "sudo apt-get update",
+        "sudo apt-get install -y postgresql postgresql-contrib",
+        "sudo systemctl disable --now postgresql",
+      ],
+      debian: [
+        "sudo apt-get update",
+        "sudo apt-get install -y postgresql postgresql-contrib",
+        "sudo systemctl disable --now postgresql",
+      ],
+      centos: [
+        "sudo dnf install -y postgresql-server postgresql-contrib",
+        "sudo systemctl disable --now postgresql",
+      ],
+    },
+    versions: {
+      system: "package_manager",
+    },
   },
   {
     id: "phpMyAdmin",
