@@ -1156,17 +1156,34 @@ class AppInstallerService {
 
   /// Sets Linux capability CAP_NET_BIND_SERVICE for webserver binaries
   /// to allow binding privileged ports (< 1024) without root.
+  ///
+  /// When [allowSystemBinaries] is true, system-installed webserver binaries
+  /// (apache2, httpd, caddy, nginx) located outside [AppConfig.appsDir] are
+  /// permitted — e.g. `/usr/sbin/apache2` — so they can receive
+  /// `cap_net_bind_service=+ep`.
   @visibleForTesting
   Future<void> setLinuxCapabilityForWebserver(
     String executablePath,
     Function(String) logInfo, {
     Future<ProcessResult> Function(String executable, List<String> arguments)? runProcess,
     bool? isLinuxOverride,
+    bool allowSystemBinaries = false,
   }) async {
     final isLinux = isLinuxOverride ?? Platform.isLinux;
     if (!isLinux) return;
 
-    if (!p.isWithin(AppConfig.appsDir, executablePath) && !p.equals(AppConfig.appsDir, executablePath)) {
+    final isInsideAppsDir =
+        p.isWithin(AppConfig.appsDir, executablePath) ||
+        p.equals(AppConfig.appsDir, executablePath);
+    final isAllowedSystem = allowSystemBinaries &&
+        const {
+          'apache2',
+          'httpd',
+          'caddy',
+          'nginx',
+        }.contains(p.basename(executablePath));
+
+    if (!isInsideAppsDir && !isAllowedSystem) {
       logInfo('Warning: Executable path $executablePath is outside ${AppConfig.appsDir}, skipping capability setup for security');
       return;
     }
@@ -2578,33 +2595,82 @@ security:
     return systemPackageMarker;
   }
 
-  /// Find installed executable in system PATH and common locations.
-  Future<String?> _findInstalledPhp(String phpName, Function(String) logInfo) async {
+  /// Find installed executable in system PATH and standard candidate directories.
+  ///
+  /// Resolution order:
+  /// 1. `which <binaryName>` (when [runProcess] allows it).
+  /// 2. Explicit [candidates] list, or a default set of standard locations when
+  ///    [candidates] is omitted.
+  /// 3. Recursive directory tree search through [searchDirectories] to support
+  ///    glob-like patterns such as `/usr/lib/postgresql/*/bin/<binaryName>`.
+  ///
+  /// Returns the first matching executable path, or `null` if none is found.
+  @visibleForTesting
+  Future<String?> findInstalledBinary(
+    String binaryName, {
+    List<String>? candidates,
+    List<String>? searchDirectories,
+    Function(String)? logInfo,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+  }) async {
+    final runner = runProcess ?? Process.run;
+    logInfo ??= _logger.info;
+
+    // 1. Try the 'which' command to resolve via PATH.
     try {
-      // Try 'which' command first
-      final result = await Process.run('which', [phpName]);
-      if (result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty) {
-        return result.stdout.toString().trim();
-      }
-
-      // Fallback: check common locations
-      final commonPaths = [
-        p.join('/usr/bin', phpName),
-        p.join('/usr/local/bin', phpName),
-        p.join('/opt/php/bin', phpName),
-      ];
-
-      for (final path in commonPaths) {
-        if (File(path).existsSync()) {
-          logInfo('Found $phpName at: $path');
+      final whichResult = await runner('which', [binaryName]);
+      if (whichResult.exitCode == 0) {
+        final path = whichResult.stdout.toString().trim();
+        if (path.isNotEmpty) {
+          logInfo('Found $binaryName via which at: $path');
           return path;
         }
       }
-
-      return null;
-    } catch (e) {
-      logInfo('Error finding $phpName: $e');
-      return null;
+    } catch (_) {
+      // `which` may not be available; continue to candidate search.
     }
+
+    // 2. Check explicit candidates, defaulting to standard system locations.
+    final defaultCandidates = candidates ??
+        [
+          '/usr/bin/$binaryName',
+          '/usr/sbin/$binaryName',
+          '/usr/local/bin/$binaryName',
+          '/usr/local/sbin/$binaryName',
+        ];
+
+    for (final candidate in defaultCandidates) {
+      if (File(candidate).existsSync()) {
+        logInfo('Found $binaryName at candidate path: $candidate');
+        return candidate;
+      }
+    }
+
+    // 3. Search directory trees (e.g. /usr/lib/postgresql/*/bin/<binaryName>).
+    if (searchDirectories != null) {
+      for (final searchDir in searchDirectories) {
+        final dir = Directory(searchDir);
+        if (dir.existsSync()) {
+          try {
+            for (final entity in dir.listSync(recursive: true, followLinks: false)) {
+              if (entity is File && p.basename(entity.path) == binaryName) {
+                logInfo('Found $binaryName in $searchDir at: ${entity.path}');
+                return entity.path;
+              }
+            }
+          } catch (_) {
+            // Listing a tree may be permission-limited; skip and continue.
+          }
+        }
+      }
+    }
+
+    return null;
   }
+
+  /// Find installed executable in system PATH and common locations.
+  /// Delegates to the general-purpose [findInstalledBinary] so all binary
+  /// resolution (PATH, candidates, directory tree search) is centralized.
+  Future<String?> _findInstalledPhp(String phpName, Function(String) logInfo) =>
+      findInstalledBinary(phpName, logInfo: logInfo);
 }
