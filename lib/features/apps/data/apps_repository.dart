@@ -10,9 +10,22 @@ import '../domain/installed_app.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 
 class AppsRepository {
-  final Isar isar;
+  final Isar? _isar;
 
-  AppsRepository(this.isar);
+  AppsRepository([Isar? isar]) : _isar = isar;
+
+  Isar get isar {
+    if (_isar == null) {
+      throw StateError('AppsRepository initialized without Isar instance');
+    }
+    return _isar;
+  }
+
+  static bool isSecureCatalogUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || !uri.hasScheme) return false;
+    return uri.scheme.toLowerCase() == 'https';
+  }
 
   static String catalogFileNameFor({required bool isLinux}) {
     return isLinux ? 'apps-linux.json' : 'apps.json';
@@ -202,6 +215,11 @@ class AppsRepository {
   }
 
   Future<void> updateAppListFromUrl(String url) async {
+    if (!isSecureCatalogUrl(url)) {
+      throw ArgumentError(
+        'Catalog URL must use secure HTTPS protocol: $url',
+      );
+    }
     try {
       final dio = Dio(
         BaseOptions(
