@@ -4,6 +4,7 @@ import 'package:isar/isar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/database/isar_provider.dart';
+import '../../../core/security/local_secret_vault.dart';
 import '../../apps/data/apps_provider.dart';
 import '../../apps/domain/app_model.dart';
 import '../domain/database_record.dart';
@@ -17,6 +18,28 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     return [];
   }
 
+  @visibleForTesting
+  static void encryptRecordPassword(
+    DatabaseRecord record, {
+    LocalSecretVault? vault,
+  }) {
+    if (record.password.isEmpty) return;
+    if (vault != null) {
+      record.password = vault.encrypt(record.password);
+    }
+  }
+
+  @visibleForTesting
+  static void decryptRecordPassword(
+    DatabaseRecord record, {
+    LocalSecretVault? vault,
+  }) {
+    if (record.password.isEmpty) return;
+    if (vault != null) {
+      record.password = vault.decrypt(record.password);
+    }
+  }
+
   Future<void> fetchByEngine(String engineAppId) async {
     state = const AsyncValue.loading();
     try {
@@ -25,6 +48,12 @@ class DatabasesNotifier extends _$DatabasesNotifier {
           .filter()
           .engineAppIdEqualTo(engineAppId)
           .findAll();
+
+      final vault = await LocalSecretVault.getInstance();
+      for (final record in records) {
+        decryptRecordPassword(record, vault: vault);
+      }
+
       state = AsyncValue.data(records);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -157,10 +186,13 @@ class DatabasesNotifier extends _$DatabasesNotifier {
 
     // Save to Isar
     final isar = await ref.read(isarProvider.future);
+    final vault = await LocalSecretVault.getInstance();
+    final encryptedPassword = vault.encrypt(password);
+
     final record = DatabaseRecord()
       ..name = name
       ..username = user
-      ..password = password
+      ..password = encryptedPassword
       ..engineAppId = app.appId
       ..note = note
       ..createdAt = DateTime.now();
@@ -246,7 +278,8 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     // Update Isar record — only fields whose server-side change succeeded.
     // Password is persisted only if the ALTER above ran and succeeded.
     if (newPassword.isNotEmpty) {
-      record.password = newPassword;
+      final vault = await LocalSecretVault.getInstance();
+      record.password = vault.encrypt(newPassword);
     }
     record.note = newNote;
     await isar.writeTxn(() => isar.databaseRecords.put(record));
