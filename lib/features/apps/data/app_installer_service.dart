@@ -2544,7 +2544,18 @@ security:
     // 6. Find installed executable
     logInfo('Locating installed ${app.name} executable...');
     final execName = app.execFile ?? 'php';
-    final execPath = await _findInstalledPhp(execName, logInfo);
+    final execPath = await findInstalledBinary(
+      execName,
+      candidates: [
+        '/usr/bin/$execName',
+        '/usr/sbin/$execName',
+        '/usr/local/bin/$execName',
+        '/usr/local/sbin/$execName',
+        if (app.appId.contains('postgresql')) '/usr/lib/postgresql/*/bin/postgres',
+      ],
+      searchDirectories: app.appId.contains('postgresql') ? ['/usr/lib/postgresql'] : null,
+      logInfo: logInfo,
+    );
 
     if (execPath == null) {
       logError('Could not find $execName after installation');
@@ -2589,10 +2600,44 @@ security:
       }
     }
 
+    // 9. Wire post-install isolation hooks for Linux package manager apps
+    onProgress?.call(0.99, 'Configuring isolated services...');
+    await _configureIsolatedServices(app, version, execPath, logInfo);
+
     onProgress?.call(1.0, 'Completed');
 
     logInfo('Successfully installed ${app.name} via package manager');
     return systemPackageMarker;
+  }
+
+  /// Wires post-install isolation hooks so that Linux package manager apps get
+  /// isolated configuration files / clusters created after installation.
+  /// This is only invoked from [_installViaPackageManager] on Linux.
+  Future<void> _configureIsolatedServices(
+    AppModel app,
+    String version,
+    String execPath,
+    Function(String) logInfo,
+  ) async {
+    if (app.appId == 'apache' || app.categories.contains('webserver')) {
+      await setLinuxCapabilityForWebserver(execPath, logInfo, allowSystemBinaries: true);
+      await configureIsolatedApache(app, logInfo);
+    } else if (app.appId == 'redis' || app.groupName == 'redis') {
+      await configureIsolatedRedis(app, logInfo);
+    } else if (app.appId.contains('postgresql')) {
+      final initdb = await findInstalledBinary(
+        'initdb',
+        candidates: ['/usr/bin/initdb', '/usr/lib/postgresql/*/bin/initdb'],
+        searchDirectories: ['/usr/lib/postgresql'],
+        logInfo: logInfo,
+      );
+      if (initdb != null) {
+        await configureIsolatedPostgresql(app, version, initdb, logInfo);
+      }
+    } else if (app.groupName == 'php') {
+      final port = phpPortFor(app.appId);
+      await configureIsolatedPhpFpm(app, port, logInfo);
+    }
   }
 
   /// Find installed executable in system PATH and standard candidate directories.
@@ -2668,9 +2713,149 @@ security:
     return null;
   }
 
-  /// Find installed executable in system PATH and common locations.
-  /// Delegates to the general-purpose [findInstalledBinary] so all binary
-  /// resolution (PATH, candidates, directory tree search) is centralized.
-  Future<String?> _findInstalledPhp(String phpName, Function(String) logInfo) =>
-      findInstalledBinary(phpName, logInfo: logInfo);
+  @visibleForTesting
+  Future<void> configureIsolatedRedis(AppModel app, Function(String) logInfo) async {
+    final redisDir = Directory(p.join(AppConfig.dataDir, 'redis'));
+    if (!redisDir.existsSync()) {
+      redisDir.createSync(recursive: true);
+    }
+    final confFile = File(p.join(redisDir.path, 'redis.conf'));
+    if (!confFile.existsSync()) {
+      final normalizedDir = redisDir.path.replaceAll('\\', '/');
+      final content = '''
+# Ponta isolated Redis configuration
+daemonize no
+port 6379
+bind 127.0.0.1
+dir "$normalizedDir"
+pidfile "$normalizedDir/redis.pid"
+dbfilename dump.rdb
+appendonly no
+''';
+      await confFile.writeAsString(content);
+      logInfo('Generated isolated Redis config at: ${confFile.path}');
+    }
+  }
+
+  @visibleForTesting
+  Future<void> configureIsolatedPhpFpm(AppModel app, int port, Function(String) logInfo) async {
+    final phpDir = Directory(p.join(AppConfig.baseDir, 'php', app.appId));
+    if (!phpDir.existsSync()) {
+      phpDir.createSync(recursive: true);
+    }
+    final confFile = File(p.join(phpDir.path, 'php-fpm.conf'));
+    if (!confFile.existsSync()) {
+      final logsDirNormalized = AppConfig.logsDir.replaceAll('\\', '/');
+      final content = '''
+[global]
+error_log = $logsDirNormalized/${app.appId}-fpm.error.log
+daemonize = no
+
+[www]
+listen = 127.0.0.1:$port
+pm = ondemand
+pm.max_children = 10
+pm.process_idle_timeout = 10s
+pm.max_requests = 500
+catch_workers_output = yes
+''';
+      await confFile.writeAsString(content);
+      logInfo('Generated isolated PHP-FPM config at: ${confFile.path}');
+    }
+  }
+
+  @visibleForTesting
+  Future<void> configureIsolatedApache(AppModel app, Function(String) logInfo) async {
+    final apacheVhostsDir = Directory(p.join(AppConfig.vhostsDir, 'apache'));
+    if (!apacheVhostsDir.existsSync()) {
+      apacheVhostsDir.createSync(recursive: true);
+    }
+    final confFile = File(p.join(apacheVhostsDir.path, 'httpd.conf'));
+    if (!confFile.existsSync()) {
+      final vhostsGlob = p.join(AppConfig.vhostsDir, '*.conf').replaceAll('\\', '/');
+      final wwwRoot = AppConfig.webserverRoot.replaceAll('\\', '/');
+      final content = '''
+# Ponta isolated Apache configuration
+ServerRoot "/etc/apache2"
+Listen 127.0.0.1:80
+ServerName localhost:80
+DocumentRoot "$wwwRoot"
+
+<Directory "$wwwRoot">
+    Options Indexes FollowSymLinks
+    AllowOverride All
+    Require all granted
+</Directory>
+
+# Include devstack virtual hosts
+IncludeOptional "$vhostsGlob"
+''';
+      await confFile.writeAsString(content);
+      logInfo('Generated isolated Apache config at: ${confFile.path}');
+    }
+  }
+
+  @visibleForTesting
+  Future<void> configureIsolatedPostgresql(
+    AppModel app,
+    String version,
+    String initdbPath,
+    Function(String) logInfo, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+  }) async {
+    final clusterName = 'postgresql-$version';
+    final dataDir = Directory(p.join(AppConfig.dataDir, clusterName));
+    if (dataDir.existsSync() && dataDir.listSync().isNotEmpty) {
+      logInfo('PostgreSQL data directory already initialized: ${dataDir.path}');
+      return;
+    }
+
+    if (!dataDir.existsSync()) {
+      dataDir.createSync(recursive: true);
+    }
+
+    // Set 0700 permissions required by initdb on POSIX
+    if (Platform.isLinux) {
+      try {
+        await Process.run('chmod', ['700', dataDir.path]);
+      } catch (_) {}
+    }
+
+    final passwordFile = File(p.join(dataDir.path, 'postgres-password.txt'));
+    if (!passwordFile.existsSync()) {
+      await passwordFile.writeAsString(_generateSecret());
+    }
+
+    final args = [
+      '-D',
+      dataDir.path,
+      '-E',
+      'UTF8',
+      '-U',
+      'postgres',
+      '--locale=C',
+      '-A',
+      'scram-sha-256',
+      '--pwfile',
+      passwordFile.path,
+    ];
+
+    final runner = runProcess ?? Process.run;
+    logInfo('Running initdb: $initdbPath ${args.join(' ')}');
+    final result = await runner(initdbPath, args);
+    if (result.exitCode != 0) {
+      throw Exception('initdb failed: ${result.stderr}');
+    }
+
+    final confFile = File(p.join(dataDir.path, 'postgresql.conf'));
+    if (confFile.existsSync()) {
+      var conf = await confFile.readAsString();
+      conf = conf.replaceAll(
+        RegExp(r"^#?listen_addresses\s*=\s*'.*?'", multiLine: true),
+        "listen_addresses = '127.0.0.1'",
+      );
+      await confFile.writeAsString(conf);
+    }
+    logInfo('Initialized isolated PostgreSQL cluster at ${dataDir.path}');
+  }
 }
