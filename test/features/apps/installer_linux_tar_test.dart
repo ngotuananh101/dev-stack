@@ -113,7 +113,7 @@ void main() {
   });
 
   group('AppInstallerService.ensureLinuxPermissions', () {
-    test('invokes chmod -R 755 on target path', () async {
+    test('invokes chmod -R u+rwX,go+rX,go-w on target path', () async {
       String? executedExecutable;
       List<String>? executedArgs;
 
@@ -127,7 +127,11 @@ void main() {
       );
 
       expect(executedExecutable, 'chmod');
-      expect(executedArgs, ['-R', '755', '/opt/ponta/apps/nodejs/25.9.0']);
+      expect(executedArgs, [
+        '-R',
+        'u+rwX,go+rX,go-w',
+        '/opt/ponta/apps/nodejs/25.9.0',
+      ]);
     });
 
     test('gracefully handles chmod failure without throwing', () async {
@@ -135,7 +139,11 @@ void main() {
         AppInstallerService.ensureLinuxPermissions(
           '/nonexistent/path',
           runProcess: (exec, args) async {
-            throw const ProcessException('chmod', ['-R', '755', '/nonexistent/path'], 'Operation not permitted');
+            throw const ProcessException(
+              'chmod',
+              ['-R', 'u+rwX,go+rX,go-w', '/nonexistent/path'],
+              'Operation not permitted',
+            );
           },
         ),
         completes,
