@@ -79,6 +79,18 @@ class AppsRepository {
             packageManagerCommandsJson = jsonEncode(json['package_manager_commands']);
           }
 
+          // Parse sha256 checksums if present (Map<version, sha256> or String)
+          String? versionSha256Json;
+          if (json['sha256'] != null) {
+            final rawSha = json['sha256'];
+            if (rawSha is Map) {
+              versionSha256Json = jsonEncode(rawSha);
+            } else if (rawSha is String && rawSha.isNotEmpty) {
+              final defaultVer = versionKeys.isNotEmpty ? versionKeys.first : 'latest';
+              versionSha256Json = jsonEncode({defaultVer: rawSha});
+            }
+          }
+
           return AppModel(
             appId: appId,
             name: json['name'],
@@ -89,6 +101,7 @@ class AppsRepository {
             cliFile: json['cli_file'],
             versions: versionKeys.isNotEmpty ? versionKeys : ['latest'],
             versionLinksJson: jsonEncode(versionsMap),
+            versionSha256Json: versionSha256Json,
             installMethod: json['install_method'],
             packageManagerCommandsJson: packageManagerCommandsJson,
             defaultUsername: json['default_username'],
