@@ -796,17 +796,21 @@ class AppInstallerService {
       if (result.exitCode == 0) {
         logInfo('PostgreSQL database cluster initialized successfully.');
 
-        // Allow connections from any IP
+        // Configure network binding based on allowLanAccess setting
         try {
+          final settings = _ref.read(settingsNotifierProvider).value;
+          final allowLan = settings?.allowLanAccess ?? false;
+          final listenAddress = allowLan ? '*' : '127.0.0.1';
+
           final confFile = File(p.join(dataDir.path, 'postgresql.conf'));
           if (confFile.existsSync()) {
             var content = await confFile.readAsString();
             content = content.replaceAll(
               RegExp(r"^#?listen_addresses\s*=\s*'.*?'", multiLine: true),
-              "listen_addresses = '*'",
+              "listen_addresses = '$listenAddress'",
             );
             await confFile.writeAsString(content);
-            logInfo('Updated PostgreSQL listen_addresses to *');
+            logInfo('Updated PostgreSQL listen_addresses to $listenAddress (allowLanAccess: $allowLan)');
           }
 
           final hbaFile = File(p.join(dataDir.path, 'pg_hba.conf'));
@@ -846,11 +850,20 @@ class AppInstallerService {
 
   /// Sets Linux capability CAP_NET_BIND_SERVICE for webserver binaries
   /// to allow binding privileged ports (< 1024) without root.
-  Future<void> _setLinuxCapabilityForWebserver(
+  @visibleForTesting
+  Future<void> setLinuxCapabilityForWebserver(
     String executablePath,
-    Function(String) logInfo,
-  ) async {
-    if (!Platform.isLinux) return;
+    Function(String) logInfo, {
+    Future<ProcessResult> Function(String executable, List<String> arguments)? runProcess,
+    bool? isLinuxOverride,
+  }) async {
+    final isLinux = isLinuxOverride ?? Platform.isLinux;
+    if (!isLinux) return;
+
+    if (!p.isWithin(AppConfig.appsDir, executablePath) && !p.equals(AppConfig.appsDir, executablePath)) {
+      logInfo('Warning: Executable path $executablePath is outside ${AppConfig.appsDir}, skipping capability setup for security');
+      return;
+    }
 
     final execFile = File(executablePath);
     if (!execFile.existsSync()) {
@@ -860,9 +873,11 @@ class AppInstallerService {
 
     logInfo('Setting CAP_NET_BIND_SERVICE capability for ${p.basename(executablePath)}...');
 
+    final runner = runProcess ?? Process.run;
+
     try {
       // First, try with sudo (most common)
-      final result = await Process.run('sudo', [
+      final result = await runner('sudo', [
         'setcap',
         'cap_net_bind_service=+ep',
         executablePath,
@@ -875,7 +890,7 @@ class AppInstallerService {
 
       // If sudo failed, try pkexec as fallback
       logInfo('Sudo failed, trying pkexec...');
-      final pkexecResult = await Process.run('pkexec', [
+      final pkexecResult = await runner('pkexec', [
         'setcap',
         'cap_net_bind_service=+ep',
         executablePath,
@@ -893,6 +908,11 @@ class AppInstallerService {
       logInfo('To fix manually, run: sudo setcap cap_net_bind_service=+ep $executablePath');
     }
   }
+
+  Future<void> _setLinuxCapabilityForWebserver(
+    String executablePath,
+    Function(String) logInfo,
+  ) => setLinuxCapabilityForWebserver(executablePath, logInfo);
 
   Future<void> _configureWebserver(
     AppModel app,
@@ -1904,11 +1924,7 @@ Alias /phpmyadmin "$pmaPathUnix/"
       String content = await sampleFile.readAsString();
 
       // 1. Set Blowfish secret (required for cookies, must be 32 chars)
-      final random = DateTime.now().microsecondsSinceEpoch.toString();
-      final secret = '${random}ponta_secret_key_for_cookie_32_chars'.substring(
-        0,
-        32,
-      );
+      final secret = _generateSecret(length: 24).substring(0, 32);
       content = content.replaceFirstMapped(
         RegExp(r"(\$cfg\['blowfish_secret'\]\s*=\s*').*?(';)"),
         (match) => "${match.group(1)}$secret${match.group(2)}",
@@ -2406,7 +2422,6 @@ Alias /phpmyadmin "$pmaPathUnix/"
         final result = await Process.run(
           'sh',
           ['-c', cmd],
-          runInShell: true,
         );
 
         if (result.exitCode != 0) {
@@ -2493,9 +2508,9 @@ Alias /phpmyadmin "$pmaPathUnix/"
 
       // Fallback: check common locations
       final commonPaths = [
-        '/usr/bin/$phpName',
-        '/usr/local/bin/$phpName',
-        '/opt/php/bin/$phpName',
+        p.join('/usr/bin', phpName),
+        p.join('/usr/local/bin', phpName),
+        p.join('/opt/php/bin', phpName),
       ];
 
       for (final path in commonPaths) {
