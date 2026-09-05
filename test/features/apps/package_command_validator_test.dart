@@ -49,7 +49,7 @@ void main() {
       test('rejects arbitrary binaries smuggled after sudo', () {
         expect(
           PackageCommandValidator.validate('sudo /tmp/payload.sh'),
-          contains('not in the allowed list'),
+          anyOf(contains('not in the allowed list'), contains('not in the allowed system directories')),
         );
       });
 
@@ -98,6 +98,32 @@ void main() {
         expect(PackageCommandValidator.validate(''), isNotNull);
         expect(PackageCommandValidator.validate('  '), isNotNull);
         expect(PackageCommandValidator.validate('apt-get update |'), isNotNull);
+      });
+
+      test('rejects tee targeting sensitive system files', () {
+        expect(
+          PackageCommandValidator.validate('echo evil | sudo tee /etc/cron.d/evil'),
+          contains('not allowed'),
+        );
+        expect(
+          PackageCommandValidator.validate('echo evil | tee /etc/shadow'),
+          contains('not allowed'),
+        );
+        expect(
+          PackageCommandValidator.validate('echo evil | tee /etc/passwd'),
+          contains('not allowed'),
+        );
+      });
+
+      test('rejects dangerous paths smuggled as binaries', () {
+        expect(
+          PackageCommandValidator.validate('/tmp/evil_tool'),
+          anyOf(contains('not in the allowed list'), contains('not in the allowed system directories')),
+        );
+        expect(
+          PackageCommandValidator.validate('sudo /tmp/evil_tool'),
+          anyOf(contains('not in the allowed list'), contains('not in the allowed system directories')),
+        );
       });
     });
   });

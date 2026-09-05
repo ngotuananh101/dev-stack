@@ -40,9 +40,6 @@ class PackageCommandValidator {
     'chmod',
     'chown',
     'ln',
-    // Elevation
-    'sudo',
-    'pkexec',
     // Service control (post-install hooks)
     'systemctl',
   };
@@ -68,9 +65,22 @@ class PackageCommandValidator {
 
   /// Matches the leading binary of a segment: optional `sudo`/`pkexec`
   /// prefixes, then either an absolute path (`/usr/bin/apt-get`) or a bare
-  /// name (`apt-get`). Group 1 = bare name, group 2 = path.
+  /// name (`apt-get`). Group 1 = path, group 2 = bare name.
   static final RegExp _leadingBinary = RegExp(
     r'^(?:(?:sudo|pkexec)\s+)*(?:(/[\w.\-/]+)|([\w.\-]+))',
+  );
+
+  /// Safe directories for absolute path binaries.
+  static const List<String> _allowedBinaryDirs = [
+    '/bin/',
+    '/usr/bin/',
+    '/usr/sbin/',
+    '/sbin/',
+  ];
+
+  /// Targets that tee is allowed to write to.
+  static final RegExp _allowedTeeTargets = RegExp(
+    r'^/etc/apt/sources\.list\.d/[\w.-]+\.list$',
   );
 
   /// Validates a single shell command (one pipeline) from the catalog.
@@ -95,10 +105,36 @@ class PackageCommandValidator {
       final match = _leadingBinary.firstMatch(segTrimmed);
       if (match == null) return 'No leading binary in segment: "$segTrimmed"';
 
-      final path = match.group(2);
-      final binary = path != null ? path.split('/').last : (match.group(1)!);
+      final path = match.group(1);
+      final bare = match.group(2);
+
+      if (path != null) {
+        final isSafeDir = _allowedBinaryDirs.any((dir) => path.startsWith(dir));
+        if (!isSafeDir) {
+          return 'Binary path "$path" is not in the allowed system directories';
+        }
+      }
+
+      final binary = path != null ? path.split('/').last : bare!;
       if (!_allowedBinaries.contains(binary)) {
         return 'Binary "$binary" is not in the allowed list';
+      }
+
+      // Hardening for 'tee': only allow writing to safe repository targets
+      if (binary == 'tee') {
+        final parts = segTrimmed.split(RegExp(r'\s+'));
+        final teeIdx = parts.indexWhere((p) => p == 'tee' || p.endsWith('/tee'));
+        if (teeIdx != -1) {
+          final targetArgs = parts.sublist(teeIdx + 1).where((arg) => !arg.startsWith('-')).toList();
+          if (targetArgs.isEmpty) {
+            return 'tee without target file is not allowed';
+          }
+          for (final target in targetArgs) {
+            if (!_allowedTeeTargets.hasMatch(target)) {
+              return 'Target file "$target" for tee is not allowed';
+            }
+          }
+        }
       }
     }
 
