@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:dio/dio.dart';
+import 'package:crypto/crypto.dart';
 import 'package:archive/archive.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -38,6 +39,21 @@ typedef InstallationProgressCallback =
     });
 typedef InstallationLogCallback = void Function(String message);
 
+class ChecksumMismatchException implements Exception {
+  final String message;
+  final String expected;
+  final String actual;
+
+  ChecksumMismatchException({
+    required this.message,
+    required this.expected,
+    required this.actual,
+  });
+
+  @override
+  String toString() => 'ChecksumMismatchException: $message (expected: $expected, actual: $actual)';
+}
+
 class AppInstallerService {
   final LogService _logger;
   final Ref _ref;
@@ -50,6 +66,28 @@ class AppInstallerService {
   );
 
   AppInstallerService(this._logger, this._ref);
+
+  static Future<String> calculateFileChecksum(File file) async {
+    final stream = file.openRead();
+    final digest = await sha256.bind(stream).first;
+    return digest.toString();
+  }
+
+  static Future<bool> verifyFileChecksum(
+    File file,
+    String expectedSha256,
+  ) async {
+    final actual = (await calculateFileChecksum(file)).toLowerCase();
+    final expected = expectedSha256.trim().toLowerCase();
+    if (actual != expected) {
+      throw ChecksumMismatchException(
+        message: 'SHA256 checksum mismatch for downloaded binary ${file.path}',
+        expected: expected,
+        actual: actual,
+      );
+    }
+    return true;
+  }
 
   @visibleForTesting
   static bool isWebserverApp(AppModel app) {
@@ -255,7 +293,14 @@ class AppInstallerService {
 
     try {
       // Step 2: Download payload
-      await _downloadPayload(url, tempFile, onProgress, logInfo);
+      final expectedSha256 = app.versionSha256[version];
+      await _downloadPayload(
+        url,
+        tempFile,
+        onProgress,
+        logInfo,
+        expectedSha256: expectedSha256,
+      );
 
       // Step 3: Extract payload
       await _extractPayload(
@@ -315,8 +360,9 @@ class AppInstallerService {
     String url,
     File tempFile,
     InstallationProgressCallback? onProgress,
-    void Function(String) logInfo,
-  ) async {
+    void Function(String) logInfo, {
+    String? expectedSha256,
+  }) async {
     await _dio.download(
       url,
       tempFile.path,
@@ -334,6 +380,13 @@ class AppInstallerService {
     );
     logInfo('Download completed');
     onProgress?.call(0.8, 'Download completed');
+
+    if (expectedSha256 != null && expectedSha256.isNotEmpty) {
+      logInfo('Verifying SHA256 checksum...');
+      onProgress?.call(0.82, 'Verifying checksum...');
+      await verifyFileChecksum(tempFile, expectedSha256);
+      logInfo('SHA256 checksum verified successfully ($expectedSha256)');
+    }
   }
 
   Future<void> _extractPayload({

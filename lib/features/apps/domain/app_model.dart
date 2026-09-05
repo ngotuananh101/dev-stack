@@ -13,6 +13,7 @@ class AppModel {
   String? cliFile;
   List<String> versions;
   String? versionLinksJson;
+  String? versionSha256Json;
   String? defaultUsername;
   String? defaultPassword;
   String? extraInfoJson;
@@ -79,6 +80,20 @@ class AppModel {
 
   set versionLinks(Map<String, String> links) {
     versionLinksJson = json.encode(links);
+  }
+
+  Map<String, String> get versionSha256 {
+    if (versionSha256Json == null) return {};
+    try {
+      final decoded = json.decode(versionSha256Json!) as Map<String, dynamic>;
+      return decoded.map((key, value) => MapEntry(key, value.toString().trim()));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  set versionSha256(Map<String, String> hashes) {
+    versionSha256Json = json.encode(hashes);
   }
 
   Map<String, dynamic> get extraInfo {
@@ -163,6 +178,7 @@ class AppModel {
     this.cliFile,
     this.versions = const ['latest'],
     this.versionLinksJson,
+    this.versionSha256Json,
     this.installMethod,
     this.packageManagerCommandsJson,
     this.selectedVersion,

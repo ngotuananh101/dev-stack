@@ -10,9 +10,22 @@ import '../domain/installed_app.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 
 class AppsRepository {
-  final Isar isar;
+  final Isar? _isar;
 
-  AppsRepository(this.isar);
+  AppsRepository([Isar? isar]) : _isar = isar;
+
+  Isar get isar {
+    if (_isar == null) {
+      throw StateError('AppsRepository initialized without Isar instance');
+    }
+    return _isar;
+  }
+
+  static bool isSecureCatalogUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || !uri.hasScheme) return false;
+    return uri.scheme.toLowerCase() == 'https';
+  }
 
   static String catalogFileNameFor({required bool isLinux}) {
     return isLinux ? 'apps-linux.json' : 'apps.json';
@@ -66,6 +79,18 @@ class AppsRepository {
             packageManagerCommandsJson = jsonEncode(json['package_manager_commands']);
           }
 
+          // Parse sha256 checksums if present (Map<version, sha256> or String)
+          String? versionSha256Json;
+          if (json['sha256'] != null) {
+            final rawSha = json['sha256'];
+            if (rawSha is Map) {
+              versionSha256Json = jsonEncode(rawSha);
+            } else if (rawSha is String && rawSha.isNotEmpty) {
+              final defaultVer = versionKeys.isNotEmpty ? versionKeys.first : 'latest';
+              versionSha256Json = jsonEncode({defaultVer: rawSha});
+            }
+          }
+
           return AppModel(
             appId: appId,
             name: json['name'],
@@ -76,6 +101,7 @@ class AppsRepository {
             cliFile: json['cli_file'],
             versions: versionKeys.isNotEmpty ? versionKeys : ['latest'],
             versionLinksJson: jsonEncode(versionsMap),
+            versionSha256Json: versionSha256Json,
             installMethod: json['install_method'],
             packageManagerCommandsJson: packageManagerCommandsJson,
             defaultUsername: json['default_username'],
@@ -202,6 +228,11 @@ class AppsRepository {
   }
 
   Future<void> updateAppListFromUrl(String url) async {
+    if (!isSecureCatalogUrl(url)) {
+      throw ArgumentError(
+        'Catalog URL must use secure HTTPS protocol: $url',
+      );
+    }
     try {
       final dio = Dio(
         BaseOptions(
