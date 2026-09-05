@@ -4,209 +4,214 @@
 
 # dev-stack
 
-**Môi trường quản trị toàn diện Local Development Stack hiện đại, siêu tốc và an toàn cao cấp dành cho Windows & Linux.**
+**A modern, blazing-fast, and hardened local web development environment for Windows & Linux.**
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.11-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-blue?style=for-the-badge&logo=linux&logoColor=white)](#hệ-điều-hành-hỗ-trợ)
-[![Tests](https://img.shields.io/badge/Tests-424%20Passing-success?style=for-the-badge&logo=githubactions&logoColor=white)](#chất-lượng-mã-nguồn--kiểm-thử)
-[![License](https://img.shields.io/badge/License-Proprietary-orange?style=for-the-badge)](#bản-quyền)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-blue?style=for-the-badge&logo=linux&logoColor=white)](#-supported-platforms)
+[![Tests](https://img.shields.io/badge/Tests-424%20Passing-success?style=for-the-badge&logo=githubactions&logoColor=white)](#-code-quality--testing)
+[![License](https://img.shields.io/badge/License-Proprietary-orange?style=for-the-badge)](#-license)
 
 <p align="center">
-  Tương tự như <b>Laragon</b> hoặc <b>Laravel Herd</b>, nhưng được xây dựng bằng <b>Flutter Desktop</b> với Clean Architecture, khả năng quản trị đa dịch vụ (Nginx, Caddy, Apache, PHP đa phiên bản, MySQL, PostgreSQL, Redis, MongoDB), tự động tạo SSL cục bộ và chứng thực bảo mật đa tầng.
+  Similar to <b>Laragon</b> or <b>Laravel Herd</b>, but engineered natively with <b>Flutter Desktop</b> using Clean Architecture. Features multi-webserver switching (Nginx, Caddy, Apache), multi-version PHP isolation with Composer, diverse database engines (MySQL, PostgreSQL, Redis, MongoDB), automated local SSL certificates, and enterprise-grade security hardening.
 </p>
 
 ---
 
 </div>
 
-## 📑 Mục lục
+## 📑 Table of Contents
 
-- [✨ Tính năng nổi bật](#-tính-năng-nổi-bật)
-- [🛡️ Hệ thống Bảo mật Cấp cao (Hardened Security)](#️-hệ-thống-bảo-mật-cấp-cao-hardened-security)
-- [📦 Danh mục Dịch vụ Hỗ trợ](#-danh-mục-dịch-vụ-hỗ-trợ)
-- [🖥️ Hệ điều hành Hỗ trợ](#️-hệ-điều-hành-hỗ-trợ)
-- [🚀 Bắt đầu Nhanh (Getting Started)](#-bắt-đầu-nhanh-getting-started)
-  - [Yêu cầu hệ thống](#yêu-cầu-hệ-thống)
-  - [Cài đặt & Chạy từ Mã nguồn](#cài-đặt--chạy-từ-mã-nguồn)
-  - [Đóng gói Installer cho Windows](#đóng-gói-installer-cho-windows)
-- [🏛️ Kiến trúc & Thiết kế (Architecture)](#️-kiến-trúc--thiết-kế-architecture)
-- [🧪 Chất lượng Mã nguồn & Kiểm thử](#-chất-lượng-mã-nguồn--kiểm-thử)
-- [🤝 Đóng góp & Phát triển](#-đóng-góp--phát-triển)
-
----
-
-## ✨ Tính năng nổi bật
-
-- **Quản lý Web Server Đa dạng**: Chuyển đổi linh hoạt giữa **Nginx**, **Caddy** và **Apache** chỉ với 1 click. Tự động sinh vhost và proxy cấu hình FastCGI tương thích hoàn toàn.
-- **PHP Đa Phiên bản (Multi-version PHP)**: Hỗ trợ chuyển đổi mượt mà giữa PHP 7.4, 8.0, 8.1, 8.2, 8.3, 8.4, 8.5. Tích hợp tự động cài đặt Composer và quản lý PHP-FPM.
-- **Cơ sở dữ liệu Đa Nền tảng**:
-  - Hỗ trợ khởi chạy và cấu hình **MySQL**, **MariaDB**, **PostgreSQL**, **MongoDB**, **Redis**, **Elasticsearch**, **Meilisearch**.
-  - Quản lý Database / User trực quan và tích hợp sẵn công cụ quản trị GUI (**phpMyAdmin**, **HeidiSQL**, **MongoDB Compass**).
-- **Tự động hóa Virtual Hosts & SSL**:
-  - Tự động gán domain cục bộ (`.test`, `.local`) và cập nhật `/etc/hosts` (hoặc `C:\Windows\System32\drivers\etc\hosts`) an toàn.
-  - Tự động sinh chứng chỉ **Local SSL (HTTPS)** bằng CA nội bộ đáng tin cậy.
-- **Quản trị Runtimes Hiện đại**: Quản lý các runtime ngôn ngữ tiện lợi với **Node.js** và **pyenv**.
-- **Trình biên tập Cấu hình Tích hợp (Inline Code Editor)**: Chỉnh sửa trực tiếp `php.ini`, `nginx.conf`, `httpd.conf`, `Caddyfile`, `my.ini` với syntax highlight mà không cần mở trình soạn thảo ngoài.
-- **Tích hợp System Tray & Khởi động cùng Hệ thống**: Thu nhỏ gọn gàng xuống khay hệ thống, hỗ trợ auto-start các dịch vụ nền khi bật máy.
+- [✨ Key Features](#-key-features)
+- [🛡️ Enterprise Security Hardening](#️-enterprise-security-hardening)
+- [📦 Supported Applications & Services](#-supported-applications--services)
+- [🖥️ Supported Platforms](#️-supported-platforms)
+- [🚀 Quick Start Guide](#-quick-start-guide)
+  - [Prerequisites](#prerequisites)
+  - [Building & Running from Source](#building--running-from-source)
+  - [Packaging Installer for Windows](#packaging-installer-for-windows)
+- [🏛️ Architecture & Design Patterns](#️-architecture--design-patterns)
+- [🧪 Code Quality & Testing](#-code-quality--testing)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
 ---
 
-## 🛡️ Hệ thống Bảo mật Cấp cao (Hardened Security)
+## ✨ Key Features
 
-`dev-stack` được gia cố toàn diện qua đợt kiểm toán bảo mật đa tác tử (Multi-agent Dynamic Workflow Audit) với 4 giai đoạn bảo mật nghiêm ngặt:
+- **Multi-Webserver Management**: Seamlessly switch between **Nginx**, **Caddy**, and **Apache** with a single click. Automatically generates virtual host configurations and reverse proxies with FastCGI integration.
+- **Isolated Multi-version PHP**: Effortlessly toggle between PHP 7.4, 8.0, 8.1, 8.2, 8.3, 8.4, and 8.5. Includes automated Composer installation, PHP-FPM lifecycle management, and extension management.
+- **Robust Database Engine Support**:
+  - Run and manage **MySQL**, **MariaDB**, **PostgreSQL**, **MongoDB**, **Redis (Valkey)**, **Elasticsearch**, and **Meilisearch**.
+  - Built-in GUI tool integrations (**phpMyAdmin**, **HeidiSQL**, **MongoDB Compass**) with single-click access.
+- **Automated Virtual Hosts & Local SSL**:
+  - Automatic `.test` and `.local` domain routing with secure `/etc/hosts` and Windows hosts file management.
+  - Automatically provisions trusted local **SSL (HTTPS)** certificates using an internal Root Certificate Authority.
+- **Modern Runtimes Management**: Easily install and manage **Node.js** versions and **Python** via **pyenv**.
+- **Integrated Configuration Editor**: Edit configuration files (`php.ini`, `nginx.conf`, `httpd.conf`, `Caddyfile`, `my.ini`) directly within the application with syntax highlighting and instant validation.
+- **System Tray & Auto-Start Integration**: Minimizes unobtrusively to the system tray and provides optional automatic background service startup upon system boot.
 
-| Tiêu chuẩn bảo mật | Cơ chế bảo vệ trong dev-stack |
+---
+
+## 🛡️ Enterprise Security Hardening
+
+`dev-stack` has been thoroughly audited and hardened across 4 multi-phase security benchmarks to ensure maximum defense-in-depth:
+
+| Security Domain | Protection Mechanism & Implementation |
 | :--- | :--- |
-| **Bảo vệ Chuỗi Cung ứng (VULN-12)** | Kiểm tra mã băm **SHA-256 Checksum** dạng stream trước khi giải nén payload; bắt buộc giao thức **HTTPS** tuyệt đối cho mọi Catalog URL. |
-| **Mã hóa Mật khẩu Cục bộ (VULN-11)** | Mật khẩu database được mã hóa an toàn qua `LocalSecretVault` (HMAC-SHA256 authenticated encryption, random IV) trước khi lưu vào Isar DB. Tương thích ngược trong suốt với dữ liệu cũ. |
-| **Phòng chống Path Traversal (VULN-08)** | Bộ giải nén Tar & Zip được trang bị thuật toán tiền kiểm tra `isSafeTarEntry`, chặn đứng các payload chứa `../`, drive letters hoặc absolute paths. |
-| **Ngăn chặn Command Injection (VULN-01 & VULN-02)** | Loại bỏ hoàn toàn `runInShell: true` trên POSIX; siết chặt danh sách trắng `PackageCommandValidator`, loại bỏ các binary nguy hiểm (`sudo`, `pkexec`, `tee`). |
-| **Bảo vệ Vòng đời Tiến trình (LIFE-01 & LIFE-02)** | Tiêu diệt tiến trình con theo **Process Group Kill** (`kill -9 -- -$pid`) trên Linux để triệt tiêu zombie/orphan worker Nginx/PHP; đồng bộ hóa trạng thái qua `systemctl is-active`. |
-| **Phân quyền Tối thiểu (VULN-04, 05, 07, 14)** | Gán quyền `0600` cho file tạm `/tmp/ponta_hosts_*`; chỉ cấp quyền thực thi nhị phân thay vì `chmod -R 755`; ghi nhật ký kiểm toán (audit log) trước mọi lệnh `pkexec`. |
+| **Supply Chain Security (VULN-12)** | Streaming **SHA-256 Checksum** verification for all remote binary downloads before extraction; strict **HTTPS** protocol enforcement for remote catalog updates to prevent MitM attacks. |
+| **Encrypted Local Storage (VULN-11)** | Database passwords and sensitive credentials are encrypted using `LocalSecretVault` with authenticated encryption (HMAC-SHA256 authenticated keystore, random per-ciphertext IVs). Transparent backward-compatible fallback for legacy plaintext entries. |
+| **Path Traversal Defense (VULN-08)** | Pre-inspection of Tar & Zip archives via `isSafeTarEntry` rejecting any entries with relative traversal sequences (`../`, `..\`), root paths, or drive letters. |
+| **Command Injection Mitigation (VULN-01 & VULN-02)** | Eliminated double-shell interpretation by removing redundant `runInShell: true` on POSIX systems; strictly restricted `PackageCommandValidator` allowlist by removing high-risk binaries (`sudo`, `pkexec`, `tee`). |
+| **Process Lifecycle Reliability (LIFE-01 & LIFE-02)** | POSIX **Process Group Kill** (`kill -9 -- -$pid`) on Linux to prevent orphan/zombie worker leaks; real-time systemd liveness detection via `systemctl is-active`. |
+| **Least-Privilege File Permissions (VULN-04, 05, 07, 14)** | Sensitive temporary files restricted to `0600` permissions; binary directories granted execution privileges without granting blanket `755` permissions across data directories; comprehensive audit logging for all elevated commands (`pkexec`). |
 
 ---
 
-## 📦 Danh mục Dịch vụ Hỗ trợ
+## 📦 Supported Applications & Services
 
 <div align="center">
 
-| Web Servers | Ngôn ngữ & Runtimes | Cơ sở Dữ liệu & Cache | Công cụ Quản trị |
+| Web Servers | Language Runtimes | Databases & Caching | GUI Tools & Management |
 | :---: | :---: | :---: | :---: |
-| <img src="assets/images/nginx.png" width="36"/><br/>**Nginx** | <img src="assets/images/php.png" width="36"/><br/>**PHP 7.4 - 8.5** | <img src="assets/images/mysql.png" width="36"/><br/>**MySQL** | <img src="assets/images/phpmyadmin.png" width="36"/><br/>**phpMyAdmin** |
-| <img src="assets/images/caddy.png" width="36"/><br/>**Caddy** | <img src="assets/images/nodejs.png" width="36"/><br/>**Node.js** | <img src="assets/images/mariadb.png" width="36"/><br/>**MariaDB** | <img src="assets/images/heidisql.png" width="36"/><br/>**HeidiSQL** |
-| <img src="assets/images/apache.png" width="36"/><br/>**Apache** | <img src="assets/images/python.png" width="36"/><br/>**Python (pyenv)** | <img src="assets/images/postgre.png" width="36"/><br/>**PostgreSQL** | <img src="assets/images/mongodb.png" width="36"/><br/>**MongoDB Compass** |
-| | | <img src="assets/images/redis.png" width="36"/><br/>**Redis / Valkey** | |
-| | | <img src="assets/images/mongodb.png" width="36"/><br/>**MongoDB** | |
-| | | <img src="assets/images/elasticsearch.png" width="36"/><br/>**Elasticsearch** | |
-| | | <img src="assets/images/meilisearch.png" width="36"/><br/>**Meilisearch** | |
+| <img src="assets/images/nginx.png" width="40"/><br/>**Nginx** | <img src="assets/images/php.png" width="40"/><br/>**PHP 7.4 – 8.5** | <img src="assets/images/mysql.png" width="40"/><br/>**MySQL** | <img src="assets/images/phpmyadmin.png" width="40"/><br/>**phpMyAdmin** |
+| <img src="assets/images/caddy.png" width="40"/><br/>**Caddy** | <img src="assets/images/nodejs.png" width="40"/><br/>**Node.js** | <img src="assets/images/mariadb.png" width="40"/><br/>**MariaDB** | <img src="assets/images/heidisql.png" width="40"/><br/>**HeidiSQL** |
+| <img src="assets/images/apache.png" width="40"/><br/>**Apache** | <img src="assets/images/python.png" width="40"/><br/>**Python (pyenv)** | <img src="assets/images/postgre.png" width="40"/><br/>**PostgreSQL** | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB Compass** |
+| | | <img src="assets/images/redis.png" width="40"/><br/>**Redis / Valkey** | |
+| | | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB** | |
+| | | <img src="assets/images/elasticsearch.png" width="40"/><br/>**Elasticsearch** | |
+| | | <img src="assets/images/meilisearch.png" width="40"/><br/>**Meilisearch** | |
 
 </div>
 
 ---
 
-## 🖥️ Hệ điều hành Hỗ trợ
+## 🖥️ Supported Platforms
 
-- **Windows**: Windows 10 / Windows 11 (64-bit). Hỗ trợ cài đặt độc lập (standalone packages) trong `C:\dev-stack`.
-- **Linux**: Ubuntu / Debian / Fedora / Arch Linux / openSUSE / Alpine.
-  - Tự động nhận diện bản phân phối Linux qua `LinuxDistroResolver`.
-  - Hỗ trợ cài đặt cả gói Portable (Jirutka static binary, Valkey prebuilt, Zonky PostgreSQL) lẫn gói Package Manager hệ thống (`apt`, `dnf`, `pacman`).
+- **Windows**: Windows 10 & Windows 11 (64-bit architecture). Supports portable standalone software installations under `C:\dev-stack`.
+- **Linux**: Ubuntu, Debian, Fedora, Arch Linux, openSUSE, and Alpine Linux.
+  - Automatic distribution detection via `LinuxDistroResolver`.
+  - Seamless support for both portable standalone binaries (Jirutka static Linux binaries, Valkey tarballs, Zonky PostgreSQL) and native system package managers (`apt`, `dnf`, `pacman`).
 
 ---
 
-## 🚀 Bắt đầu Nhanh (Getting Started)
+## 🚀 Quick Start Guide
 
-### Yêu cầu hệ thống
+### Prerequisites
 
-- **Flutter SDK**: `>= 3.10.4` (Khuyến nghị Flutter 3.41+).
-- **Dart SDK**: `^3.10.4` (hoặc Dart 3.11+).
-- **Windows**: Visual Studio 2022 với Desktop development with C++.
+- **Flutter SDK**: `>= 3.10.4` (Flutter 3.41+ recommended).
+- **Dart SDK**: `^3.10.4` (Dart 3.11+ recommended).
+- **Windows**: Visual Studio 2022 with the "Desktop development with C++" workload.
 - **Linux**: `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`.
 
-### Cài đặt & Chạy từ Mã nguồn
+### Building & Running from Source
 
-1. **Clone repository về máy**:
+1. **Clone the repository**:
    ```bash
    git clone https://github.com/ngotuananh101/dev-stack.git
    cd dev-stack
    ```
 
-2. **Cài đặt dependencies**:
+2. **Install project dependencies**:
    ```bash
    flutter pub get
    ```
 
-3. **Sinh mã nguồn (Isar & Riverpod Generators)** *(chỉ cần nếu sửa đổi models)*:
+3. **Generate code bindings (Isar & Riverpod Generators)** *(required when modifying models)*:
    ```bash
    dart run build_runner build --delete-conflicting-outputs
    ```
 
-4. **Khởi chạy ứng dụng**:
-   - Trên **Windows**:
+4. **Launch the application**:
+   - On **Windows**:
      ```bash
      flutter run -d windows
      ```
-   - Trên **Linux**:
+   - On **Linux**:
      ```bash
      flutter run -d linux
      ```
 
-### Đóng gói Installer cho Windows
+### Packaging Installer for Windows
 
-Ứng dụng hỗ trợ đóng gói thành tệp cài đặt `.exe` tiện lợi thông qua **Inno Setup**:
+To compile a standalone Windows `.exe` installer using **Inno Setup**:
 
-1. Cài đặt **Inno Setup 6** từ [jrsoftware.org](https://jrsoftware.org/isdl.php).
-2. Chạy script đóng gói tự động trong PowerShell:
+1. Download and install **Inno Setup 6** from [jrsoftware.org](https://jrsoftware.org/isdl.php).
+2. Execute the automated packaging script in PowerShell:
    ```powershell
    .\scripts\package.ps1
    ```
-3. Bộ cài đặt sẽ được tạo ra tại thư mục `innosetup\Output\`.
+3. The compiled installer executable will be generated in `innosetup\Output\`.
 
 ---
 
-## 🏛️ Kiến trúc & Thiết kế (Architecture)
+## 🏛️ Architecture & Design Patterns
 
-Dự án áp dụng chặt chẽ kiến trúc **Clean Architecture** kết hợp với **Riverpod State Management**:
+The codebase follows **Clean Architecture** principles and leverages **Riverpod** for reactive state management:
 
 ```
 lib/
 ├── core/
 │   ├── config/             # Config Builders (Nginx, Caddy, Apache) & AppConfig
 │   ├── database/           # Isar Singleton Provider & Concurrency Mutex Lock
-│   ├── security/           # LocalSecretVault (Mã hóa đối xứng HMAC-SHA256)
-│   ├── services/           # SSL, Path, Process, Logger, Distro Resolver
+│   ├── security/           # LocalSecretVault (HMAC-SHA256 Authenticated Encryption)
+│   ├── services/           # SSL, Path, Process, Logging, Distro Resolver
 │   └── theme/              # Typography, Colors, Themes
 ├── features/
-│   ├── apps/               # Quản lý vòng đời tải, cài đặt và giám sát App / Service
-│   ├── databases/          # Quản lý Database Records, Users, Passwords & Isar
-│   ├── hosts/              # Quản lý Virtual Hosts, Local Domain & System Hosts
-│   ├── sites/              # Quản lý Projects, Virtual Hosts, SSL Certificates
-│   └── settings/           # Cài đặt ứng dụng, Port bindings, Preferences
-└── shared/                 # Reusable UI Widgets, Code Editor, Dialogs
+│   ├── apps/               # Application & Service Lifecycle, Installation Pipeline
+│   ├── databases/          # Database Records, Credential Encryption, User Grants
+│   ├── hosts/              # Virtual Hosts, Local Domain Resolution, System Hosts
+│   ├── sites/              # Projects, Virtual Hosts, SSL Certificates
+│   └── settings/           # App Preferences, Port Bindings, Distro Configuration
+└── shared/                 # Reusable UI Widgets, Inline Code Editor, Dialogs
 ```
 
-### Các Mẫu Thiết kế Nổi bật (Design Patterns)
-- **Config Builder Pattern**: Tách rời sinh cấu hình thành `NginxConfigBuilder`, `ApacheConfigBuilder`, `CaddyConfigBuilder`, chuẩn hóa đường dẫn POSIX/Windows.
-- **Strategy & Pipeline Pattern**: Phân rã quy trình cài đặt `AppInstallerService.install()` thành chuỗi thực thi độc lập: tải payload ➔ xác thực checksum ➔ giải nén an toàn ➔ cấu hình database ➔ cấu hình runtime ➔ cấu hình webserver.
-- **Async Mutex / Single-Flight Pattern**: Khóa luồng đồng thời `IsarInstance.getInstance()` bằng `Completer` để triệt tiêu race condition lúc khởi động ứng dụng.
+### Key Design Patterns
+- **Builder Pattern**: Static configuration generators (`NginxConfigBuilder`, `ApacheConfigBuilder`, `CaddyConfigBuilder`) producing clean, normalized configuration files across Windows and POSIX systems.
+- **Strategy & Pipeline Pattern**: Decomposed `AppInstallerService.install()` into modular phases: download ➔ checksum verification ➔ archive extraction ➔ database configuration ➔ runtime configuration ➔ webserver integration.
+- **Single-Flight / Async Mutex Pattern**: Concurrency lock using `Completer<Isar>` in `IsarInstance.getInstance()` to eliminate race conditions and file lock contentions during application boot.
 
 ---
 
-## 🧪 Chất lượng Mã nguồn & Kiểm thử
+## 🧪 Code Quality & Testing
 
-Dự án duy trì quy trình kiểm thử tự động nghiêm ngặt theo phương pháp **Test-Driven Development (TDD)**:
+`dev-stack` enforces strict Test-Driven Development (TDD) standards:
 
-- **100% Tests Pass**: **424 / 424 tests PASS** (0 failures, 0 skipped).
-- **Linter Sạch sẽ**: `flutter analyze` đạt **0 issues**.
-- **Độ bao phủ kiểm thử**:
-  - Unit tests cho toàn bộ Config Builders (Nginx, Apache, Caddy).
-  - Kiểm thử phát hiện và ngăn chặn lỗ hổng bảo mật: Tar Path Traversal, Command Injection, Bypass Validator, Checksum Mismatch, Secret Vault Tampering.
-  - Mock integration tests cho Process Group signals, Systemctl lifecycles, và elevated command execution.
+- **100% Automated Test Pass Rate**: **424 / 424 tests PASS** (0 failures, 0 skipped).
+- **Clean Static Analysis**: `flutter analyze` reports **0 issues**.
+- **Comprehensive Test Coverage**:
+  - Unit tests for all Webserver Config Builders (Nginx, Apache, Caddy).
+  - Security regression test suites for Tar Path Traversal, Command Injection, Allowlist Validation, SHA256 Checksums, and Authenticated Keystore Tampering.
+  - Mock integration tests for POSIX signals, Process Group termination, and systemd service lifecycles.
 
-Chạy toàn bộ kiểm thử bất kỳ lúc nào với lệnh:
+Run all tests:
 ```bash
 flutter test
 ```
 
-Kiểm tra phân tích tĩnh:
+Perform static analysis:
 ```bash
 flutter analyze
 ```
 
 ---
 
-## 🤝 Đóng góp & Phát triển
+## 🤝 Contributing
 
-Mọi ý kiến đóng góp, báo cáo lỗi (issue) và yêu cầu kéo (pull request) đều được hoan nghênh!
+Contributions, bug reports, and feature requests are welcome!
 
-1. Fork dự án.
-2. Tạo nhánh tính năng mới (`git checkout -b feature/AmazingFeature`).
-3. Commit các thay đổi (`git commit -m 'feat: add some AmazingFeature'`).
-4. Đẩy lên nhánh của bạn (`git push origin feature/AmazingFeature`).
-5. Mở một Pull Request.
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
+3. Commit your changes (`git commit -m 'feat: add some AmazingFeature'`).
+4. Push to the branch (`git push origin feature/AmazingFeature`).
+5. Open a Pull Request.
 
 ---
 
+## 📄 License
+
+This software is developed and distributed under the terms specified in the [LICENSE](LICENSE) file.
+
 <div align="center">
-  <sub>Được xây dựng và phát triển với ❤️ dành cho cộng đồng lập trình viên.</sub>
+  <sub>Built with ❤️ for the global developer community.</sub>
 </div>
