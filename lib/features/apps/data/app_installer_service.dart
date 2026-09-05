@@ -12,6 +12,8 @@ import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/config/caddy_config_builder.dart';
+import '../../../core/config/nginx_config_builder.dart';
+import '../../../core/config/apache_config_builder.dart';
 import '../../../core/config/webserver_bind_policy.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/services/path_service.dart';
@@ -1256,39 +1258,28 @@ class AppInstallerService {
       }
       final mimeFile = File(p.join(confDir.path, 'mime.types'));
       if (!mimeFile.existsSync()) {
-        await mimeFile.writeAsString('''types {
-    text/html                             html htm shtml;
-    text/css                              css;
-    text/xml                              xml;
-    image/gif                             gif;
-    image/jpeg                            jpeg jpg;
-    application/javascript                js;
-    application/json                      json;
-    image/png                             png;
-    image/svg+xml                         svg svgz;
-    image/x-icon                          ico;
-    font/woff                             woff;
-    font/woff2                            woff2;
-}''');
+        await mimeFile.writeAsString(NginxConfigBuilder.defaultMimeTypes());
       }
 
       final confFile = File(p.join(installPath, 'conf', 'nginx.conf'));
       logInfo('Generating fresh Nginx configuration...');
 
-      final certPath = sslNotifier
-          .getSiteCertPath('localhost')
-          .replaceAll('\\', '/');
-      final keyPath = sslNotifier
-          .getSiteKeyPath('localhost')
-          .replaceAll('\\', '/');
-      final cleanWebRoot = webRoot.replaceAll('\\', '/');
+      final certPath = sslNotifier.getSiteCertPath('localhost');
+      final keyPath = sslNotifier.getSiteKeyPath('localhost');
 
-      final nginxConfig = _getNginxConfigTemplate(
-        webRoot: cleanWebRoot,
+      final nginxConfig = NginxConfigBuilder.buildMainConfig(
+        webRoot: webRoot,
+        vhostsGlob: p.join(AppConfig.vhostsDir, 'nginx', '*.conf'),
+        integrationsGlob: p.join(
+          AppConfig.vhostsDir,
+          'nginx',
+          'integrations',
+          '*.conf',
+        ),
+        allowLanAccess: allowLanAccess,
         isSslInstalled: isSslInstalled,
         certPath: certPath,
         keyPath: keyPath,
-        allowLanAccess: allowLanAccess,
       );
 
       await confFile.writeAsString(nginxConfig);
@@ -1345,140 +1336,30 @@ class AppInstallerService {
 
       if (confFile.existsSync()) {
         logInfo('Configuring Apache paths in ${confFile.path}...');
-        String content = await confFile.readAsString();
+        final content = await confFile.readAsString();
 
-        final srvRoot = apacheRoot.replaceAll('\\', '/');
+        final certPath = isSslInstalled
+            ? sslNotifier.getSiteCertPath('localhost')
+            : null;
+        final keyPath = isSslInstalled
+            ? sslNotifier.getSiteKeyPath('localhost')
+            : null;
 
-        // 1. Fix SRVROOT (Essential for Apache Lounge binaries)
-        content = content.replaceFirst(
-          RegExp(r'Define\s+SRVROOT\s+".*?"'),
-          'Define SRVROOT "$srvRoot"',
-        );
-
-        // 2. Replace DocumentRoot
-        content = content.replaceFirst(
-          RegExp(r'^DocumentRoot\s+.*$', multiLine: true),
-          'DocumentRoot "$webRoot"',
-        );
-
-        // 3. Replace the corresponding <Directory> block
-        content = content.replaceFirst(
-          RegExp(r'^<Directory\s+"[^/].*?">', multiLine: true),
-          '<Directory "$webRoot">',
-        );
-
-        // 4. Ensure permissions for the new root
-        content = content.replaceFirst(
-          '<Directory "$webRoot">',
-          '<Directory "$webRoot">\n    Options Indexes FollowSymLinks\n    AllowOverride All\n    Require all granted',
-        );
-
-        // 5. Bind only to localhost by default. LAN access must be explicitly
-        // enabled in Settings. Normalize old wildcard/duplicate directives too.
-        content = WebserverBindPolicy.normalizeApacheListeners(
-          content,
+        final updatedContent = ApacheConfigBuilder.buildMainConfig(
+          initialContent: content,
+          serverRoot: apacheRoot,
+          documentRoot: webRoot,
+          vhostsGlob: p.join(AppConfig.vhostsDir, 'apache', '*.conf'),
           allowLanAccess: allowLanAccess,
-          includeSsl: isSslInstalled,
+          isSslInstalled: isSslInstalled,
+          certPath: certPath,
+          keyPath: keyPath,
         );
 
-        // 6. Fix ServerName warning
-        if (!content.contains('ServerName localhost')) {
-          content = content.replaceFirst(
-            RegExp(r'^#?ServerName\s+.*$', multiLine: true),
-            'ServerName localhost:80',
-          );
-        }
-
-        // SSL Configuration for Apache
-        final sslVhostMarker = '# Ponta SSL Virtual Host';
-        if (isSslInstalled) {
-          logInfo('Configuring SSL for Apache...');
-
-          // Enable mod_ssl and socache_shmcb using flexible regex
-          content = content.replaceFirst(
-            RegExp(r'#\s*LoadModule\s+ssl_module\s+modules/mod_ssl.so'),
-            'LoadModule ssl_module modules/mod_ssl.so',
-          );
-          content = content.replaceFirst(
-            RegExp(
-              r'#\s*LoadModule\s+socache_shmcb_module\s+modules/mod_socache_shmcb.so',
-            ),
-            'LoadModule socache_shmcb_module modules/mod_socache_shmcb.so',
-          );
-
-          // Enable proxy modules for PHP-CGI
-          content = content.replaceFirst(
-            RegExp(r'#\s*LoadModule\s+proxy_module\s+modules/mod_proxy.so'),
-            'LoadModule proxy_module modules/mod_proxy.so',
-          );
-          content = content.replaceFirst(
-            RegExp(
-              r'#\s*LoadModule\s+proxy_fcgi_module\s+modules/mod_proxy_fcgi.so',
-            ),
-            'LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so',
-          );
-
-          final certPath = sslNotifier
-              .getSiteCertPath('localhost')
-              .replaceAll('\\', '/');
-          final keyPath = sslNotifier
-              .getSiteKeyPath('localhost')
-              .replaceAll('\\', '/');
-
-          final sslVhost =
-              '''
-$sslVhostMarker
-<IfModule mod_ssl.c>
-<VirtualHost $bindAddress:443>
-    DocumentRoot "$webRoot"
-    ServerName localhost:443
-    SSLEngine on
-    SSLCertificateFile "$certPath"
-    SSLCertificateKeyFile "$keyPath"
-    <Directory "$webRoot">
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-</VirtualHost>
-</IfModule>
-''';
-          // Remove existing vhost if any
-          final existingRegex = RegExp(
-            r'\s*' + RegExp.escape(sslVhostMarker) + r'.*?<\/IfModule>',
-            dotAll: true,
-          );
-          content = content.replaceAll(existingRegex, '');
-
-          content += '\n$sslVhost\n';
-        } else {
-          // Remove SSL config if uninstalled
-          if (content.contains(sslVhostMarker)) {
-            logInfo('Removing SSL config from Apache...');
-            final existingRegex = RegExp(
-              r'\s*' + RegExp.escape(sslVhostMarker) + r'.*?<\/IfModule>',
-              dotAll: true,
-            );
-            content = content.replaceAll(existingRegex, '');
-            // Optionally disable modules but keep it simple for now
-          }
-        }
-
-        await confFile.writeAsString(content);
+        await confFile.writeAsString(updatedContent);
         logInfo(
           'Apache configuration updated (SRVROOT, DocumentRoot, Permissions, SSL).',
         );
-
-        // Include global vhosts
-        String httpdContent = await confFile.readAsString();
-        final vhostsPath = p
-            .join(AppConfig.vhostsDir, 'apache', '*.conf')
-            .replaceAll('\\', '/');
-        if (!httpdContent.contains('IncludeOptional "$vhostsPath"')) {
-          logInfo('Adding global vhosts include to Apache...');
-          httpdContent += '\n# Global Vhosts\nIncludeOptional "$vhostsPath"\n';
-          await confFile.writeAsString(httpdContent);
-        }
       } else {
         logInfo('Warning: Could not find Apache httpd.conf to configure.');
       }
@@ -1488,85 +1369,6 @@ $sslVhostMarker
         await _setLinuxCapabilityForWebserver(app.execFilePath!, logInfo);
       }
     }
-  }
-
-  String _getNginxConfigTemplate({
-    required String webRoot,
-    required bool isSslInstalled,
-    required String certPath,
-    required String keyPath,
-    required bool allowLanAccess,
-  }) {
-    final httpListen = WebserverBindPolicy.nginxListen(
-      80,
-      allowLanAccess: allowLanAccess,
-    );
-    final httpsListen = WebserverBindPolicy.nginxListen(
-      443,
-      allowLanAccess: allowLanAccess,
-      ssl: true,
-    );
-    String sslBlock = '';
-    if (isSslInstalled) {
-      sslBlock =
-          '''
-    # HTTPS server
-    server {
-        listen       $httpsListen;
-        server_name  localhost;
-        root         "$webRoot";
-
-        ssl_certificate      "$certPath";
-        ssl_certificate_key  "$keyPath";
-
-        ssl_session_cache    shared:SSL:1m;
-        ssl_session_timeout  5m;
-
-        ssl_ciphers  HIGH:!aNULL:!MD5;
-        ssl_prefer_server_ciphers  on;
-
-        location / {
-            index  index.html index.htm index.php;
-        }
-
-        # Global Integrations
-        include "${p.join(AppConfig.vhostsDir, 'nginx', 'integrations', '*.conf').replaceAll('\\', '/')}";
-    }''';
-    }
-
-    return '''
-worker_processes  auto;
-
-events {
-    worker_connections  1024;
-}
-
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-    sendfile        on;
-    keepalive_timeout  65;
-
-    # HTTP server
-    server {
-        listen       $httpListen;
-        server_name  localhost;
-        root         "$webRoot";
-
-        location / {
-            index  index.html index.htm index.php;
-        }
-
-        # Global Integrations
-        include "${p.join(AppConfig.vhostsDir, 'nginx', 'integrations', '*.conf').replaceAll('\\', '/')}";
-    }
-
-$sslBlock
-
-    # Global Vhosts
-    include "${p.join(AppConfig.vhostsDir, 'nginx', '*.conf').replaceAll('\\', '/')}";
-}
-''';
   }
 
   Future<void> _configureMongodb(
@@ -2063,23 +1865,10 @@ security:
     final pmaWebRoot = _resolvePmaWebRoot(pmaPath);
     final pmaPathUnix = pmaWebRoot.replaceAll('\\', '/');
 
-    final pmaConfig =
-        '''
-# phpMyAdmin Integration
-location /phpmyadmin {
-    alias "$pmaPathUnix/";
-    index index.php;
-    try_files \$uri \$uri/ /index.php?\$args;
-
-    location ~ ^/phpmyadmin/(.+\\.php)\$ {
-        alias "$pmaPathUnix/\$1";
-        fastcgi_pass 127.0.0.1:$phpPort;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$request_filename;
-    }
-}
-''';
+    final pmaConfig = NginxConfigBuilder.buildPhpMyAdminConfig(
+      rootDir: pmaPathUnix,
+      phpPort: phpPort,
+    );
 
     await pmaConfFile.writeAsString(pmaConfig);
     log(
@@ -2123,20 +1912,8 @@ location /phpmyadmin {
   }
 
   @visibleForTesting
-  static String buildApachePmaConfig(String pmaPathUnix, {int phpPort = 9000}) {
-    return '''
-# phpMyAdmin Configuration
-Alias /phpmyadmin "$pmaPathUnix/"
-<Directory "$pmaPathUnix/">
-    Options Indexes FollowSymLinks MultiViews
-    AllowOverride All
-    Require all granted
-    <FilesMatch \\.php\$>
-        SetHandler "proxy:fcgi://127.0.0.1:$phpPort"
-    </FilesMatch>
-</Directory>
-''';
-  }
+  static String buildApachePmaConfig(String pmaPathUnix, {int phpPort = 9000}) =>
+      ApacheConfigBuilder.buildPhpMyAdminConfig(pmaPathUnix, phpPort: phpPort);
 
   Future<void> _configurePhpMyAdminInApache(
     AppModel apache,
