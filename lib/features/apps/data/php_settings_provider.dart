@@ -1,8 +1,103 @@
 import 'dart:io';
+import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
 
 part 'php_settings_provider.g.dart';
+
+/// Resolves the php.ini configuration file path for an app.
+///
+/// On Windows or for custom directory locations, points to `<location>/php.ini`.
+/// On Linux with `system_package`, checks known system locations in priority order:
+/// 1. `/etc/php/<version>/fpm/php.ini` (Debian/Ubuntu PHP-FPM)
+/// 2. `/etc/php/<version>/cli/php.ini` (Debian/Ubuntu PHP CLI)
+/// 3. `/etc/php.ini` (RHEL/CentOS/Fedora)
+/// 4. `/etc/php.d/<version>.ini`
+/// 5. `/etc/opt/remi/php<versionRaw>/php.ini`
+///
+/// If none exist, falls back to `/etc/php/<version>/fpm/php.ini`.
+String? resolvePhpIniPath(
+  AppModel app, {
+  bool? isLinux,
+  bool Function(String path)? fileExists,
+}) {
+  if (app.location == null || app.location!.isEmpty) {
+    return null;
+  }
+
+  final onLinux = isLinux ?? Platform.isLinux;
+  if (!onLinux || app.location != 'system_package') {
+    final pathContext = onLinux ? p.posix : p.context;
+    return pathContext.join(app.location!, 'php.ini');
+  }
+
+  final checkFile = fileExists ?? ((path) => File(path).existsSync());
+  final version = _extractPhpVersion(app);
+  final versionRaw = version?.replaceAll('.', '');
+
+  final candidates = <String>[
+    if (version != null) '/etc/php/$version/fpm/php.ini',
+    if (version != null) '/etc/php/$version/cli/php.ini',
+    '/etc/php.ini',
+    if (version != null) '/etc/php.d/$version.ini',
+    if (versionRaw != null) '/etc/opt/remi/php$versionRaw/php.ini',
+  ];
+
+  for (final candidate in candidates) {
+    if (checkFile(candidate)) {
+      return candidate;
+    }
+  }
+
+  if (version != null) {
+    return '/etc/php/$version/fpm/php.ini';
+  }
+  return '/etc/php.ini';
+}
+
+/// Resolves the php.ini [File] for an app using [resolvePhpIniPath].
+File? resolvePhpIniFile(
+  AppModel app, {
+  bool? isLinux,
+  bool Function(String path)? fileExists,
+}) {
+  final path = resolvePhpIniPath(app, isLinux: isLinux, fileExists: fileExists);
+  if (path == null) return null;
+  return File(path);
+}
+
+String? _extractPhpVersion(AppModel app) {
+  final match = RegExp(r'[\d.]+').firstMatch(app.appId);
+  if (match != null && match.group(0)!.isNotEmpty) {
+    final raw = match.group(0)!;
+    if (raw.contains('.')) {
+      final parts = raw.split('.').where((segment) => segment.isNotEmpty).toList();
+      if (parts.length >= 2) {
+        return '${parts[0]}.${parts[1]}';
+      }
+      return parts.isNotEmpty ? parts[0] : null;
+    }
+    if (raw.length == 2) {
+      return '${raw[0]}.${raw[1]}';
+    }
+    if (raw.length > 2) {
+      return '${raw[0]}.${raw[1]}';
+    }
+    return raw;
+  }
+  if (app.installedVersion != null && app.installedVersion!.isNotEmpty) {
+    final matchInv = RegExp(r'[\d.]+').firstMatch(app.installedVersion!);
+    if (matchInv != null && matchInv.group(0)!.isNotEmpty) {
+      final raw = matchInv.group(0)!;
+      final parts = raw.split('.').where((segment) => segment.isNotEmpty).toList();
+      if (parts.length >= 2) {
+        return '${parts[0]}.${parts[1]}';
+      }
+      return parts.isNotEmpty ? parts[0] : null;
+    }
+  }
+  return null;
+}
 
 @riverpod
 class PhpSettings extends _$PhpSettings {
@@ -10,8 +105,7 @@ class PhpSettings extends _$PhpSettings {
   void build() {}
 
   File? _getPhpIni(AppModel app) {
-    if (app.location == null) return null;
-    return File('${app.location}${Platform.pathSeparator}php.ini');
+    return resolvePhpIniFile(app);
   }
 
   Future<String> readPhpIni(AppModel app) async {

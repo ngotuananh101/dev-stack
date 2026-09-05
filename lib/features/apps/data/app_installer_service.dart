@@ -113,7 +113,11 @@ class AppInstallerService {
   }) async {
     final runner = runProcess ?? Process.run;
     try {
-      final res = await runner('chmod', ['-R', '755', targetPath]);
+      final res = await runner('chmod', [
+        '-R',
+        'u+rwX,go+rX,go-w',
+        targetPath,
+      ]);
       if (res.exitCode != 0) {
         logInfo?.call('chmod returned code ${res.exitCode}: ${res.stderr}');
       }

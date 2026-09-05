@@ -28,14 +28,24 @@ class HostsRepository {
     }
   }
 
-  Future<bool> saveHostsRaw(String content) async {
+  Future<bool> saveHostsRaw(
+    String content, {
+    bool? isLinux,
+    bool skipDirectWrite = false,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+  }) async {
+    final onLinux = isLinux ?? Platform.isLinux;
+    final targetPath = resolveHostsPath(isLinux: onLinux);
+
     // 1. Try writing directly (if app is admin)
-    try {
-      final file = File(hostsPath);
-      await file.writeAsString(content);
-      return true;
-    } catch (e) {
-      AppLogger.error('Direct write failed, trying elevation... $e');
+    if (!skipDirectWrite) {
+      try {
+        final file = File(targetPath);
+        await file.writeAsString(content);
+        return true;
+      } catch (e) {
+        AppLogger.error('Direct write failed, trying elevation... $e');
+      }
     }
 
     // 2. Elevate only the copy operation.
@@ -45,11 +55,26 @@ class HostsRepository {
       final tempFile = File(p.join(tempDir.path, 'hosts'));
       await tempFile.writeAsString(content);
 
-      if (Platform.isLinux) {
-        final result = await BackgroundProcess.runElevated('cp', [
-          tempFile.path,
-          hostsPath,
-        ]);
+      if (onLinux) {
+        // Tighten permissions on temporary file to 0600 before elevated copy (VULN-07)
+        final runner = runProcess ?? Process.run;
+        try {
+          final chmodResult = await runner('chmod', ['600', tempFile.path]);
+          if (chmodResult.exitCode != 0) {
+            AppLogger.warning(
+              'chmod 600 returned code ${chmodResult.exitCode}: ${chmodResult.stderr}',
+            );
+          }
+        } catch (e) {
+          AppLogger.warning('Could not set permissions 0600 on temp hosts file: $e');
+        }
+
+        final result = await BackgroundProcess.runElevated(
+          'cp',
+          [tempFile.path, targetPath],
+          isLinux: true,
+          runProcess: runner,
+        );
 
         if (result.exitCode == 0) {
           return true;
@@ -57,7 +82,7 @@ class HostsRepository {
         AppLogger.error('Elevated hosts write failed: ${result.stderr}');
       } else {
         final escapedTempPath = tempFile.path.replaceAll("'", "''");
-        final escapedHostsPath = hostsPath.replaceAll("'", "''");
+        final escapedHostsPath = targetPath.replaceAll("'", "''");
         final result = await BackgroundProcess.runElevatedPowerShell(
           "Copy-Item -LiteralPath '$escapedTempPath' "
           "-Destination '$escapedHostsPath' -Force",

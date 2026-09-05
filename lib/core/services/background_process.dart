@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'log_service.dart';
 
 /// Runs non-interactive child processes without creating console windows.
 abstract final class BackgroundProcess {
@@ -165,11 +166,25 @@ abstract final class BackgroundProcess {
   /// Runs a command with elevation (UAC on Windows, pkexec on Linux).
   static Future<ProcessResult> runElevated(
     String executable,
-    List<String> arguments,
-  ) async {
-    if (Platform.isLinux) {
+    List<String> arguments, {
+    bool? isLinux,
+    void Function(String)? logInfo,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+  }) async {
+    final onLinux = isLinux ?? Platform.isLinux;
+    if (onLinux) {
       final elevated = buildLinuxElevatedArgs(executable, arguments);
-      return Process.run(elevated.executable, elevated.arguments);
+      final logMsg = arguments.isEmpty
+          ? 'Audit: executing elevated command with pkexec: $executable'
+          : 'Audit: executing elevated command with pkexec: $executable ${arguments.join(" ")}';
+      if (logInfo != null) {
+        logInfo(logMsg);
+      } else {
+        AppLogger.info(logMsg);
+      }
+
+      final runner = runProcess ?? Process.run;
+      return runner(elevated.executable, elevated.arguments);
     }
 
     if (!Platform.isWindows) return run(executable, arguments);

@@ -66,7 +66,11 @@ class AppServiceManager {
     return base64Url.encode(bytes).replaceAll('=', '');
   }
 
-  bool isRunning(String appId) => _processes.containsKey(appId);
+  bool isRunning(String appId) {
+    if (_processes.containsKey(appId)) return true;
+    final active = _activeApps[appId];
+    return active != null && active.serviceStatus == 'running';
+  }
 
   /// Tears down all in-memory state for [appId] after its process has exited
   /// (or is being stopped): removes the process + log subscriptions, marks the
@@ -633,29 +637,51 @@ class AppServiceManager {
   /// an image name. This is what update/uninstall should call: it avoids the
   /// collateral damage of `taskkill /IM php.exe`, which would kill any other
   /// process running under that generic executable name.
-  Future<void> forceKillPid(String appId, int pid) async {
+  Future<void> forceKillPid(
+    String appId,
+    int pid, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isWindows,
+  }) async {
     if (pid <= 0) {
       _logger.warning('No PID recorded for $appId; skipping force kill.');
       return;
     }
     _logger.info('Force killing PID $pid for $appId');
-    if (!Platform.isWindows) {
+
+    final effectiveRunner = runProcess ?? (String exec, List<String> args) async {
+      if (_runProcess != null) {
+        final lines = await _runProcess(exec, args);
+        return ProcessResult(pid, 0, lines.join('\n'), '');
+      }
+      return BackgroundProcess.run(exec, args);
+    };
+
+    final onWindows = isWindows ?? Platform.isWindows;
+    if (!onWindows) {
+      bool needFallback = false;
       try {
-        await _run('kill', ['-9', '$pid']);
+        final res = await effectiveRunner('kill', ['-9', '--', '-$pid']);
+        if (res.exitCode != 0) {
+          needFallback = true;
+        }
       } catch (e) {
-        _logger.warning('Failed to kill PID $pid: $e');
+        needFallback = true;
+      }
+
+      if (needFallback) {
+        try {
+          await effectiveRunner('kill', ['-9', '$pid']);
+        } catch (e) {
+          _logger.warning('Failed to kill PID $pid: $e');
+        }
       }
       return;
     }
-    if (_isWindows()) {
+
+    if (isWindows ?? _isWindows()) {
       try {
-        // /T is critical: the recorded service PID may be a hidden launcher/
-        // wrapper (e.g. the wscript host used to start webservers detached),
-        // NOT the real worker (php-cgi.exe / mysqld). Killing only the
-        // wrapper PID leaves the worker alive, still holding DLL/file handles
-        // inside the app folder — which then makes the version-swap delete
-        // fail with "Access is denied (errno 5)". /T kills the whole tree.
-        await _run('taskkill', ['/F', '/T', '/PID', pid.toString()]);
+        await effectiveRunner('taskkill', ['/F', '/T', '/PID', pid.toString()]);
       } catch (e) {
         _logger.warning('Failed to kill PID $pid: $e');
       }
@@ -702,10 +728,15 @@ class AppServiceManager {
   Future<void> _startPhpFpmViaSystemctl(
     AppModel app, {
     VoidCallback? onStatusChange,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isLinux,
   }) async {
-    if (!Platform.isLinux) {
+    final onLinux = isLinux ?? Platform.isLinux;
+    if (!onLinux) {
       throw Exception('systemctl is only available on Linux');
     }
+
+    final runner = runProcess ?? Process.run;
 
     _logger.info('Starting PHP-FPM via systemctl: ${app.name}');
     app.serviceStatus = 'starting';
@@ -716,36 +747,59 @@ class AppServiceManager {
       final serviceName = _phpFpmServiceName(app.appId);
       app.addServiceLog('Service name: $serviceName');
 
-      // Check if service exists
-      final checkResult = await Process.run(
-        'systemctl',
-        ['list-unit-files', serviceName],
-      );
-
-      if (!checkResult.stdout.toString().contains(serviceName)) {
-        throw Exception('PHP-FPM service not found: $serviceName');
-      }
-
-      // Start the service (try user service first, then system)
-      ProcessResult result;
+      // Start the service (try user service first, then system fallback)
+      bool userStartSucceeded = false;
+      String lastError = '';
       try {
-        result = await Process.run('systemctl', ['--user', 'start', serviceName]);
-      } catch (_) {
-        // Fallback to system service
-        result = await Process.run('systemctl', ['start', serviceName]);
+        final userResult = await runner('systemctl', ['--user', 'start', serviceName]);
+        if (userResult.exitCode == 0) {
+          userStartSucceeded = true;
+        } else {
+          lastError = userResult.stderr.toString().trim();
+          _logger.warning('systemctl --user start failed: $lastError');
+        }
+      } catch (e) {
+        lastError = e.toString();
+        _logger.warning('systemctl --user start threw exception: $e');
       }
 
-      if (result.exitCode != 0) {
-        app.addServiceLog('Failed to start: ${result.stderr}');
-        throw Exception('Failed to start $serviceName: ${result.stderr}');
+      bool systemStartSucceeded = false;
+      if (!userStartSucceeded) {
+        try {
+          final sysResult = await runner('systemctl', ['start', serviceName]);
+          if (sysResult.exitCode == 0) {
+            systemStartSucceeded = true;
+          } else {
+            lastError = sysResult.stderr.toString().trim();
+            _logger.warning('systemctl start failed: $lastError');
+          }
+        } catch (e) {
+          lastError = e.toString();
+          _logger.warning('systemctl start threw exception: $e');
+        }
+      }
+
+      if (!userStartSucceeded && !systemStartSucceeded) {
+        app.addServiceLog('Failed to start: $lastError');
+        throw Exception('Failed to start $serviceName: $lastError');
+      }
+
+      final isUserScope = userStartSucceeded;
+      final scopePrefix = isUserScope ? ['--user'] : <String>[];
+
+      // Liveness probe: verify service is actually active
+      final activeResult = await runner('systemctl', [...scopePrefix, 'is-active', serviceName]);
+      final activeStatus = activeResult.stdout.toString().trim();
+      if (activeStatus != 'active') {
+        throw Exception('Service $serviceName failed liveness probe (status: $activeStatus)');
       }
 
       app.addServiceLog('Service started successfully');
 
       // Get service PID
-      final pidResult = await Process.run(
+      final pidResult = await runner(
         'systemctl',
-        ['show', '--property=MainPID', '--value', serviceName],
+        [...scopePrefix, 'show', '--property=MainPID', '--value', serviceName],
       );
 
       if (pidResult.exitCode == 0) {
@@ -765,13 +819,22 @@ class AppServiceManager {
       _logger.error('Failed to start PHP-FPM via systemctl: $e');
       app.addServiceLog('Error: $e');
       app.serviceStatus = 'stopped';
+      app.servicePid = null;
+      _activeApps.remove(app.appId);
       rethrow;
     }
   }
 
   /// Stop PHP-FPM service via systemctl for package_manager installed PHP
-  Future<void> _stopPhpFpmViaSystemctl(AppModel app) async {
-    if (!Platform.isLinux) return;
+  Future<void> _stopPhpFpmViaSystemctl(
+    AppModel app, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isLinux,
+  }) async {
+    final onLinux = isLinux ?? Platform.isLinux;
+    if (!onLinux) return;
+
+    final runner = runProcess ?? Process.run;
 
     _logger.info('Stopping PHP-FPM via systemctl: ${app.name}');
     app.serviceStatus = 'stopping';
@@ -780,16 +843,22 @@ class AppServiceManager {
     try {
       final serviceName = _phpFpmServiceName(app.appId);
 
-      // Stop the service (try user service first, then system)
-      ProcessResult result;
+      // Stop the service (try user service first, then system fallback)
+      bool userStopOk = false;
       try {
-        result = await Process.run('systemctl', ['--user', 'stop', serviceName]);
-      } catch (_) {
-        result = await Process.run('systemctl', ['stop', serviceName]);
-      }
+        final userResult = await runner('systemctl', ['--user', 'stop', serviceName]);
+        if (userResult.exitCode == 0) {
+          userStopOk = true;
+        }
+      } catch (_) {}
 
-      if (result.exitCode != 0) {
-        app.addServiceLog('Warning: ${result.stderr}');
+      if (!userStopOk) {
+        final sysResult = await runner('systemctl', ['stop', serviceName]);
+        if (sysResult.exitCode != 0) {
+          app.addServiceLog('Warning: ${sysResult.stderr}');
+        } else {
+          app.addServiceLog('Service stopped successfully');
+        }
       } else {
         app.addServiceLog('Service stopped successfully');
       }
@@ -803,6 +872,64 @@ class AppServiceManager {
       _activeApps.remove(app.appId);
     }
   }
+
+  /// Check whether PHP-FPM service is currently active via systemctl
+  Future<bool> isPhpFpmRunningViaSystemctl(
+    AppModel app, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isLinux,
+  }) async {
+    final onLinux = isLinux ?? Platform.isLinux;
+    if (!onLinux) return false;
+
+    final runner = runProcess ?? Process.run;
+    final serviceName = _phpFpmServiceName(app.appId);
+
+    try {
+      // Check user service first
+      final userResult = await runner('systemctl', ['--user', 'is-active', serviceName]);
+      if (userResult.exitCode == 0 && userResult.stdout.toString().trim() == 'active') {
+        return true;
+      }
+    } catch (_) {}
+
+    try {
+      // Check system service fallback
+      final sysResult = await runner('systemctl', ['is-active', serviceName]);
+      if (sysResult.exitCode == 0 && sysResult.stdout.toString().trim() == 'active') {
+        return true;
+      }
+    } catch (_) {}
+
+    return false;
+  }
+
+  @visibleForTesting
+  Future<void> startPhpFpmViaSystemctlForTesting(
+    AppModel app, {
+    VoidCallback? onStatusChange,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isLinux,
+  }) => _startPhpFpmViaSystemctl(
+    app,
+    onStatusChange: onStatusChange,
+    runProcess: runProcess,
+    isLinux: isLinux,
+  );
+
+  @visibleForTesting
+  Future<void> stopPhpFpmViaSystemctlForTesting(
+    AppModel app, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isLinux,
+  }) => _stopPhpFpmViaSystemctl(
+    app,
+    runProcess: runProcess,
+    isLinux: isLinux,
+  );
+
+  @visibleForTesting
+  String phpFpmServiceNameForTesting(String appId) => _phpFpmServiceName(appId);
 
   /// Get PHP-FPM service name from app ID (php82 -> php8.2-fpm)
   String _phpFpmServiceName(String appId) {
