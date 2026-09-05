@@ -45,17 +45,17 @@
 - Consumes: `AppServiceManager.forceKillPid(String appId, int pid, {Future<ProcessResult> Function(String, List<String>)? runProcess})`
 - Produces: Process Group Kill lệnh `kill -9 -- -$pid` trên Linux, fallback về `kill -9 $pid` nếu kill process group thất bại (ví dụ process không phải leader).
 
-- [ ] **Step 1: Viết failing test cho `forceKillPid` trên Linux**
+- [x] **Step 1: Viết failing test cho `forceKillPid` trên Linux**
   Tạo `test/features/apps/force_kill_pid_linux_test.dart`:
   - Test case 1: Trên Linux gọi `kill -9 -- -$pid` để kill toàn bộ process group.
   - Test case 2: Nếu lệnh kill process group trả về lỗi (exitCode != 0), fallback gọi `kill -9 $pid`.
   - Test case 3: Trên Windows vẫn gọi `taskkill /F /T /PID $pid`.
 
-- [ ] **Step 2: Chạy test để xác nhận test fail**
+- [x] **Step 2: Chạy test để xác nhận test fail**
   Run: `flutter test test/features/apps/force_kill_pid_linux_test.dart`
   Expected: FAIL (tham số hoặc behavior chưa khớp).
 
-- [ ] **Step 3: Cập nhật triển khai trong `AppServiceManager`**
+- [x] **Step 3: Cập nhật triển khai trong `AppServiceManager`**
   Thêm tham số tuỳ chọn `runProcess` vào `forceKillPid`:
   ```dart
   Future<void> forceKillPid(
@@ -87,11 +87,11 @@
     ...
   ```
 
-- [ ] **Step 4: Chạy lại test suite để xác nhận PASS**
+- [x] **Step 4: Chạy lại test suite để xác nhận PASS**
   Run: `flutter test test/features/apps/force_kill_pid_linux_test.dart test/features/apps/force_kill_pid_tree_test.dart`
   Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add lib/features/apps/data/app_service_manager.dart test/features/apps/force_kill_pid_linux_test.dart
   git commit -m "fix(lifecycle): use process group kill on Linux in forceKillPid"
@@ -109,27 +109,27 @@
 - Consumes: `AppServiceManager._startPhpFpmViaSystemctl`, `AppServiceManager._stopPhpFpmViaSystemctl`, `isPhpFpmRunningViaSystemctl`
 - Produces: Quản lý start/stop/status với dependency injection cho `Process.run`, fallback user->system service mượt mà, kiểm tra exitCode và liveness qua `systemctl is-active`.
 
-- [ ] **Step 1: Viết failing test cho `systemctl` flow**
+- [x] **Step 1: Viết failing test cho `systemctl` flow**
   Tạo `test/features/apps/systemctl_service_test.dart`:
   - Test case 1: Start thử `systemctl --user start`, nếu fail fallback sang `systemctl start`.
   - Test case 2: Start thành công thì kiểm tra liveness bằng `systemctl is-active` và lấy PID qua `systemctl show --property=MainPID`.
   - Test case 3: Nếu cả 2 lệnh start đều fail, ném ngoại lệ rõ ràng và chuyển status về `stopped`.
   - Test case 4: Stop gọi `systemctl stop` và cập nhật status sang `stopped`.
 
-- [ ] **Step 2: Chạy test để xác nhận fail**
+- [x] **Step 2: Chạy test để xác nhận fail**
   Run: `flutter test test/features/apps/systemctl_service_test.dart`
   Expected: FAIL
 
-- [ ] **Step 3: Cập nhật `_startPhpFpmViaSystemctl` và `_stopPhpFpmViaSystemctl`**
+- [x] **Step 3: Cập nhật `_startPhpFpmViaSystemctl` và `_stopPhpFpmViaSystemctl`**
   - Bổ sung `Future<ProcessResult> Function(String, List<String>)? runProcess` cho test injection.
   - Sau khi start, gọi `systemctl is-active <serviceName>` để xác nhận service đang chạy thật sự.
   - Xử lý chi tiết mã lỗi và ghi log rõ ràng.
 
-- [ ] **Step 4: Chạy test để xác nhận PASS**
+- [x] **Step 4: Chạy test để xác nhận PASS**
   Run: `flutter test test/features/apps/systemctl_service_test.dart`
   Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add lib/features/apps/data/app_service_manager.dart test/features/apps/systemctl_service_test.dart
   git commit -m "fix(lifecycle): improve PHP-FPM systemctl management and liveness detection"
@@ -153,24 +153,24 @@
     3. `/etc/php.ini` (RHEL/CentOS)
     4. Fallback: trả về file theo quy ước `/etc/php/<version>/fpm/php.ini` để UI hiển thị đường dẫn mục tiêu rõ ràng thay vì `system_package/php.ini`.
 
-- [ ] **Step 1: Viết failing test cho `resolvePhpIniFile`**
+- [x] **Step 1: Viết failing test cho `resolvePhpIniFile`**
   Tạo `test/features/apps/php_ini_resolver_test.dart`:
   - Test case 1: App Windows trả về `<location>/php.ini`.
   - Test case 2: App Linux với `location == 'system_package'` và `appId == 'php82'` phân giải đúng `/etc/php/8.2/fpm/php.ini` (hoặc file tồn tại đầu tiên trong danh sách search).
   - Test case 3: App Linux với `location == 'system_package'` và `appId == 'php84'` phân giải đúng `/etc/php/8.4/fpm/php.ini`.
 
-- [ ] **Step 2: Chạy test để xác nhận fail**
+- [x] **Step 2: Chạy test để xác nhận fail**
   Run: `flutter test test/features/apps/php_ini_resolver_test.dart`
   Expected: FAIL
 
-- [ ] **Step 3: Cập nhật `php_settings_provider.dart`**
+- [x] **Step 3: Cập nhật `php_settings_provider.dart`**
   Triển khai hàm tách rời `resolvePhpIniFile` có thể kiểm thử độc lập và sử dụng trong `_getPhpIni`.
 
-- [ ] **Step 4: Chạy test để xác nhận PASS**
+- [x] **Step 4: Chạy test để xác nhận PASS**
   Run: `flutter test test/features/apps/php_ini_resolver_test.dart`
   Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add lib/features/apps/data/php_settings_provider.dart test/features/apps/php_ini_resolver_test.dart
   git commit -m "feat(php): resolve system php.ini paths on Linux for package_manager apps"
@@ -193,23 +193,23 @@
   - `BackgroundProcess.runElevated` ghi nhật ký audit: `AppLogger.info('Auditing elevated command execution: pkexec $executable $arguments')`.
   - `ensureLinuxPermissions` chỉ gán quyền thực thi cho binary (`chmod +x`), không gán tràn lan `chmod -R 755` lên toàn bộ folder cài đặt.
 
-- [ ] **Step 1: Viết failing test cho bảo mật file hosts và permission binary**
+- [x] **Step 1: Viết failing test cho bảo mật file hosts và permission binary**
   Tạo `test/features/hosts/hosts_repository_security_test.dart` kiểm tra gọi chmod 600 trên file tạm trước khi copy và audit logging.
 
-- [ ] **Step 2: Chạy test xác nhận fail**
+- [x] **Step 2: Chạy test xác nhận fail**
   Run: `flutter test test/features/hosts/hosts_repository_security_test.dart`
   Expected: FAIL
 
-- [ ] **Step 3: Triển khai cập nhật**
+- [x] **Step 3: Triển khai cập nhật**
   - Trong `hosts_repository.dart`: gọi `chmod 600` trên Linux cho tempFile trước khi copy.
   - Trong `background_process.dart`: thêm audit logging rõ ràng trước khi gọi `pkexec`.
   - Trong `app_installer_service.dart`: cập nhật `ensureLinuxPermissions` chỉ gán `chmod +x` cho các tệp nhị phân thực thi.
 
-- [ ] **Step 4: Chạy test xác nhận PASS**
+- [x] **Step 4: Chạy test xác nhận PASS**
   Run: `flutter test test/features/hosts/hosts_repository_security_test.dart test/features/apps/installer_linux_tar_test.dart`
   Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add lib/features/hosts/data/hosts_repository.dart lib/core/services/background_process.dart lib/features/apps/data/app_installer_service.dart test/features/hosts/hosts_repository_security_test.dart
   git commit -m "security: tighten temporary file permissions and add pkexec audit logging"
@@ -219,13 +219,13 @@
 
 ### Task 5: Kiểm tra Toàn diện & Xác thực Linter (Verification & Static Analysis)
 
-- [ ] **Step 1: Chạy toàn bộ test suite**
+- [x] **Step 1: Chạy toàn bộ test suite**
   Run: `flutter test`
   Expected: 100% tests PASS (không có regression).
 
-- [ ] **Step 2: Chạy static analysis**
+- [x] **Step 2: Chạy static analysis**
   Run: `flutter analyze`
   Expected: No issues found!
 
-- [ ] **Step 3: Cập nhật tài liệu kế hoạch**
+- [x] **Step 3: Cập nhật tài liệu kế hoạch**
   Đánh dấu hoàn thành các checkbox trong `docs/superpowers/plans/2026-09-05-phase-2-lifecycle-hardening.md`.
