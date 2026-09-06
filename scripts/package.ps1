@@ -14,7 +14,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "--- 2. Verifying Build Output ---" -ForegroundColor Cyan
-if (-Not (Test-Path $BuildDir)) {
+if (-not (Test-Path $BuildDir)) {
     Write-Host "Error: Build directory not found at $BuildDir" -ForegroundColor Red
     exit 1
 }
