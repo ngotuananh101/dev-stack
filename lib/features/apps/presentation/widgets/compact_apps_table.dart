@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../domain/app_brand_resolver.dart';
 import '../../domain/app_model.dart';
 import 'app_version_modal.dart';
 import 'service_logs_modal.dart';
@@ -54,71 +55,11 @@ class CompactAppsTable extends StatelessWidget {
   }
 
   String _getIconFileName(AppModel app) {
-    final id = app.appId.toLowerCase();
-    final group = app.groupName?.toLowerCase() ?? '';
-
-    if (id.contains('bun')) return 'bun';
-    if (id.contains('deno')) return 'deno';
-    if (id.contains('nodejs')) return 'nodejs';
-    if (id == 'phpmyadmin') return 'phpmyadmin';
-    if (id.contains('php')) return 'php';
-    if (id.contains('mysql')) return 'mysql';
-    if (id.contains('mariadb')) return 'mariadb';
-    if (id.contains('mongodb')) return 'mongodb';
-    if (id.contains('postgresql')) return 'postgre';
-    if (id.contains('caddy')) return 'caddy';
-    if (id.contains('nginx')) return 'nginx';
-    if (id.contains('apache')) return 'apache';
-    if (id.contains('redis')) return 'redis';
-    if (id.contains('python') || id.contains('pyenv')) return 'python';
-    if (id.contains('heidisql')) return 'heidisql';
-    if (id.contains('compass')) return 'mongodb';
-    if (id.contains('rustfs')) return 'rustfs';
-    if (id.contains('meilisearch')) return 'meilisearch';
-    if (id.contains('elasticsearch')) return 'elasticsearch';
-
-    // Fallback to group name if id doesn't match
-    return group;
+    return AppBrandResolver.iconFileName(app.appId, groupName: app.groupName);
   }
 
   Color _getIconColor(String appId) {
-    if (appId.contains('bun')) {
-      return const Color(0xFFE5A83B);
-    }
-    if (appId.contains('deno')) {
-      return const Color(0xFF70FFAF);
-    }
-    if (appId.contains('caddy')) {
-      return const Color(0xFF1F8C5B);
-    }
-    if (appId.contains('nginx') && appId.contains('waf')) {
-      return const Color(0xFF4169E1);
-    }
-    if (appId.contains('php')) {
-      return const Color(0xFF7B68EE);
-    }
-    if (appId.contains('apache') && appId.contains('waf')) {
-      return const Color(0xFFDC143C);
-    }
-    if (appId.contains('mysql')) {
-      return const Color(0xFF20B2AA);
-    }
-    if (appId.contains('postgresql')) {
-      return const Color(0xFF336791);
-    }
-    if (appId.contains('cloud')) {
-      return const Color(0xFF58A6FF);
-    }
-    if (appId.contains('rustfs')) {
-      return const Color(0xFFE67E22); // Orange/Rust color
-    }
-    if (appId.contains('meilisearch')) {
-      return const Color(0xFFFF5E5E); // Meilisearch Pink/Red
-    }
-    if (appId.contains('elasticsearch')) {
-      return const Color(0xFF005A9E); // Elasticsearch Blue/Cyan
-    }
-    return AppColors.primary;
+    return AppBrandResolver.iconColor(appId, fallback: AppColors.primary);
   }
 
   @override

@@ -62,5 +62,85 @@ void main() {
       expect(PathService.globalPackageDirForApp('nginx'), isNull);
       expect(PathService.globalPackageDirForApp('php84'), isNull);
     });
+
+    group('graceful null when environment variables are absent', () {
+      test('nodejs on Windows returns null when APPDATA is missing', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'nodejs',
+            isWindows: true,
+            environment: {},
+          ),
+          isNull,
+        );
+      });
+
+      test('nodejs on Windows returns null when APPDATA is empty', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'nodejs',
+            isWindows: true,
+            environment: {'APPDATA': ''},
+          ),
+          isNull,
+        );
+      });
+
+      test('nodejs on Linux returns null when HOME is missing', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'nodejs',
+            isWindows: false,
+            environment: {},
+          ),
+          isNull,
+        );
+      });
+
+      test('bun on Windows returns null when USERPROFILE and HOME are missing', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'bun',
+            isWindows: true,
+            environment: {},
+          ),
+          isNull,
+        );
+      });
+
+      test('bun on Linux returns null when HOME is empty', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'bun',
+            isWindows: false,
+            environment: {'HOME': ''},
+          ),
+          isNull,
+        );
+      });
+
+      test('deno on Windows returns null when USERPROFILE and HOME are missing', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'deno',
+            isWindows: true,
+            environment: {},
+          ),
+          isNull,
+        );
+      });
+
+      test('deno on Linux returns null when HOME is missing', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'deno',
+            isWindows: false,
+            environment: {},
+          ),
+          isNull,
+        );
+      });
+    });
   });
 }
+
