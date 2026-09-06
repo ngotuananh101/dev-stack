@@ -473,150 +473,167 @@ const fetchersLinux = {
   },
 };
 
-// === CẤU TRÚC DANH MỤC GỐC WINDOWS ===
+// === CẤU TRÚC DANH MỤC GỐC WINDOWS & LINUX ===
 
-let baseWindowsApps = [
-  {
+const PHP_VERSIONS = ["8.5", "8.4", "8.3", "8.2"];
+
+function createWindowsPhpApps(versions) {
+  return versions.map((ver) => ({
+    id: `php${ver.replace(".", "")}`,
+    name: `PHP ${ver}`,
+    description: `Hypertext Preprocessor v${ver}`,
+    category: "runtime",
+    group_name: "php",
+    exec_file: "php-cgi.exe",
+    cli_file: "php.exe",
+    prefix: ver,
+  }));
+}
+
+function createServicePackageManagerCommands({
+  debPackage,
+  debServiceName = debPackage,
+  rpmPackage,
+  rpmServiceName = rpmPackage,
+}) {
+  return {
+    ubuntu: [
+      "sudo apt-get update",
+      `sudo apt-get install -y ${debPackage}`,
+      `sudo systemctl disable --now ${debServiceName}`,
+    ],
+    debian: [
+      "sudo apt-get update",
+      `sudo apt-get install -y ${debPackage}`,
+      `sudo systemctl disable --now ${debServiceName}`,
+    ],
+    centos: [
+      `sudo dnf install -y ${rpmPackage}`,
+      `sudo systemctl disable --now ${rpmServiceName}`,
+    ],
+  };
+}
+
+function createLinuxPhpApps(versions) {
+  return versions.map((ver) => ({
+    id: `php${ver.replace(".", "")}`,
+    name: `PHP ${ver}`,
+    description: `Hypertext Preprocessor v${ver}`,
+    category: "runtime",
+    group_name: "php",
+    exec_file: `php-fpm${ver}`,
+    cli_file: `php${ver}`,
+    prefix: ver,
+    install_method: "package_manager",
+    package_manager_commands: {
+      ubuntu: [
+        "sudo apt-get update",
+        "sudo apt-get install -y software-properties-common",
+        "sudo add-apt-repository -y ppa:ondrej/php",
+        "sudo apt-get update",
+        `sudo apt-get install -y php${ver}-fpm php${ver}-cli php${ver}-common php${ver}-curl php${ver}-mbstring php${ver}-mysql php${ver}-xml php${ver}-zip`,
+        `sudo systemctl disable --now php${ver}-fpm`,
+      ],
+      debian: [
+        "sudo apt-get update",
+        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
+        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
+        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
+        'echo "deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main" | sudo tee /etc/apt/sources.list.d/php.list',
+        "sudo apt-get update",
+        `sudo apt-get install -y php${ver}-fpm php${ver}-cli php${ver}-common php${ver}-curl php${ver}-mbstring php${ver}-mysql php${ver}-xml php${ver}-zip`,
+        `sudo systemctl disable --now php${ver}-fpm`,
+      ],
+      centos: [
+        "sudo dnf install -y epel-release",
+        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
+        "sudo dnf module reset -y php",
+        `sudo dnf module enable -y php:remi-${ver}`,
+        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
+        "sudo systemctl disable --now php-fpm",
+      ],
+    },
+    versions: {
+      [ver]: "package_manager",
+    },
+  }));
+}
+
+const COMMON_APP_DEFINITIONS = {
+  pyenv: {
     id: "pyenv",
     name: "pyenv",
     description: "Python version management tool.",
     category: "runtime",
     group_name: "python",
     exec_file: null,
-    cli_file: "pyenv.bat",
-    versions: {
-      latest: "https://github.com/pyenv-win/pyenv-win/archive/master.zip",
-    },
   },
-  {
+  nodejs: {
     id: "nodejs",
     name: "Node.js",
     description: "JavaScript runtime built on Chrome's V8 engine.",
     category: "runtime",
     group_name: "nodejs",
-    exec_file: "node.exe",
-    cli_file: "node.exe",
   },
-  {
+  nginx: {
     id: "nginx",
     name: "Nginx",
     description: "Lightweight, less memory, concurrent ability",
     category: "webserver",
     group_name: "webserver",
-    exec_file: "nginx.exe",
-    cli_file: "nginx.exe",
-    repo: "nginx/nginx",
   },
-  {
+  apache: {
     id: "apache",
     name: "Apache",
     description: "World No. 1 web server",
     category: "webserver",
     group_name: "webserver",
-    exec_file: "httpd.exe",
-    cli_file: "httpd.exe",
   },
-  {
+  caddy: {
     id: "caddy",
     name: "Caddy",
     description: "Fast, extensible web server with a simple configuration",
     category: "webserver",
     group_name: "webserver",
-    exec_file: "caddy.exe",
-    cli_file: "caddy.exe",
-    repo: "caddyserver/caddy",
   },
-  {
-    id: "php85",
-    name: "PHP 8.5",
-    description: "Hypertext Preprocessor v8.5",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-cgi.exe",
-    cli_file: "php.exe",
-    prefix: "8.5",
-  },
-  {
-    id: "php84",
-    name: "PHP 8.4",
-    description: "Hypertext Preprocessor v8.4",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-cgi.exe",
-    cli_file: "php.exe",
-    prefix: "8.4",
-  },
-  {
-    id: "php83",
-    name: "PHP 8.3",
-    description: "Hypertext Preprocessor v8.3",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-cgi.exe",
-    cli_file: "php.exe",
-    prefix: "8.3",
-  },
-  {
-    id: "php82",
-    name: "PHP 8.2",
-    description: "Hypertext Preprocessor v8.2",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-cgi.exe",
-    cli_file: "php.exe",
-    prefix: "8.2",
-  },
-  {
+  mysql: {
     id: "mysql",
     name: "MySQL",
     description: "MySQL Community Server",
     category: "database",
     group_name: "database",
-    exec_file: "mysqld.exe",
-    cli_file: "mysql.exe",
     default_username: "root",
     default_password: "",
   },
-  {
+  mariadb: {
     id: "mariadb",
     name: "MariaDB",
     description: "MariaDB Database Server",
     category: "database",
     group_name: "database",
-    exec_file: "mariadbd.exe",
-    cli_file: "mariadb.exe",
     default_username: "root",
     default_password: "",
   },
-  {
+  redis: {
     id: "redis",
-    name: "Redis",
-    description: "In-memory data structure store.",
     category: "database",
     group_name: "redis",
-    exec_file: "redis-server.exe",
-    cli_file: "redis-cli.exe",
-    repo: "zkteco-home/redis-windows",
   },
-  {
+  mongodb: {
     id: "mongodb",
     name: "MongoDB",
     description: "NoSQL document-oriented database.",
     category: "database",
     group_name: "database",
-    exec_file: "mongod.exe",
-    cli_file: "mongos.exe",
   },
-  {
+  postgresql: {
     id: "postgresql",
     name: "PostgreSQL",
     description: "Advanced open source relational database.",
     category: "database",
     group_name: "database",
-    exec_file: "postgres.exe",
-    cli_file: "psql.exe",
   },
-  {
+  phpMyAdmin: {
     id: "phpMyAdmin",
     name: "phpMyAdmin",
     description: "Web interface for MySQL and MariaDB.",
@@ -624,6 +641,127 @@ let baseWindowsApps = [
     group_name: "database",
     exec_file: "index.php",
     cli_file: "index.php",
+  },
+  rustfs: {
+    id: "rustfs",
+    name: "RustFS",
+    description: "High-performance S3-compatible object storage server.",
+    category: "storage",
+    group_name: "storage",
+    default_username: "rustfsadmin",
+    default_password: "rustfsadmin",
+    repo: "rustfs/rustfs",
+    includePrereleases: true,
+  },
+  meilisearch: {
+    id: "meilisearch",
+    name: "Meilisearch",
+    description: "A lightning-fast, open-source search engine.",
+    category: "database",
+    group_name: "meilisearch",
+  },
+  elasticsearch: {
+    id: "elasticsearch",
+    name: "Elasticsearch",
+    description: "Distributed, RESTful search and analytics engine.",
+    category: "database",
+    group_name: "elasticsearch",
+    default_username: "elastic",
+  },
+};
+
+function makeBinaryApp(base, execFile, cliFile, extra = {}) {
+  const result = {
+    id: base.id,
+    name: extra.name || base.name,
+    description: extra.description || base.description,
+    category: base.category,
+    group_name: base.group_name,
+    exec_file: execFile,
+    cli_file: cliFile,
+  };
+  if (base.default_username !== undefined) {
+    result.default_username = base.default_username;
+  }
+  if (base.default_password !== undefined) {
+    result.default_password = base.default_password;
+  }
+  if (extra.repo || base.repo) {
+    result.repo = extra.repo || base.repo;
+  }
+  if (base.includePrereleases !== undefined) {
+    result.includePrereleases = base.includePrereleases;
+  }
+  return result;
+}
+
+function makeLinuxPackageManagerApp(
+  base,
+  {
+    execFile,
+    cliFile,
+    debPackage,
+    debServiceName,
+    rpmPackage,
+    rpmServiceName,
+    name,
+    description,
+  },
+) {
+  return {
+    id: base.id,
+    name: name || base.name,
+    description: description || base.description,
+    category: base.category,
+    group_name: base.group_name,
+    exec_file: execFile,
+    cli_file: cliFile,
+    install_method: "package_manager",
+    package_manager_commands: createServicePackageManagerCommands({
+      debPackage,
+      debServiceName,
+      rpmPackage,
+      rpmServiceName,
+    }),
+    versions: {
+      system: "package_manager",
+    },
+  };
+}
+
+const baseWindowsApps = [
+  {
+    ...COMMON_APP_DEFINITIONS.pyenv,
+    cli_file: "pyenv.bat",
+    versions: {
+      latest: "https://github.com/pyenv-win/pyenv-win/archive/master.zip",
+    },
+  },
+  makeBinaryApp(COMMON_APP_DEFINITIONS.nodejs, "node.exe", "node.exe"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.nginx, "nginx.exe", "nginx.exe", {
+    repo: "nginx/nginx",
+  }),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.apache, "httpd.exe", "httpd.exe"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.caddy, "caddy.exe", "caddy.exe", {
+    repo: "caddyserver/caddy",
+  }),
+  ...createWindowsPhpApps(PHP_VERSIONS),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mysql, "mysqld.exe", "mysql.exe"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mariadb, "mariadbd.exe", "mariadb.exe"),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.redis,
+    "redis-server.exe",
+    "redis-cli.exe",
+    {
+      name: "Redis",
+      description: "In-memory data structure store.",
+      repo: "zkteco-home/redis-windows",
+    },
+  ),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mongodb, "mongod.exe", "mongos.exe"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.postgresql, "postgres.exe", "psql.exe"),
+  {
+    ...COMMON_APP_DEFINITIONS.phpMyAdmin,
     versions: {
       latest:
         "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip",
@@ -654,377 +792,62 @@ let baseWindowsApps = [
     cli_file: "MongoDBCompass.exe",
     repo: "mongodb-js/compass",
   },
-  {
-    id: "rustfs",
-    name: "RustFS",
-    description: "High-performance S3-compatible object storage server.",
-    category: "storage",
-    group_name: "storage",
-    exec_file: "rustfs.exe",
-    cli_file: "rustfs.exe",
-    default_username: "rustfsadmin",
-    default_password: "rustfsadmin",
-    repo: "rustfs/rustfs",
-    includePrereleases: true,
-  },
-  {
-    id: "meilisearch",
-    name: "Meilisearch",
-    description: "A lightning-fast, open-source search engine.",
-    category: "database",
-    group_name: "meilisearch",
-    exec_file: "meilisearch.exe",
-    cli_file: "meilisearch.exe",
-    repo: "meilisearch/meilisearch",
-  },
-  {
-    id: "elasticsearch",
-    name: "Elasticsearch",
-    description: "Distributed, RESTful search and analytics engine.",
-    category: "database",
-    group_name: "elasticsearch",
-    exec_file: "elasticsearch.bat",
-    cli_file: "elasticsearch.bat",
-    default_username: "elastic",
-  },
+  makeBinaryApp(COMMON_APP_DEFINITIONS.rustfs, "rustfs.exe", "rustfs.exe"),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.meilisearch,
+    "meilisearch.exe",
+    "meilisearch.exe",
+    {
+      repo: "meilisearch/meilisearch",
+    },
+  ),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.elasticsearch,
+    "elasticsearch.bat",
+    "elasticsearch.bat",
+  ),
 ];
 
-// === CẤU TRÚC DANH MỤC GỐC LINUX ===
-
-let baseLinuxApps = [
+const baseLinuxApps = [
   {
-    id: "pyenv",
-    name: "pyenv",
-    description: "Python version management tool.",
-    category: "runtime",
-    group_name: "python",
-    exec_file: null,
+    ...COMMON_APP_DEFINITIONS.pyenv,
     cli_file: "pyenv",
     versions: {
-      latest: "https://github.com/pyenv/pyenv/archive/refs/heads/master.tar.gz",
+      latest:
+        "https://github.com/pyenv/pyenv/archive/refs/heads/master.tar.gz",
     },
   },
-  {
-    id: "nodejs",
-    name: "Node.js",
-    description: "JavaScript runtime built on Chrome's V8 engine.",
-    category: "runtime",
-    group_name: "nodejs",
-    exec_file: "node",
-    cli_file: "node",
-  },
-  {
-    id: "caddy",
-    name: "Caddy",
-    description: "Fast, extensible web server with a simple configuration",
-    category: "webserver",
-    group_name: "webserver",
-    exec_file: "caddy",
-    cli_file: "caddy",
-  },
-  {
-    id: "nginx",
-    name: "Nginx",
-    description: "Lightweight, less memory, concurrent ability",
-    category: "webserver",
-    group_name: "webserver",
-    exec_file: "nginx",
-    cli_file: "nginx",
-  },
-  {
-    id: "apache",
-    name: "Apache",
-    description: "World No. 1 web server",
-    category: "webserver",
-    group_name: "webserver",
-    exec_file: "apache2",
-    cli_file: "apache2",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y apache2",
-        "sudo systemctl disable --now apache2",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y apache2",
-        "sudo systemctl disable --now apache2",
-      ],
-      centos: [
-        "sudo dnf install -y httpd",
-        "sudo systemctl disable --now httpd",
-      ],
-    },
-    versions: {
-      system: "package_manager",
-    },
-  },
-  {
-    id: "php85",
-    name: "PHP 8.5",
-    description: "Hypertext Preprocessor v8.5",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-fpm8.5",
-    cli_file: "php8.5",
-    prefix: "8.5",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common",
-        "sudo add-apt-repository -y ppa:ondrej/php",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip",
-        "sudo systemctl disable --now php8.5-fpm",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-        "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip",
-        "sudo systemctl disable --now php8.5-fpm",
-      ],
-      centos: [
-        "sudo dnf install -y epel-release",
-        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-        "sudo dnf module reset -y php",
-        "sudo dnf module enable -y php:remi-8.5",
-        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-        "sudo systemctl disable --now php-fpm",
-      ],
-    },
-    versions: {
-      "8.5": "package_manager",
-    },
-  },
-  {
-    id: "php84",
-    name: "PHP 8.4",
-    description: "Hypertext Preprocessor v8.4",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-fpm8.4",
-    cli_file: "php8.4",
-    prefix: "8.4",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common",
-        "sudo add-apt-repository -y ppa:ondrej/php",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip",
-        "sudo systemctl disable --now php8.4-fpm",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-        "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip",
-        "sudo systemctl disable --now php8.4-fpm",
-      ],
-      centos: [
-        "sudo dnf install -y epel-release",
-        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-        "sudo dnf module reset -y php",
-        "sudo dnf module enable -y php:remi-8.4",
-        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-        "sudo systemctl disable --now php-fpm",
-      ],
-    },
-    versions: {
-      "8.4": "package_manager",
-    },
-  },
-  {
-    id: "php83",
-    name: "PHP 8.3",
-    description: "Hypertext Preprocessor v8.3",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-fpm8.3",
-    cli_file: "php8.3",
-    prefix: "8.3",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common",
-        "sudo add-apt-repository -y ppa:ondrej/php",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip",
-        "sudo systemctl disable --now php8.3-fpm",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-        "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip",
-        "sudo systemctl disable --now php8.3-fpm",
-      ],
-      centos: [
-        "sudo dnf install -y epel-release",
-        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-        "sudo dnf module reset -y php",
-        "sudo dnf module enable -y php:remi-8.3",
-        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-        "sudo systemctl disable --now php-fpm",
-      ],
-    },
-    versions: {
-      "8.3": "package_manager",
-    },
-  },
-  {
-    id: "php82",
-    name: "PHP 8.2",
-    description: "Hypertext Preprocessor v8.2",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-fpm8.2",
-    cli_file: "php8.2",
-    prefix: "8.2",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common",
-        "sudo add-apt-repository -y ppa:ondrej/php",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip",
-        "sudo systemctl disable --now php8.2-fpm",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-        "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip",
-        "sudo systemctl disable --now php8.2-fpm",
-      ],
-      centos: [
-        "sudo dnf install -y epel-release",
-        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-        "sudo dnf module reset -y php",
-        "sudo dnf module enable -y php:remi-8.2",
-        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-        "sudo systemctl disable --now php-fpm",
-      ],
-    },
-    versions: {
-      "8.2": "package_manager",
-    },
-  },
-  {
-    id: "mysql",
-    name: "MySQL",
-    description: "MySQL Community Server",
-    category: "database",
-    group_name: "database",
-    exec_file: "mysqld",
-    cli_file: "mysql",
-    default_username: "root",
-    default_password: "",
-  },
-  {
-    id: "mariadb",
-    name: "MariaDB",
-    description: "MariaDB Database Server",
-    category: "database",
-    group_name: "database",
-    exec_file: "mariadbd",
-    cli_file: "mariadb",
-    default_username: "root",
-    default_password: "",
-  },
-  {
-    id: "redis",
+  makeBinaryApp(COMMON_APP_DEFINITIONS.nodejs, "node", "node"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.caddy, "caddy", "caddy"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.nginx, "nginx", "nginx"),
+  makeLinuxPackageManagerApp(COMMON_APP_DEFINITIONS.apache, {
+    execFile: "apache2",
+    cliFile: "apache2",
+    debPackage: "apache2",
+    rpmPackage: "httpd",
+  }),
+  ...createLinuxPhpApps(PHP_VERSIONS),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mysql, "mysqld", "mysql"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mariadb, "mariadbd", "mariadb"),
+  makeLinuxPackageManagerApp(COMMON_APP_DEFINITIONS.redis, {
     name: "Redis",
     description: "High-performance in-memory data structure store.",
-    category: "database",
-    group_name: "redis",
-    exec_file: "redis-server",
-    cli_file: "redis-cli",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y redis-server",
-        "sudo systemctl disable --now redis-server",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y redis-server",
-        "sudo systemctl disable --now redis-server",
-      ],
-      centos: [
-        "sudo dnf install -y redis",
-        "sudo systemctl disable --now redis",
-      ],
-    },
-    versions: {
-      system: "package_manager",
-    },
-  },
+    execFile: "redis-server",
+    cliFile: "redis-cli",
+    debPackage: "redis-server",
+    rpmPackage: "redis",
+  }),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mongodb, "mongod", "mongos"),
+  makeLinuxPackageManagerApp(COMMON_APP_DEFINITIONS.postgresql, {
+    execFile: "postgres",
+    cliFile: "psql",
+    debPackage: "postgresql postgresql-contrib",
+    debServiceName: "postgresql",
+    rpmPackage: "postgresql-server postgresql-contrib",
+    rpmServiceName: "postgresql",
+  }),
   {
-    id: "mongodb",
-    name: "MongoDB",
-    description: "NoSQL document-oriented database.",
-    category: "database",
-    group_name: "database",
-    exec_file: "mongod",
-    cli_file: "mongos",
-  },
-  {
-    id: "postgresql",
-    name: "PostgreSQL",
-    description: "Advanced open source relational database.",
-    category: "database",
-    group_name: "database",
-    exec_file: "postgres",
-    cli_file: "psql",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y postgresql postgresql-contrib",
-        "sudo systemctl disable --now postgresql",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y postgresql postgresql-contrib",
-        "sudo systemctl disable --now postgresql",
-      ],
-      centos: [
-        "sudo dnf install -y postgresql-server postgresql-contrib",
-        "sudo systemctl disable --now postgresql",
-      ],
-    },
-    versions: {
-      system: "package_manager",
-    },
-  },
-  {
-    id: "phpMyAdmin",
-    name: "phpMyAdmin",
-    description: "Web interface for MySQL and MariaDB.",
-    category: "tool",
-    group_name: "database",
-    exec_file: "index.php",
-    cli_file: "index.php",
+    ...COMMON_APP_DEFINITIONS.phpMyAdmin,
     versions: {
       latest:
         "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip",
@@ -1032,38 +855,17 @@ let baseLinuxApps = [
         "https://files.phpmyadmin.net/phpMyAdmin/5.2.2/phpMyAdmin-5.2.2-all-languages.zip",
     },
   },
-  {
-    id: "rustfs",
-    name: "RustFS",
-    description: "High-performance S3-compatible object storage server.",
-    category: "storage",
-    group_name: "storage",
-    exec_file: "rustfs",
-    cli_file: "rustfs",
-    default_username: "rustfsadmin",
-    default_password: "rustfsadmin",
-    repo: "rustfs/rustfs",
-    includePrereleases: true,
-  },
-  {
-    id: "meilisearch",
-    name: "Meilisearch",
-    description: "A lightning-fast, open-source search engine.",
-    category: "database",
-    group_name: "meilisearch",
-    exec_file: "meilisearch",
-    cli_file: "meilisearch",
-  },
-  {
-    id: "elasticsearch",
-    name: "Elasticsearch",
-    description: "Distributed, RESTful search and analytics engine.",
-    category: "database",
-    group_name: "elasticsearch",
-    exec_file: "elasticsearch",
-    cli_file: "elasticsearch",
-    default_username: "elastic",
-  },
+  makeBinaryApp(COMMON_APP_DEFINITIONS.rustfs, "rustfs", "rustfs"),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.meilisearch,
+    "meilisearch",
+    "meilisearch",
+  ),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.elasticsearch,
+    "elasticsearch",
+    "elasticsearch",
+  ),
 ];
 
 // === HÀM THỰC THI CHÍNH ===
