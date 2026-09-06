@@ -2815,10 +2815,16 @@ IncludeOptional "$vhostsGlob"
     }
 
     // Set 0700 permissions required by initdb on POSIX
+    final runner = runProcess ?? Process.run;
     if (Platform.isLinux) {
       try {
-        await Process.run('chmod', ['700', dataDir.path]);
-      } catch (_) {}
+        final chmodResult = await runner('chmod', ['700', dataDir.path]);
+        if (chmodResult.exitCode != 0) {
+          logInfo('Warning: chmod 700 failed on ${dataDir.path}: ${chmodResult.stderr}');
+        }
+      } catch (e) {
+        logInfo('Warning: Could not set 0700 permissions on ${dataDir.path}: $e');
+      }
     }
 
     final passwordFile = File(p.join(dataDir.path, 'postgres-password.txt'));
@@ -2840,7 +2846,6 @@ IncludeOptional "$vhostsGlob"
       passwordFile.path,
     ];
 
-    final runner = runProcess ?? Process.run;
     logInfo('Running initdb: $initdbPath ${args.join(' ')}');
     final result = await runner(initdbPath, args);
     if (result.exitCode != 0) {
