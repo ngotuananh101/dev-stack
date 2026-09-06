@@ -254,7 +254,7 @@ const fetchersWindows = {
     if (!Array.isArray(data)) return {};
     data.forEach((r) => {
       if (r.prerelease && !options.includePrereleases) return;
-      const ver = r.tag_name.replace(/^(v|release-|redis-|redis|r(?=\d))/i, "");
+      const ver = r.tag_name.replace(/^(bun-v|v|release-|redis-|redis|r(?=\d))/i, "");
       let url = `https://github.com/${repoPath}/archive/refs/tags/${r.tag_name}.zip`;
       if (r.assets?.length > 0) {
         let asset;
@@ -271,6 +271,18 @@ const fetchersWindows = {
           url = null;
           asset = r.assets.find((a) =>
             a.name.toLowerCase().endsWith("_64_portable.zip"),
+          );
+        } else if (repoPath === "oven-sh/bun") {
+          url = null;
+          asset = r.assets.find(
+            (a) => a.name === "bun-windows-x64.zip",
+          );
+        } else if (repoPath === "denoland/deno") {
+          url = null;
+          asset = r.assets.find(
+            (a) =>
+              a.name.toLowerCase().includes("x86_64-pc-windows-msvc") &&
+              a.name.toLowerCase().endsWith(".zip"),
           );
         } else {
           asset = r.assets.find(
@@ -460,6 +472,56 @@ const fetchersLinux = {
       );
       if (asset) {
         versions[ver] = asset.browser_download_url;
+      }
+    });
+    return versions;
+  },
+
+  async github(repoPath, options = {}) {
+    const res = await fetch(
+      `https://api.github.com/repos/${repoPath}/releases`,
+      {
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "Ponta-Update",
+        },
+      },
+    );
+    const data = await res.json();
+    const versions = {};
+    if (!Array.isArray(data)) return {};
+    data.forEach((r) => {
+      if (r.prerelease && !options.includePrereleases) return;
+      const ver = r.tag_name.replace(/^(bun-v|v|release-|redis-|redis|r(?=\d))/i, "");
+      let url = `https://github.com/${repoPath}/archive/refs/tags/${r.tag_name}.zip`;
+      if (r.assets?.length > 0) {
+        let asset;
+        if (repoPath === "oven-sh/bun") {
+          url = null;
+          asset = r.assets.find(
+            (a) => a.name === "bun-linux-x64.zip",
+          );
+        } else if (repoPath === "denoland/deno") {
+          url = null;
+          asset = r.assets.find(
+            (a) =>
+              a.name.toLowerCase().includes("x86_64-unknown-linux-gnu") &&
+              a.name.toLowerCase().endsWith(".zip"),
+          );
+        } else {
+          asset = r.assets.find(
+            (a) =>
+              (a.name.toLowerCase().includes("linux") ||
+                a.name.toLowerCase().includes("x64")) &&
+              (a.name.toLowerCase().endsWith(".tar.gz") ||
+                a.name.toLowerCase().endsWith(".tar.xz") ||
+                a.name.toLowerCase().endsWith(".zip")),
+          );
+        }
+        if (asset) url = asset.browser_download_url;
+      }
+      if (url) {
+        versions[ver] = url;
       }
     });
     return versions;
@@ -668,6 +730,22 @@ const COMMON_APP_DEFINITIONS = {
     group_name: "elasticsearch",
     default_username: "elastic",
   },
+  bun: {
+    id: "bun",
+    name: "Bun",
+    description: "Fast all-in-one JavaScript runtime & toolkit.",
+    category: "runtime",
+    group_name: "bun",
+    repo: "oven-sh/bun",
+  },
+  deno: {
+    id: "deno",
+    name: "Deno",
+    description: "A modern, secure runtime for JavaScript and TypeScript.",
+    category: "runtime",
+    group_name: "deno",
+    repo: "denoland/deno",
+  },
 };
 
 function makeBinaryApp(base, execFile, cliFile, extra = {}) {
@@ -806,6 +884,8 @@ const baseWindowsApps = [
     "elasticsearch.bat",
     "elasticsearch.bat",
   ),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.bun, "bun.exe", "bun.exe"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.deno, "deno.exe", "deno.exe"),
 ];
 
 const baseLinuxApps = [
@@ -866,6 +946,8 @@ const baseLinuxApps = [
     "elasticsearch",
     "elasticsearch",
   ),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.bun, "bun", "bun"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.deno, "deno", "deno"),
 ];
 
 // === HÀM THỰC THI CHÍNH ===
