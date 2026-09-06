@@ -1061,24 +1061,29 @@ async function updatePlatformCatalog({
   }
 }
 
-try {
-  // 1. Cập nhật Windows Catalog (new-apps.json)
-  await updatePlatformCatalog({
-    platformName: "Windows",
-    baseApps: baseWindowsApps,
-    fetchers: fetchersWindows,
-    outputFileName: "new-apps.json",
-    existingFileName: "apps.json",
-  });
+async function main() {
+  try {
+    // 1. Cập nhật Windows Catalog (new-apps.json)
+    await updatePlatformCatalog({
+      platformName: "Windows",
+      baseApps: baseWindowsApps,
+      fetchers: fetchersWindows,
+      outputFileName: "new-apps.json",
+      existingFileName: "apps.json",
+    });
 
-  // 2. Cập nhật Linux Catalog (new-apps-linux.json)
-  await updatePlatformCatalog({
-    platformName: "Linux",
-    baseApps: baseLinuxApps,
-    fetchers: fetchersLinux,
-    outputFileName: "new-apps-linux.json",
-    existingFileName: "apps-linux.json",
-  });
-} catch (error) {
-  console.error("Lỗi cập nhật tổng thể:", error);
+    // 2. Cập nhật Linux Catalog (new-apps-linux.json)
+    await updatePlatformCatalog({
+      platformName: "Linux",
+      baseApps: baseLinuxApps,
+      fetchers: fetchersLinux,
+      outputFileName: "new-apps-linux.json",
+      existingFileName: "apps-linux.json",
+    });
+  } catch (error) {
+    console.error("Lỗi cập nhật tổng thể:", error);
+    process.exit(1);
+  }
 }
+
+main();
