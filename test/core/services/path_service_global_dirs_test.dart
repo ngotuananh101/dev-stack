@@ -21,7 +21,7 @@ void main() {
       expect(dir, equals('/home/alice/.npm-global/bin'));
     });
 
-    test('returns %USERPROFILE%\.bun\bin for bun on Windows', () {
+    test('returns %USERPROFILE%\\.bun\\bin for bun on Windows', () {
       final dir = PathService.globalPackageDirForApp(
         'bun',
         isWindows: true,
@@ -39,7 +39,7 @@ void main() {
       expect(dir, equals('/home/alice/.bun/bin'));
     });
 
-    test('returns %USERPROFILE%\.deno\bin for deno on Windows', () {
+    test('returns %USERPROFILE%\\.deno\\bin for deno on Windows', () {
       final dir = PathService.globalPackageDirForApp(
         'deno',
         isWindows: true,

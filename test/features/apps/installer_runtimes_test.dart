@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:dev_stack/features/apps/data/app_installer_service.dart';
-import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
