@@ -39,5 +39,22 @@ void main() {
       AppConfig.initialize(baseDir: '');
       expect(AppConfig.baseDir, equals(AppConfig.defaultBaseDir));
     });
+
+    test('updateBaseDirEnvVar calls runner with environment map on Windows', () async {
+      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      await updateBaseDirEnvVar(
+        r'C:\Custom\Ponta',
+        isWindows: true,
+        runProcess: (exe, args, {environment}) async {
+          calls.add((exe: exe, args: args, env: environment));
+          return ProcessResult(1234, 0, '', '');
+        },
+      );
+
+      expect(calls.length, equals(1));
+      expect(calls[0].exe, equals('powershell'));
+      expect(calls[0].env?['DEVSTACK_ENVVAR'], equals('DEVSTACK_BASE_DIR'));
+      expect(calls[0].env?['DEVSTACK_SETVALUE'], equals(r'C:\Custom\Ponta'));
+    });
   });
 }
