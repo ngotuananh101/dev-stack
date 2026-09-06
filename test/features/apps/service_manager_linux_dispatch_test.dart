@@ -113,6 +113,9 @@ void main() {
       expect(AppServiceManager.runsDetachedExecutable('caddy'), isTrue);
       expect(AppServiceManager.runsDetachedExecutable('nginx'), isTrue);
       expect(AppServiceManager.runsDetachedExecutable('redis-server'), isFalse);
+      expect(AppServiceManager.runsDetachedExecutable('apache2'), isTrue);
+      expect(AppServiceManager.runsDetachedExecutable('apache'), isTrue);
+      expect(AppServiceManager.runsDetachedExecutable('httpd'), isTrue);
     });
 
     test('caddy gets run args and socket requirements', () {

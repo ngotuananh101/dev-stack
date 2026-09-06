@@ -253,6 +253,7 @@ class AppServiceManager {
         'nginx',
         'httpd',
         'apache',
+        'apache2',
         'caddy',
       }.contains(normalizeExecutableName(fileName));
 

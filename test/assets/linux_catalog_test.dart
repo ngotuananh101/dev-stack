@@ -110,23 +110,57 @@ void main() {
       }
     });
 
-    test('linux catalog excludes source-only apps pending prebuilt sources',
+    test('linux catalog includes package-managed apache, redis, and postgresql',
         () async {
       final apps = await loadApps();
       final ids = apps.map((a) => a['id'] as String).toSet();
       expect(ids, contains('nginx')); // Nginx is supported via Jirutka static binaries
-      expect(ids, contains('redis')); // Redis is supported via Valkey prebuilt binaries
-      expect(ids, isNot(contains('apache')));
+      // Apache, Redis, and PostgreSQL are now installed via the system package
+      // manager with isolated foreground runtime configuration.
+      expect(ids, contains('apache'));
+      expect(ids, contains('redis'));
+      expect(ids, contains('postgresql'));
     });
 
-    test('redis points at Valkey prebuilt Linux tarballs', () async {
+    test('apache installs via package_manager with per-distro commands', () async {
+      final apps = await loadApps();
+      final apache = apps.firstWhere((a) => a['id'] == 'apache');
+      expect(apache['install_method'], equals('package_manager'));
+      final versions = apache['versions'] as Map<String, dynamic>;
+      expect(versions['system'], equals('package_manager'));
+      final cmds = apache['package_manager_commands'] as Map<String, dynamic>;
+      expect(cmds.keys, containsAll(['ubuntu', 'debian', 'centos']));
+      // Ubuntu/Debian install apache2; CentOS installs httpd.
+      expect((cmds['ubuntu'] as List).last, contains('apache2'));
+      expect((cmds['centos'] as List).last, contains('httpd'));
+    });
+
+    test('redis installs via package_manager with systemctl disable commands',
+        () async {
       final apps = await loadApps();
       final redis = apps.firstWhere((a) => a['id'] == 'redis');
+      expect(redis['install_method'], equals('package_manager'));
       final versions = redis['versions'] as Map<String, dynamic>;
-      expect(versions, isNotEmpty);
-      for (final url in versions.values) {
-        expect(url, startsWith('https://download.valkey.io/releases/valkey-'));
-        expect(url, endsWith('.tar.gz'));
+      expect(versions['system'], equals('package_manager'));
+      final cmds = redis['package_manager_commands'] as Map<String, dynamic>;
+      expect(cmds.keys, containsAll(['ubuntu', 'debian', 'centos']));
+      // Each distro command list ends with a systemctl disable directive.
+      for (final list in cmds.values) {
+        expect((list as List).last, contains('systemctl disable'));
+      }
+    });
+
+    test('postgresql installs via package_manager with systemctl disable commands',
+        () async {
+      final apps = await loadApps();
+      final pg = apps.firstWhere((a) => a['id'] == 'postgresql');
+      expect(pg['install_method'], equals('package_manager'));
+      final versions = pg['versions'] as Map<String, dynamic>;
+      expect(versions['system'], equals('package_manager'));
+      final cmds = pg['package_manager_commands'] as Map<String, dynamic>;
+      expect(cmds.keys, containsAll(['ubuntu', 'debian', 'centos']));
+      for (final list in cmds.values) {
+        expect((list as List).last, contains('systemctl disable'));
       }
     });
 
@@ -138,18 +172,6 @@ void main() {
       for (final url in versions.values) {
         expect(url, startsWith('https://jirutka.github.io/nginx-binaries/bin/nginx-'));
         expect(url, contains('-x86_64-linux'));
-      }
-    });
-
-    test('postgresql points at Zonky prebuilt jars on Maven Central', () async {
-      final apps = await loadApps();
-      final pg = apps.firstWhere((a) => a['id'] == 'postgresql');
-      final versions = pg['versions'] as Map<String, dynamic>;
-      expect(versions, isNotEmpty);
-      for (final url in versions.values) {
-        expect(url, startsWith('https://repo1.maven.org/maven2/'));
-        expect(url, contains('embedded-postgres-binaries-linux-amd64'));
-        expect(url, endsWith('.jar'));
       }
     });
 
