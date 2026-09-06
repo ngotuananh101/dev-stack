@@ -74,28 +74,87 @@ async function fetchMariadbReleases(fileMatcher) {
   return versions;
 }
 
+/**
+ * Helper fetch danh sách bản phát hành Node.js theo phiên bản major tối thiểu và urlBuilder
+ */
+async function fetchNodejsReleases({ minMajor, urlBuilder }) {
+  const res = await fetch("https://nodejs.org/download/release/index.json");
+  const data = await res.json();
+  const versions = {};
+  const ltsLabels = {};
+  data
+    .filter(
+      (v) =>
+        Number.parseInt(v.version.replace("v", "").split(".")[0], 10) >=
+        minMajor,
+    )
+    .forEach((v) => {
+      const ver = v.version.replace("v", "");
+      versions[ver] = urlBuilder(ver);
+      if (v.lts) {
+        ltsLabels[ver] = typeof v.lts === "string" ? v.lts : "LTS";
+      }
+    });
+  return { versions, ltsLabels };
+}
+
+/**
+ * Helper fetch danh sách bản phát hành MySQL từ Docker Hub tags theo urlBuilder
+ */
+async function fetchMysqlReleases(urlBuilder) {
+  const regex = /^(\d+\.\d+\.\d+)$/;
+  const versions = {};
+  for (let p = 1; p <= 3; p++) {
+    const res = await fetch(
+      `https://hub.docker.com/v2/namespaces/library/repositories/mysql/tags?page=${p}&page_size=100`,
+    );
+    const data = await res.json();
+    data.results?.forEach((t) => {
+      if (regex.test(t.name)) {
+        const majorMinor = t.name.split(".").slice(0, 2).join(".");
+        versions[t.name] = urlBuilder(t.name, majorMinor);
+      }
+    });
+  }
+  return versions;
+}
+
+/**
+ * Helper fetch danh sách bản phát hành Elasticsearch từ GitHub tags theo urlBuilder
+ */
+async function fetchElasticsearchReleases(urlBuilder) {
+  const res = await fetch(
+    "https://api.github.com/repos/elastic/elasticsearch/tags",
+    {
+      headers: {
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "Ponta-Update",
+      },
+    },
+  );
+  const data = await res.json();
+  const versions = {};
+  if (!Array.isArray(data)) return {};
+
+  data.forEach((t) => {
+    const ver = t.name.replace(/^v/i, "");
+    const parts = ver.split(".").map(Number);
+    if (parts[0] >= 8) {
+      versions[ver] = urlBuilder(ver);
+    }
+  });
+  return versions;
+}
+
 // === CÁC HÀM FETCH DỮ LIỆU WINDOWS ===
 
 const fetchersWindows = {
-  async nodejs() {
-    const res = await fetch("https://nodejs.org/download/release/index.json");
-    const data = await res.json();
-    const versions = {};
-    const ltsLabels = {};
-    data
-      .filter(
-        (v) =>
-          Number.parseInt(v.version.replace("v", "").split(".")[0], 10) >= 4,
-      )
-      .forEach((v) => {
-        const ver = v.version.replace("v", "");
-        versions[ver] =
-          `https://nodejs.org/dist/v${ver}/node-v${ver}-win-x64.zip`;
-        if (v.lts) {
-          ltsLabels[ver] = typeof v.lts === "string" ? v.lts : "LTS";
-        }
-      });
-    return { versions, ltsLabels };
+  nodejs() {
+    return fetchNodejsReleases({
+      minMajor: 4,
+      urlBuilder: (ver) =>
+        `https://nodejs.org/dist/v${ver}/node-v${ver}-win-x64.zip`,
+    });
   },
 
   async php(prefix) {
@@ -114,23 +173,11 @@ const fetchersWindows = {
     return versions;
   },
 
-  async mysql() {
-    const regex = /^(\d+\.\d+\.\d+)$/;
-    const versions = {};
-    for (let p = 1; p <= 3; p++) {
-      const res = await fetch(
-        `https://hub.docker.com/v2/namespaces/library/repositories/mysql/tags?page=${p}&page_size=100`,
-      );
-      const data = await res.json();
-      data.results?.forEach((t) => {
-        if (regex.test(t.name)) {
-          const majorMinor = t.name.split(".").slice(0, 2).join(".");
-          versions[t.name] =
-            `https://cdn.mysql.com/Downloads/MySQL-${majorMinor}/mysql-${t.name}-winx64.zip`;
-        }
-      });
-    }
-    return versions;
+  mysql() {
+    return fetchMysqlReleases(
+      (name, majorMinor) =>
+        `https://cdn.mysql.com/Downloads/MySQL-${majorMinor}/mysql-${name}-winx64.zip`,
+    );
   },
 
   mariadb() {
@@ -253,54 +300,23 @@ const fetchersWindows = {
     return versions;
   },
 
-  async elasticsearch() {
-    const res = await fetch(
-      `https://api.github.com/repos/elastic/elasticsearch/tags`,
-      {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "Ponta-Update",
-        },
-      },
+  elasticsearch() {
+    return fetchElasticsearchReleases(
+      (ver) =>
+        `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-windows-x86_64.zip`,
     );
-    const data = await res.json();
-    const versions = {};
-    if (!Array.isArray(data)) return {};
-
-    data.forEach((t) => {
-      const ver = t.name.replace(/^v/i, "");
-      const parts = ver.split(".").map(Number);
-      if (parts[0] >= 8) {
-        versions[ver] =
-          `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-windows-x86_64.zip`;
-      }
-    });
-    return versions;
   },
 };
 
 // === CÁC HÀM FETCH DỮ LIỆU LINUX ===
 
 const fetchersLinux = {
-  async nodejs() {
-    const res = await fetch("https://nodejs.org/download/release/index.json");
-    const data = await res.json();
-    const versions = {};
-    const ltsLabels = {};
-    data
-      .filter(
-        (v) =>
-          Number.parseInt(v.version.replace("v", "").split(".")[0], 10) >= 18,
-      )
-      .forEach((v) => {
-        const ver = v.version.replace("v", "");
-        versions[ver] =
-          `https://nodejs.org/dist/v${ver}/node-v${ver}-linux-x64.tar.gz`;
-        if (v.lts) {
-          ltsLabels[ver] = typeof v.lts === "string" ? v.lts : "LTS";
-        }
-      });
-    return { versions, ltsLabels };
+  nodejs() {
+    return fetchNodejsReleases({
+      minMajor: 18,
+      urlBuilder: (ver) =>
+        `https://nodejs.org/dist/v${ver}/node-v${ver}-linux-x64.tar.gz`,
+    });
   },
 
   async caddy() {
@@ -353,23 +369,11 @@ const fetchersLinux = {
     return versions;
   },
 
-  async mysql() {
-    const regex = /^(\d+\.\d+\.\d+)$/;
-    const versions = {};
-    for (let p = 1; p <= 3; p++) {
-      const res = await fetch(
-        `https://hub.docker.com/v2/namespaces/library/repositories/mysql/tags?page=${p}&page_size=100`,
-      );
-      const data = await res.json();
-      data.results?.forEach((t) => {
-        if (regex.test(t.name)) {
-          const majorMinor = t.name.split(".").slice(0, 2).join(".");
-          versions[t.name] =
-            `https://cdn.mysql.com/Downloads/MySQL-${majorMinor}/mysql-${t.name}-linux-glibc2.28-x86_64.tar.xz`;
-        }
-      });
-    }
-    return versions;
+  mysql() {
+    return fetchMysqlReleases(
+      (name, majorMinor) =>
+        `https://cdn.mysql.com/Downloads/MySQL-${majorMinor}/mysql-${name}-linux-glibc2.28-x86_64.tar.xz`,
+    );
   },
 
   mariadb() {
@@ -461,29 +465,11 @@ const fetchersLinux = {
     return versions;
   },
 
-  async elasticsearch() {
-    const res = await fetch(
-      `https://api.github.com/repos/elastic/elasticsearch/tags`,
-      {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "Ponta-Update",
-        },
-      },
+  elasticsearch() {
+    return fetchElasticsearchReleases(
+      (ver) =>
+        `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-linux-x86_64.tar.gz`,
     );
-    const data = await res.json();
-    const versions = {};
-    if (!Array.isArray(data)) return {};
-
-    data.forEach((t) => {
-      const ver = t.name.replace(/^v/i, "");
-      const parts = ver.split(".").map(Number);
-      if (parts[0] >= 8) {
-        versions[ver] =
-          `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-linux-x86_64.tar.gz`;
-      }
-    });
-    return versions;
   },
 };
 
