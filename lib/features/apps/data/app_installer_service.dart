@@ -620,12 +620,44 @@ class AppInstallerService {
     }
   }
 
+  /// On Windows, Bun ships `bun.exe` but not `bunx.exe`. `bunx` is the package
+  /// runner that many scripts and wrappers invoke; create a copy (alias) so
+  /// `bunx` works out of the box from the install directory.
+  @visibleForTesting
+  static Future<void> configureBunBinary({
+    required String installPath,
+    required bool isWindows,
+    required void Function(String) logInfo,
+  }) async {
+    if (!isWindows) return;
+    final bunExe = File(p.join(installPath, 'bun.exe'));
+    final bunxExe = File(p.join(installPath, 'bunx.exe'));
+
+    if (bunExe.existsSync() && !bunxExe.existsSync()) {
+      logInfo('Creating bunx.exe alias in $installPath');
+      try {
+        await bunExe.copy(bunxExe.path);
+      } catch (e) {
+        logInfo('Warning: Could not create bunx.exe: $e');
+      }
+    }
+  }
+
   Future<void> _configureRuntimes(
     AppModel app,
     String installPath,
     InstallationProgressCallback? onProgress,
     void Function(String) logInfo,
   ) async {
+    if (app.appId == 'bun') {
+      onProgress?.call(0.97, 'Configuring Bun...');
+      await configureBunBinary(
+        installPath: installPath,
+        isWindows: Platform.isWindows,
+        logInfo: logInfo,
+      );
+    }
+
     if (app.groupName == 'php') {
       onProgress?.call(0.97, 'Configuring PHP...');
       final phpIniDev = File(p.join(installPath, 'php.ini-development'));
