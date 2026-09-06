@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_conflict_policy.dart';
+import '../../domain/app_brand_resolver.dart';
 import '../../domain/app_model.dart';
 import '../../data/app_version_provider.dart';
 import '../../data/apps_provider.dart';
@@ -28,66 +29,6 @@ class AppVersionModal extends ConsumerStatefulWidget {
 
 class _AppVersionModalState extends ConsumerState<AppVersionModal> {
   String _selectedVersion = 'latest';
-
-  IconData _getAppIcon() {
-    if (widget.app.appId.contains('python') ||
-        widget.app.appId.contains('pyenv')) {
-      return Icons.code;
-    } else if (widget.app.appId.contains('node')) {
-      return Icons.javascript;
-    } else if (widget.app.appId.contains('php')) {
-      return Icons.code;
-    } else if (widget.app.appId.contains('mysql')) {
-      return Icons.storage;
-    } else if (widget.app.appId.contains('caddy')) {
-      return Icons.dns;
-    } else if (widget.app.appId.contains('nginx')) {
-      return Icons.cloud;
-    }
-    return Icons.apps;
-  }
-
-  String _getIconFileName() {
-    final id = widget.app.appId.toLowerCase();
-    final group = widget.app.groupName?.toLowerCase() ?? '';
-
-    if (id.contains('nodejs')) return 'nodejs';
-    if (id.contains('php')) return 'php';
-    if (id.contains('mysql')) return 'mysql';
-    if (id.contains('mariadb')) return 'mariadb';
-    if (id.contains('mongodb')) return 'mongodb';
-    if (id.contains('postgresql')) return 'postgre';
-    if (id.contains('caddy')) return 'caddy';
-    if (id.contains('nginx')) return 'nginx';
-    if (id.contains('apache')) return 'apache';
-    if (id.contains('redis')) return 'redis';
-    if (id.contains('python') || id.contains('pyenv')) return 'python';
-    if (id.contains('meilisearch')) return 'meilisearch';
-
-    return group;
-  }
-
-  Color _getIconColor() {
-    if (widget.app.appId.contains('python') ||
-        widget.app.appId.contains('pyenv')) {
-      return const Color(0xFF3776AB);
-    } else if (widget.app.appId.contains('node')) {
-      return const Color(0xFF68A063);
-    } else if (widget.app.appId.contains('php')) {
-      return const Color(0xFF777BB4);
-    } else if (widget.app.appId.contains('mysql')) {
-      return const Color(0xFF4479A1);
-    } else if (widget.app.appId.contains('postgresql')) {
-      return const Color(0xFF336791);
-    } else if (widget.app.appId.contains('caddy')) {
-      return const Color(0xFF1F8C5B);
-    } else if (widget.app.appId.contains('nginx')) {
-      return const Color(0xFF009639);
-    } else if (widget.app.appId.contains('meilisearch')) {
-      return const Color(0xFFFF5E5E);
-    }
-    return AppColors.primary;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -263,12 +204,12 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             width: 28,
             height: 28,
             child: Image.asset(
-              'assets/images/${_getIconFileName()}.png',
+              'assets/images/${AppBrandResolver.iconFileName(widget.app.appId, groupName: widget.app.groupName)}.png',
               width: 28,
               height: 28,
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) =>
-                  Icon(_getAppIcon(), size: 18, color: _getIconColor()),
+                  Icon(AppBrandResolver.fallbackIcon(widget.app.appId), size: 18, color: AppBrandResolver.iconColor(widget.app.appId)),
             ),
           ),
           const SizedBox(width: 12),

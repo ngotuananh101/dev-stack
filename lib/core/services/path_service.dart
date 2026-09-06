@@ -53,6 +53,102 @@ class PathService {
     );
   }
 
+  /// Trả về thư mục chứa các global package binaries riêng biệt cho từng runtime JS
+  @visibleForTesting
+  static String? globalPackageDirForApp(
+    String appId, {
+    bool? isWindows,
+    Map<String, String>? environment,
+  }) {
+    final env = environment ?? Platform.environment;
+    final onWindows = isWindows ?? Platform.isWindows;
+    final ctx = p.Context(style: onWindows ? p.Style.windows : p.Style.posix);
+    final id = appId.toLowerCase();
+
+    if (id.contains('nodejs') || id == 'node') {
+      if (onWindows) {
+        final appData = env['APPDATA'];
+        if (appData != null && appData.isNotEmpty) {
+          return ctx.join(appData, 'npm');
+        }
+      } else {
+        final home = env['HOME'];
+        if (home != null && home.isNotEmpty) {
+          return ctx.join(home, '.npm-global', 'bin');
+        }
+      }
+    }
+
+    if (id.contains('bun')) {
+      if (onWindows) {
+        final userProfile = env['USERPROFILE'] ?? env['HOME'];
+        if (userProfile != null && userProfile.isNotEmpty) {
+          return ctx.join(userProfile, '.bun', 'bin');
+        }
+      } else {
+        final home = env['HOME'];
+        if (home != null && home.isNotEmpty) {
+          return ctx.join(home, '.bun', 'bin');
+        }
+      }
+    }
+
+    if (id.contains('deno')) {
+      if (onWindows) {
+        final userProfile = env['USERPROFILE'] ?? env['HOME'];
+        if (userProfile != null && userProfile.isNotEmpty) {
+          return ctx.join(userProfile, '.deno', 'bin');
+        }
+      } else {
+        final home = env['HOME'];
+        if (home != null && home.isNotEmpty) {
+          return ctx.join(home, '.deno', 'bin');
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /// Returns the list of shim/command names to create for a given app identifier.
+  ///
+  /// - `bun` => ['bun', 'bunx']
+  /// - `deno` => ['deno']
+  /// - `nodejs` / `node` => ['nodejs', 'node']
+  /// - `npm`, `npx`, `corepack` are handled separately in [addAppToPath] /
+  ///   [removeAppFromPath] because they must target their own CLI wrapper
+  ///   binaries (npm.cmd / npx.cmd / corepack.cmd) on Windows, or the
+  ///   plain `npm` / `npx` / `corepack` executables on Linux.
+  /// - For any other app the list is [appId] plus the base name of [cliFile]
+  ///   (without extension) when provided, so that CLI aliases like `php.exe`
+  ///   (appId `php84`) or `httpd.exe` (appId `apache`) are preserved.
+  @visibleForTesting
+  static List<String> shimNamesForApp(String appId, [String? cliFile]) {
+    final id = appId.toLowerCase();
+
+    // Runtime shim names only — auxiliary commands (npm, npx, corepack) are
+    // handled in the dedicated Node.js blocks of addAppToPath/removeAppFromPath.
+    if (id.contains('bun')) {
+      return ['bun', 'bunx'];
+    }
+    if (id.contains('deno')) {
+      return ['deno'];
+    }
+    if (id.contains('nodejs') || id == 'node') {
+      return ['nodejs', 'node'];
+    }
+
+    // Generic apps (php, httpd, psql, redis-cli, etc.)
+    final names = <String>[appId];
+    if (cliFile != null && cliFile.isNotEmpty) {
+      final baseName = p.basenameWithoutExtension(cliFile);
+      if (baseName.isNotEmpty && !names.contains(baseName)) {
+        names.add(baseName);
+      }
+    }
+    return names;
+  }
+
   /// Builds the PowerShell arguments and environment map to set a User environment variable on Windows.
   @visibleForTesting
   static ({List<String> arguments, Map<String, String> environment})
@@ -485,39 +581,51 @@ class PathService {
 
     await ensurePontaBinInPath();
 
-    final shimName = app.appId; // Sử dụng appId làm lệnh chính (vd: nodejs / nodejs.bat)
-    final cliName = p.basenameWithoutExtension(app.cliFile ?? app.appId);
+    final shimNames = shimNamesForApp(app.appId, app.cliFile);
 
     if (Platform.isLinux) {
-      await createLinuxSymlinkOrShim(binDir, shimName, app.cliFilePath!);
-      if (cliName != shimName) {
-        await createLinuxSymlinkOrShim(binDir, cliName, app.cliFilePath!);
+      for (final name in shimNames) {
+        await createLinuxSymlinkOrShim(binDir, name, app.cliFilePath!);
       }
 
-      // Special handling for Node.js on Linux
-      if (app.appId.contains('nodejs')) {
+      // Special handling for Node.js on Linux: configure npm prefix to ~/.npm-global
+      // and create shims for npm, npx, corepack targeting their own executables.
+      if (app.appId.contains('nodejs') || app.appId == 'node') {
         final nodeDir = p.dirname(app.cliFilePath!);
-        final npmBin = p.join(nodeDir, 'npm');
-        final npxBin = p.join(nodeDir, 'npx');
-        final corepackBin = p.join(nodeDir, 'corepack');
 
+        // npm shim
+        final npmBin = p.join(nodeDir, 'npm');
         if (File(npmBin).existsSync() || Link(npmBin).existsSync()) {
           await createLinuxSymlinkOrShim(binDir, 'npm', npmBin);
-          try {
-            await Process.run(npmBin, ['config', 'set', 'prefix', binDir, '-g']);
-            _logger.info('Set npm global prefix to $binDir');
-          } catch (e) {
-            _logger.error('Failed to set npm global prefix on Linux: $e');
-          }
         }
 
+        // npx shim
+        final npxBin = p.join(nodeDir, 'npx');
         if (File(npxBin).existsSync() || Link(npxBin).existsSync()) {
           await createLinuxSymlinkOrShim(binDir, 'npx', npxBin);
         }
 
+        // corepack shim
+        final corepackBin = p.join(nodeDir, 'corepack');
         if (File(corepackBin).existsSync() || Link(corepackBin).existsSync()) {
           await createLinuxSymlinkOrShim(binDir, 'corepack', corepackBin);
         }
+
+        try {
+          final home = Platform.environment['HOME'] ?? '';
+          final npmGlobalDir = home.isNotEmpty
+              ? p.join(home, '.npm-global')
+              : binDir;
+          await Process.run(npmBin, ['config', 'set', 'prefix', npmGlobalDir, '-g']);
+          _logger.info('Set npm global prefix to $npmGlobalDir');
+        } catch (e) {
+          _logger.error('Failed to set npm global prefix on Linux: $e');
+        }
+      }
+
+      final globalDir = globalPackageDirForApp(app.appId);
+      if (globalDir != null) {
+        await addRawPathToUserPath(globalDir);
       }
 
       _logger.info('Created Linux symlinks/shims for ${app.name} in $binDir');
@@ -525,21 +633,24 @@ class PathService {
     }
 
     // Windows implementation
-    // Tạo shim cho appId
-    await _createShimSet(shimName, app.cliFilePath!);
-
-    // Tạo shim cho cli_file nếu khác appId (vd: node.bat)
-    if (cliName != shimName) {
-      await _createShimSet(cliName, app.cliFilePath!);
+    for (final name in shimNames) {
+      // On Windows, bunx should target bunx.exe if it exists, otherwise
+      // fall back to the cliFilePath (which may be bun.exe).
+      String targetPath = app.cliFilePath!;
+      if (name == 'bunx') {
+        final appDir = p.dirname(app.cliFilePath!);
+        final bunxExe = p.join(appDir, 'bunx.exe');
+        if (File(bunxExe).existsSync()) {
+          targetPath = bunxExe;
+        }
+      }
+      await _createShimSet(name, targetPath);
     }
 
-    // Special handling for Node.js: Add npm and npx
-    if (app.appId.contains('nodejs')) {
-      final nodeDir = p.dirname(app.cliFilePath!);
-      final npmCmd = p.join(nodeDir, 'npm.cmd');
-      final npxCmd = p.join(nodeDir, 'npx.cmd');
-      final corepackCmd = p.join(nodeDir, 'corepack.cmd');
-
+    // Special handling for Node.js on Windows:
+    // - Create node.exe symlink (required by npm global package installers)
+    // - Create shims for npm, npx, corepack targeting their own .cmd wrappers.
+    if (app.appId.contains('nodejs') || app.appId == 'node') {
       // Lệnh cài đặt global của npm (như pnpm.ps1) sẽ yêu cầu chính xác file "node.exe" tồn tại trong PATH.
       // Thay vì copy, ta tạo symlink để tiết kiệm dung lượng.
       try {
@@ -571,33 +682,50 @@ class PathService {
         _logger.error('Error creating symlink/copy for node.exe: $e');
       }
 
+      final nodeDir = p.dirname(app.cliFilePath!);
+
+      // npm shim — targets npm.cmd on Windows
+      final npmCmd = p.join(nodeDir, 'npm.cmd');
       if (File(npmCmd).existsSync()) {
         await _createShimSet('npm', npmCmd);
-
-        // Cấu hình npm global prefix trỏ về thư mục C:\Ponta\bin
-        // Để các lệnh cài đặt global như `npm i -g pnpm`, `yarn` v.v. được ghi thẳng vào C:\Ponta\bin
-        // Và người dùng có thể sử dụng được ngay lập tức từ terminal.
-        try {
-          await Process.run('cmd', [
-            '/c',
-            npmCmd,
-            'config',
-            'set',
-            'prefix',
-            binDir,
-            '-g',
-          ]);
-          _logger.info('Set npm global prefix to $binDir');
-        } catch (e) {
-          _logger.error('Failed to set npm global prefix: $e');
+      } else {
+        // Fallback to npm (the executable wrapper without .cmd) if npm.cmd
+        // is not present but npm exists.
+        final npmBin = p.join(nodeDir, 'npm');
+        if (File(npmBin).existsSync() || Link(npmBin).existsSync()) {
+          await _createShimSet('npm', npmBin);
         }
       }
+
+      // npx shim — targets npx.cmd on Windows
+      final npxCmd = p.join(nodeDir, 'npx.cmd');
       if (File(npxCmd).existsSync()) {
         await _createShimSet('npx', npxCmd);
+      } else {
+        final npxBin = p.join(nodeDir, 'npx');
+        if (File(npxBin).existsSync() || Link(npxBin).existsSync()) {
+          await _createShimSet('npx', npxBin);
+        }
       }
+
+      // corepack shim — targets corepack.cmd on Windows
+      final corepackCmd = p.join(nodeDir, 'corepack.cmd');
       if (File(corepackCmd).existsSync()) {
         await _createShimSet('corepack', corepackCmd);
+      } else {
+        final corepackBin = p.join(nodeDir, 'corepack');
+        if (File(corepackBin).existsSync() || Link(corepackBin).existsSync()) {
+          await _createShimSet('corepack', corepackBin);
+        }
       }
+
+      // Do NOT set npm prefix to binDir (C:\Ponta\bin) on Windows;
+      // global packages are now isolated in the global package dir.
+    }
+
+    final globalDir = globalPackageDirForApp(app.appId);
+    if (globalDir != null) {
+      await addRawPathToUserPath(globalDir);
     }
 
     _logger.info('Created shims for ${app.name} in $binDir');
@@ -605,34 +733,14 @@ class PathService {
 
   /// Xóa file shim / symlink của app
   Future<void> removeAppFromPath(AppModel app) async {
-    final shimName = app.appId;
-    final cliName = p.basenameWithoutExtension(app.cliFile ?? app.appId);
+    final shimNames = shimNamesForApp(app.appId, app.cliFile);
 
     if (Platform.isLinux) {
-      final pathsToDelete = [
-        ...shimPathsFor(binDir, shimName, isLinux: true),
-        if (cliName != shimName) ...shimPathsFor(binDir, cliName, isLinux: true),
-      ];
-
-      for (final path in pathsToDelete) {
-        final link = Link(path);
-        final file = File(path);
-        if (link.existsSync()) {
-          try {
-            link.deleteSync();
-          } catch (_) {}
-        } else if (file.existsSync()) {
-          try {
-            file.deleteSync();
-          } catch (_) {}
-        }
-      }
-
-      if (app.appId.contains('nodejs')) {
-        for (final extraCmd in ['npm', 'npx', 'corepack']) {
-          final pth = p.join(binDir, extraCmd);
-          final link = Link(pth);
-          final file = File(pth);
+      for (final name in shimNames) {
+        final paths = shimPathsFor(binDir, name, isLinux: true);
+        for (final path in paths) {
+          final link = Link(path);
+          final file = File(path);
           if (link.existsSync()) {
             try {
               link.deleteSync();
@@ -643,33 +751,65 @@ class PathService {
             } catch (_) {}
           }
         }
+      }
+
+      if (app.appId.contains('nodejs') || app.appId == 'node') {
+        final nodeExe = File(p.join(binDir, 'node.exe'));
+        if (nodeExe.existsSync()) {
+          try {
+            nodeExe.deleteSync();
+          } catch (_) {}
+        }
         await _cleanNpmGlobals();
+        // Remove npm, npx, corepack shims on Linux
+        for (final auxName in ['npm', 'npx', 'corepack']) {
+          final paths = shimPathsFor(binDir, auxName, isLinux: true);
+          for (final path in paths) {
+            final link = Link(path);
+            final file = File(path);
+            if (link.existsSync()) {
+              try {
+                link.deleteSync();
+              } catch (_) {}
+            } else if (file.existsSync()) {
+              try {
+                file.deleteSync();
+              } catch (_) {}
+            }
+          }
+        }
+      }
+
+      final globalDir = globalPackageDirForApp(app.appId);
+      if (globalDir != null) {
+        await removeRawPathFromUserPath(globalDir);
       }
 
       _logger.info('Removed Linux shims for ${app.name} from $binDir');
       return;
     }
 
-    await _deleteShimSet(shimName);
-
-    if (cliName != shimName) {
-      await _deleteShimSet(cliName);
+    for (final name in shimNames) {
+      await _deleteShimSet(name);
     }
 
-    if (app.appId.contains('nodejs')) {
+    if (app.appId.contains('nodejs') || app.appId == 'node') {
       final nodeExe = File(p.join(binDir, 'node.exe'));
       if (nodeExe.existsSync()) {
         try {
           nodeExe.deleteSync();
         } catch (_) {}
       }
-
-      await _deleteShimSet('npm');
-      await _deleteShimSet('npx');
-      await _deleteShimSet('corepack');
-
-      // Clean up global npm packages (node_modules and wrappers)
       await _cleanNpmGlobals();
+      // Remove npm, npx, corepack shims on Windows
+      for (final auxName in ['npm', 'npx', 'corepack']) {
+        await _deleteShimSet(auxName);
+      }
+    }
+
+    final globalDir = globalPackageDirForApp(app.appId);
+    if (globalDir != null) {
+      await removeRawPathFromUserPath(globalDir);
     }
 
     _logger.info('Removed shims for ${app.name} from $binDir');

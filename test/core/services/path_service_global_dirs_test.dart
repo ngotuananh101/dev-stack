@@ -1,0 +1,146 @@
+import 'package:dev_stack/core/services/path_service.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('PathService.globalPackageDirForApp', () {
+    test('returns %APPDATA%\\npm for nodejs on Windows', () {
+      final dir = PathService.globalPackageDirForApp(
+        'nodejs',
+        isWindows: true,
+        environment: {'APPDATA': r'C:\Users\Alice\AppData\Roaming'},
+      );
+      expect(dir, equals(r'C:\Users\Alice\AppData\Roaming\npm'));
+    });
+
+    test('returns ~/.npm-global/bin for nodejs on Linux', () {
+      final dir = PathService.globalPackageDirForApp(
+        'nodejs',
+        isWindows: false,
+        environment: {'HOME': '/home/alice'},
+      );
+      expect(dir, equals('/home/alice/.npm-global/bin'));
+    });
+
+    test('returns %USERPROFILE%\\.bun\\bin for bun on Windows', () {
+      final dir = PathService.globalPackageDirForApp(
+        'bun',
+        isWindows: true,
+        environment: {'USERPROFILE': r'C:\Users\Alice'},
+      );
+      expect(dir, equals(r'C:\Users\Alice\.bun\bin'));
+    });
+
+    test('returns ~/.bun/bin for bun on Linux', () {
+      final dir = PathService.globalPackageDirForApp(
+        'bun',
+        isWindows: false,
+        environment: {'HOME': '/home/alice'},
+      );
+      expect(dir, equals('/home/alice/.bun/bin'));
+    });
+
+    test('returns %USERPROFILE%\\.deno\\bin for deno on Windows', () {
+      final dir = PathService.globalPackageDirForApp(
+        'deno',
+        isWindows: true,
+        environment: {'USERPROFILE': r'C:\Users\Alice'},
+      );
+      expect(dir, equals(r'C:\Users\Alice\.deno\bin'));
+    });
+
+    test('returns ~/.deno/bin for deno on Linux', () {
+      final dir = PathService.globalPackageDirForApp(
+        'deno',
+        isWindows: false,
+        environment: {'HOME': '/home/alice'},
+      );
+      expect(dir, equals('/home/alice/.deno/bin'));
+    });
+
+    test('returns null for non-JS apps', () {
+      expect(PathService.globalPackageDirForApp('mysql'), isNull);
+      expect(PathService.globalPackageDirForApp('nginx'), isNull);
+      expect(PathService.globalPackageDirForApp('php84'), isNull);
+    });
+
+    group('graceful null when environment variables are absent', () {
+      test('nodejs on Windows returns null when APPDATA is missing', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'nodejs',
+            isWindows: true,
+            environment: {},
+          ),
+          isNull,
+        );
+      });
+
+      test('nodejs on Windows returns null when APPDATA is empty', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'nodejs',
+            isWindows: true,
+            environment: {'APPDATA': ''},
+          ),
+          isNull,
+        );
+      });
+
+      test('nodejs on Linux returns null when HOME is missing', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'nodejs',
+            isWindows: false,
+            environment: {},
+          ),
+          isNull,
+        );
+      });
+
+      test('bun on Windows returns null when USERPROFILE and HOME are missing', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'bun',
+            isWindows: true,
+            environment: {},
+          ),
+          isNull,
+        );
+      });
+
+      test('bun on Linux returns null when HOME is empty', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'bun',
+            isWindows: false,
+            environment: {'HOME': ''},
+          ),
+          isNull,
+        );
+      });
+
+      test('deno on Windows returns null when USERPROFILE and HOME are missing', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'deno',
+            isWindows: true,
+            environment: {},
+          ),
+          isNull,
+        );
+      });
+
+      test('deno on Linux returns null when HOME is missing', () {
+        expect(
+          PathService.globalPackageDirForApp(
+            'deno',
+            isWindows: false,
+            environment: {},
+          ),
+          isNull,
+        );
+      });
+    });
+  });
+}
+
