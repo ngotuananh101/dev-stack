@@ -51,6 +51,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     final id = widget.app.appId.toLowerCase();
     final group = widget.app.groupName?.toLowerCase() ?? '';
 
+    if (id.contains('bun')) return 'bun';
+    if (id.contains('deno')) return 'deno';
     if (id.contains('nodejs')) return 'nodejs';
     if (id.contains('php')) return 'php';
     if (id.contains('mysql')) return 'mysql';
@@ -71,6 +73,10 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     if (widget.app.appId.contains('python') ||
         widget.app.appId.contains('pyenv')) {
       return const Color(0xFF3776AB);
+    } else if (widget.app.appId.contains('bun')) {
+      return const Color(0xFFE5A83B);
+    } else if (widget.app.appId.contains('deno')) {
+      return const Color(0xFF70FFAF);
     } else if (widget.app.appId.contains('node')) {
       return const Color(0xFF68A063);
     } else if (widget.app.appId.contains('php')) {

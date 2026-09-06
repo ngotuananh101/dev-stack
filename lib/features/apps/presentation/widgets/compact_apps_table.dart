@@ -57,6 +57,8 @@ class CompactAppsTable extends StatelessWidget {
     final id = app.appId.toLowerCase();
     final group = app.groupName?.toLowerCase() ?? '';
 
+    if (id.contains('bun')) return 'bun';
+    if (id.contains('deno')) return 'deno';
     if (id.contains('nodejs')) return 'nodejs';
     if (id == 'phpmyadmin') return 'phpmyadmin';
     if (id.contains('php')) return 'php';
@@ -80,6 +82,12 @@ class CompactAppsTable extends StatelessWidget {
   }
 
   Color _getIconColor(String appId) {
+    if (appId.contains('bun')) {
+      return const Color(0xFFE5A83B);
+    }
+    if (appId.contains('deno')) {
+      return const Color(0xFF70FFAF);
+    }
     if (appId.contains('caddy')) {
       return const Color(0xFF1F8C5B);
     }
