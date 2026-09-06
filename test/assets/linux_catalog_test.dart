@@ -184,11 +184,13 @@ void main() {
       for (final app in phpApps) {
         expect(app['install_method'], equals('package_manager'),
             reason: '${app['id']} installs via system package manager on Linux');
-        // Versioned binary (php8.5, php8.4, ...) provided by distro packages
+        // Versioned FPM binary (php-fpm8.5, php-fpm8.4, ...) provided by
+        // distro packages; the CLI binary (php8.5) is resolved separately
+        // via cli_file.
         final exec = app['exec_file'] as String?;
         expect(exec, isNotNull, reason: '${app['id']} must define exec_file');
-        expect(exec, matches(RegExp(r'^php[\d.]+$')),
-            reason: '${app['id']} exec_file should be versioned (e.g. php8.5)');
+        expect(exec, matches(RegExp(r'^php-fpm[\d.]+$')),
+            reason: '${app['id']} exec_file should be versioned FPM (e.g. php-fpm8.5)');
       }
     });
 

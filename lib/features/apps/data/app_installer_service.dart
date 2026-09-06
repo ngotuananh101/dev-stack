@@ -1757,10 +1757,18 @@ security:
     String? version, {
     bool deleteData = true,
   }) async {
-    final directory = Directory(path);
-    if (directory.existsSync()) {
-      _logger.info('Deleting directory: $path');
-      await _deleteRecursiveWithRetries(directory);
+    // Guard against deleting a relative or system_package marker directory.
+    // Package-manager apps return systemPackageMarker as their install path;
+    // attempting Directory('system_package') would resolve to a relative path
+    // in the CWD, which is unsafe.
+    if (path == systemPackageMarker || path.isEmpty) {
+      _logger.info('Skipping directory delete for system_package marker ($appId)');
+    } else {
+      final directory = Directory(path);
+      if (directory.existsSync()) {
+        _logger.info('Deleting directory: $path');
+        await _deleteRecursiveWithRetries(directory);
+      }
     }
 
     if (!deleteData) {
@@ -1801,6 +1809,38 @@ security:
       if (dataDir.existsSync()) {
         _logger.info('Deleting Elasticsearch data directory: ${dataDir.path}');
         await dataDir.delete(recursive: true);
+      }
+    }
+
+    // Clean up isolated data for Redis, PHP, and Apache
+    if (appId == 'redis' || appId.contains('redis')) {
+      final dataDir = Directory(p.join(AppConfig.dataDir, 'redis'));
+      if (dataDir.existsSync()) {
+        _logger.info('Deleting isolated Redis data: ${dataDir.path}');
+        await dataDir.delete(recursive: true);
+      }
+    }
+    if (appId.startsWith('php') || appId == 'php') {
+      final phpDir = Directory(p.join(AppConfig.baseDir, 'php', appId));
+      if (phpDir.existsSync()) {
+        _logger.info('Deleting isolated PHP config: ${phpDir.path}');
+        await phpDir.delete(recursive: true);
+      }
+    }
+    if (appId == 'apache' || appId.contains('apache')) {
+      final apacheVhosts = Directory(p.join(AppConfig.vhostsDir, 'apache'));
+      if (apacheVhosts.existsSync()) {
+        _logger.info('Deleting isolated Apache vhosts: ${apacheVhosts.path}');
+        await apacheVhosts.delete(recursive: true);
+      }
+    }
+    if (appId.contains('postgresql')) {
+      final pgDataDir = Directory(
+        p.join(AppConfig.dataDir, 'postgresql-$version'),
+      );
+      if (pgDataDir.existsSync() && pgDataDir.listSync().isNotEmpty) {
+        _logger.info('Deleting isolated PostgreSQL data: ${pgDataDir.path}');
+        await pgDataDir.delete(recursive: true);
       }
     }
   }
@@ -2448,6 +2488,94 @@ security:
   /// fail exists() and return null gracefully).
   static const String systemPackageMarker = 'system_package';
 
+  /// Resolves the list of executable candidate names used by
+  /// [_installViaPackageManager] when locating the installed binary.
+  ///
+  /// - For `apache`, candidates span both Debian (`apache2`) and RHEL (`httpd`)
+  ///   packaging.
+  /// - For PHP apps, the daemon is `php-fpm` (or `php-fpm<version>`).
+  /// - Otherwise falls back to `app.execFile` or `'php'`.
+  static List<String> _resolveExecNames(AppModel app) {
+    if (app.appId == 'apache') {
+      return ['apache2', 'httpd'];
+    }
+    if (app.groupName == 'php') {
+      final prefix = phpPrefixFor(app.appId);
+      if (prefix != null) {
+        return ['php-fpm$prefix'];
+      }
+      return ['php-fpm'];
+    }
+    final fallback = app.execFile ?? 'php';
+    return [fallback];
+  }
+
+  /// Extracts the PHP version prefix from an appId (e.g. `php82` -> `8.2`,
+  /// `php83` -> `8.3`). Returns null if the appId doesn't follow the
+  /// `php<major><minor>` convention.
+  @visibleForTesting
+  static String? phpPrefixFor(String appId) {
+    final match = RegExp(r'^php(\d)(\d+)$').firstMatch(appId);
+    if (match == null) return null;
+    return '${match.group(1)}.${match.group(2)}';
+  }
+
+  /// Builds the candidate path list for [findInstalledBinary] during
+  /// package-manager installation.
+  static List<String> _execCandidates(AppModel app, String execName) {
+    if (app.appId == 'apache') {
+      return [
+        '/usr/sbin/apache2',
+        '/usr/sbin/httpd',
+        '/usr/bin/apache2',
+        '/usr/bin/httpd',
+        '/usr/local/bin/apache2',
+        '/usr/local/bin/httpd',
+        '/usr/local/sbin/apache2',
+        '/usr/local/sbin/httpd',
+      ];
+    }
+    if (app.groupName == 'php') {
+      final prefix = phpPrefixFor(app.appId);
+      final candidates = <String>[];
+      if (prefix != null) {
+        candidates.add('/usr/sbin/php-fpm$prefix');
+        candidates.add('/usr/bin/php-fpm$prefix');
+        candidates.add('/usr/local/bin/php-fpm$prefix');
+        candidates.add('/usr/local/sbin/php-fpm$prefix');
+      }
+      candidates.addAll([
+        '/usr/sbin/php-fpm',
+        '/usr/bin/php-fpm',
+        '/usr/local/bin/php-fpm',
+        '/usr/local/sbin/php-fpm',
+      ]);
+      // Also add specific version candidates (php-fpm8.5, etc.)
+      for (final v in ['8.5', '8.4', '8.3', '8.2']) {
+        candidates.add('/usr/sbin/php-fpm$v');
+        candidates.add('/usr/bin/php-fpm$v');
+      }
+      return candidates;
+    }
+    if (app.appId.contains('postgresql')) {
+      // The glob-style candidate is dead (File.existsSync won't expand *),
+      // so rely on searchDirectories for the recursive postgresql/*/bin search.
+      return [];
+    }
+    return [
+      '/usr/bin/$execName',
+      '/usr/sbin/$execName',
+      '/usr/local/bin/$execName',
+      '/usr/local/sbin/$execName',
+    ];
+  }
+
+  /// Directories to recursively search for the installed binary.
+  static List<String>? _execSearchDirs(AppModel app) {
+    if (app.appId.contains('postgresql')) return ['/usr/lib/postgresql'];
+    return null;
+  }
+
   /// Install app via system package manager (apt, dnf, etc.)
   /// Used for PHP on Linux where prebuilt binaries are not available.
   ///
@@ -2543,25 +2671,30 @@ security:
 
     // 6. Find installed executable
     logInfo('Locating installed ${app.name} executable...');
-    final execName = app.execFile ?? 'php';
-    final execPath = await findInstalledBinary(
-      execName,
-      candidates: [
-        '/usr/bin/$execName',
-        '/usr/sbin/$execName',
-        '/usr/local/bin/$execName',
-        '/usr/local/sbin/$execName',
-        if (app.appId.contains('postgresql')) '/usr/lib/postgresql/*/bin/postgres',
-      ],
-      searchDirectories: app.appId.contains('postgresql') ? ['/usr/lib/postgresql'] : null,
-      logInfo: logInfo,
-    );
+    final execNames = _resolveExecNames(app);
+    final candidates = _execCandidates(app, execNames.first);
+    final searchDirs = _execSearchDirs(app);
+    String? execPath;
+    String foundName = execNames.first;
+    for (final name in execNames) {
+      final path = await findInstalledBinary(
+        name,
+        candidates: candidates,
+        searchDirectories: searchDirs,
+        logInfo: logInfo,
+      );
+      if (path != null) {
+        execPath = path;
+        foundName = name;
+        break;
+      }
+    }
 
     if (execPath == null) {
-      logError('Could not find $execName after installation');
+      logError('Could not find any of $execNames after installation');
       throw Exception(
-        'Installation completed but $execName not found in PATH. '
-        'You may need to restart your terminal or add it manually.',
+        'Installation completed but none of $execNames were found in PATH. '
+        'You may need to restart your terminal or add them manually.',
       );
     }
 
@@ -2573,21 +2706,40 @@ security:
 
     // 7. Verify the executable actually runs — a failed --version means a
     // broken install; surface it instead of reporting success.
-    final verify = await Process.run(execPath, ['--version']);
+    // Apache (apache2/httpd) only accepts -v, not --version.
+    final isApacheVerify = foundName == 'apache2' || foundName == 'httpd';
+    final verifyArgs = isApacheVerify ? ['-v'] : ['--version'];
+    final verify = await Process.run(execPath, verifyArgs);
     if (verify.exitCode != 0) {
       logError(
-        '$execName --version exited with code ${verify.exitCode}: '
+        '$foundName $verifyArgs exited with code ${verify.exitCode}: '
         '${verify.stderr}',
       );
       throw Exception(
-        'Installed $execName failed verification (--version returned '
+        'Installed $foundName failed verification ($verifyArgs returned '
         'exit code ${verify.exitCode}). The package installation may be '
         'incomplete.',
       );
     }
     logInfo('Version check: ${verify.stdout}');
 
-    // 8. Install Composer for PHP apps
+    // 8. Resolve CLI executable path (separate from daemon exec path for PHP-FPM)
+    if (app.cliFile != null) {
+      final cliName = app.cliFile;
+      final cliPath = await findInstalledBinary(
+        cliName!,
+        candidates: [
+          '/usr/bin/$cliName',
+          '/usr/sbin/$cliName',
+          '/usr/local/bin/$cliName',
+          '/usr/local/sbin/$cliName',
+        ],
+        logInfo: logInfo,
+      );
+      app.cliFilePath = cliPath ?? execPath;
+    }
+
+    // 9. Install Composer for PHP apps
     if (app.groupName == 'php') {
       onProgress?.call(0.98, 'Installing Composer...');
       logInfo('Installing Composer for PHP...');
@@ -2600,7 +2752,7 @@ security:
       }
     }
 
-    // 9. Wire post-install isolation hooks for Linux package manager apps
+    // 10. Wire post-install isolation hooks for Linux package manager apps
     onProgress?.call(0.99, 'Configuring isolated services...');
     await _configureIsolatedServices(app, version, execPath, logInfo);
 
@@ -2619,7 +2771,7 @@ security:
     String execPath,
     Function(String) logInfo,
   ) async {
-    if (app.appId == 'apache' || app.categories.contains('webserver')) {
+    if (app.appId == 'apache' || app.appId.contains('apache')) {
       await setLinuxCapabilityForWebserver(execPath, logInfo, allowSystemBinaries: true);
       await configureIsolatedApache(app, logInfo);
     } else if (app.appId == 'redis' || app.groupName == 'redis') {
@@ -2627,13 +2779,17 @@ security:
     } else if (app.appId.contains('postgresql')) {
       final initdb = await findInstalledBinary(
         'initdb',
-        candidates: ['/usr/bin/initdb', '/usr/lib/postgresql/*/bin/initdb'],
+        candidates: ['/usr/bin/initdb'],
         searchDirectories: ['/usr/lib/postgresql'],
         logInfo: logInfo,
       );
-      if (initdb != null) {
-        await configureIsolatedPostgresql(app, version, initdb, logInfo);
+      if (initdb == null) {
+        logInfo('ERROR: PostgreSQL packages installed but initdb binary was not found.');
+        throw Exception(
+          'PostgreSQL packages installed but initdb binary was not found.',
+        );
       }
+      await configureIsolatedPostgresql(app, version, initdb, logInfo);
     } else if (app.groupName == 'php') {
       final port = phpPortFor(app.appId);
       await configureIsolatedPhpFpm(app, port, logInfo);
@@ -2772,14 +2928,34 @@ catch_workers_output = yes
     }
     final confFile = File(p.join(apacheVhostsDir.path, 'httpd.conf'));
     if (!confFile.existsSync()) {
-      final vhostsGlob = p.join(AppConfig.vhostsDir, '*.conf').replaceAll('\\', '/');
+      // Determine ServerRoot based on distro layout
+      final serverRoot = Directory('/etc/httpd').existsSync()
+          ? '/etc/httpd'
+          : '/etc/apache2';
+
+      final isDebian = !Directory('/etc/httpd').existsSync();
+
+      // Build module Includes based on distro
+      final moduleIncludes = isDebian
+          ? 'IncludeOptional "/etc/apache2/mods-enabled/*.load"\n'
+              'IncludeOptional "/etc/apache2/mods-enabled/*.conf"'
+          : 'Include conf.modules.d/*.conf';
+
+      final pidFile = p.join(AppConfig.logsDir, 'httpd.pid').replaceAll('\\', '/');
+      final errorLog = p.join(AppConfig.logsDir, 'apache_error.log').replaceAll('\\', '/');
+      final vhostsGlob = p.join(AppConfig.vhostsDir, 'apache', '*.conf').replaceAll('\\', '/');
       final wwwRoot = AppConfig.webserverRoot.replaceAll('\\', '/');
+
       final content = '''
 # Ponta isolated Apache configuration
-ServerRoot "/etc/apache2"
+ServerRoot "$serverRoot"
 Listen 127.0.0.1:80
 ServerName localhost:80
 DocumentRoot "$wwwRoot"
+PidFile "$pidFile"
+ErrorLog "$errorLog"
+
+$moduleIncludes
 
 <Directory "$wwwRoot">
     Options Indexes FollowSymLinks
@@ -2787,7 +2963,8 @@ DocumentRoot "$wwwRoot"
     Require all granted
 </Directory>
 
-# Include devstack virtual hosts
+# Include devstack virtual hosts (httpd.conf is in the same dir, so use
+# a glob that matches site configs but not this file itself)
 IncludeOptional "$vhostsGlob"
 ''';
       await confFile.writeAsString(content);
@@ -2827,7 +3004,11 @@ IncludeOptional "$vhostsGlob"
       }
     }
 
-    final passwordFile = File(p.join(dataDir.path, 'postgres-password.txt'));
+    // Write the password file to a temp location OUTSIDE the data dir first.
+    // initdb refuses to run in a non-empty directory, so writing
+    // postgres-password.txt into dataDir before initdb would cause failure.
+    final tempDir = await Directory.systemTemp.createTemp('ponta-pg-pw-');
+    final passwordFile = File(p.join(tempDir.path, 'postgres-password.txt'));
     if (!passwordFile.existsSync()) {
       await passwordFile.writeAsString(_generateSecret());
     }
@@ -2848,8 +3029,33 @@ IncludeOptional "$vhostsGlob"
 
     logInfo('Running initdb: $initdbPath ${args.join(' ')}');
     final result = await runner(initdbPath, args);
+
     if (result.exitCode != 0) {
+      // Clean up the temp dir before throwing.
+      try {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      } catch (e) {
+        logInfo('Warning: Could not clean up temp password dir: $e');
+      }
       throw Exception('initdb failed: ${result.stderr}');
+    }
+
+    // After initdb succeeds, copy postgres-password.txt into the data dir
+    // so it is available alongside the cluster for restarts/management.
+    final destPasswordFile = File(p.join(dataDir.path, 'postgres-password.txt'));
+    if (!destPasswordFile.existsSync()) {
+      await passwordFile.copy(destPasswordFile.path);
+    }
+
+    // Clean up the temp dir after the password file has been copied.
+    try {
+      if (tempDir.existsSync()) {
+        await tempDir.delete(recursive: true);
+      }
+    } catch (e) {
+      logInfo('Warning: Could not clean up temp password dir: $e');
     }
 
     final confFile = File(p.join(dataDir.path, 'postgresql.conf'));
