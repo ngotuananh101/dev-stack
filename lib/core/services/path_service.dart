@@ -53,6 +53,63 @@ class PathService {
     );
   }
 
+  /// Trả về thư mục chứa các global package binaries riêng biệt cho từng runtime JS
+  @visibleForTesting
+  static String? globalPackageDirForApp(
+    String appId, {
+    bool? isWindows,
+    Map<String, String>? environment,
+  }) {
+    final env = environment ?? Platform.environment;
+    final onWindows = isWindows ?? Platform.isWindows;
+    final ctx = p.Context(style: onWindows ? p.Style.windows : p.Style.posix);
+    final id = appId.toLowerCase();
+
+    if (id.contains('nodejs') || id == 'node') {
+      if (onWindows) {
+        final appData = env['APPDATA'];
+        if (appData != null && appData.isNotEmpty) {
+          return ctx.join(appData, 'npm');
+        }
+      } else {
+        final home = env['HOME'];
+        if (home != null && home.isNotEmpty) {
+          return ctx.join(home, '.npm-global', 'bin');
+        }
+      }
+    }
+
+    if (id.contains('bun')) {
+      if (onWindows) {
+        final userProfile = env['USERPROFILE'] ?? env['HOME'];
+        if (userProfile != null && userProfile.isNotEmpty) {
+          return ctx.join(userProfile, '.bun', 'bin');
+        }
+      } else {
+        final home = env['HOME'];
+        if (home != null && home.isNotEmpty) {
+          return ctx.join(home, '.bun', 'bin');
+        }
+      }
+    }
+
+    if (id.contains('deno')) {
+      if (onWindows) {
+        final userProfile = env['USERPROFILE'] ?? env['HOME'];
+        if (userProfile != null && userProfile.isNotEmpty) {
+          return ctx.join(userProfile, '.deno', 'bin');
+        }
+      } else {
+        final home = env['HOME'];
+        if (home != null && home.isNotEmpty) {
+          return ctx.join(home, '.deno', 'bin');
+        }
+      }
+    }
+
+    return null;
+  }
+
   /// Builds the PowerShell arguments and environment map to set a User environment variable on Windows.
   @visibleForTesting
   static ({List<String> arguments, Map<String, String> environment})
