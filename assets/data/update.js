@@ -146,6 +146,96 @@ async function fetchElasticsearchReleases(urlBuilder) {
   return versions;
 }
 
+const GITHUB_EXACT_ASSETS = {
+  windows: {
+    "mongodb-js/compass": (a) =>
+      a.name.toLowerCase().includes("win32-x64") &&
+      a.name.toLowerCase().endsWith(".zip") &&
+      !a.name.toLowerCase().includes("isolated") &&
+      !a.name.toLowerCase().includes("readonly"),
+    "HeidiSQL/HeidiSQL": (a) =>
+      a.name.toLowerCase().endsWith("_64_portable.zip"),
+    "oven-sh/bun": (a) => a.name === "bun-windows-x64.zip",
+    "denoland/deno": (a) =>
+      a.name.toLowerCase().includes("x86_64-pc-windows-msvc") &&
+      a.name.toLowerCase().endsWith(".zip"),
+  },
+  linux: {
+    "oven-sh/bun": (a) => a.name === "bun-linux-x64.zip",
+    "denoland/deno": (a) =>
+      a.name.toLowerCase().includes("x86_64-unknown-linux-gnu") &&
+      a.name.toLowerCase().endsWith(".zip"),
+  },
+};
+
+/**
+ * Helper fetch danh sách bản phát hành từ GitHub Releases theo nền tảng
+ */
+async function fetchGithubReleases({ repoPath, platform, options = {} }) {
+  const res = await fetch(
+    `https://api.github.com/repos/${repoPath}/releases`,
+    {
+      headers: {
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "Ponta-Update",
+      },
+    },
+  );
+  const data = await res.json();
+  const versions = {};
+  if (!Array.isArray(data)) return {};
+
+  const exactMatcher = GITHUB_EXACT_ASSETS[platform]?.[repoPath];
+
+  data.forEach((r) => {
+    if (r.prerelease && !options.includePrereleases) return;
+    const ver = r.tag_name.replace(
+      /^(bun-v|v|release-|redis-|redis|r(?=\d))/i,
+      "",
+    );
+    let url = `https://github.com/${repoPath}/archive/refs/tags/${r.tag_name}.zip`;
+    if (r.assets?.length > 0) {
+      if (exactMatcher) {
+        const asset = r.assets.find(exactMatcher);
+        url = asset ? asset.browser_download_url : null;
+      } else if (platform === "windows") {
+        const asset =
+          r.assets.find(
+            (a) =>
+              (a.name.toLowerCase().includes("win") ||
+                a.name.toLowerCase().includes("x64")) &&
+              (a.name.toLowerCase().endsWith(".zip") ||
+                a.name.toLowerCase().endsWith(".msi") ||
+                a.name.toLowerCase().endsWith(".exe")) &&
+              (repoPath !== "meilisearch/meilisearch" ||
+                !a.name.toLowerCase().includes("enterprise")),
+          ) ||
+          r.assets.find(
+            (a) =>
+              a.name.toLowerCase().endsWith(".zip") ||
+              a.name.toLowerCase().endsWith(".msi") ||
+              a.name.toLowerCase().endsWith(".exe"),
+          );
+        if (asset) url = asset.browser_download_url;
+      } else if (platform === "linux") {
+        const asset = r.assets.find(
+          (a) =>
+            (a.name.toLowerCase().includes("linux") ||
+              a.name.toLowerCase().includes("x64")) &&
+            (a.name.toLowerCase().endsWith(".tar.gz") ||
+              a.name.toLowerCase().endsWith(".tar.xz") ||
+              a.name.toLowerCase().endsWith(".zip")),
+        );
+        if (asset) url = asset.browser_download_url;
+      }
+    }
+    if (url) {
+      versions[ver] = url;
+    }
+  });
+  return versions;
+}
+
 // === CÁC HÀM FETCH DỮ LIỆU WINDOWS ===
 
 const fetchersWindows = {
@@ -239,77 +329,12 @@ const fetchersWindows = {
     return versions;
   },
 
-  async github(repoPath, options = {}) {
-    const res = await fetch(
-      `https://api.github.com/repos/${repoPath}/releases`,
-      {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "Ponta-Update",
-        },
-      },
-    );
-    const data = await res.json();
-    const versions = {};
-    if (!Array.isArray(data)) return {};
-    data.forEach((r) => {
-      if (r.prerelease && !options.includePrereleases) return;
-      const ver = r.tag_name.replace(/^(bun-v|v|release-|redis-|redis|r(?=\d))/i, "");
-      let url = `https://github.com/${repoPath}/archive/refs/tags/${r.tag_name}.zip`;
-      if (r.assets?.length > 0) {
-        let asset;
-        if (repoPath === "mongodb-js/compass") {
-          url = null;
-          asset = r.assets.find(
-            (a) =>
-              a.name.toLowerCase().includes("win32-x64") &&
-              a.name.toLowerCase().endsWith(".zip") &&
-              !a.name.toLowerCase().includes("isolated") &&
-              !a.name.toLowerCase().includes("readonly"),
-          );
-        } else if (repoPath === "HeidiSQL/HeidiSQL") {
-          url = null;
-          asset = r.assets.find((a) =>
-            a.name.toLowerCase().endsWith("_64_portable.zip"),
-          );
-        } else if (repoPath === "oven-sh/bun") {
-          url = null;
-          asset = r.assets.find(
-            (a) => a.name === "bun-windows-x64.zip",
-          );
-        } else if (repoPath === "denoland/deno") {
-          url = null;
-          asset = r.assets.find(
-            (a) =>
-              a.name.toLowerCase().includes("x86_64-pc-windows-msvc") &&
-              a.name.toLowerCase().endsWith(".zip"),
-          );
-        } else {
-          asset = r.assets.find(
-            (a) =>
-              (a.name.toLowerCase().includes("win") ||
-                a.name.toLowerCase().includes("x64")) &&
-              (a.name.toLowerCase().endsWith(".zip") ||
-                a.name.toLowerCase().endsWith(".msi") ||
-                a.name.toLowerCase().endsWith(".exe")) &&
-              (repoPath !== "meilisearch/meilisearch" ||
-                !a.name.toLowerCase().includes("enterprise")),
-          );
-          if (!asset)
-            asset = r.assets.find(
-              (a) =>
-                a.name.toLowerCase().endsWith(".zip") ||
-                a.name.toLowerCase().endsWith(".msi") ||
-                a.name.toLowerCase().endsWith(".exe"),
-            );
-        }
-        if (asset) url = asset.browser_download_url;
-      }
-      if (url) {
-        versions[ver] = url;
-      }
+  github(repoPath, options = {}) {
+    return fetchGithubReleases({
+      repoPath,
+      platform: "windows",
+      options,
     });
-    return versions;
   },
 
   elasticsearch() {
@@ -477,54 +502,12 @@ const fetchersLinux = {
     return versions;
   },
 
-  async github(repoPath, options = {}) {
-    const res = await fetch(
-      `https://api.github.com/repos/${repoPath}/releases`,
-      {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "Ponta-Update",
-        },
-      },
-    );
-    const data = await res.json();
-    const versions = {};
-    if (!Array.isArray(data)) return {};
-    data.forEach((r) => {
-      if (r.prerelease && !options.includePrereleases) return;
-      const ver = r.tag_name.replace(/^(bun-v|v|release-|redis-|redis|r(?=\d))/i, "");
-      let url = `https://github.com/${repoPath}/archive/refs/tags/${r.tag_name}.zip`;
-      if (r.assets?.length > 0) {
-        let asset;
-        if (repoPath === "oven-sh/bun") {
-          url = null;
-          asset = r.assets.find(
-            (a) => a.name === "bun-linux-x64.zip",
-          );
-        } else if (repoPath === "denoland/deno") {
-          url = null;
-          asset = r.assets.find(
-            (a) =>
-              a.name.toLowerCase().includes("x86_64-unknown-linux-gnu") &&
-              a.name.toLowerCase().endsWith(".zip"),
-          );
-        } else {
-          asset = r.assets.find(
-            (a) =>
-              (a.name.toLowerCase().includes("linux") ||
-                a.name.toLowerCase().includes("x64")) &&
-              (a.name.toLowerCase().endsWith(".tar.gz") ||
-                a.name.toLowerCase().endsWith(".tar.xz") ||
-                a.name.toLowerCase().endsWith(".zip")),
-          );
-        }
-        if (asset) url = asset.browser_download_url;
-      }
-      if (url) {
-        versions[ver] = url;
-      }
+  github(repoPath, options = {}) {
+    return fetchGithubReleases({
+      repoPath,
+      platform: "linux",
+      options,
     });
-    return versions;
   },
 
   elasticsearch() {
