@@ -129,9 +129,7 @@ class PathService {
     // Runtime shim names only — auxiliary commands (npm, npx, corepack) are
     // handled in the dedicated Node.js blocks of addAppToPath/removeAppFromPath.
     if (id.contains('bun')) {
-      // bun core commands; bunx is handled separately in addAppToPath for
-      // Windows because it may target bunx.exe specifically.
-      return ['bun'];
+      return ['bun', 'bunx'];
     }
     if (id.contains('deno')) {
       return ['deno'];

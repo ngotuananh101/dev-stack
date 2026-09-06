@@ -3,10 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('PathService runtime shim and PATH management', () {
-    test('shimNamesForApp includes bun for Bun', () {
+    test('shimNamesForApp includes bun and bunx for Bun', () {
       final shims = PathService.shimNamesForApp('bun');
-      expect(shims, containsAll(['bun']));
-      expect(shims, isNot(contains('bunx')));
+      expect(shims, containsAll(['bun', 'bunx']));
     });
 
     test('shimNamesForApp includes deno for Deno', () {
