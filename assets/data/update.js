@@ -1,5 +1,5 @@
-const fs = require("fs").promises;
-const path = require("path");
+const fs = require("node:fs").promises;
+const path = require("node:path");
 
 /**
  * Hàm hỗ trợ sắp xếp các chuỗi phiên bản theo thứ tự giảm dần (Semantic Versioning)
@@ -9,10 +9,10 @@ function sortVersions(versions) {
   return [...new Set(versions)].sort((a, b) => {
     const partsA = String(a)
       .split(".")
-      .map((v) => parseInt(v) || 0);
+      .map((v) => Number.parseInt(v, 10) || 0);
     const partsB = String(b)
       .split(".")
-      .map((v) => parseInt(v) || 0);
+      .map((v) => Number.parseInt(v, 10) || 0);
     for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
       const numA = partsA[i] || 0;
       const numB = partsB[i] || 0;
@@ -47,6 +47,33 @@ function sortVersionsObject(versionsObj) {
   return result;
 }
 
+/**
+ * Helper fetch danh sách bản phát hành MariaDB theo matcher tệp
+ */
+async function fetchMariadbReleases(fileMatcher) {
+  const res = await fetch("https://downloads.mariadb.org/rest-api/mariadb/");
+  const data = await res.json();
+  const versions = {};
+  if (!data.major_releases) return versions;
+
+  for (const r of data.major_releases) {
+    if (r.release_status === "Preview") continue;
+    const majorRes = await fetch(
+      `https://downloads.mariadb.org/rest-api/mariadb/${r.release_id}`,
+    );
+    const majorData = await majorRes.json();
+    if (!majorData.releases) continue;
+
+    for (const [releaseVer, details] of Object.entries(majorData.releases)) {
+      const match = details.files?.find(fileMatcher);
+      if (match?.file_download_url) {
+        versions[releaseVer] = match.file_download_url;
+      }
+    }
+  }
+  return versions;
+}
+
 // === CÁC HÀM FETCH DỮ LIỆU WINDOWS ===
 
 const fetchersWindows = {
@@ -56,7 +83,10 @@ const fetchersWindows = {
     const versions = {};
     const ltsLabels = {};
     data
-      .filter((v) => parseInt(v.version.replace("v", "").split(".")[0]) >= 4)
+      .filter(
+        (v) =>
+          Number.parseInt(v.version.replace("v", "").split(".")[0], 10) >= 4,
+      )
       .forEach((v) => {
         const ver = v.version.replace("v", "");
         versions[ver] =
@@ -74,7 +104,7 @@ const fetchersWindows = {
     const html = await res.text();
     const versions = {};
     const regex = new RegExp(
-      `php-(${prefix}\\.\\d+)-nts-Win32-.*?-x64\\.zip`,
+      String.raw`php-(${prefix}\.\d+)-nts-Win32-.*?-x64\.zip`,
       "gi",
     );
     const matches = html.matchAll(regex);
@@ -103,33 +133,8 @@ const fetchersWindows = {
     return versions;
   },
 
-  async mariadb() {
-    const res = await fetch("https://downloads.mariadb.org/rest-api/mariadb/");
-    const data = await res.json();
-    const versions = {};
-    if (!data.major_releases) return versions;
-
-    for (const r of data.major_releases) {
-      if (r.release_status !== "Preview") {
-        const majorRes = await fetch(
-          `https://downloads.mariadb.org/rest-api/mariadb/${r.release_id}`,
-        );
-        const majorData = await majorRes.json();
-        if (!majorData.releases) continue;
-
-        for (const [releaseVer, details] of Object.entries(
-          majorData.releases,
-        )) {
-          for (const file of details.files || []) {
-            if (file.file_name.endsWith("-winx64.zip")) {
-              versions[releaseVer] = file.file_download_url;
-              break;
-            }
-          }
-        }
-      }
-    }
-    return versions;
+  mariadb() {
+    return fetchMariadbReleases((f) => f.file_name?.endsWith("-winx64.zip"));
   },
 
   async mongodb() {
@@ -177,7 +182,7 @@ const fetchersWindows = {
     const res = await fetch("https://www.apachelounge.com/download/");
     const html = await res.text();
     const regex =
-      /href="([^"]*?\/binaries\/httpd-([\d.]+)-[\d]+-win64-.*?\.zip)"/gi;
+      /href="([^"]*?\/binaries\/httpd-([\d.]+)-\d+-win64-.*?\.zip)"/gi;
     const versions = {};
     for (const m of html.matchAll(regex)) {
       versions[m[2]] = m[1].startsWith("http")
@@ -283,7 +288,10 @@ const fetchersLinux = {
     const versions = {};
     const ltsLabels = {};
     data
-      .filter((v) => parseInt(v.version.replace("v", "").split(".")[0]) >= 18)
+      .filter(
+        (v) =>
+          Number.parseInt(v.version.replace("v", "").split(".")[0], 10) >= 18,
+      )
       .forEach((v) => {
         const ver = v.version.replace("v", "");
         versions[ver] =
@@ -364,36 +372,12 @@ const fetchersLinux = {
     return versions;
   },
 
-  async mariadb() {
-    const res = await fetch("https://downloads.mariadb.org/rest-api/mariadb/");
-    const data = await res.json();
-    const versions = {};
-    if (!data.major_releases) return versions;
-
-    for (const r of data.major_releases) {
-      if (r.release_status !== "Preview") {
-        const majorRes = await fetch(
-          `https://downloads.mariadb.org/rest-api/mariadb/${r.release_id}`,
-        );
-        const majorData = await majorRes.json();
-        if (!majorData.releases) continue;
-
-        for (const [releaseVer, details] of Object.entries(
-          majorData.releases,
-        )) {
-          for (const file of details.files || []) {
-            if (
-              file.file_name.endsWith("-linux-systemd-x86_64.tar.gz") ||
-              file.file_name.endsWith("-linux-x86_64.tar.gz")
-            ) {
-              versions[releaseVer] = file.file_download_url;
-              break;
-            }
-          }
-        }
-      }
-    }
-    return versions;
+  mariadb() {
+    return fetchMariadbReleases(
+      (f) =>
+        f.file_name?.endsWith("-linux-systemd-x86_64.tar.gz") ||
+        f.file_name?.endsWith("-linux-x86_64.tar.gz"),
+    );
   },
 
   async mongodb() {
@@ -1098,6 +1082,83 @@ let baseLinuxApps = [
 
 // === HÀM THỰC THI CHÍNH ===
 
+async function loadExistingCatalog(outputPath, existingPath) {
+  try {
+    return JSON.parse(await fs.readFile(outputPath, "utf8"));
+  } catch (_) {
+    // Primary output file not found or unreadable; fall back to existing template.
+    try {
+      return JSON.parse(await fs.readFile(existingPath, "utf8"));
+    } catch (_ignored) {
+      // Existing catalog file may not exist yet on initial run; safe to ignore.
+      return null;
+    }
+  }
+}
+
+async function fetchAppVersions(app, fetchers, platformName) {
+  try {
+    if (fetchers[app.id]) {
+      return await fetchers[app.id]();
+    }
+    if (app.prefix && fetchers.php) {
+      return await fetchers.php(app.prefix);
+    }
+    if (app.repo && fetchers.github) {
+      return await fetchers.github(app.repo, {
+        includePrereleases: app.includePrereleases,
+      });
+    }
+  } catch (err) {
+    console.error(
+      `[${platformName}] Lỗi khi lấy dữ liệu cho ${app.name}:`,
+      err.message,
+    );
+  }
+  return null;
+}
+
+function applyFetchedVersions(app, fetchedResult) {
+  if (!fetchedResult) return;
+
+  if (app.id === "nodejs" && fetchedResult.versions) {
+    app.versions = sortVersionsObject(fetchedResult.versions);
+    if (
+      fetchedResult.ltsLabels &&
+      Object.keys(fetchedResult.ltsLabels).length > 0
+    ) {
+      app.lts_labels = fetchedResult.ltsLabels;
+    }
+    return;
+  }
+
+  if (
+    typeof fetchedResult === "object" &&
+    Object.keys(fetchedResult).length > 0
+  ) {
+    app.versions = sortVersionsObject(fetchedResult);
+  }
+}
+
+function applyFallbackVersions(app, oldData) {
+  if (
+    app.install_method === "package_manager" &&
+    app.package_manager_commands
+  ) {
+    return;
+  }
+
+  if (!app.versions || Object.keys(app.versions).length === 0) {
+    const oldApp = oldData?.apps?.find((a) => a.id === app.id);
+    if (oldApp?.versions) {
+      app.versions = oldApp.versions;
+      if (oldApp.lts_labels) {
+        app.lts_labels = oldApp.lts_labels;
+      }
+    }
+  }
+}
+
 async function updatePlatformCatalog({
   platformName,
   baseApps,
@@ -1112,69 +1173,20 @@ async function updatePlatformCatalog({
     `[${new Date().toLocaleString()}] [${platformName}] Bắt đầu cập nhật dữ liệu...`,
   );
 
-  let oldData = null;
-  try {
-    oldData = JSON.parse(await fs.readFile(outputPath, "utf8"));
-  } catch (e) {
-    try {
-      oldData = JSON.parse(await fs.readFile(existingPath, "utf8"));
-    } catch (_) {}
-  }
-
+  const oldData = await loadExistingCatalog(outputPath, existingPath);
   const catalogObject = {
     version: "1.1.0",
     lastUpdated: "",
-    apps: JSON.parse(JSON.stringify(baseApps)),
+    apps: structuredClone(baseApps),
   };
 
-  const tasks = catalogObject.apps.map(async (app) => {
-    try {
-      let v;
-      if (fetchers[app.id]) {
-        v = await fetchers[app.id]();
-      } else if (app.prefix && fetchers.php) {
-        v = await fetchers.php(app.prefix);
-      } else if (app.repo && fetchers.github) {
-        v = await fetchers.github(app.repo, {
-          includePrereleases: app.includePrereleases,
-        });
-      }
-
-      if (v) {
-        if (app.id === "nodejs" && v.versions) {
-          app.versions = sortVersionsObject(v.versions);
-          if (v.ltsLabels && Object.keys(v.ltsLabels).length > 0) {
-            app.lts_labels = v.ltsLabels;
-          }
-        } else if (typeof v === "object" && Object.keys(v).length > 0) {
-          app.versions = sortVersionsObject(v);
-        }
-      }
-    } catch (err) {
-      console.error(
-        `[${platformName}] Lỗi khi lấy dữ liệu cho ${app.name}:`,
-        err.message,
-      );
-    }
-
-    // Giữ lại dữ liệu cũ nếu fetch không có kết quả mới hoặc lỗi
-    if (!app.versions || Object.keys(app.versions).length === 0) {
-      const oldApp = oldData?.apps?.find((a) => a.id === app.id);
-      if (oldApp && oldApp.versions) {
-        app.versions = oldApp.versions;
-        if (oldApp.lts_labels) app.lts_labels = oldApp.lts_labels;
-      }
-    }
-
-    // For PHP apps with package_manager install method, skip version fetching
-    // and preserve the static versions object
-    if (app.install_method === "package_manager" && app.package_manager_commands) {
-      // Keep the versions as defined in baseApps (e.g., {"8.5": "package_manager"})
-      // Don't overwrite with fetched versions
-    }
-  });
-
-  await Promise.all(tasks);
+  await Promise.all(
+    catalogObject.apps.map(async (app) => {
+      const fetched = await fetchAppVersions(app, fetchers, platformName);
+      applyFetchedVersions(app, fetched);
+      applyFallbackVersions(app, oldData);
+    }),
+  );
 
   const hasChanged =
     JSON.stringify(catalogObject.apps) !== JSON.stringify(oldData?.apps);
@@ -1196,28 +1208,24 @@ async function updatePlatformCatalog({
   }
 }
 
-async function main() {
-  try {
-    // 1. Cập nhật Windows Catalog (new-apps.json)
-    await updatePlatformCatalog({
-      platformName: "Windows",
-      baseApps: baseWindowsApps,
-      fetchers: fetchersWindows,
-      outputFileName: "new-apps.json",
-      existingFileName: "apps.json",
-    });
+try {
+  // 1. Cập nhật Windows Catalog (new-apps.json)
+  await updatePlatformCatalog({
+    platformName: "Windows",
+    baseApps: baseWindowsApps,
+    fetchers: fetchersWindows,
+    outputFileName: "new-apps.json",
+    existingFileName: "apps.json",
+  });
 
-    // 2. Cập nhật Linux Catalog (new-apps-linux.json)
-    await updatePlatformCatalog({
-      platformName: "Linux",
-      baseApps: baseLinuxApps,
-      fetchers: fetchersLinux,
-      outputFileName: "new-apps-linux.json",
-      existingFileName: "apps-linux.json",
-    });
-  } catch (error) {
-    console.error("Lỗi cập nhật tổng thể:", error);
-  }
+  // 2. Cập nhật Linux Catalog (new-apps-linux.json)
+  await updatePlatformCatalog({
+    platformName: "Linux",
+    baseApps: baseLinuxApps,
+    fetchers: fetchersLinux,
+    outputFileName: "new-apps-linux.json",
+    existingFileName: "apps-linux.json",
+  });
+} catch (error) {
+  console.error("Lỗi cập nhật tổng thể:", error);
 }
-
-main();
