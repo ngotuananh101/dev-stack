@@ -1,5 +1,5 @@
-const fs = require("fs").promises;
-const path = require("path");
+const fs = require("node:fs").promises;
+const path = require("node:path");
 
 /**
  * Hàm hỗ trợ sắp xếp các chuỗi phiên bản theo thứ tự giảm dần (Semantic Versioning)
@@ -9,10 +9,10 @@ function sortVersions(versions) {
   return [...new Set(versions)].sort((a, b) => {
     const partsA = String(a)
       .split(".")
-      .map((v) => parseInt(v) || 0);
+      .map((v) => Number.parseInt(v, 10) || 0);
     const partsB = String(b)
       .split(".")
-      .map((v) => parseInt(v) || 0);
+      .map((v) => Number.parseInt(v, 10) || 0);
     for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
       const numA = partsA[i] || 0;
       const numB = partsB[i] || 0;
@@ -47,25 +47,114 @@ function sortVersionsObject(versionsObj) {
   return result;
 }
 
+/**
+ * Helper fetch danh sách bản phát hành MariaDB theo matcher tệp
+ */
+async function fetchMariadbReleases(fileMatcher) {
+  const res = await fetch("https://downloads.mariadb.org/rest-api/mariadb/");
+  const data = await res.json();
+  const versions = {};
+  if (!data.major_releases) return versions;
+
+  for (const r of data.major_releases) {
+    if (r.release_status === "Preview") continue;
+    const majorRes = await fetch(
+      `https://downloads.mariadb.org/rest-api/mariadb/${r.release_id}`,
+    );
+    const majorData = await majorRes.json();
+    if (!majorData.releases) continue;
+
+    for (const [releaseVer, details] of Object.entries(majorData.releases)) {
+      const match = details.files?.find(fileMatcher);
+      if (match?.file_download_url) {
+        versions[releaseVer] = match.file_download_url;
+      }
+    }
+  }
+  return versions;
+}
+
+/**
+ * Helper fetch danh sách bản phát hành Node.js theo phiên bản major tối thiểu và urlBuilder
+ */
+async function fetchNodejsReleases({ minMajor, urlBuilder }) {
+  const res = await fetch("https://nodejs.org/download/release/index.json");
+  const data = await res.json();
+  const versions = {};
+  const ltsLabels = {};
+  data
+    .filter(
+      (v) =>
+        Number.parseInt(v.version.replace("v", "").split(".")[0], 10) >=
+        minMajor,
+    )
+    .forEach((v) => {
+      const ver = v.version.replace("v", "");
+      versions[ver] = urlBuilder(ver);
+      if (v.lts) {
+        ltsLabels[ver] = typeof v.lts === "string" ? v.lts : "LTS";
+      }
+    });
+  return { versions, ltsLabels };
+}
+
+/**
+ * Helper fetch danh sách bản phát hành MySQL từ Docker Hub tags theo urlBuilder
+ */
+async function fetchMysqlReleases(urlBuilder) {
+  const regex = /^(\d+\.\d+\.\d+)$/;
+  const versions = {};
+  for (let p = 1; p <= 3; p++) {
+    const res = await fetch(
+      `https://hub.docker.com/v2/namespaces/library/repositories/mysql/tags?page=${p}&page_size=100`,
+    );
+    const data = await res.json();
+    data.results?.forEach((t) => {
+      if (regex.test(t.name)) {
+        const majorMinor = t.name.split(".").slice(0, 2).join(".");
+        versions[t.name] = urlBuilder(t.name, majorMinor);
+      }
+    });
+  }
+  return versions;
+}
+
+/**
+ * Helper fetch danh sách bản phát hành Elasticsearch từ GitHub tags theo urlBuilder
+ */
+async function fetchElasticsearchReleases(urlBuilder) {
+  const res = await fetch(
+    "https://api.github.com/repos/elastic/elasticsearch/tags",
+    {
+      headers: {
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "Ponta-Update",
+      },
+    },
+  );
+  const data = await res.json();
+  const versions = {};
+  if (!Array.isArray(data)) return {};
+
+  data.forEach((t) => {
+    const ver = t.name.replace(/^v/i, "");
+    const parts = ver.split(".").map(Number);
+    if (parts[0] >= 8) {
+      versions[ver] = urlBuilder(ver);
+    }
+  });
+  return versions;
+}
+
 // === CÁC HÀM FETCH DỮ LIỆU WINDOWS ===
 
 const fetchersWindows = {
-  async nodejs() {
-    const res = await fetch("https://nodejs.org/download/release/index.json");
-    const data = await res.json();
-    const versions = {};
-    const ltsLabels = {};
-    data
-      .filter((v) => parseInt(v.version.replace("v", "").split(".")[0]) >= 4)
-      .forEach((v) => {
-        const ver = v.version.replace("v", "");
-        versions[ver] =
-          `https://nodejs.org/dist/v${ver}/node-v${ver}-win-x64.zip`;
-        if (v.lts) {
-          ltsLabels[ver] = typeof v.lts === "string" ? v.lts : "LTS";
-        }
-      });
-    return { versions, ltsLabels };
+  nodejs() {
+    return fetchNodejsReleases({
+      minMajor: 4,
+      urlBuilder: (ver) =>
+        `https://nodejs.org/dist/v${ver}/node-v${ver}-win-x64.zip`,
+    });
   },
 
   async php(prefix) {
@@ -74,7 +163,7 @@ const fetchersWindows = {
     const html = await res.text();
     const versions = {};
     const regex = new RegExp(
-      `php-(${prefix}\\.\\d+)-nts-Win32-.*?-x64\\.zip`,
+      String.raw`php-(${prefix}\.\d+)-nts-Win32-.*?-x64\.zip`,
       "gi",
     );
     const matches = html.matchAll(regex);
@@ -84,52 +173,15 @@ const fetchersWindows = {
     return versions;
   },
 
-  async mysql() {
-    const regex = /^(\d+\.\d+\.\d+)$/;
-    const versions = {};
-    for (let p = 1; p <= 3; p++) {
-      const res = await fetch(
-        `https://hub.docker.com/v2/namespaces/library/repositories/mysql/tags?page=${p}&page_size=100`,
-      );
-      const data = await res.json();
-      data.results?.forEach((t) => {
-        if (regex.test(t.name)) {
-          const majorMinor = t.name.split(".").slice(0, 2).join(".");
-          versions[t.name] =
-            `https://cdn.mysql.com/Downloads/MySQL-${majorMinor}/mysql-${t.name}-winx64.zip`;
-        }
-      });
-    }
-    return versions;
+  mysql() {
+    return fetchMysqlReleases(
+      (name, majorMinor) =>
+        `https://cdn.mysql.com/Downloads/MySQL-${majorMinor}/mysql-${name}-winx64.zip`,
+    );
   },
 
-  async mariadb() {
-    const res = await fetch("https://downloads.mariadb.org/rest-api/mariadb/");
-    const data = await res.json();
-    const versions = {};
-    if (!data.major_releases) return versions;
-
-    for (const r of data.major_releases) {
-      if (r.release_status !== "Preview") {
-        const majorRes = await fetch(
-          `https://downloads.mariadb.org/rest-api/mariadb/${r.release_id}`,
-        );
-        const majorData = await majorRes.json();
-        if (!majorData.releases) continue;
-
-        for (const [releaseVer, details] of Object.entries(
-          majorData.releases,
-        )) {
-          for (const file of details.files || []) {
-            if (file.file_name.endsWith("-winx64.zip")) {
-              versions[releaseVer] = file.file_download_url;
-              break;
-            }
-          }
-        }
-      }
-    }
-    return versions;
+  mariadb() {
+    return fetchMariadbReleases((f) => f.file_name?.endsWith("-winx64.zip"));
   },
 
   async mongodb() {
@@ -177,7 +229,7 @@ const fetchersWindows = {
     const res = await fetch("https://www.apachelounge.com/download/");
     const html = await res.text();
     const regex =
-      /href="([^"]*?\/binaries\/httpd-([\d.]+)-[\d]+-win64-.*?\.zip)"/gi;
+      /href="([^"]*?\/binaries\/httpd-([\d.]+)-\d+-win64-.*?\.zip)"/gi;
     const versions = {};
     for (const m of html.matchAll(regex)) {
       versions[m[2]] = m[1].startsWith("http")
@@ -248,51 +300,23 @@ const fetchersWindows = {
     return versions;
   },
 
-  async elasticsearch() {
-    const res = await fetch(
-      `https://api.github.com/repos/elastic/elasticsearch/tags`,
-      {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "Ponta-Update",
-        },
-      },
+  elasticsearch() {
+    return fetchElasticsearchReleases(
+      (ver) =>
+        `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-windows-x86_64.zip`,
     );
-    const data = await res.json();
-    const versions = {};
-    if (!Array.isArray(data)) return {};
-
-    data.forEach((t) => {
-      const ver = t.name.replace(/^v/i, "");
-      const parts = ver.split(".").map(Number);
-      if (parts[0] >= 8) {
-        versions[ver] =
-          `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-windows-x86_64.zip`;
-      }
-    });
-    return versions;
   },
 };
 
 // === CÁC HÀM FETCH DỮ LIỆU LINUX ===
 
 const fetchersLinux = {
-  async nodejs() {
-    const res = await fetch("https://nodejs.org/download/release/index.json");
-    const data = await res.json();
-    const versions = {};
-    const ltsLabels = {};
-    data
-      .filter((v) => parseInt(v.version.replace("v", "").split(".")[0]) >= 18)
-      .forEach((v) => {
-        const ver = v.version.replace("v", "");
-        versions[ver] =
-          `https://nodejs.org/dist/v${ver}/node-v${ver}-linux-x64.tar.gz`;
-        if (v.lts) {
-          ltsLabels[ver] = typeof v.lts === "string" ? v.lts : "LTS";
-        }
-      });
-    return { versions, ltsLabels };
+  nodejs() {
+    return fetchNodejsReleases({
+      minMajor: 18,
+      urlBuilder: (ver) =>
+        `https://nodejs.org/dist/v${ver}/node-v${ver}-linux-x64.tar.gz`,
+    });
   },
 
   async caddy() {
@@ -345,83 +369,19 @@ const fetchersLinux = {
     return versions;
   },
 
-  async mysql() {
-    const regex = /^(\d+\.\d+\.\d+)$/;
-    const versions = {};
-    for (let p = 1; p <= 3; p++) {
-      const res = await fetch(
-        `https://hub.docker.com/v2/namespaces/library/repositories/mysql/tags?page=${p}&page_size=100`,
-      );
-      const data = await res.json();
-      data.results?.forEach((t) => {
-        if (regex.test(t.name)) {
-          const majorMinor = t.name.split(".").slice(0, 2).join(".");
-          versions[t.name] =
-            `https://cdn.mysql.com/Downloads/MySQL-${majorMinor}/mysql-${t.name}-linux-glibc2.28-x86_64.tar.xz`;
-        }
-      });
-    }
-    return versions;
+  mysql() {
+    return fetchMysqlReleases(
+      (name, majorMinor) =>
+        `https://cdn.mysql.com/Downloads/MySQL-${majorMinor}/mysql-${name}-linux-glibc2.28-x86_64.tar.xz`,
+    );
   },
 
-  async mariadb() {
-    const res = await fetch("https://downloads.mariadb.org/rest-api/mariadb/");
-    const data = await res.json();
-    const versions = {};
-    if (!data.major_releases) return versions;
-
-    for (const r of data.major_releases) {
-      if (r.release_status !== "Preview") {
-        const majorRes = await fetch(
-          `https://downloads.mariadb.org/rest-api/mariadb/${r.release_id}`,
-        );
-        const majorData = await majorRes.json();
-        if (!majorData.releases) continue;
-
-        for (const [releaseVer, details] of Object.entries(
-          majorData.releases,
-        )) {
-          for (const file of details.files || []) {
-            if (
-              file.file_name.endsWith("-linux-systemd-x86_64.tar.gz") ||
-              file.file_name.endsWith("-linux-x86_64.tar.gz")
-            ) {
-              versions[releaseVer] = file.file_download_url;
-              break;
-            }
-          }
-        }
-      }
-    }
-    return versions;
-  },
-
-  async redis() {
-    // Valkey official prebuilt Linux binary tarballs from download.valkey.io
-    // Using {distro} placeholder so DevStack automatically resolves to the host's codename (noble/jammy/focal)
-    const versions = {};
-    const candidateVersions = [
-      "9.1.1", "9.1.0", "9.0.5", "9.0.4", "9.0.0",
-      "8.1.9", "8.1.8", "8.1.7", "8.1.0",
-      "8.0.3", "8.0.2", "8.0.1", "8.0.0",
-      "7.2.7", "7.2.6", "7.2.5", "7.2.4"
-    ];
-
-    for (const ver of candidateVersions) {
-      // Test availability against jammy/noble/focal
-      for (const d of ["jammy", "noble", "focal"]) {
-        const url = `https://download.valkey.io/releases/valkey-${ver}-${d}-x86_64.tar.gz`;
-        try {
-          const res = await fetch(url, { method: "HEAD" });
-          if (res.status === 200) {
-            // Emit template URL with {distro} placeholder
-            versions[ver] = `https://download.valkey.io/releases/valkey-${ver}-{distro}-x86_64.tar.gz`;
-            break;
-          }
-        } catch (_) {}
-      }
-    }
-    return versions;
+  mariadb() {
+    return fetchMariadbReleases(
+      (f) =>
+        f.file_name?.endsWith("-linux-systemd-x86_64.tar.gz") ||
+        f.file_name?.endsWith("-linux-x86_64.tar.gz"),
+    );
   },
 
   async mongodb() {
@@ -447,25 +407,6 @@ const fetchersLinux = {
           "-{mongo_distro}-",
         );
       }
-    });
-    return versions;
-  },
-
-  async postgresql() {
-    const res = await fetch(
-      "https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/maven-metadata.xml",
-    );
-    const xml = await res.text();
-    const matches = [...xml.matchAll(/<version>(.*?)<\/version>/g)].map(
-      (m) => m[1],
-    );
-    const versions = {};
-    matches.forEach((ver) => {
-      // Version e.g. 17.2.0 -> key 17.2 or 17.2.0
-      const parts = ver.split(".");
-      const key = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : ver;
-      versions[key] =
-        `https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/${ver}/embedded-postgres-binaries-linux-amd64-${ver}.jar`;
     });
     return versions;
   },
@@ -524,176 +465,175 @@ const fetchersLinux = {
     return versions;
   },
 
-  async elasticsearch() {
-    const res = await fetch(
-      `https://api.github.com/repos/elastic/elasticsearch/tags`,
-      {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "Ponta-Update",
-        },
-      },
+  elasticsearch() {
+    return fetchElasticsearchReleases(
+      (ver) =>
+        `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-linux-x86_64.tar.gz`,
     );
-    const data = await res.json();
-    const versions = {};
-    if (!Array.isArray(data)) return {};
-
-    data.forEach((t) => {
-      const ver = t.name.replace(/^v/i, "");
-      const parts = ver.split(".").map(Number);
-      if (parts[0] >= 8) {
-        versions[ver] =
-          `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ver}-linux-x86_64.tar.gz`;
-      }
-    });
-    return versions;
   },
 };
 
-// === CẤU TRÚC DANH MỤC GỐC WINDOWS ===
+// === CẤU TRÚC DANH MỤC GỐC WINDOWS & LINUX ===
 
-let baseWindowsApps = [
-  {
+const PHP_VERSIONS = ["8.5", "8.4", "8.3", "8.2"];
+
+function createWindowsPhpApps(versions) {
+  return versions.map((ver) => ({
+    id: `php${ver.replace(".", "")}`,
+    name: `PHP ${ver}`,
+    description: `Hypertext Preprocessor v${ver}`,
+    category: "runtime",
+    group_name: "php",
+    exec_file: "php-cgi.exe",
+    cli_file: "php.exe",
+    prefix: ver,
+  }));
+}
+
+function createServicePackageManagerCommands({
+  debPackage,
+  debServiceName = debPackage,
+  rpmPackage,
+  rpmServiceName = rpmPackage,
+}) {
+  return {
+    ubuntu: [
+      "sudo apt-get update",
+      `sudo apt-get install -y ${debPackage}`,
+      `sudo systemctl disable --now ${debServiceName}`,
+    ],
+    debian: [
+      "sudo apt-get update",
+      `sudo apt-get install -y ${debPackage}`,
+      `sudo systemctl disable --now ${debServiceName}`,
+    ],
+    centos: [
+      `sudo dnf install -y ${rpmPackage}`,
+      `sudo systemctl disable --now ${rpmServiceName}`,
+    ],
+  };
+}
+
+function createLinuxPhpApps(versions) {
+  return versions.map((ver) => ({
+    id: `php${ver.replace(".", "")}`,
+    name: `PHP ${ver}`,
+    description: `Hypertext Preprocessor v${ver}`,
+    category: "runtime",
+    group_name: "php",
+    exec_file: `php-fpm${ver}`,
+    cli_file: `php${ver}`,
+    prefix: ver,
+    install_method: "package_manager",
+    package_manager_commands: {
+      ubuntu: [
+        "sudo apt-get update",
+        "sudo apt-get install -y software-properties-common",
+        "sudo add-apt-repository -y ppa:ondrej/php",
+        "sudo apt-get update",
+        `sudo apt-get install -y php${ver}-fpm php${ver}-cli php${ver}-common php${ver}-curl php${ver}-mbstring php${ver}-mysql php${ver}-xml php${ver}-zip`,
+        `sudo systemctl disable --now php${ver}-fpm`,
+      ],
+      debian: [
+        "sudo apt-get update",
+        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
+        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
+        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
+        'echo "deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main" | sudo tee /etc/apt/sources.list.d/php.list',
+        "sudo apt-get update",
+        `sudo apt-get install -y php${ver}-fpm php${ver}-cli php${ver}-common php${ver}-curl php${ver}-mbstring php${ver}-mysql php${ver}-xml php${ver}-zip`,
+        `sudo systemctl disable --now php${ver}-fpm`,
+      ],
+      centos: [
+        "sudo dnf install -y epel-release",
+        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
+        "sudo dnf module reset -y php",
+        `sudo dnf module enable -y php:remi-${ver}`,
+        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
+        "sudo systemctl disable --now php-fpm",
+      ],
+    },
+    versions: {
+      [ver]: "package_manager",
+    },
+  }));
+}
+
+const COMMON_APP_DEFINITIONS = {
+  pyenv: {
     id: "pyenv",
     name: "pyenv",
     description: "Python version management tool.",
     category: "runtime",
     group_name: "python",
     exec_file: null,
-    cli_file: "pyenv.bat",
-    versions: {
-      latest: "https://github.com/pyenv-win/pyenv-win/archive/master.zip",
-    },
   },
-  {
+  nodejs: {
     id: "nodejs",
     name: "Node.js",
     description: "JavaScript runtime built on Chrome's V8 engine.",
     category: "runtime",
     group_name: "nodejs",
-    exec_file: "node.exe",
-    cli_file: "node.exe",
   },
-  {
+  nginx: {
     id: "nginx",
     name: "Nginx",
     description: "Lightweight, less memory, concurrent ability",
     category: "webserver",
     group_name: "webserver",
-    exec_file: "nginx.exe",
-    cli_file: "nginx.exe",
-    repo: "nginx/nginx",
   },
-  {
+  apache: {
     id: "apache",
     name: "Apache",
     description: "World No. 1 web server",
     category: "webserver",
     group_name: "webserver",
-    exec_file: "httpd.exe",
-    cli_file: "httpd.exe",
   },
-  {
+  caddy: {
     id: "caddy",
     name: "Caddy",
     description: "Fast, extensible web server with a simple configuration",
     category: "webserver",
     group_name: "webserver",
-    exec_file: "caddy.exe",
-    cli_file: "caddy.exe",
-    repo: "caddyserver/caddy",
   },
-  {
-    id: "php85",
-    name: "PHP 8.5",
-    description: "Hypertext Preprocessor v8.5",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-cgi.exe",
-    cli_file: "php.exe",
-    prefix: "8.5",
-  },
-  {
-    id: "php84",
-    name: "PHP 8.4",
-    description: "Hypertext Preprocessor v8.4",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-cgi.exe",
-    cli_file: "php.exe",
-    prefix: "8.4",
-  },
-  {
-    id: "php83",
-    name: "PHP 8.3",
-    description: "Hypertext Preprocessor v8.3",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-cgi.exe",
-    cli_file: "php.exe",
-    prefix: "8.3",
-  },
-  {
-    id: "php82",
-    name: "PHP 8.2",
-    description: "Hypertext Preprocessor v8.2",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php-cgi.exe",
-    cli_file: "php.exe",
-    prefix: "8.2",
-  },
-  {
+  mysql: {
     id: "mysql",
     name: "MySQL",
     description: "MySQL Community Server",
     category: "database",
     group_name: "database",
-    exec_file: "mysqld.exe",
-    cli_file: "mysql.exe",
     default_username: "root",
     default_password: "",
   },
-  {
+  mariadb: {
     id: "mariadb",
     name: "MariaDB",
     description: "MariaDB Database Server",
     category: "database",
     group_name: "database",
-    exec_file: "mariadbd.exe",
-    cli_file: "mariadb.exe",
     default_username: "root",
     default_password: "",
   },
-  {
+  redis: {
     id: "redis",
-    name: "Redis",
-    description: "In-memory data structure store.",
     category: "database",
     group_name: "redis",
-    exec_file: "redis-server.exe",
-    cli_file: "redis-cli.exe",
-    repo: "zkteco-home/redis-windows",
   },
-  {
+  mongodb: {
     id: "mongodb",
     name: "MongoDB",
     description: "NoSQL document-oriented database.",
     category: "database",
     group_name: "database",
-    exec_file: "mongod.exe",
-    cli_file: "mongos.exe",
   },
-  {
+  postgresql: {
     id: "postgresql",
     name: "PostgreSQL",
     description: "Advanced open source relational database.",
     category: "database",
     group_name: "database",
-    exec_file: "postgres.exe",
-    cli_file: "psql.exe",
   },
-  {
+  phpMyAdmin: {
     id: "phpMyAdmin",
     name: "phpMyAdmin",
     description: "Web interface for MySQL and MariaDB.",
@@ -701,6 +641,127 @@ let baseWindowsApps = [
     group_name: "database",
     exec_file: "index.php",
     cli_file: "index.php",
+  },
+  rustfs: {
+    id: "rustfs",
+    name: "RustFS",
+    description: "High-performance S3-compatible object storage server.",
+    category: "storage",
+    group_name: "storage",
+    default_username: "rustfsadmin",
+    default_password: "rustfsadmin",
+    repo: "rustfs/rustfs",
+    includePrereleases: true,
+  },
+  meilisearch: {
+    id: "meilisearch",
+    name: "Meilisearch",
+    description: "A lightning-fast, open-source search engine.",
+    category: "database",
+    group_name: "meilisearch",
+  },
+  elasticsearch: {
+    id: "elasticsearch",
+    name: "Elasticsearch",
+    description: "Distributed, RESTful search and analytics engine.",
+    category: "database",
+    group_name: "elasticsearch",
+    default_username: "elastic",
+  },
+};
+
+function makeBinaryApp(base, execFile, cliFile, extra = {}) {
+  const result = {
+    id: base.id,
+    name: extra.name || base.name,
+    description: extra.description || base.description,
+    category: base.category,
+    group_name: base.group_name,
+    exec_file: execFile,
+    cli_file: cliFile,
+  };
+  if (base.default_username !== undefined) {
+    result.default_username = base.default_username;
+  }
+  if (base.default_password !== undefined) {
+    result.default_password = base.default_password;
+  }
+  if (extra.repo || base.repo) {
+    result.repo = extra.repo || base.repo;
+  }
+  if (base.includePrereleases !== undefined) {
+    result.includePrereleases = base.includePrereleases;
+  }
+  return result;
+}
+
+function makeLinuxPackageManagerApp(
+  base,
+  {
+    execFile,
+    cliFile,
+    debPackage,
+    debServiceName,
+    rpmPackage,
+    rpmServiceName,
+    name,
+    description,
+  },
+) {
+  return {
+    id: base.id,
+    name: name || base.name,
+    description: description || base.description,
+    category: base.category,
+    group_name: base.group_name,
+    exec_file: execFile,
+    cli_file: cliFile,
+    install_method: "package_manager",
+    package_manager_commands: createServicePackageManagerCommands({
+      debPackage,
+      debServiceName,
+      rpmPackage,
+      rpmServiceName,
+    }),
+    versions: {
+      system: "package_manager",
+    },
+  };
+}
+
+const baseWindowsApps = [
+  {
+    ...COMMON_APP_DEFINITIONS.pyenv,
+    cli_file: "pyenv.bat",
+    versions: {
+      latest: "https://github.com/pyenv-win/pyenv-win/archive/master.zip",
+    },
+  },
+  makeBinaryApp(COMMON_APP_DEFINITIONS.nodejs, "node.exe", "node.exe"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.nginx, "nginx.exe", "nginx.exe", {
+    repo: "nginx/nginx",
+  }),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.apache, "httpd.exe", "httpd.exe"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.caddy, "caddy.exe", "caddy.exe", {
+    repo: "caddyserver/caddy",
+  }),
+  ...createWindowsPhpApps(PHP_VERSIONS),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mysql, "mysqld.exe", "mysql.exe"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mariadb, "mariadbd.exe", "mariadb.exe"),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.redis,
+    "redis-server.exe",
+    "redis-cli.exe",
+    {
+      name: "Redis",
+      description: "In-memory data structure store.",
+      repo: "zkteco-home/redis-windows",
+    },
+  ),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mongodb, "mongod.exe", "mongos.exe"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.postgresql, "postgres.exe", "psql.exe"),
+  {
+    ...COMMON_APP_DEFINITIONS.phpMyAdmin,
     versions: {
       latest:
         "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip",
@@ -731,296 +792,62 @@ let baseWindowsApps = [
     cli_file: "MongoDBCompass.exe",
     repo: "mongodb-js/compass",
   },
-  {
-    id: "rustfs",
-    name: "RustFS",
-    description: "High-performance S3-compatible object storage server.",
-    category: "storage",
-    group_name: "storage",
-    exec_file: "rustfs.exe",
-    cli_file: "rustfs.exe",
-    default_username: "rustfsadmin",
-    default_password: "rustfsadmin",
-    repo: "rustfs/rustfs",
-    includePrereleases: true,
-  },
-  {
-    id: "meilisearch",
-    name: "Meilisearch",
-    description: "A lightning-fast, open-source search engine.",
-    category: "database",
-    group_name: "meilisearch",
-    exec_file: "meilisearch.exe",
-    cli_file: "meilisearch.exe",
-    repo: "meilisearch/meilisearch",
-  },
-  {
-    id: "elasticsearch",
-    name: "Elasticsearch",
-    description: "Distributed, RESTful search and analytics engine.",
-    category: "database",
-    group_name: "elasticsearch",
-    exec_file: "elasticsearch.bat",
-    cli_file: "elasticsearch.bat",
-    default_username: "elastic",
-  },
+  makeBinaryApp(COMMON_APP_DEFINITIONS.rustfs, "rustfs.exe", "rustfs.exe"),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.meilisearch,
+    "meilisearch.exe",
+    "meilisearch.exe",
+    {
+      repo: "meilisearch/meilisearch",
+    },
+  ),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.elasticsearch,
+    "elasticsearch.bat",
+    "elasticsearch.bat",
+  ),
 ];
 
-// === CẤU TRÚC DANH MỤC GỐC LINUX ===
-
-let baseLinuxApps = [
+const baseLinuxApps = [
   {
-    id: "pyenv",
-    name: "pyenv",
-    description: "Python version management tool.",
-    category: "runtime",
-    group_name: "python",
-    exec_file: null,
+    ...COMMON_APP_DEFINITIONS.pyenv,
     cli_file: "pyenv",
     versions: {
-      latest: "https://github.com/pyenv/pyenv/archive/refs/heads/master.tar.gz",
+      latest:
+        "https://github.com/pyenv/pyenv/archive/refs/heads/master.tar.gz",
     },
   },
+  makeBinaryApp(COMMON_APP_DEFINITIONS.nodejs, "node", "node"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.caddy, "caddy", "caddy"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.nginx, "nginx", "nginx"),
+  makeLinuxPackageManagerApp(COMMON_APP_DEFINITIONS.apache, {
+    execFile: "apache2",
+    cliFile: "apache2",
+    debPackage: "apache2",
+    rpmPackage: "httpd",
+  }),
+  ...createLinuxPhpApps(PHP_VERSIONS),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mysql, "mysqld", "mysql"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mariadb, "mariadbd", "mariadb"),
+  makeLinuxPackageManagerApp(COMMON_APP_DEFINITIONS.redis, {
+    name: "Redis",
+    description: "High-performance in-memory data structure store.",
+    execFile: "redis-server",
+    cliFile: "redis-cli",
+    debPackage: "redis-server",
+    rpmPackage: "redis",
+  }),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.mongodb, "mongod", "mongos"),
+  makeLinuxPackageManagerApp(COMMON_APP_DEFINITIONS.postgresql, {
+    execFile: "postgres",
+    cliFile: "psql",
+    debPackage: "postgresql postgresql-contrib",
+    debServiceName: "postgresql",
+    rpmPackage: "postgresql-server postgresql-contrib",
+    rpmServiceName: "postgresql",
+  }),
   {
-    id: "nodejs",
-    name: "Node.js",
-    description: "JavaScript runtime built on Chrome's V8 engine.",
-    category: "runtime",
-    group_name: "nodejs",
-    exec_file: "node",
-    cli_file: "node",
-  },
-  {
-    id: "caddy",
-    name: "Caddy",
-    description: "Fast, extensible web server with a simple configuration",
-    category: "webserver",
-    group_name: "webserver",
-    exec_file: "caddy",
-    cli_file: "caddy",
-  },
-  {
-    id: "nginx",
-    name: "Nginx",
-    description: "Lightweight, less memory, concurrent ability",
-    category: "webserver",
-    group_name: "webserver",
-    exec_file: "nginx",
-    cli_file: "nginx",
-  },
-  {
-    id: "php85",
-    name: "PHP 8.5",
-    description: "Hypertext Preprocessor v8.5",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php8.5",
-    cli_file: "php8.5",
-    prefix: "8.5",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common",
-        "sudo add-apt-repository -y ppa:ondrej/php",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-        "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip",
-      ],
-      centos: [
-        "sudo dnf install -y epel-release",
-        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-        "sudo dnf module reset -y php",
-        "sudo dnf module enable -y php:remi-8.5",
-        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-      ],
-    },
-    versions: {
-      "8.5": "package_manager",
-    },
-  },
-  {
-    id: "php84",
-    name: "PHP 8.4",
-    description: "Hypertext Preprocessor v8.4",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php8.4",
-    cli_file: "php8.4",
-    prefix: "8.4",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common",
-        "sudo add-apt-repository -y ppa:ondrej/php",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-        "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip",
-      ],
-      centos: [
-        "sudo dnf install -y epel-release",
-        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-        "sudo dnf module reset -y php",
-        "sudo dnf module enable -y php:remi-8.4",
-        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-      ],
-    },
-    versions: {
-      "8.4": "package_manager",
-    },
-  },
-  {
-    id: "php83",
-    name: "PHP 8.3",
-    description: "Hypertext Preprocessor v8.3",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php8.3",
-    cli_file: "php8.3",
-    prefix: "8.3",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common",
-        "sudo add-apt-repository -y ppa:ondrej/php",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-        "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip",
-      ],
-      centos: [
-        "sudo dnf install -y epel-release",
-        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-        "sudo dnf module reset -y php",
-        "sudo dnf module enable -y php:remi-8.3",
-        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-      ],
-    },
-    versions: {
-      "8.3": "package_manager",
-    },
-  },
-  {
-    id: "php82",
-    name: "PHP 8.2",
-    description: "Hypertext Preprocessor v8.2",
-    category: "runtime",
-    group_name: "php",
-    exec_file: "php8.2",
-    cli_file: "php8.2",
-    prefix: "8.2",
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common",
-        "sudo add-apt-repository -y ppa:ondrej/php",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip",
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-        "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-        "sudo apt-get update",
-        "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip",
-      ],
-      centos: [
-        "sudo dnf install -y epel-release",
-        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-        "sudo dnf module reset -y php",
-        "sudo dnf module enable -y php:remi-8.2",
-        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-      ],
-    },
-    versions: {
-      "8.2": "package_manager",
-    },
-  },
-  {
-    id: "mysql",
-    name: "MySQL",
-    description: "MySQL Community Server",
-    category: "database",
-    group_name: "database",
-    exec_file: "mysqld",
-    cli_file: "mysql",
-    default_username: "root",
-    default_password: "",
-  },
-  {
-    id: "mariadb",
-    name: "MariaDB",
-    description: "MariaDB Database Server",
-    category: "database",
-    group_name: "database",
-    exec_file: "mariadbd",
-    cli_file: "mariadb",
-    default_username: "root",
-    default_password: "",
-  },
-  {
-    id: "redis",
-    name: "Redis (Valkey)",
-    description: "High-performance in-memory data structure store (Valkey engine).",
-    category: "database",
-    group_name: "redis",
-    exec_file: "valkey-server",
-    cli_file: "valkey-cli",
-  },
-  {
-    id: "mongodb",
-    name: "MongoDB",
-    description: "NoSQL document-oriented database.",
-    category: "database",
-    group_name: "database",
-    exec_file: "mongod",
-    cli_file: "mongos",
-  },
-  {
-    id: "postgresql",
-    name: "PostgreSQL",
-    description: "Advanced open source relational database.",
-    category: "database",
-    group_name: "database",
-    exec_file: "postgres",
-    cli_file: "psql",
-  },
-  {
-    id: "phpMyAdmin",
-    name: "phpMyAdmin",
-    description: "Web interface for MySQL and MariaDB.",
-    category: "tool",
-    group_name: "database",
-    exec_file: "index.php",
-    cli_file: "index.php",
+    ...COMMON_APP_DEFINITIONS.phpMyAdmin,
     versions: {
       latest:
         "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip",
@@ -1028,41 +855,97 @@ let baseLinuxApps = [
         "https://files.phpmyadmin.net/phpMyAdmin/5.2.2/phpMyAdmin-5.2.2-all-languages.zip",
     },
   },
-  {
-    id: "rustfs",
-    name: "RustFS",
-    description: "High-performance S3-compatible object storage server.",
-    category: "storage",
-    group_name: "storage",
-    exec_file: "rustfs",
-    cli_file: "rustfs",
-    default_username: "rustfsadmin",
-    default_password: "rustfsadmin",
-    repo: "rustfs/rustfs",
-    includePrereleases: true,
-  },
-  {
-    id: "meilisearch",
-    name: "Meilisearch",
-    description: "A lightning-fast, open-source search engine.",
-    category: "database",
-    group_name: "meilisearch",
-    exec_file: "meilisearch",
-    cli_file: "meilisearch",
-  },
-  {
-    id: "elasticsearch",
-    name: "Elasticsearch",
-    description: "Distributed, RESTful search and analytics engine.",
-    category: "database",
-    group_name: "elasticsearch",
-    exec_file: "elasticsearch",
-    cli_file: "elasticsearch",
-    default_username: "elastic",
-  },
+  makeBinaryApp(COMMON_APP_DEFINITIONS.rustfs, "rustfs", "rustfs"),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.meilisearch,
+    "meilisearch",
+    "meilisearch",
+  ),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.elasticsearch,
+    "elasticsearch",
+    "elasticsearch",
+  ),
 ];
 
 // === HÀM THỰC THI CHÍNH ===
+
+async function loadExistingCatalog(outputPath, existingPath) {
+  try {
+    return JSON.parse(await fs.readFile(outputPath, "utf8"));
+  } catch (_) {
+    // Primary output file not found or unreadable; fall back to existing template.
+    try {
+      return JSON.parse(await fs.readFile(existingPath, "utf8"));
+    } catch (_ignored) {
+      // Existing catalog file may not exist yet on initial run; safe to ignore.
+      return null;
+    }
+  }
+}
+
+async function fetchAppVersions(app, fetchers, platformName) {
+  try {
+    if (fetchers[app.id]) {
+      return await fetchers[app.id]();
+    }
+    if (app.prefix && fetchers.php) {
+      return await fetchers.php(app.prefix);
+    }
+    if (app.repo && fetchers.github) {
+      return await fetchers.github(app.repo, {
+        includePrereleases: app.includePrereleases,
+      });
+    }
+  } catch (err) {
+    console.error(
+      `[${platformName}] Lỗi khi lấy dữ liệu cho ${app.name}:`,
+      err.message,
+    );
+  }
+  return null;
+}
+
+function applyFetchedVersions(app, fetchedResult) {
+  if (!fetchedResult) return;
+
+  if (app.id === "nodejs" && fetchedResult.versions) {
+    app.versions = sortVersionsObject(fetchedResult.versions);
+    if (
+      fetchedResult.ltsLabels &&
+      Object.keys(fetchedResult.ltsLabels).length > 0
+    ) {
+      app.lts_labels = fetchedResult.ltsLabels;
+    }
+    return;
+  }
+
+  if (
+    typeof fetchedResult === "object" &&
+    Object.keys(fetchedResult).length > 0
+  ) {
+    app.versions = sortVersionsObject(fetchedResult);
+  }
+}
+
+function applyFallbackVersions(app, oldData) {
+  if (
+    app.install_method === "package_manager" &&
+    app.package_manager_commands
+  ) {
+    return;
+  }
+
+  if (!app.versions || Object.keys(app.versions).length === 0) {
+    const oldApp = oldData?.apps?.find((a) => a.id === app.id);
+    if (oldApp?.versions) {
+      app.versions = oldApp.versions;
+      if (oldApp.lts_labels) {
+        app.lts_labels = oldApp.lts_labels;
+      }
+    }
+  }
+}
 
 async function updatePlatformCatalog({
   platformName,
@@ -1078,69 +961,20 @@ async function updatePlatformCatalog({
     `[${new Date().toLocaleString()}] [${platformName}] Bắt đầu cập nhật dữ liệu...`,
   );
 
-  let oldData = null;
-  try {
-    oldData = JSON.parse(await fs.readFile(outputPath, "utf8"));
-  } catch (e) {
-    try {
-      oldData = JSON.parse(await fs.readFile(existingPath, "utf8"));
-    } catch (_) {}
-  }
-
+  const oldData = await loadExistingCatalog(outputPath, existingPath);
   const catalogObject = {
     version: "1.1.0",
     lastUpdated: "",
-    apps: JSON.parse(JSON.stringify(baseApps)),
+    apps: structuredClone(baseApps),
   };
 
-  const tasks = catalogObject.apps.map(async (app) => {
-    try {
-      let v;
-      if (fetchers[app.id]) {
-        v = await fetchers[app.id]();
-      } else if (app.prefix && fetchers.php) {
-        v = await fetchers.php(app.prefix);
-      } else if (app.repo && fetchers.github) {
-        v = await fetchers.github(app.repo, {
-          includePrereleases: app.includePrereleases,
-        });
-      }
-
-      if (v) {
-        if (app.id === "nodejs" && v.versions) {
-          app.versions = sortVersionsObject(v.versions);
-          if (v.ltsLabels && Object.keys(v.ltsLabels).length > 0) {
-            app.lts_labels = v.ltsLabels;
-          }
-        } else if (typeof v === "object" && Object.keys(v).length > 0) {
-          app.versions = sortVersionsObject(v);
-        }
-      }
-    } catch (err) {
-      console.error(
-        `[${platformName}] Lỗi khi lấy dữ liệu cho ${app.name}:`,
-        err.message,
-      );
-    }
-
-    // Giữ lại dữ liệu cũ nếu fetch không có kết quả mới hoặc lỗi
-    if (!app.versions || Object.keys(app.versions).length === 0) {
-      const oldApp = oldData?.apps?.find((a) => a.id === app.id);
-      if (oldApp && oldApp.versions) {
-        app.versions = oldApp.versions;
-        if (oldApp.lts_labels) app.lts_labels = oldApp.lts_labels;
-      }
-    }
-
-    // For PHP apps with package_manager install method, skip version fetching
-    // and preserve the static versions object
-    if (app.install_method === "package_manager" && app.package_manager_commands) {
-      // Keep the versions as defined in baseApps (e.g., {"8.5": "package_manager"})
-      // Don't overwrite with fetched versions
-    }
-  });
-
-  await Promise.all(tasks);
+  await Promise.all(
+    catalogObject.apps.map(async (app) => {
+      const fetched = await fetchAppVersions(app, fetchers, platformName);
+      applyFetchedVersions(app, fetched);
+      applyFallbackVersions(app, oldData);
+    }),
+  );
 
   const hasChanged =
     JSON.stringify(catalogObject.apps) !== JSON.stringify(oldData?.apps);
@@ -1162,28 +996,24 @@ async function updatePlatformCatalog({
   }
 }
 
-async function main() {
-  try {
-    // 1. Cập nhật Windows Catalog (new-apps.json)
-    await updatePlatformCatalog({
-      platformName: "Windows",
-      baseApps: baseWindowsApps,
-      fetchers: fetchersWindows,
-      outputFileName: "new-apps.json",
-      existingFileName: "apps.json",
-    });
+try {
+  // 1. Cập nhật Windows Catalog (new-apps.json)
+  await updatePlatformCatalog({
+    platformName: "Windows",
+    baseApps: baseWindowsApps,
+    fetchers: fetchersWindows,
+    outputFileName: "new-apps.json",
+    existingFileName: "apps.json",
+  });
 
-    // 2. Cập nhật Linux Catalog (new-apps-linux.json)
-    await updatePlatformCatalog({
-      platformName: "Linux",
-      baseApps: baseLinuxApps,
-      fetchers: fetchersLinux,
-      outputFileName: "new-apps-linux.json",
-      existingFileName: "apps-linux.json",
-    });
-  } catch (error) {
-    console.error("Lỗi cập nhật tổng thể:", error);
-  }
+  // 2. Cập nhật Linux Catalog (new-apps-linux.json)
+  await updatePlatformCatalog({
+    platformName: "Linux",
+    baseApps: baseLinuxApps,
+    fetchers: fetchersLinux,
+    outputFileName: "new-apps-linux.json",
+    existingFileName: "apps-linux.json",
+  });
+} catch (error) {
+  console.error("Lỗi cập nhật tổng thể:", error);
 }
-
-main();

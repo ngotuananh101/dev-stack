@@ -253,15 +253,21 @@ class AppServiceManager {
         'nginx',
         'httpd',
         'apache',
+        'apache2',
         'caddy',
       }.contains(normalizeExecutableName(fileName));
 
   @visibleForTesting
   static List<String> argumentsForExecutable(
     String fileName,
-    String workingDir,
-  ) {
+    String workingDir, {
+    String? appId,
+    String? installedVersion,
+    bool? isLinux,
+  }) {
     final name = normalizeExecutableName(fileName);
+    final onLinux = isLinux ?? Platform.isLinux;
+
     if (name == 'caddy') {
       return [
         'run',
@@ -276,18 +282,58 @@ class AppServiceManager {
       final conf = p.join(workingDir, 'conf', 'nginx.conf').replaceAll('\\', '/');
       return ['-p', '$prefix/', '-c', conf];
     }
+    if (onLinux && (name == 'apache2' || name == 'httpd')) {
+      final conf = p.join(AppConfig.vhostsDir, 'apache', 'httpd.conf');
+      return ['-DFOREGROUND', '-f', conf];
+    }
+    if (name == 'redis-server' || name == 'valkey-server') {
+      final candidates = [
+        p.join(AppConfig.dataDir, 'redis', 'redis.conf'),
+        p.join(workingDir, 'valkey.conf'),
+        p.join(workingDir, 'redis.conf'),
+        p.join(workingDir, 'redis.windows.conf'),
+      ];
+      for (final confPath in candidates) {
+        if (File(confPath).existsSync()) {
+          return [confPath];
+        }
+      }
+      return [p.join(AppConfig.dataDir, 'redis', 'redis.conf')];
+    }
+    if (name.startsWith('php-fpm')) {
+      final targetAppId = appId ?? 'php82';
+      final conf = p.join(AppConfig.baseDir, 'php', targetAppId, 'php-fpm.conf');
+      return ['-F', '-y', conf];
+    }
+    if (name == 'postgres') {
+      final ver = installedVersion ?? 'system';
+      final targetId = appId ?? 'postgresql';
+      final dataDir = p.join(AppConfig.dataDir, '$targetId-$ver');
+      return ['-D', dataDir];
+    }
     return <String>[];
   }
 
   @visibleForTesting
   static List<({String host, int port})> requiredSocketsForExecutable(
-    String fileName,
-  ) {
+    String fileName, {
+    String? appId,
+  }) {
     final name = normalizeExecutableName(fileName);
-    if (name != 'caddy' && name != 'nginx' && name != 'httpd' && name != 'apache') {
-      return const [];
+    if (name == 'caddy' || name == 'nginx' || name == 'httpd' || name == 'apache' || name == 'apache2') {
+      return [(host: '*', port: 80), (host: '*', port: 443)];
     }
-    return [(host: '*', port: 80), (host: '*', port: 443)];
+    if (name == 'redis-server' || name == 'valkey-server') {
+      return [(host: '127.0.0.1', port: 6379)];
+    }
+    if (name == 'postgres') {
+      return [(host: '127.0.0.1', port: 5432)];
+    }
+    if (name.startsWith('php-fpm') && appId != null) {
+      final port = AppInstallerService.phpPortFor(appId);
+      return [(host: '127.0.0.1', port: port)];
+    }
+    return const [];
   }
 
   void syncAppState(AppModel newApp) {
@@ -302,12 +348,6 @@ class AppServiceManager {
 
   Future<void> start(AppModel app, {VoidCallback? onStatusChange}) async {
     if (isRunning(app.appId)) return;
-
-    // Special handling for package_manager PHP (uses systemctl for PHP-FPM)
-    if (app.installMethod == 'package_manager' && app.groupName == 'php') {
-      await _startPhpFpmViaSystemctl(app, onStatusChange: onStatusChange);
-      return;
-    }
 
     if (app.execFilePath == null) throw Exception('Executable path not found');
 
@@ -327,10 +367,21 @@ class AppServiceManager {
       );
 
       // Specific arguments for certain apps
-      List<String> args = argumentsForExecutable(fileName, workingDir);
+      List<String> args = argumentsForExecutable(
+        fileName,
+        workingDir,
+        appId: app.appId,
+        installedVersion: app.installedVersion,
+      );
 
       // Sockets this service will try to bind, for a pre-flight conflict check.
       final requiredSockets = <({String host, int port})>[];
+
+      final extraSockets = requiredSocketsForExecutable(
+        fileName,
+        appId: app.appId,
+      );
+      requiredSockets.addAll(extraSockets);
 
       Map<String, String>? env;
       if (fileName == 'php-cgi' || fileName == 'php') {
@@ -349,19 +400,6 @@ class AppServiceManager {
           args = ['-b', '$bindAddress:$port'];
         } else {
           args = ['-S', '$bindAddress:$port'];
-        }
-      } else if (fileName == 'redis-server' || fileName == 'valkey-server') {
-        final candidates = [
-          p.join(workingDir, 'valkey.conf'),
-          p.join(workingDir, 'redis.conf'),
-          p.join(workingDir, 'redis.windows.conf'),
-        ];
-        for (final confPath in candidates) {
-          final confFile = File(confPath);
-          if (confFile.existsSync()) {
-            args = [confFile.path];
-            break;
-          }
         }
       } else if (fileName == 'mysqld' || fileName == 'mariadbd') {
         // Force output to console for capturing logs
@@ -452,13 +490,7 @@ class AppServiceManager {
       } else if (fileName == 'elasticsearch') {
         // No special environment or args needed anymore as we edit the config in the app dir
         // but still point data to our managed data dir inside the yml.
-      } else if (fileName == 'postgres') {
-        final version = app.installedVersion ?? 'unknown';
-        final dataDir = p.join(AppConfig.dataDir, '${app.appId}-$version');
-        args = ['-D', dataDir];
       }
-
-      requiredSockets.addAll(requiredSocketsForExecutable(fileName));
 
       final runsDetached = runsDetachedExecutable(fileName);
 
@@ -562,12 +594,6 @@ class AppServiceManager {
     if (_disposed) return;
     _logger.info('Stopping service: ${app.name}');
     app.serviceStatus = 'stopping';
-
-    // Special handling for package_manager PHP (uses systemctl for PHP-FPM)
-    if (app.installMethod == 'package_manager' && app.groupName == 'php') {
-      await _stopPhpFpmViaSystemctl(app);
-      return;
-    }
 
     try {
       final process = _processes[app.appId];
@@ -722,224 +748,5 @@ class AppServiceManager {
         _logger.warning('Failed to kill task $taskName: $e');
       }
     }
-  }
-
-  /// Start PHP-FPM service via systemctl for package_manager installed PHP
-  Future<void> _startPhpFpmViaSystemctl(
-    AppModel app, {
-    VoidCallback? onStatusChange,
-    Future<ProcessResult> Function(String, List<String>)? runProcess,
-    bool? isLinux,
-  }) async {
-    final onLinux = isLinux ?? Platform.isLinux;
-    if (!onLinux) {
-      throw Exception('systemctl is only available on Linux');
-    }
-
-    final runner = runProcess ?? Process.run;
-
-    _logger.info('Starting PHP-FPM via systemctl: ${app.name}');
-    app.serviceStatus = 'starting';
-    app.addServiceLog('Starting PHP-FPM service...');
-
-    try {
-      // Determine service name from app version (php82 -> php8.2-fpm)
-      final serviceName = _phpFpmServiceName(app.appId);
-      app.addServiceLog('Service name: $serviceName');
-
-      // Start the service (try user service first, then system fallback)
-      bool userStartSucceeded = false;
-      String lastError = '';
-      try {
-        final userResult = await runner('systemctl', ['--user', 'start', serviceName]);
-        if (userResult.exitCode == 0) {
-          userStartSucceeded = true;
-        } else {
-          lastError = userResult.stderr.toString().trim();
-          _logger.warning('systemctl --user start failed: $lastError');
-        }
-      } catch (e) {
-        lastError = e.toString();
-        _logger.warning('systemctl --user start threw exception: $e');
-      }
-
-      bool systemStartSucceeded = false;
-      if (!userStartSucceeded) {
-        try {
-          final sysResult = await runner('systemctl', ['start', serviceName]);
-          if (sysResult.exitCode == 0) {
-            systemStartSucceeded = true;
-          } else {
-            lastError = sysResult.stderr.toString().trim();
-            _logger.warning('systemctl start failed: $lastError');
-          }
-        } catch (e) {
-          lastError = e.toString();
-          _logger.warning('systemctl start threw exception: $e');
-        }
-      }
-
-      if (!userStartSucceeded && !systemStartSucceeded) {
-        app.addServiceLog('Failed to start: $lastError');
-        throw Exception('Failed to start $serviceName: $lastError');
-      }
-
-      final isUserScope = userStartSucceeded;
-      final scopePrefix = isUserScope ? ['--user'] : <String>[];
-
-      // Liveness probe: verify service is actually active
-      final activeResult = await runner('systemctl', [...scopePrefix, 'is-active', serviceName]);
-      final activeStatus = activeResult.stdout.toString().trim();
-      if (activeStatus != 'active') {
-        throw Exception('Service $serviceName failed liveness probe (status: $activeStatus)');
-      }
-
-      app.addServiceLog('Service started successfully');
-
-      // Get service PID
-      final pidResult = await runner(
-        'systemctl',
-        [...scopePrefix, 'show', '--property=MainPID', '--value', serviceName],
-      );
-
-      if (pidResult.exitCode == 0) {
-        final pidStr = pidResult.stdout.toString().trim();
-        final pid = int.tryParse(pidStr);
-        if (pid != null && pid > 0) {
-          app.servicePid = pid;
-          app.addServiceLog('PID: $pid');
-        }
-      }
-
-      app.serviceStatus = 'running';
-      _activeApps[app.appId] = app;
-      onStatusChange?.call();
-
-    } catch (e) {
-      _logger.error('Failed to start PHP-FPM via systemctl: $e');
-      app.addServiceLog('Error: $e');
-      app.serviceStatus = 'stopped';
-      app.servicePid = null;
-      _activeApps.remove(app.appId);
-      rethrow;
-    }
-  }
-
-  /// Stop PHP-FPM service via systemctl for package_manager installed PHP
-  Future<void> _stopPhpFpmViaSystemctl(
-    AppModel app, {
-    Future<ProcessResult> Function(String, List<String>)? runProcess,
-    bool? isLinux,
-  }) async {
-    final onLinux = isLinux ?? Platform.isLinux;
-    if (!onLinux) return;
-
-    final runner = runProcess ?? Process.run;
-
-    _logger.info('Stopping PHP-FPM via systemctl: ${app.name}');
-    app.serviceStatus = 'stopping';
-    app.addServiceLog('Stopping PHP-FPM service...');
-
-    try {
-      final serviceName = _phpFpmServiceName(app.appId);
-
-      // Stop the service (try user service first, then system fallback)
-      bool userStopOk = false;
-      try {
-        final userResult = await runner('systemctl', ['--user', 'stop', serviceName]);
-        if (userResult.exitCode == 0) {
-          userStopOk = true;
-        }
-      } catch (_) {}
-
-      if (!userStopOk) {
-        final sysResult = await runner('systemctl', ['stop', serviceName]);
-        if (sysResult.exitCode != 0) {
-          app.addServiceLog('Warning: ${sysResult.stderr}');
-        } else {
-          app.addServiceLog('Service stopped successfully');
-        }
-      } else {
-        app.addServiceLog('Service stopped successfully');
-      }
-
-    } catch (e) {
-      _logger.warning('Failed to stop PHP-FPM via systemctl: $e');
-      app.addServiceLog('Warning: $e');
-    } finally {
-      app.serviceStatus = 'stopped';
-      app.servicePid = null;
-      _activeApps.remove(app.appId);
-    }
-  }
-
-  /// Check whether PHP-FPM service is currently active via systemctl
-  Future<bool> isPhpFpmRunningViaSystemctl(
-    AppModel app, {
-    Future<ProcessResult> Function(String, List<String>)? runProcess,
-    bool? isLinux,
-  }) async {
-    final onLinux = isLinux ?? Platform.isLinux;
-    if (!onLinux) return false;
-
-    final runner = runProcess ?? Process.run;
-    final serviceName = _phpFpmServiceName(app.appId);
-
-    try {
-      // Check user service first
-      final userResult = await runner('systemctl', ['--user', 'is-active', serviceName]);
-      if (userResult.exitCode == 0 && userResult.stdout.toString().trim() == 'active') {
-        return true;
-      }
-    } catch (_) {}
-
-    try {
-      // Check system service fallback
-      final sysResult = await runner('systemctl', ['is-active', serviceName]);
-      if (sysResult.exitCode == 0 && sysResult.stdout.toString().trim() == 'active') {
-        return true;
-      }
-    } catch (_) {}
-
-    return false;
-  }
-
-  @visibleForTesting
-  Future<void> startPhpFpmViaSystemctlForTesting(
-    AppModel app, {
-    VoidCallback? onStatusChange,
-    Future<ProcessResult> Function(String, List<String>)? runProcess,
-    bool? isLinux,
-  }) => _startPhpFpmViaSystemctl(
-    app,
-    onStatusChange: onStatusChange,
-    runProcess: runProcess,
-    isLinux: isLinux,
-  );
-
-  @visibleForTesting
-  Future<void> stopPhpFpmViaSystemctlForTesting(
-    AppModel app, {
-    Future<ProcessResult> Function(String, List<String>)? runProcess,
-    bool? isLinux,
-  }) => _stopPhpFpmViaSystemctl(
-    app,
-    runProcess: runProcess,
-    isLinux: isLinux,
-  );
-
-  @visibleForTesting
-  String phpFpmServiceNameForTesting(String appId) => _phpFpmServiceName(appId);
-
-  /// Get PHP-FPM service name from app ID (php82 -> php8.2-fpm)
-  String _phpFpmServiceName(String appId) {
-    // php82 -> 82 -> 8.2
-    final version = appId.replaceAll('php', '');
-    if (version.length >= 2) {
-      final major = version.substring(0, 1);
-      final minor = version.substring(1);
-      return 'php$major.$minor-fpm';
-    }
-    return 'php-fpm'; // fallback
   }
 }

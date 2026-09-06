@@ -45,5 +45,9 @@ app.*.map.json
 /android/app/release
 
 # Other 
-.claude
+.vscode/
+.claude/
 innosetup/Output/
+.remember/
+.superpowers/
+/docs/

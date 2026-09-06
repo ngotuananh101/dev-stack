@@ -31,17 +31,17 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.18.0
         with:
           flutter-version: '3.41.9'
           channel: 'stable'
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Run code generation (if needed)
         run: dart run build_runner build --delete-conflicting-outputs
@@ -63,7 +63,7 @@ jobs:
           Write-Host "Created Windows artifact: $zipPath"
 
       - name: Upload Windows (.zip)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dev-stack-windows-x64-zip
           path: dist/dev-stack-windows-x64.zip
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Linux Build Dependencies
         run: |
@@ -93,14 +93,14 @@ jobs:
             zip
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.18.0
         with:
           flutter-version: '3.41.9'
           channel: 'stable'
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Run code generation (if needed)
         run: dart run build_runner build --delete-conflicting-outputs
@@ -150,28 +150,28 @@ jobs:
           chmod +x AppDir/AppRun
 
           # Download and run appimagetool
-          curl -L -o appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          curl --proto "=https" --tlsv1.2 -sSf -L -o appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool
           ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream AppDir dist/dev-stack-linux-x64.AppImage
 
           ls -lh dist/
 
       - name: Upload Linux AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dev-stack-linux-x64-appimage
           path: dist/dev-stack-linux-x64.AppImage
           if-no-files-found: error
 
       - name: Upload Linux tar.gz
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dev-stack-linux-x64-tar
           path: dist/dev-stack-linux-x64.tar.gz
           if-no-files-found: error
 
       - name: Upload Linux zip
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dev-stack-linux-x64-zip
           path: dist/dev-stack-linux-x64.zip
@@ -184,10 +184,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Download all built artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: release-assets
           merge-multiple: true

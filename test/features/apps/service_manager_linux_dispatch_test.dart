@@ -2,6 +2,90 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dev_stack/features/apps/data/app_service_manager.dart';
 
 void main() {
+  group('linux foreground service arguments', () {
+    test('apache2 gets foreground and isolated httpd.conf', () {
+      final args = AppServiceManager.argumentsForExecutable(
+        'apache2',
+        '/usr/sbin',
+        isLinux: true,
+      );
+      expect(args, contains('-DFOREGROUND'));
+      expect(args, contains('-f'));
+      expect(args.last, contains('httpd.conf'));
+    });
+
+    test('httpd also gets foreground and isolated httpd.conf', () {
+      final args = AppServiceManager.argumentsForExecutable(
+        'httpd',
+        '/usr/sbin',
+        isLinux: true,
+      );
+      expect(args, contains('-DFOREGROUND'));
+      expect(args, contains('-f'));
+      expect(args.last, contains('httpd.conf'));
+    });
+
+    test('redis-server receives isolated redis.conf from ~/.ponta/data/redis', () {
+      final args = AppServiceManager.argumentsForExecutable(
+        'redis-server',
+        '/usr/bin',
+        isLinux: true,
+      );
+      expect(args, hasLength(1));
+      expect(args.first, contains('redis.conf'));
+    });
+
+    test('php-fpm receives foreground -F and -y config flags', () {
+      final args = AppServiceManager.argumentsForExecutable(
+        'php-fpm8.2',
+        '/usr/sbin',
+        appId: 'php82',
+        isLinux: true,
+      );
+      expect(args, containsAll(['-F', '-y']));
+      expect(args.last, contains('php-fpm.conf'));
+    });
+
+    test('postgres receives -D with isolated data directory', () {
+      final args = AppServiceManager.argumentsForExecutable(
+        'postgres',
+        '/usr/lib/postgresql/16/bin',
+        appId: 'postgresql',
+        installedVersion: '16',
+        isLinux: true,
+      );
+      expect(args, contains('-D'));
+      expect(args, hasLength(2));
+      expect(args.last, contains('postgresql-16'));
+    });
+  });
+
+  group('requiredSocketsForExecutable includes database and runtime ports', () {
+    test('redis requires 6379', () {
+      final sockets = AppServiceManager.requiredSocketsForExecutable('redis-server');
+      expect(sockets.any((s) => s.port == 6379), isTrue);
+    });
+
+    test('postgres requires 5432', () {
+      final sockets = AppServiceManager.requiredSocketsForExecutable('postgres');
+      expect(sockets.any((s) => s.port == 5432), isTrue);
+    });
+
+    test('apache2 requires 80 and 443', () {
+      final sockets = AppServiceManager.requiredSocketsForExecutable('apache2');
+      expect(sockets.any((s) => s.port == 80), isTrue);
+      expect(sockets.any((s) => s.port == 443), isTrue);
+    });
+
+    test('php-fpm8.2 requires 9082 when appId provided', () {
+      final sockets = AppServiceManager.requiredSocketsForExecutable(
+        'php-fpm8.2',
+        appId: 'php82',
+      );
+      expect(sockets.any((s) => s.port == 9082), isTrue);
+    });
+  });
+
   group('normalizeExecutableName', () {
     test('strips windows extensions and lowercases', () {
       expect(AppServiceManager.normalizeExecutableName('CADDY.EXE'), 'caddy');
@@ -29,6 +113,9 @@ void main() {
       expect(AppServiceManager.runsDetachedExecutable('caddy'), isTrue);
       expect(AppServiceManager.runsDetachedExecutable('nginx'), isTrue);
       expect(AppServiceManager.runsDetachedExecutable('redis-server'), isFalse);
+      expect(AppServiceManager.runsDetachedExecutable('apache2'), isTrue);
+      expect(AppServiceManager.runsDetachedExecutable('apache'), isTrue);
+      expect(AppServiceManager.runsDetachedExecutable('httpd'), isTrue);
     });
 
     test('caddy gets run args and socket requirements', () {

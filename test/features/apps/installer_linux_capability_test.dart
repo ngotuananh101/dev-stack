@@ -67,6 +67,57 @@ void main() {
       expect(logMessages.any((msg) => msg.contains('outside')), isTrue);
     });
 
+    test('rejects non-webserver system binaries even with allowSystemBinaries', () async {
+      final logMessages = <String>[];
+      // 'python3' is not in the allow-list of webserver binaries.
+      const systemPath = '/usr/bin/python3';
+
+      var processCalled = false;
+      await installerService.setLinuxCapabilityForWebserver(
+        systemPath,
+        logMessages.add,
+        isLinuxOverride: true,
+        allowSystemBinaries: true,
+        runProcess: (executable, arguments) async {
+          processCalled = true;
+          return ProcessResult(1234, 0, '', '');
+        },
+      );
+
+      expect(processCalled, isFalse);
+      expect(logMessages.any((msg) => msg.contains('outside')), isTrue);
+    });
+
+    test('allows system apache/httpd binaries with allowSystemBinaries', () async {
+      for (final name in ['apache2', 'httpd']) {
+        final logMessages = <String>[];
+        final fakeBinary =
+            File(p.join(tempAppsDir.path, name))..createSync(recursive: true);
+
+        var setcapCalled = false;
+        await installerService.setLinuxCapabilityForWebserver(
+          fakeBinary.path,
+          logMessages.add,
+          isLinuxOverride: true,
+          allowSystemBinaries: true,
+          runProcess: (executable, arguments) async {
+            if (executable == 'sudo' &&
+                arguments.contains('cap_net_bind_service=+ep')) {
+              setcapCalled = true;
+              return ProcessResult(1234, 0, '', '');
+            }
+            return ProcessResult(1234, 1, '', 'failed');
+          },
+        );
+
+        expect(
+          setcapCalled,
+          isTrue,
+          reason: 'capability should be set for system $name binary',
+        );
+      }
+    });
+
     test('skips non-existent executable gracefully', () async {
       final logMessages = <String>[];
       final nonExistentPath = p.join(AppConfig.appsDir, 'nginx');
