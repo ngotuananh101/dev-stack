@@ -19,7 +19,72 @@ class PathService {
   final LogService _logger;
   static String get binDir => AppConfig.binDir;
 
-  PathService(this._logger);
+  final Future<ProcessResult> Function(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  })? _runProcess;
+  final bool Function() _isWindows;
+
+  PathService(
+    this._logger, {
+    Future<ProcessResult> Function(
+      String executable,
+      List<String> arguments, {
+      Map<String, String>? environment,
+    })? runProcess,
+    bool Function()? platformIsWindows,
+  })  : _runProcess = runProcess,
+        _isWindows = platformIsWindows ?? (() => Platform.isWindows);
+
+  Future<ProcessResult> _run(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) {
+    final runner = _runProcess;
+    if (runner != null) {
+      return runner(executable, arguments, environment: environment);
+    }
+    return BackgroundProcess.run(
+      executable,
+      arguments,
+      environment: environment,
+    );
+  }
+
+  /// Builds the PowerShell arguments and environment map to set a User environment variable on Windows.
+  @visibleForTesting
+  static ({List<String> arguments, Map<String, String> environment})
+      windowsSetUserEnvCommand(String name, String value) {
+    return (
+      arguments: [
+        '-NoProfile',
+        '-Command',
+        r'[Environment]::SetEnvironmentVariable($env:DEVSTACK_ENVVAR, $env:DEVSTACK_SETVALUE, "User")',
+      ],
+      environment: {
+        'DEVSTACK_ENVVAR': name,
+        'DEVSTACK_SETVALUE': value,
+      },
+    );
+  }
+
+  /// Builds the PowerShell arguments and environment map to remove a User environment variable on Windows.
+  @visibleForTesting
+  static ({List<String> arguments, Map<String, String> environment})
+      windowsRemoveUserEnvCommand(String name) {
+    return (
+      arguments: [
+        '-NoProfile',
+        '-Command',
+        r'[Environment]::SetEnvironmentVariable($env:DEVSTACK_ENVVAR, $null, "User")',
+      ],
+      environment: {
+        'DEVSTACK_ENVVAR': name,
+      },
+    );
+  }
 
   /// Returns the on-disk shim file paths for a command under [binDir].
   ///
@@ -185,19 +250,20 @@ class PathService {
         Directory(binDir).createSync(recursive: true);
       }
 
-      if (Platform.isLinux) {
+      if (!_isWindows()) {
         await ensureLinuxProfilePath();
         return;
       }
 
-      final result = await BackgroundProcess.run('powershell', [
+      final result = await _run('powershell', [
         '-NoProfile',
         '-Command',
         '[Environment]::GetEnvironmentVariable("PATH", "User")',
       ]);
 
       if (result.exitCode != 0) {
-        throw Exception('Failed to read User PATH');
+        _logger.error('Failed to read User PATH: ${result.stderr}');
+        return;
       }
 
       final currentPath = result.stdout.toString().trim();
@@ -216,13 +282,12 @@ class PathService {
         _logger.info('Adding $binDir to User PATH...');
         final newPath = currentPath.isEmpty ? binDir : '$currentPath;$binDir';
 
-        final setXResult = await BackgroundProcess.run('powershell', [
-          '-NoProfile',
-          '-Command',
-          r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
-          'PATH',
-          newPath,
-        ]);
+        final cmd = windowsSetUserEnvCommand('PATH', newPath);
+        final setXResult = await _run(
+          'powershell',
+          cmd.arguments,
+          environment: cmd.environment,
+        );
 
         if (setXResult.exitCode == 0) {
           _logger.info('Successfully added $binDir to User PATH.');
@@ -238,18 +303,21 @@ class PathService {
   /// Thêm một đường dẫn trực tiếp vào User PATH
   Future<void> addRawPathToUserPath(String pathToAdd) async {
     try {
-      if (Platform.isLinux) {
+      if (!_isWindows()) {
         await ensureLinuxProfilePath(binDirOverride: pathToAdd);
         return;
       }
 
-      final result = await BackgroundProcess.run('powershell', [
+      final result = await _run('powershell', [
         '-NoProfile',
         '-Command',
         '[Environment]::GetEnvironmentVariable("PATH", "User")',
       ]);
 
-      if (result.exitCode != 0) return;
+      if (result.exitCode != 0) {
+        _logger.error('Failed to read User PATH: ${result.stderr}');
+        return;
+      }
 
       final currentPath = result.stdout.toString().trim();
       final paths = currentPath.split(';');
@@ -262,13 +330,18 @@ class PathService {
             ? pathToAdd
             : '$currentPath;$pathToAdd';
 
-        await BackgroundProcess.run('powershell', [
-          '-NoProfile',
-          '-Command',
-          r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
-          'PATH',
-          newPath,
-        ]);
+        final cmd = windowsSetUserEnvCommand('PATH', newPath);
+        final setResult = await _run(
+          'powershell',
+          cmd.arguments,
+          environment: cmd.environment,
+        );
+
+        if (setResult.exitCode == 0) {
+          _logger.info('Successfully added $pathToAdd to User PATH.');
+        } else {
+          _logger.error('Failed to update PATH with $pathToAdd: ${setResult.stderr}');
+        }
       }
     } catch (e) {
       _logger.error('Error adding raw path to PATH: $e');
@@ -279,7 +352,7 @@ class PathService {
   Future<void> setUserEnvVar(String name, String value) async {
     try {
       _logger.info('Setting User Environment Variable: $name = $value');
-      if (Platform.isLinux) {
+      if (!_isWindows()) {
         final home = Platform.environment['HOME'] ?? '';
         if (home.isNotEmpty) {
           final profilePaths = linuxShellProfilePaths(home);
@@ -294,13 +367,18 @@ class PathService {
         return;
       }
 
-      await BackgroundProcess.run('powershell', [
-        '-NoProfile',
-        '-Command',
-        r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
-        name,
-        value,
-      ]);
+      final cmd = windowsSetUserEnvCommand(name, value);
+      final result = await _run(
+        'powershell',
+        cmd.arguments,
+        environment: cmd.environment,
+      );
+
+      if (result.exitCode == 0) {
+        _logger.info('Successfully set environment variable $name.');
+      } else {
+        _logger.error('Failed to set environment variable $name: ${result.stderr}');
+      }
     } catch (e) {
       _logger.error('Error setting environment variable $name: $e');
     }
@@ -309,7 +387,7 @@ class PathService {
   /// Xóa một đường dẫn trực tiếp khỏi User PATH
   Future<void> removeRawPathFromUserPath(String pathToRemove) async {
     try {
-      if (Platform.isLinux) {
+      if (!_isWindows()) {
         final home = Platform.environment['HOME'] ?? '';
         if (home.isEmpty) return;
         for (final profilePath in linuxShellProfilePaths(home)) {
@@ -323,13 +401,16 @@ class PathService {
         return;
       }
 
-      final result = await BackgroundProcess.run('powershell', [
+      final result = await _run('powershell', [
         '-NoProfile',
         '-Command',
         '[Environment]::GetEnvironmentVariable("PATH", "User")',
       ]);
 
-      if (result.exitCode != 0) return;
+      if (result.exitCode != 0) {
+        _logger.error('Failed to read User PATH: ${result.stderr}');
+        return;
+      }
 
       final currentPath = result.stdout.toString().trim();
       final paths = currentPath.split(';');
@@ -342,13 +423,18 @@ class PathService {
         _logger.info('Removing $pathToRemove from User PATH...');
         final newPathString = newPaths.join(';');
 
-        await BackgroundProcess.run('powershell', [
-          '-NoProfile',
-          '-Command',
-          r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
-          'PATH',
-          newPathString,
-        ]);
+        final cmd = windowsSetUserEnvCommand('PATH', newPathString);
+        final removeResult = await _run(
+          'powershell',
+          cmd.arguments,
+          environment: cmd.environment,
+        );
+
+        if (removeResult.exitCode == 0) {
+          _logger.info('Successfully removed $pathToRemove from User PATH.');
+        } else {
+          _logger.error('Failed to update PATH: ${removeResult.stderr}');
+        }
       }
     } catch (e) {
       _logger.error('Error removing raw path from PATH: $e');
@@ -359,7 +445,7 @@ class PathService {
   Future<void> removeUserEnvVar(String name) async {
     try {
       _logger.info('Removing User Environment Variable: $name');
-      if (Platform.isLinux) {
+      if (!_isWindows()) {
         final home = Platform.environment['HOME'] ?? '';
         if (home.isEmpty) return;
         for (final profilePath in linuxShellProfilePaths(home)) {
@@ -373,12 +459,18 @@ class PathService {
         return;
       }
 
-      await BackgroundProcess.run('powershell', [
-        '-NoProfile',
-        '-Command',
-        r'[Environment]::SetEnvironmentVariable($args[0], $null, "User")',
-        name,
-      ]);
+      final cmd = windowsRemoveUserEnvCommand(name);
+      final result = await _run(
+        'powershell',
+        cmd.arguments,
+        environment: cmd.environment,
+      );
+
+      if (result.exitCode == 0) {
+        _logger.info('Successfully removed environment variable $name.');
+      } else {
+        _logger.error('Failed to remove environment variable $name: ${result.stderr}');
+      }
     } catch (e) {
       _logger.error('Error removing environment variable $name: $e');
     }

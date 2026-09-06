@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/core/services/path_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -248,6 +250,177 @@ void main() {
 
       expect(contentD, contains('D:/Apps/tool.exe'));
       expect(contentE, contains('E:/Tools/app.exe'));
+    });
+  });
+
+  group('PathService Windows environment variable command builders', () {
+    test('windowsSetUserEnvCommand sets up command and environment map', () {
+      final cmd = PathService.windowsSetUserEnvCommand(
+        'DEVSTACK_TEST_VAR',
+        r'C:\Ponta\bin;C:\Other\bin',
+      );
+
+      expect(cmd.arguments, [
+        '-NoProfile',
+        '-Command',
+        r'[Environment]::SetEnvironmentVariable($env:DEVSTACK_ENVVAR, $env:DEVSTACK_SETVALUE, "User")',
+      ]);
+      expect(cmd.environment['DEVSTACK_ENVVAR'], equals('DEVSTACK_TEST_VAR'));
+      expect(
+        cmd.environment['DEVSTACK_SETVALUE'],
+        equals(r'C:\Ponta\bin;C:\Other\bin'),
+      );
+    });
+
+    test('windowsRemoveUserEnvCommand sets up command and environment map', () {
+      final cmd = PathService.windowsRemoveUserEnvCommand('DEVSTACK_TEST_VAR');
+
+      expect(cmd.arguments, [
+        '-NoProfile',
+        '-Command',
+        r'[Environment]::SetEnvironmentVariable($env:DEVSTACK_ENVVAR, $null, "User")',
+      ]);
+      expect(cmd.environment['DEVSTACK_ENVVAR'], equals('DEVSTACK_TEST_VAR'));
+      expect(cmd.environment.containsKey('DEVSTACK_SETVALUE'), isFalse);
+    });
+  });
+
+  group('PathService Windows operations with runner', () {
+    test('setUserEnvVar calls runner with windowsSetUserEnvCommand', () async {
+      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      final service = PathService(
+        LogService(),
+        platformIsWindows: () => true,
+        runProcess: (exe, args, {environment}) async {
+          calls.add((exe: exe, args: args, env: environment));
+          return ProcessResult(1234, 0, '', '');
+        },
+      );
+
+      await service.setUserEnvVar('MY_VAR', 'MY_VALUE');
+
+      expect(calls.length, equals(1));
+      expect(calls[0].exe, equals('powershell'));
+      expect(calls[0].env?['DEVSTACK_ENVVAR'], equals('MY_VAR'));
+      expect(calls[0].env?['DEVSTACK_SETVALUE'], equals('MY_VALUE'));
+    });
+
+    test('removeUserEnvVar calls runner with windowsRemoveUserEnvCommand', () async {
+      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      final service = PathService(
+        LogService(),
+        platformIsWindows: () => true,
+        runProcess: (exe, args, {environment}) async {
+          calls.add((exe: exe, args: args, env: environment));
+          return ProcessResult(1234, 0, '', '');
+        },
+      );
+
+      await service.removeUserEnvVar('MY_VAR');
+
+      expect(calls.length, equals(1));
+      expect(calls[0].exe, equals('powershell'));
+      expect(calls[0].env?['DEVSTACK_ENVVAR'], equals('MY_VAR'));
+      expect(calls[0].env?.containsKey('DEVSTACK_SETVALUE'), isFalse);
+    });
+
+    test('ensurePontaBinInPath updates PATH when binDir is missing', () async {
+      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      final service = PathService(
+        LogService(),
+        platformIsWindows: () => true,
+        runProcess: (exe, args, {environment}) async {
+          calls.add((exe: exe, args: args, env: environment));
+          if (args.any((a) => a.contains('GetEnvironmentVariable'))) {
+            return ProcessResult(1234, 0, r'C:\Existing\Path', '');
+          }
+          return ProcessResult(1234, 0, '', '');
+        },
+      );
+
+      await service.ensurePontaBinInPath();
+
+      expect(calls.length, equals(2));
+      expect(calls[1].env?['DEVSTACK_ENVVAR'], equals('PATH'));
+      expect(
+        calls[1].env?['DEVSTACK_SETVALUE'],
+        equals('C:\\Existing\\Path;${PathService.binDir}'),
+      );
+    });
+
+    test('ensurePontaBinInPath skips update when binDir already present', () async {
+      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      final service = PathService(
+        LogService(),
+        platformIsWindows: () => true,
+        runProcess: (exe, args, {environment}) async {
+          calls.add((exe: exe, args: args, env: environment));
+          return ProcessResult(
+            1234,
+            0,
+            'C:\\Other;${PathService.binDir};C:\\More',
+            '',
+          );
+        },
+      );
+
+      await service.ensurePontaBinInPath();
+
+      // Only the GetEnvironmentVariable call should run
+      expect(calls.length, equals(1));
+    });
+
+    test('addRawPathToUserPath appends path and invokes runner', () async {
+      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      final service = PathService(
+        LogService(),
+        platformIsWindows: () => true,
+        runProcess: (exe, args, {environment}) async {
+          calls.add((exe: exe, args: args, env: environment));
+          if (args.any((a) => a.contains('GetEnvironmentVariable'))) {
+            return ProcessResult(1234, 0, r'C:\Existing', '');
+          }
+          return ProcessResult(1234, 0, '', '');
+        },
+      );
+
+      await service.addRawPathToUserPath(r'C:\Ponta\apps\pyenv\latest\bin');
+
+      expect(calls.length, equals(2));
+      expect(calls[1].env?['DEVSTACK_ENVVAR'], equals('PATH'));
+      expect(
+        calls[1].env?['DEVSTACK_SETVALUE'],
+        equals(r'C:\Existing;C:\Ponta\apps\pyenv\latest\bin'),
+      );
+    });
+
+    test('removeRawPathFromUserPath removes targeted path from PATH', () async {
+      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      final service = PathService(
+        LogService(),
+        platformIsWindows: () => true,
+        runProcess: (exe, args, {environment}) async {
+          calls.add((exe: exe, args: args, env: environment));
+          if (args.any((a) => a.contains('GetEnvironmentVariable'))) {
+            return ProcessResult(
+              1234,
+              0,
+              r'C:\Keep1;C:\Ponta\apps\pyenv\latest\bin;C:\Keep2',
+              '',
+            );
+          }
+          return ProcessResult(1234, 0, '', '');
+        },
+      );
+
+      await service.removeRawPathFromUserPath(r'C:\Ponta\apps\pyenv\latest\bin');
+
+      expect(calls.length, equals(2));
+      expect(calls[1].env?['DEVSTACK_ENVVAR'], equals('PATH'));
+      expect(
+        calls[1].env?['DEVSTACK_SETVALUE'],
+        equals(r'C:\Keep1;C:\Keep2'),
+      );
     });
   });
 }

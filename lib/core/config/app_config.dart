@@ -50,16 +50,33 @@ class AppConfig {
 }
 
 /// Update DEVSTACK_BASE_DIR environment variable.
-Future<void> updateBaseDirEnvVar(String baseDir) async {
+Future<void> updateBaseDirEnvVar(
+  String baseDir, {
+  Future<ProcessResult> Function(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  })? runProcess,
+  bool? isWindows,
+}) async {
   try {
-    if (Platform.isWindows) {
-      final result = await BackgroundProcess.run('powershell', [
-        '-NoProfile',
-        '-Command',
-        r'[Environment]::SetEnvironmentVariable($args[0], $args[1], "User")',
-        'DEVSTACK_BASE_DIR',
-        baseDir,
-      ]);
+    final onWindows = isWindows ?? Platform.isWindows;
+    if (onWindows) {
+      final runner = runProcess ??
+          ((cmd, args, {environment}) =>
+              BackgroundProcess.run(cmd, args, environment: environment));
+      final result = await runner(
+        'powershell',
+        [
+          '-NoProfile',
+          '-Command',
+          r'[Environment]::SetEnvironmentVariable($env:DEVSTACK_ENVVAR, $env:DEVSTACK_SETVALUE, "User")',
+        ],
+        environment: {
+          'DEVSTACK_ENVVAR': 'DEVSTACK_BASE_DIR',
+          'DEVSTACK_SETVALUE': baseDir,
+        },
+      );
 
       if (result.exitCode == 0) {
         AppLogger.info(
