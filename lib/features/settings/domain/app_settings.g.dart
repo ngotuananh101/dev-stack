@@ -37,18 +37,28 @@ const AppSettingsSchema = CollectionSchema(
       name: r'baseDir',
       type: IsarType.string,
     ),
-    r'isSslInstalled': PropertySchema(
+    r'cloudflareDefaultToken': PropertySchema(
       id: 4,
+      name: r'cloudflareDefaultToken',
+      type: IsarType.string,
+    ),
+    r'isSslInstalled': PropertySchema(
+      id: 5,
       name: r'isSslInstalled',
       type: IsarType.bool,
     ),
     r'minimizeToTray': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'minimizeToTray',
       type: IsarType.bool,
     ),
+    r'ngrokDefaultToken': PropertySchema(
+      id: 7,
+      name: r'ngrokDefaultToken',
+      type: IsarType.string,
+    ),
     r'siteTemplate': PropertySchema(
-      id: 6,
+      id: 8,
       name: r'siteTemplate',
       type: IsarType.string,
     )
@@ -74,6 +84,18 @@ int _appSettingsEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.baseDir.length * 3;
+  {
+    final value = object.cloudflareDefaultToken;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.ngrokDefaultToken;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.siteTemplate.length * 3;
   return bytesCount;
 }
@@ -88,9 +110,11 @@ void _appSettingsSerialize(
   writer.writeBool(offsets[1], object.autoCreateSite);
   writer.writeBool(offsets[2], object.autoStartWithWindows);
   writer.writeString(offsets[3], object.baseDir);
-  writer.writeBool(offsets[4], object.isSslInstalled);
-  writer.writeBool(offsets[5], object.minimizeToTray);
-  writer.writeString(offsets[6], object.siteTemplate);
+  writer.writeString(offsets[4], object.cloudflareDefaultToken);
+  writer.writeBool(offsets[5], object.isSslInstalled);
+  writer.writeBool(offsets[6], object.minimizeToTray);
+  writer.writeString(offsets[7], object.ngrokDefaultToken);
+  writer.writeString(offsets[8], object.siteTemplate);
 }
 
 AppSettings _appSettingsDeserialize(
@@ -104,10 +128,12 @@ AppSettings _appSettingsDeserialize(
   object.autoCreateSite = reader.readBool(offsets[1]);
   object.autoStartWithWindows = reader.readBool(offsets[2]);
   object.baseDir = reader.readString(offsets[3]);
+  object.cloudflareDefaultToken = reader.readStringOrNull(offsets[4]);
   object.id = id;
-  object.isSslInstalled = reader.readBool(offsets[4]);
-  object.minimizeToTray = reader.readBool(offsets[5]);
-  object.siteTemplate = reader.readString(offsets[6]);
+  object.isSslInstalled = reader.readBool(offsets[5]);
+  object.minimizeToTray = reader.readBool(offsets[6]);
+  object.ngrokDefaultToken = reader.readStringOrNull(offsets[7]);
+  object.siteTemplate = reader.readString(offsets[8]);
   return object;
 }
 
@@ -127,10 +153,14 @@ P _appSettingsDeserializeProp<P>(
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 5:
       return (reader.readBool(offset)) as P;
     case 6:
+      return (reader.readBool(offset)) as P;
+    case 7:
+      return (reader.readStringOrNull(offset)) as P;
+    case 8:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -394,6 +424,162 @@ extension AppSettingsQueryFilter
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'cloudflareDefaultToken',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'cloudflareDefaultToken',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'cloudflareDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'cloudflareDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'cloudflareDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'cloudflareDefaultToken',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'cloudflareDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'cloudflareDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenContains(String value,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'cloudflareDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenMatches(String pattern,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'cloudflareDefaultToken',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'cloudflareDefaultToken',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      cloudflareDefaultTokenIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'cloudflareDefaultToken',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> idEqualTo(
       Id value) {
     return QueryBuilder.apply(this, (query) {
@@ -463,6 +649,160 @@ extension AppSettingsQueryFilter
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'minimizeToTray',
         value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'ngrokDefaultToken',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'ngrokDefaultToken',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'ngrokDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'ngrokDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'ngrokDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'ngrokDefaultToken',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'ngrokDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'ngrokDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'ngrokDefaultToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'ngrokDefaultToken',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'ngrokDefaultToken',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      ngrokDefaultTokenIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'ngrokDefaultToken',
+        value: '',
       ));
     });
   }
@@ -664,6 +1004,20 @@ extension AppSettingsQuerySortBy
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByCloudflareDefaultToken() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudflareDefaultToken', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByCloudflareDefaultTokenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudflareDefaultToken', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByIsSslInstalled() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isSslInstalled', Sort.asc);
@@ -687,6 +1041,20 @@ extension AppSettingsQuerySortBy
       sortByMinimizeToTrayDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'minimizeToTray', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByNgrokDefaultToken() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'ngrokDefaultToken', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      sortByNgrokDefaultTokenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'ngrokDefaultToken', Sort.desc);
     });
   }
 
@@ -758,6 +1126,20 @@ extension AppSettingsQuerySortThenBy
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByCloudflareDefaultToken() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudflareDefaultToken', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByCloudflareDefaultTokenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudflareDefaultToken', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -793,6 +1175,20 @@ extension AppSettingsQuerySortThenBy
       thenByMinimizeToTrayDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'minimizeToTray', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByNgrokDefaultToken() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'ngrokDefaultToken', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+      thenByNgrokDefaultTokenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'ngrokDefaultToken', Sort.desc);
     });
   }
 
@@ -838,6 +1234,14 @@ extension AppSettingsQueryWhereDistinct
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QDistinct>
+      distinctByCloudflareDefaultToken({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'cloudflareDefaultToken',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByIsSslInstalled() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isSslInstalled');
@@ -847,6 +1251,14 @@ extension AppSettingsQueryWhereDistinct
   QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByMinimizeToTray() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'minimizeToTray');
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByNgrokDefaultToken(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'ngrokDefaultToken',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -891,6 +1303,13 @@ extension AppSettingsQueryProperty
     });
   }
 
+  QueryBuilder<AppSettings, String?, QQueryOperations>
+      cloudflareDefaultTokenProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'cloudflareDefaultToken');
+    });
+  }
+
   QueryBuilder<AppSettings, bool, QQueryOperations> isSslInstalledProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isSslInstalled');
@@ -900,6 +1319,13 @@ extension AppSettingsQueryProperty
   QueryBuilder<AppSettings, bool, QQueryOperations> minimizeToTrayProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'minimizeToTray');
+    });
+  }
+
+  QueryBuilder<AppSettings, String?, QQueryOperations>
+      ngrokDefaultTokenProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'ngrokDefaultToken');
     });
   }
 

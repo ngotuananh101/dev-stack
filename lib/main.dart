@@ -137,6 +137,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         return const LogsPage();
       case NavigationTab.databases:
         return const DatabasesPage();
+      case NavigationTab.tunnels:
+        return const SizedBox();
       case NavigationTab.hosts:
         return const HostsPage();
       case NavigationTab.settings:

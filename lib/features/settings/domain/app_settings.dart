@@ -25,5 +25,9 @@ class AppSettings {
   // not exposed to other machines on the network.
   bool allowLanAccess = false;
 
+  // Tunnel Tokens
+  String? ngrokDefaultToken;
+  String? cloudflareDefaultToken;
+
   AppSettings();
 }
