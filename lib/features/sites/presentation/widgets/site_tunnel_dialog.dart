@@ -375,27 +375,13 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
       createdAt: DateTime.now(),
     );
 
-    await ref.read(tunnelManagerServiceProvider).saveTunnel(tunnel);
+    final savedTunnel = await ref.read(tunnelManagerServiceProvider).saveTunnel(tunnel);
+
     // Refresh the tunnels stream so the newly saved tunnel is picked up.
     // ignore: unused_result
     ref.refresh(tunnelsStreamProvider);
 
-    // Allow the stream to emit the newly saved tunnel
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // Read the saved tunnel back so we have the persisted id
-    final tunnelsAsync = await ref.read(tunnelsStreamProvider.future);
-    TunnelModel? savedTunnel;
-    for (final t in tunnelsAsync) {
-      if (t.targetType == 'site' &&
-          t.targetSiteDomain == widget.site.domain) {
-        savedTunnel = t;
-        break;
-      }
-    }
-    final tunnelToStart = savedTunnel ?? tunnel;
-
-    await ref.read(tunnelSessionsProvider.notifier).start(tunnelToStart);
+    await ref.read(tunnelSessionsProvider.notifier).start(savedTunnel);
 
     if (mounted) {
       Navigator.of(context).pop();

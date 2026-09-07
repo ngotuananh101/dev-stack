@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
@@ -120,7 +121,13 @@ class TunnelDownloaderService {
         }
 
         final targetFile = File(targetPath);
-        await targetFile.writeAsBytes(binFile.content as List<int>);
+        final rawContent = binFile.content;
+        // ignore: unnecessary_type_check
+        final content = rawContent is List<int>
+            ? rawContent
+            // ignore: dead_code
+            : utf8.encode(rawContent.toString());
+        await targetFile.writeAsBytes(content);
         if (await downloadedFile.exists()) {
           await downloadedFile.delete();
         }
@@ -128,7 +135,15 @@ class TunnelDownloaderService {
 
       // Ensure executable permissions on Linux
       if (!_isWindowsResolver()) {
-        await Process.run('chmod', ['+x', targetPath]);
+        final result = await Process.run('chmod', ['+x', targetPath]);
+        if (result.exitCode != 0) {
+          throw ProcessException(
+            'chmod',
+            ['+x', targetPath],
+            result.stderr.toString(),
+            result.exitCode,
+          );
+        }
       }
     } catch (e) {
       final tempFile = File(tempPath);

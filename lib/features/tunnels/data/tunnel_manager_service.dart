@@ -9,6 +9,7 @@ import '../../../core/database/isar_provider.dart';
 import '../domain/tunnel_model.dart';
 import '../domain/tunnel_session.dart';
 import '../domain/tunnel_driver.dart';
+import '../../../features/settings/domain/app_settings.dart';
 import 'drivers/cloudflare_driver.dart';
 import 'drivers/ngrok_driver.dart';
 import 'tunnel_downloader_service.dart';
@@ -54,6 +55,7 @@ class TunnelManagerService {
 
   final Map<int, TunnelSession> _sessions = {};
   final Map<int, dynamic> _activeProcesses = {};
+  final Map<int, List<StreamSubscription>> _logSubscriptions = {};
   final StreamController<Map<int, TunnelSession>> _sessionsController =
       StreamController<Map<int, TunnelSession>>.broadcast();
 
@@ -104,6 +106,23 @@ class TunnelManagerService {
       throw ArgumentError('Unsupported driver: ${tunnel.provider}');
     }
 
+    // Resolve default token from settings if not provided and tunnel has none.
+    String? resolvedDefaultToken = defaultToken;
+    final isar = _isar;
+    if (tunnel.authToken == null || tunnel.authToken!.trim().isEmpty) {
+      if (resolvedDefaultToken == null && isar != null) {
+        final settings = await isar.appSettings.where().findFirst();
+        if (tunnel.provider.toLowerCase() == 'ngrok') {
+          resolvedDefaultToken = settings?.ngrokDefaultToken;
+        } else if (tunnel.provider.toLowerCase() == 'cloudflare') {
+          resolvedDefaultToken = settings?.cloudflareDefaultToken;
+        }
+      }
+    }
+
+    tunnel.lastActiveAt = DateTime.now();
+    await saveTunnel(tunnel);
+
     _updateSession(
       tunnel.id,
       TunnelSession(
@@ -130,7 +149,10 @@ class TunnelManagerService {
       }
 
       final execPath = _downloader.getBinaryPath(tunnel.provider);
-      final args = driver.buildStartArguments(tunnel, defaultToken: defaultToken);
+      final args = driver.buildStartArguments(
+        tunnel,
+        defaultToken: resolvedDefaultToken,
+      );
 
       _updateSession(
         tunnel.id,
@@ -161,10 +183,14 @@ class TunnelManagerService {
       );
       _updateSession(tunnel.id, initialSession);
 
+      final subscriptions = <StreamSubscription>[];
+
       void handleLine(String line) {
         final current = _sessions[tunnel.id] ?? initialSession;
-        final updatedLogs = [...current.logs, line];
-        if (updatedLogs.length > 500) updatedLogs.removeAt(0);
+        var updatedLogs = [...current.logs, line];
+        if (updatedLogs.length > 500) {
+          updatedLogs = updatedLogs.sublist(updatedLogs.length - 500);
+        }
 
         var next = current.copyWith(logs: updatedLogs);
 
@@ -184,25 +210,49 @@ class TunnelManagerService {
         _updateSession(tunnel.id, next);
       }
 
-      if (process is ManagedBackgroundProcess) {
-        process.stdout
-            .transform(utf8.decoder)
-            .transform(const LineSplitter())
-            .listen(handleLine);
-        process.stderr
-            .transform(utf8.decoder)
-            .transform(const LineSplitter())
-            .listen(handleLine);
-      } else if (process is FakeManagedProcess) {
-        process.stdout
-            .transform(utf8.decoder)
-            .transform(const LineSplitter())
-            .listen(handleLine);
-        process.stderr
-            .transform(utf8.decoder)
-            .transform(const LineSplitter())
-            .listen(handleLine);
+      void cleanupProcess() {
+        _cleanupLogSubscriptions(tunnel.id);
+        final session = _sessions[tunnel.id];
+        if (session != null &&
+            session.status != TunnelStatus.stopped &&
+            session.status != TunnelStatus.error) {
+          _updateSession(
+            tunnel.id,
+            session.copyWith(status: TunnelStatus.stopped),
+          );
+        }
       }
+
+      if (process is ManagedBackgroundProcess) {
+        subscriptions.add(
+          process.stdout
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .listen(handleLine),
+        );
+        subscriptions.add(
+          process.stderr
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .listen(handleLine),
+        );
+        process.exitCode.then((_) => cleanupProcess(), onError: (_) => cleanupProcess());
+      } else if (process is FakeManagedProcess) {
+        subscriptions.add(
+          process.stdout
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .listen(handleLine, onError: (_) => cleanupProcess(), onDone: cleanupProcess),
+        );
+        subscriptions.add(
+          process.stderr
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .listen(handleLine, onError: (_) => cleanupProcess(), onDone: cleanupProcess),
+        );
+      }
+
+      _logSubscriptions[tunnel.id] = subscriptions;
     } catch (e, st) {
       _logger?.error('Failed to start tunnel ${tunnel.id}: $e\n$st');
       _updateSession(
@@ -217,6 +267,8 @@ class TunnelManagerService {
   }
 
   Future<void> stopTunnel(int tunnelId) async {
+    _cleanupLogSubscriptions(tunnelId);
+
     final session = _sessions[tunnelId];
     final pid = session?.pid;
 
@@ -238,13 +290,14 @@ class TunnelManagerService {
     );
   }
 
-  Future<void> saveTunnel(TunnelModel tunnel) async {
+  Future<TunnelModel> saveTunnel(TunnelModel tunnel) async {
     final isar = _isar;
     if (isar != null) {
       await isar.writeTxn(() async {
         await isar.tunnelModels.put(tunnel);
       });
     }
+    return tunnel;
   }
 
   Future<void> deleteTunnel(int id) async {
@@ -259,6 +312,15 @@ class TunnelManagerService {
     _sessionsController.add(Map.unmodifiable(_sessions));
   }
 
+  void _cleanupLogSubscriptions(int tunnelId) {
+    final subs = _logSubscriptions.remove(tunnelId);
+    if (subs != null) {
+      for (final sub in subs) {
+        sub.cancel();
+      }
+    }
+  }
+
   Future<void> dispose() async {
     for (final entry in _activeProcesses.entries) {
       final session = _sessions[entry.key];
@@ -270,6 +332,14 @@ class TunnelManagerService {
       }
     }
     _activeProcesses.clear();
+
+    for (final subs in _logSubscriptions.values) {
+      for (final sub in subs) {
+        sub.cancel();
+      }
+    }
+    _logSubscriptions.clear();
+
     _sessions.clear();
     await _sessionsController.close();
   }
