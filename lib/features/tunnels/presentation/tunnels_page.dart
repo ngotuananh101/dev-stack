@@ -180,7 +180,7 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
   }
 }
 
-class _TunnelCard extends StatelessWidget {
+class _TunnelCard extends ConsumerWidget {
   final TunnelModel tunnel;
   final TunnelSession? session;
 
@@ -203,7 +203,7 @@ class _TunnelCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final providerLabel = tunnel.provider == 'ngrok' ? 'ngrok' : 'Cloudflare';
     final providerIcon = tunnel.provider == 'ngrok'
@@ -315,7 +315,7 @@ class _TunnelCard extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 12),
-            _buildActions(context, isNgrok, webInspectorUrl),
+            _buildActions(context, ref, isNgrok, webInspectorUrl),
           ],
         ),
       ),
@@ -390,7 +390,8 @@ class _TunnelCard extends StatelessWidget {
     );
   }
 
-  void _start(BuildContext context) {
+  void _start(WidgetRef ref, BuildContext context) {
+    ref.read(tunnelSessionsProvider.notifier).start(tunnel);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Starting tunnel "${tunnel.name}"...'),
@@ -399,7 +400,8 @@ class _TunnelCard extends StatelessWidget {
     );
   }
 
-  void _stop(BuildContext context) {
+  void _stop(WidgetRef ref, BuildContext context) {
+    ref.read(tunnelSessionsProvider.notifier).stop(tunnel.id);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Stopping tunnel "${tunnel.name}"...'),
@@ -408,11 +410,22 @@ class _TunnelCard extends StatelessWidget {
     );
   }
 
-  void _delete(BuildContext context) {
+  void _delete(WidgetRef ref, BuildContext context) {
+    ref.read(tunnelSessionsProvider.notifier).delete(tunnel.id);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Deleting tunnel "${tunnel.name}"...'),
         backgroundColor: AppColors.surfaceLight,
+      ),
+    );
+  }
+
+  void _edit(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (context) => Center(
+        child: CreateTunnelModal(initialTunnel: tunnel),
       ),
     );
   }
@@ -470,6 +483,7 @@ class _TunnelCard extends StatelessWidget {
 
   Widget _buildActions(
     BuildContext context,
+    WidgetRef ref,
     bool isNgrok,
     String? webInspectorUrl,
   ) {
@@ -478,7 +492,7 @@ class _TunnelCard extends StatelessWidget {
       children: [
         if (isStopped || hasError)
           FilledButton.icon(
-            onPressed: () => _start(context),
+            onPressed: () => _start(ref, context),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.success.withValues(alpha: 0.15),
               foregroundColor: AppColors.success,
@@ -489,7 +503,7 @@ class _TunnelCard extends StatelessWidget {
           )
         else if (!isConnecting)
           FilledButton.icon(
-            onPressed: () => _stop(context),
+            onPressed: () => _stop(ref, context),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.error.withValues(alpha: 0.15),
               foregroundColor: AppColors.error,
@@ -508,13 +522,13 @@ class _TunnelCard extends StatelessWidget {
         _actionIcon(
           icon: LucideIcons.edit,
           tooltip: 'Edit',
-          onPressed: () {},
+          onPressed: () => _edit(context),
         ),
         const SizedBox(width: 4),
         _actionIcon(
           icon: LucideIcons.trash2,
           tooltip: 'Delete',
-          onPressed: () => _delete(context),
+          onPressed: () => _delete(ref, context),
           color: AppColors.error,
         ),
       ],
