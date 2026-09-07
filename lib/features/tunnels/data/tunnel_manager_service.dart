@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
@@ -74,7 +75,13 @@ class TunnelManagerService {
           'ngrok': NgrokDriver(),
         },
         _startProcess = startProcessFn ??
-            ((exec, args) => BackgroundProcess.start(exec, args)) {
+            ((exec, args) async => ManagedBackgroundProcess.wrap(
+                  await Process.start(
+                    exec,
+                    args,
+                    mode: ProcessStartMode.normal,
+                  ),
+                )) {
     _stopProcess = stopProcessFn ?? _defaultStopProcess;
   }
 
@@ -210,15 +217,19 @@ class TunnelManagerService {
         _updateSession(tunnel.id, next);
       }
 
-      void cleanupProcess() {
+      void cleanupProcess([int? exitCode]) {
         _cleanupLogSubscriptions(tunnel.id);
         final session = _sessions[tunnel.id];
         if (session != null &&
             session.status != TunnelStatus.stopped &&
             session.status != TunnelStatus.error) {
+          final isAbnormal = exitCode != null && exitCode != 0;
           _updateSession(
             tunnel.id,
-            session.copyWith(status: TunnelStatus.stopped),
+            session.copyWith(
+              status: isAbnormal ? TunnelStatus.error : TunnelStatus.stopped,
+              errorMessage: isAbnormal ? 'Process exited with code $exitCode' : null,
+            ),
           );
         }
       }
@@ -236,7 +247,7 @@ class TunnelManagerService {
               .transform(const LineSplitter())
               .listen(handleLine),
         );
-        process.exitCode.then((_) => cleanupProcess(), onError: (_) => cleanupProcess());
+        process.exitCode.then((code) => cleanupProcess(code), onError: (_) => cleanupProcess());
       } else if (process is FakeManagedProcess) {
         subscriptions.add(
           process.stdout
