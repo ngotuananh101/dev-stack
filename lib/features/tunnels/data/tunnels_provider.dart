@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import '../../../core/database/isar_provider.dart';
@@ -19,14 +20,17 @@ final tunnelsStreamProvider = StreamProvider<List<TunnelModel>>((ref) async* {
 final tunnelSessionsProvider =
     StateNotifierProvider<TunnelSessionsNotifier, Map<int, TunnelSession>>((ref) {
   final manager = ref.watch(tunnelManagerServiceProvider);
-  return TunnelSessionsNotifier(manager);
+  final notifier = TunnelSessionsNotifier(manager);
+  ref.onDispose(() => notifier.dispose());
+  return notifier;
 });
 
 class TunnelSessionsNotifier extends StateNotifier<Map<int, TunnelSession>> {
   final TunnelManagerService _manager;
+  StreamSubscription<Map<int, TunnelSession>>? _subscription;
 
   TunnelSessionsNotifier(this._manager) : super(_manager.currentSessions) {
-    _manager.sessionsStream.listen((sessions) {
+    _subscription = _manager.sessionsStream.listen((sessions) {
       state = sessions;
     });
   }
@@ -34,4 +38,11 @@ class TunnelSessionsNotifier extends StateNotifier<Map<int, TunnelSession>> {
   Future<void> start(TunnelModel tunnel) => _manager.startTunnel(tunnel);
   Future<void> stop(int tunnelId) => _manager.stopTunnel(tunnelId);
   Future<void> delete(int tunnelId) => _manager.deleteTunnel(tunnelId);
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    _subscription = null;
+    super.dispose();
+  }
 }
