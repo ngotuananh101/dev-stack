@@ -11,6 +11,7 @@ import '../../domain/site_model.dart';
 import '../../data/sites_provider.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'site_tunnel_dialog.dart';
 
 class SiteTable extends ConsumerWidget {
   final List<SiteModel> sites;
@@ -93,7 +94,7 @@ class SiteTable extends ConsumerWidget {
           SizedBox(width: 50, child: _buildHeaderCell('SSL')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 150,
+            width: 180,
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
@@ -225,7 +226,7 @@ class SiteTable extends ConsumerWidget {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 150,
+            width: 180,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -238,6 +239,18 @@ class SiteTable extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                 ],
+                _buildActionButton(
+                  icon: LucideIcons.radio,
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => SiteTunnelDialog(site: site),
+                    );
+                  },
+                  color: AppColors.info,
+                  tooltip: 'Share / Tunnel',
+                ),
+                const SizedBox(width: 8),
                 _buildActionButton(
                   icon: LucideIcons.settings,
                   onPressed: () => onEdit(site),
