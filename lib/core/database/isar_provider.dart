@@ -8,6 +8,7 @@ import '../../features/apps/domain/installed_app.dart';
 import '../../features/databases/domain/database_record.dart';
 import '../../features/settings/domain/app_settings.dart';
 import '../../features/sites/domain/site_model.dart';
+import '../../features/tunnels/domain/tunnel_model.dart';
 
 part 'isar_provider.g.dart';
 
@@ -51,6 +52,7 @@ class IsarInstance {
         DatabaseRecordSchema,
         AppSettingsSchema,
         SiteModelSchema,
+        TunnelModelSchema,
       ], directory: dir.path);
     } catch (e) {
       // Only reset for schema mismatch or corruption errors.
@@ -90,6 +92,7 @@ class IsarInstance {
         DatabaseRecordSchema,
         AppSettingsSchema,
         SiteModelSchema,
+        TunnelModelSchema,
       ], directory: dir.path);
     }
   }

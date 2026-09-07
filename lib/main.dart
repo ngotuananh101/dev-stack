@@ -16,6 +16,9 @@ import 'features/databases/presentation/databases_page.dart';
 import 'features/hosts/presentation/hosts_page.dart';
 import 'features/settings/presentation/settings_page.dart';
 import 'features/sites/presentation/sites_page.dart';
+import 'features/tunnels/presentation/tunnels_page.dart';
+import 'features/tunnels/data/tunnels_provider.dart';
+import 'features/tunnels/domain/tunnel_model.dart';
 import 'core/services/window_service.dart';
 import 'core/services/ssl_service.dart';
 import 'features/apps/data/app_installer_service.dart';
@@ -87,8 +90,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   void initState() {
     super.initState();
     // Initialize SSL Root CA if not already installed
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(sslServiceProvider.notifier).initializeRootCA();
+
+      // Auto-start tunnels with autoStart == true
+      final isar = await IsarInstance.getInstance();
+      final autoTunnels =
+          await isar.tunnelModels.filter().autoStartEqualTo(true).findAll();
+      for (final tunnel in autoTunnels) {
+        ref.read(tunnelSessionsProvider.notifier).start(tunnel);
+      }
     });
   }
 
@@ -137,6 +148,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         return const LogsPage();
       case NavigationTab.databases:
         return const DatabasesPage();
+      case NavigationTab.tunnels:
+        return const TunnelsPage();
       case NavigationTab.hosts:
         return const HostsPage();
       case NavigationTab.settings:
