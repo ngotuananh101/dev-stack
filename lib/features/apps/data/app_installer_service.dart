@@ -19,6 +19,7 @@ import '../../../core/config/webserver_bind_policy.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/services/path_service.dart';
 import '../../../core/services/linux_distro_resolver.dart';
+import '../../../core/services/background_process.dart';
 import 'package_command_validator.dart';
 import '../../settings/data/settings_provider.dart';
 
@@ -231,6 +232,7 @@ class AppInstallerService {
     String version, {
     InstallationProgressCallback? onProgress,
     InstallationLogCallback? onLog,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
   }) async {
     void logInfo(String msg) {
       _logger.info(msg);
@@ -250,6 +252,7 @@ class AppInstallerService {
         onProgress: onProgress,
         logInfo: logInfo,
         logError: logError,
+        runProcess: runProcess,
       );
     }
 
@@ -2609,6 +2612,128 @@ security:
   }
 
   /// Install app via system package manager (apt, dnf, etc.)
+  /// Generates an atomic shell script that runs package manager commands in one invocation.
+  ///
+  /// Features:
+  /// - `set -e` ensures fail-closed behavior on any command failure.
+  /// - `DEBIAN_FRONTEND=noninteractive` and `NEEDRESTART_MODE=a` avoid hanging interactive prompts.
+  /// - `sudo() { "$@"; }` no-op function definition when run as root, allowing catalog commands
+  ///   with `sudo` to run cleanly whether invoked via `pkexec` or root shell.
+  /// - Echoes progress markers for each command to aid troubleshooting.
+  @visibleForTesting
+  static String buildPackageManagerScript(List<String> commands) {
+    final buffer = StringBuffer();
+    buffer.writeln('#!/bin/sh');
+    buffer.writeln('set -e');
+    buffer.writeln('export DEBIAN_FRONTEND=noninteractive');
+    buffer.writeln('export NEEDRESTART_MODE=a');
+    buffer.writeln();
+    buffer.writeln('# When running as root (e.g. via pkexec), define sudo as a transparent wrapper');
+    buffer.writeln('if [ "\$(id -u)" -eq 0 ]; then');
+    buffer.writeln('  sudo() { "\$@"; }');
+    buffer.writeln('fi');
+    buffer.writeln();
+    for (var i = 0; i < commands.length; i++) {
+      final cmd = commands[i];
+      final escapedNotice = cmd.replaceAll("'", "'\\''");
+      buffer.writeln("echo '[$i/${commands.length}] Running: $escapedNotice'");
+      buffer.writeln(cmd);
+    }
+    return buffer.toString();
+  }
+
+  /// Executes pre-validated package manager commands via a temporary shell script.
+  ///
+  /// On Linux, if passwordless `sudo` is not available, execution is elevated using
+  /// `pkexec` (PolicyKit) to present a native OS authorization dialog to the user.
+  /// This ensures that all commands execute under a single authorization prompt rather than
+  /// prompting repeatedly or failing in non-interactive GUI environments.
+  @visibleForTesting
+  static Future<ProcessResult> executePackageManagerCommands({
+    required List<String> commands,
+    required void Function(String) logInfo,
+    required void Function(String) logError,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isLinuxOverride,
+  }) async {
+    final runner = runProcess ?? Process.run;
+    final onLinux = isLinuxOverride ?? Platform.isLinux;
+    final scriptContent = buildPackageManagerScript(commands);
+
+    final tempDir = await Directory.systemTemp.createTemp('ponta-pkg-');
+    final scriptFile = File(p.join(tempDir.path, 'install.sh'));
+
+    try {
+      await scriptFile.writeAsString(scriptContent);
+      try {
+        await runner('chmod', ['755', scriptFile.path]);
+      } catch (_) {}
+
+      bool canSudoNonInteractive = false;
+      if (onLinux) {
+        try {
+          final sudoCheck = await runner('sudo', ['-n', 'true']);
+          if (sudoCheck.exitCode == 0) {
+            canSudoNonInteractive = true;
+          }
+        } catch (_) {}
+      }
+
+      final ProcessResult result;
+      if (canSudoNonInteractive) {
+        logInfo('Executing package manager commands via sudo (non-interactive)...');
+        result = await runner('sudo', ['sh', scriptFile.path]);
+      } else if (onLinux) {
+        logInfo('Requesting system authorization via pkexec...');
+        result = await BackgroundProcess.runElevated(
+          'sh',
+          [scriptFile.path],
+          isLinux: true,
+          logInfo: logInfo,
+          runProcess: runner,
+        );
+      } else {
+        result = await runner('sh', [scriptFile.path]);
+      }
+
+      if (result.exitCode != 0) {
+        final stderrStr = result.stderr.toString();
+        final lowerErr = stderrStr.toLowerCase();
+        if (result.exitCode == 126 ||
+            lowerErr.contains('dismissed') ||
+            lowerErr.contains('not authorized')) {
+          logError('Authentication was cancelled by user.');
+          throw Exception('Installation aborted: authentication was cancelled.');
+        }
+
+        logError('Command failed with exit code ${result.exitCode}');
+        if (result.stdout.toString().isNotEmpty) {
+          logError('STDOUT: ${result.stdout}');
+        }
+        if (stderrStr.isNotEmpty) {
+          logError('STDERR: $stderrStr');
+        }
+        throw Exception(
+          'Installation command failed with exit code ${result.exitCode}:\n$stderrStr',
+        );
+      }
+
+      if (result.stdout.toString().isNotEmpty) {
+        logInfo('Output: ${result.stdout}');
+      }
+
+      return result;
+    } finally {
+      try {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      } catch (e) {
+        logInfo('Warning: Could not clean up temporary directory ${tempDir.path}: $e');
+      }
+    }
+  }
+
   /// Used for PHP on Linux where prebuilt binaries are not available.
   ///
   /// All commands come from catalog JSON (possibly a user-supplied catalog
@@ -2620,6 +2745,7 @@ security:
     InstallationProgressCallback? onProgress,
     required Function(String) logInfo,
     required Function(String) logError,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
   }) async {
     logInfo('Installing ${app.name} via package manager...');
     onProgress?.call(0.1, 'Detecting distribution...');
@@ -2665,38 +2791,23 @@ security:
       );
     }
 
-    // 5. Run installation commands
+    // 5. Run installation commands via pkexec/sudo script
     logInfo('Running ${resolvedCommands.length} installation commands...');
-    onProgress?.call(0.2, 'Installing packages...');
-
     for (var i = 0; i < resolvedCommands.length; i++) {
-      final cmd = resolvedCommands[i];
-      logInfo('[$i/${resolvedCommands.length}] Running: $cmd');
+      logInfo('  [$i/${resolvedCommands.length}] ${resolvedCommands[i]}');
+    }
+    onProgress?.call(0.2, 'Authorizing & installing packages...');
 
-      final progress = 0.2 + (i / resolvedCommands.length) * 0.6; // 20% to 80%
-      onProgress?.call(progress, 'Running: ${cmd.split(' ').first}...');
-
-      try {
-        final result = await Process.run(
-          'sh',
-          ['-c', cmd],
-        );
-
-        if (result.exitCode != 0) {
-          logError('Command failed with exit code ${result.exitCode}');
-          logError('STDOUT: ${result.stdout}');
-          logError('STDERR: ${result.stderr}');
-          throw Exception('Installation command failed: $cmd\n${result.stderr}');
-        }
-
-        if (result.stdout.toString().isNotEmpty) {
-          logInfo('Output: ${result.stdout}');
-        }
-      } catch (e) {
-        logError('Failed to run command: $cmd');
-        logError('Error: $e');
-        rethrow;
-      }
+    try {
+      await executePackageManagerCommands(
+        commands: resolvedCommands,
+        logInfo: logInfo,
+        logError: logError,
+        runProcess: runProcess,
+      );
+    } catch (e) {
+      logError('Failed to run command: $e');
+      rethrow;
     }
 
     onProgress?.call(0.85, 'Finding installed executable...');
@@ -2714,6 +2825,7 @@ security:
         candidates: candidates,
         searchDirectories: searchDirs,
         logInfo: logInfo,
+        runProcess: runProcess,
       );
       if (path != null) {
         execPath = path;
@@ -2741,7 +2853,8 @@ security:
     // Apache (apache2/httpd) only accepts -v, not --version.
     final isApacheVerify = foundName == 'apache2' || foundName == 'httpd';
     final verifyArgs = isApacheVerify ? ['-v'] : ['--version'];
-    final verify = await Process.run(execPath, verifyArgs);
+    final runner = runProcess ?? Process.run;
+    final verify = await runner(execPath, verifyArgs);
     if (verify.exitCode != 0) {
       logError(
         '$foundName $verifyArgs exited with code ${verify.exitCode}: '
@@ -2767,6 +2880,7 @@ security:
           '/usr/local/sbin/$cliName',
         ],
         logInfo: logInfo,
+        runProcess: runProcess,
       );
       app.cliFilePath = cliPath ?? execPath;
     }
