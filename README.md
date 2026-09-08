@@ -9,7 +9,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.11-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-blue?style=for-the-badge&logo=linux&logoColor=white)](#-supported-platforms)
-[![Tests](https://img.shields.io/badge/Tests-424%20Passing-success?style=for-the-badge&logo=githubactions&logoColor=white)](#-code-quality--testing)
+[![Tests](https://img.shields.io/badge/Tests-527%20Passing-success?style=for-the-badge&logo=githubactions&logoColor=white)](#-code-quality--testing)
 [![License](https://img.shields.io/badge/License-Proprietary-orange?style=for-the-badge)](#-license)
 
 <p align="center">
@@ -44,10 +44,18 @@
 - **Robust Database Engine Support**:
   - Run and manage **MySQL**, **MariaDB**, **PostgreSQL**, **MongoDB**, **Redis (Valkey)**, **Elasticsearch**, and **Meilisearch**.
   - Built-in GUI tool integrations (**phpMyAdmin**, **HeidiSQL**, **MongoDB Compass**) with single-click access.
+- **Modern Language Runtimes (Node.js, Bun, Deno, Python)**:
+  - One-click installation and management for **Node.js** (including npm, npx, corepack shims), **Bun** (with bunx), and **Deno**.
+  - Automatically configures isolated global package directories (`~/.bun/bin`, `~/.deno/bin`, `%APPDATA%\npm`, `~/.npm-global/bin`) merged into the User PATH.
+  - Python runtime management via **pyenv**.
+- **Instant Public Tunneling (Cloudflare & ngrok)**:
+  - Driver-based Tunnel Subsystem supporting **Cloudflare Quick Tunnels** (100% zero-config, no account needed), **Cloudflare Named Tunnels**, and **ngrok**.
+  - Real-time tunnel session dashboard with status badges, 1-click URL copying, QR code generation for mobile testing, Web Inspector (`http://127.0.0.1:4040`), and 1-click sharing directly from the Sites table.
+  - Optional auto-start on app launch.
 - **Automated Virtual Hosts & Local SSL**:
   - Automatic `.test` and `.local` domain routing with secure `/etc/hosts` and Windows hosts file management.
-  - Automatically provisions trusted local **SSL (HTTPS)** certificates using an internal Root Certificate Authority.
-- **Modern Runtimes Management**: Easily install and manage **Node.js** versions and **Python** via **pyenv**.
+  - Automatically provisions trusted local **SSL (HTTPS)** certificates using an internal Root Certificate Authority (**mkcert**).
+  - Robust Linux support with PolicyKit (`pkexec`) elevation, user `CAROOT` synchronization, and automatic permission chown back to the active user.
 - **Integrated Configuration Editor**: Edit configuration files (`php.ini`, `nginx.conf`, `httpd.conf`, `Caddyfile`, `my.ini`) directly within the application with syntax highlighting and instant validation.
 - **System Tray & Auto-Start Integration**: Minimizes unobtrusively to the system tray and provides optional automatic background service startup upon system boot.
 
@@ -55,7 +63,7 @@
 
 ## 🛡️ Enterprise Security Hardening
 
-`dev-stack` has been thoroughly audited and hardened across 4 multi-phase security benchmarks to ensure maximum defense-in-depth:
+`dev-stack` has been thoroughly audited and hardened across multi-phase security benchmarks to ensure maximum defense-in-depth:
 
 | Security Domain | Protection Mechanism & Implementation |
 | :--- | :--- |
@@ -63,6 +71,7 @@
 | **Encrypted Local Storage (VULN-11)** | Database passwords and sensitive credentials are encrypted using `LocalSecretVault` with authenticated encryption (HMAC-SHA256 authenticated keystore, random per-ciphertext IVs). Transparent backward-compatible fallback for legacy plaintext entries. |
 | **Path Traversal Defense (VULN-08)** | Pre-inspection of Tar & Zip archives via `isSafeTarEntry` rejecting any entries with relative traversal sequences (`../`, `..\`), root paths, or drive letters. |
 | **Command Injection Mitigation (VULN-01 & VULN-02)** | Eliminated double-shell interpretation by removing redundant `runInShell: true` on POSIX systems; strictly restricted `PackageCommandValidator` allowlist by removing high-risk binaries (`sudo`, `pkexec`, `tee`). |
+| **Privilege Escalation & Polkit Isolation** | Atomic shell script batching via `pkexec` with fail-closed `set -e`, non-interactive environment flags, and transparent root `sudo` wrapper; automatic `sudo -n true` NOPASSWD bypass; user `CAROOT` synchronization with chown permission restoration. |
 | **Process Lifecycle Reliability (LIFE-01 & LIFE-02)** | POSIX **Process Group Kill** (`kill -9 -- -$pid`) on Linux to prevent orphan/zombie worker leaks; real-time systemd liveness detection via `systemctl is-active`. |
 | **Least-Privilege File Permissions (VULN-04, 05, 07, 14)** | Sensitive temporary files restricted to `0600` permissions; binary directories granted execution privileges without granting blanket `755` permissions across data directories; comprehensive audit logging for all elevated commands (`pkexec`). |
 
@@ -72,13 +81,13 @@
 
 <div align="center">
 
-| Web Servers | Language Runtimes | Databases & Caching | GUI Tools & Management |
+| Web Servers | Language Runtimes | Databases & Caching | Management & Tunnels |
 | :---: | :---: | :---: | :---: |
 | <img src="assets/images/nginx.png" width="40"/><br/>**Nginx** | <img src="assets/images/php.png" width="40"/><br/>**PHP 7.4 – 8.5** | <img src="assets/images/mysql.png" width="40"/><br/>**MySQL** | <img src="assets/images/phpmyadmin.png" width="40"/><br/>**phpMyAdmin** |
 | <img src="assets/images/caddy.png" width="40"/><br/>**Caddy** | <img src="assets/images/nodejs.png" width="40"/><br/>**Node.js** | <img src="assets/images/mariadb.png" width="40"/><br/>**MariaDB** | <img src="assets/images/heidisql.png" width="40"/><br/>**HeidiSQL** |
-| <img src="assets/images/apache.png" width="40"/><br/>**Apache** | <img src="assets/images/python.png" width="40"/><br/>**Python (pyenv)** | <img src="assets/images/postgre.png" width="40"/><br/>**PostgreSQL** | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB Compass** |
-| | | <img src="assets/images/redis.png" width="40"/><br/>**Redis / Valkey** | |
-| | | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB** | |
+| <img src="assets/images/apache.png" width="40"/><br/>**Apache** | <img src="assets/images/bun.png" width="40"/><br/>**Bun (bunx)** | <img src="assets/images/postgre.png" width="40"/><br/>**PostgreSQL** | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB Compass** |
+| | <img src="assets/images/deno.png" width="40"/><br/>**Deno** | <img src="assets/images/redis.png" width="40"/><br/>**Redis / Valkey** | 🌐<br/>**Cloudflare Tunnel** |
+| | <img src="assets/images/python.png" width="40"/><br/>**Python (pyenv)** | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB** | 🚇<br/>**ngrok** |
 | | | <img src="assets/images/elasticsearch.png" width="40"/><br/>**Elasticsearch** | |
 | | | <img src="assets/images/meilisearch.png" width="40"/><br/>**Meilisearch** | |
 
@@ -162,6 +171,7 @@ lib/
 │   ├── databases/          # Database Records, Credential Encryption, User Grants
 │   ├── hosts/              # Virtual Hosts, Local Domain Resolution, System Hosts
 │   ├── sites/              # Projects, Virtual Hosts, SSL Certificates
+│   ├── tunnels/            # Tunnel Drivers (Cloudflare, ngrok), Sessions, QR Sharing
 │   └── settings/           # App Preferences, Port Bindings, Distro Configuration
 └── shared/                 # Reusable UI Widgets, Inline Code Editor, Dialogs
 ```
@@ -169,6 +179,7 @@ lib/
 ### Key Design Patterns
 - **Builder Pattern**: Static configuration generators (`NginxConfigBuilder`, `ApacheConfigBuilder`, `CaddyConfigBuilder`) producing clean, normalized configuration files across Windows and POSIX systems.
 - **Strategy & Pipeline Pattern**: Decomposed `AppInstallerService.install()` into modular phases: download ➔ checksum verification ➔ archive extraction ➔ database configuration ➔ runtime configuration ➔ webserver integration.
+- **Driver Pattern**: Pluggable `TunnelDriver` architecture (`CloudflareDriver`, `NgrokDriver`) decoupling protocol-specific tunneling logic, Web Inspector, and status monitoring from UI and state management.
 - **Single-Flight / Async Mutex Pattern**: Concurrency lock using `Completer<Isar>` in `IsarInstance.getInstance()` to eliminate race conditions and file lock contentions during application boot.
 
 ---
@@ -177,11 +188,12 @@ lib/
 
 `dev-stack` enforces strict Test-Driven Development (TDD) standards:
 
-- **100% Automated Test Pass Rate**: **424 / 424 tests PASS** (0 failures, 0 skipped).
+- **100% Automated Test Pass Rate**: **527 / 527 tests PASS** (0 failures, 0 skipped).
 - **Clean Static Analysis**: `flutter analyze` reports **0 issues**.
 - **Comprehensive Test Coverage**:
   - Unit tests for all Webserver Config Builders (Nginx, Apache, Caddy).
   - Security regression test suites for Tar Path Traversal, Command Injection, Allowlist Validation, SHA256 Checksums, and Authenticated Keystore Tampering.
+  - Driver test suites for Tunnel downloaders, lifecycle processes, and UI modals.
   - Mock integration tests for POSIX signals, Process Group termination, and systemd service lifecycles.
 
 Run all tests:
