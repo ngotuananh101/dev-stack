@@ -187,6 +187,58 @@ class SslService extends _$SslService {
     }
   }
 
+  Future<String> _resolveCaroot() async {
+    try {
+      final res = await BackgroundProcess.run(mkcertPath, const ['-CAROOT']);
+      final out = res.stdout.toString().trim();
+      if (out.isNotEmpty) return out;
+    } catch (_) {}
+    return p.join(
+      Platform.environment['HOME'] ?? '~',
+      '.local',
+      'share',
+      'mkcert',
+    );
+  }
+
+  /// Builds elevated execution arguments for mkcert.
+  ///
+  /// On Linux, pkexec strips environment variables and executes as root (whose
+  /// CAROOT is `/root/.local/share/mkcert`). We forward the user's explicit
+  /// [carootPath] via shell positional arguments so root installs the user's CA into
+  /// the system store, and chowns [carootPath] back to [username] so the user retains
+  /// full read/write ownership of the CA key.
+  ///
+  /// On Windows, mkcert is executed directly with elevation via PowerShell RunAs.
+  @visibleForTesting
+  static ({String executable, List<String> arguments}) buildElevatedMkcertArgs({
+    required String mkcertPath,
+    required String carootPath,
+    required String action,
+    String? username,
+    bool? isLinux,
+  }) {
+    final onLinux = isLinux ?? Platform.isLinux;
+    if (onLinux) {
+      return (
+        executable: 'sh',
+        arguments: [
+          '-c',
+          'export CAROOT="\$1"; "\$2" "\$3"; if [ -n "\$4" ]; then chown -R "\$4" "\$1" 2>/dev/null || true; fi',
+          'sh',
+          carootPath,
+          mkcertPath,
+          action,
+          username ?? '',
+        ],
+      );
+    }
+    return (
+      executable: mkcertPath,
+      arguments: [action],
+    );
+  }
+
   Future<void> initializeRootCA() async {
     // Wait for the build process to finish so we have the correct state
     await future;
@@ -225,9 +277,37 @@ class SslService extends _$SslService {
 
       AppLogger.info('SSL not found, running mkcert -install...');
 
-      final result = await BackgroundProcess.runElevated(mkcertPath, const [
-        '-install',
-      ]);
+      final onLinux = Platform.isLinux;
+      if (onLinux) {
+        // Run as user first to create CA in user's CAROOT and install to user browser NSS stores
+        try {
+          final userInit =
+              await BackgroundProcess.run(mkcertPath, const ['-install']);
+          if (userInit.stdout.toString().contains('certutil') ||
+              userInit.stderr.toString().contains('certutil')) {
+            AppLogger.warning(
+              'certutil is not available. To trust CA in Firefox/Chrome, install: sudo apt install libnss3-tools',
+            );
+          }
+        } catch (_) {}
+      }
+
+      final userCaroot = await _resolveCaroot();
+      final username = Platform.environment['USER'] ??
+          Platform.environment['LOGNAME'] ??
+          '';
+
+      final elevatedCmd = buildElevatedMkcertArgs(
+        mkcertPath: mkcertPath,
+        carootPath: userCaroot,
+        action: '-install',
+        username: username,
+      );
+
+      final result = await BackgroundProcess.runElevated(
+        elevatedCmd.executable,
+        elevatedCmd.arguments,
+      );
 
       AppLogger.info('mkcert -install exit code: ${result.exitCode}');
 
@@ -268,9 +348,22 @@ class SslService extends _$SslService {
 
       AppLogger.info('Uninstalling SSL Root CA...');
 
-      final result = await BackgroundProcess.runElevated(mkcertPath, const [
-        '-uninstall',
-      ]);
+      final userCaroot = await _resolveCaroot();
+      final username = Platform.environment['USER'] ??
+          Platform.environment['LOGNAME'] ??
+          '';
+
+      final elevatedCmd = buildElevatedMkcertArgs(
+        mkcertPath: mkcertPath,
+        carootPath: userCaroot,
+        action: '-uninstall',
+        username: username,
+      );
+
+      final result = await BackgroundProcess.runElevated(
+        elevatedCmd.executable,
+        elevatedCmd.arguments,
+      );
 
       AppLogger.info('mkcert -uninstall exit code: ${result.exitCode}');
 
@@ -285,6 +378,13 @@ class SslService extends _$SslService {
           StackTrace.current,
         );
         return;
+      }
+
+      if (Platform.isLinux) {
+        // Also uninstall from user browser stores
+        try {
+          await BackgroundProcess.run(mkcertPath, const ['-uninstall']);
+        } catch (_) {}
       }
 
       await ref
