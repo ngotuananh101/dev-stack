@@ -96,6 +96,12 @@ class PackageCommandValidator {
       }
     }
 
+    // Reject embedded newlines / carriage returns that would let a single
+    // catalog entry inject additional script lines (multi-line injection).
+    if (trimmed.contains('\n') || trimmed.contains('\r') || trimmed.contains('\v') || trimmed.contains('\f')) {
+      return 'Command contains forbidden newline or vertical whitespace character';
+    }
+
     // Split the pipeline and validate every segment's leading binary.
     final segments = trimmed.split('|');
     for (final segment in segments) {
