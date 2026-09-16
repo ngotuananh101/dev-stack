@@ -300,7 +300,7 @@ class AppServiceManager {
       }
       return [p.join(AppConfig.dataDir, 'redis', 'redis.conf')];
     }
-    if (name.startsWith('php-fpm')) {
+    if (name.contains('php-fpm')) {
       final targetAppId = appId ?? 'php82';
       final conf = p.join(AppConfig.baseDir, 'php', targetAppId, 'php-fpm.conf');
       return ['-F', '-y', conf];
@@ -332,7 +332,7 @@ class AppServiceManager {
     if (name == 'postgres') {
       return [(host: '127.0.0.1', port: 5432)];
     }
-    if (name.startsWith('php-fpm') && appId != null) {
+    if (name.contains('php-fpm') && appId != null) {
       final port = AppInstallerService.phpPortFor(appId);
       return [(host: '127.0.0.1', port: port)];
     }

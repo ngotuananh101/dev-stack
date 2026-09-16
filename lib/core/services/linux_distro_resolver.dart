@@ -106,9 +106,36 @@ class LinuxDistroResolver {
     }
   }
 
-  /// Resolves any template placeholders in download URLs:
+  /// Detects the distro version ID (e.g. 41, 40, 12, 24.04).
+  static String detectVersionId({String? osReleaseContent, bool? isLinux}) {
+    final linux = isLinux ?? Platform.isLinux;
+    if (!linux) return '41';
+
+    try {
+      String content = osReleaseContent ?? '';
+      if (content.isEmpty) {
+        final file = File('/etc/os-release');
+        if (file.existsSync()) {
+          content = file.readAsStringSync();
+        }
+      }
+
+      if (content.isNotEmpty) {
+        final parsed = parseOsRelease(content);
+        final versionId = parsed['VERSION_ID'];
+        if (versionId != null && versionId.isNotEmpty) {
+          return versionId;
+        }
+      }
+    } catch (_) {}
+
+    return '41';
+  }
+
+  /// Resolves any template placeholders in download URLs and package manager commands:
   /// - `{distro}` or `{valkey_distro}` -> `noble` / `jammy` / `focal`
   /// - `{mongo_distro}` -> `ubuntu2404` / `ubuntu2204` / `ubuntu2004` / `debian12`
+  /// - `{version_id}` -> `41` / `40` / `12` / `24.04`
   static String resolveUrl(
     String url, {
     String? osReleaseContent,
@@ -124,18 +151,23 @@ class LinuxDistroResolver {
       osReleaseContent: osReleaseContent,
       isLinux: isLinux,
     );
+    final versionId = detectVersionId(
+      osReleaseContent: osReleaseContent,
+      isLinux: isLinux,
+    );
 
     var resolved = url
         .replaceAll('{distro}', valkeyDistro)
         .replaceAll('{valkey_distro}', valkeyDistro)
-        .replaceAll('{mongo_distro}', mongoDistro);
+        .replaceAll('{mongo_distro}', mongoDistro)
+        .replaceAll('{version_id}', versionId);
 
     return resolved;
   }
 
   /// Maps `/etc/os-release` ID/ID_LIKE to the package-manager family used by
-  /// `package_manager_commands` keys in the catalog: `ubuntu`, `debian`, or
-  /// `centos`. Unknown distros fall back to `ubuntu` (the largest derivative
+  /// `package_manager_commands` keys in the catalog: `ubuntu`, `debian`, `centos`,
+  /// or `fedora`. Unknown distros fall back to `ubuntu` (the largest derivative
   /// family). Returns `unknown` only when detection is impossible (non-Linux
   /// or unreadable os-release) — callers decide their own fallback.
   static String detectFamily({String? osReleaseContent, bool? isLinux}) {
@@ -160,17 +192,21 @@ class LinuxDistroResolver {
       if (id == 'ubuntu' || idLike.contains('ubuntu')) return 'ubuntu';
       // Debian proper (surv.org repo flow differs from the Ubuntu PPA flow)
       if (id == 'debian' || idLike.contains('debian')) return 'debian';
-      // RedHat family (rhel, rocky, almalinux, fedora, ol, centos derivatives)
+      // Enterprise Linux / RedHat family (rhel, rocky, almalinux, ol, centos derivatives).
+      // Note: RHEL clones often have ID_LIKE="rhel centos fedora" or ID_LIKE="fedora" (e.g. ol),
+      // so we match Enterprise Linux IDs and centos/rhel ID_LIKE before pure Fedora.
       if (id == 'centos' ||
           id == 'rhel' ||
-          id == 'fedora' ||
           id == 'rocky' ||
           id == 'almalinux' ||
           id == 'ol' ||
           idLike.contains('centos') ||
-          idLike.contains('rhel') ||
-          idLike.contains('fedora')) {
+          idLike.contains('rhel')) {
         return 'centos';
+      }
+      // Fedora family (upstream of RHEL; uses native dnf packages without EPEL or EL9 RPMs)
+      if (id == 'fedora' || idLike.contains('fedora')) {
+        return 'fedora';
       }
 
       // ID_LIKE with multiple values (e.g. "debian ubuntu") — first match wins

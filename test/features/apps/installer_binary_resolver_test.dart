@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:dev_stack/features/apps/data/app_installer_service.dart';
+import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/core/config/app_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -85,6 +86,46 @@ void main() {
       );
 
       expect(setcapCalled, isTrue);
+    });
+  });
+
+  group('resolveExecNames', () {
+    test('resolves apache to apache2 and httpd', () {
+      final app = AppModel(
+        appId: 'apache',
+        name: 'Apache',
+        groupName: 'webserver',
+        categories: ['webserver'],
+        execFile: 'apache2',
+      );
+      expect(AppInstallerService.resolveExecNames(app), equals(['apache2', 'httpd']));
+    });
+
+    test('resolves php83 to php-fpm8.3, php83-php-fpm, and php-fpm', () {
+      final app = AppModel(
+        appId: 'php83',
+        name: 'PHP 8.3',
+        groupName: 'php',
+        categories: ['runtime'],
+        execFile: 'php-fpm8.3',
+      );
+      expect(
+        AppInstallerService.resolveExecNames(app),
+        equals(['php-fpm8.3', 'php83-php-fpm', 'php-fpm']),
+      );
+    });
+
+    test('resolves unversioned php to php-fpm', () {
+      final app = AppModel(
+        appId: 'php',
+        name: 'PHP',
+        groupName: 'php',
+        categories: ['runtime'],
+      );
+      expect(
+        AppInstallerService.resolveExecNames(app),
+        equals(['php-fpm']),
+      );
     });
   });
 }
