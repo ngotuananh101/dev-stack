@@ -124,6 +124,10 @@
         "centos": [
           "sudo dnf install -y httpd",
           "sudo systemctl disable --now httpd"
+        ],
+        "fedora": [
+          "sudo dnf install -y httpd",
+          "sudo systemctl disable --now httpd"
         ]
       },
       "versions": {
@@ -198,6 +202,11 @@
           "sudo dnf module enable -y php:remi-8.5",
           "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
           "sudo systemctl disable --now php-fpm"
+        ],
+        "fedora": [
+          "sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-{version_id}.rpm",
+          "sudo dnf install -y --enablerepo=remi php85-php-fpm php85-php-cli php85-php-common php85-php-mysqlnd php85-php-mbstring php85-php-xml php85-php-pecl-zip",
+          "sudo systemctl disable --now php85-php-fpm"
         ]
       },
       "versions": {
@@ -240,6 +249,11 @@
           "sudo dnf module enable -y php:remi-8.4",
           "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
           "sudo systemctl disable --now php-fpm"
+        ],
+        "fedora": [
+          "sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-{version_id}.rpm",
+          "sudo dnf install -y --enablerepo=remi php84-php-fpm php84-php-cli php84-php-common php84-php-mysqlnd php84-php-mbstring php84-php-xml php84-php-pecl-zip",
+          "sudo systemctl disable --now php84-php-fpm"
         ]
       },
       "versions": {
@@ -282,6 +296,11 @@
           "sudo dnf module enable -y php:remi-8.3",
           "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
           "sudo systemctl disable --now php-fpm"
+        ],
+        "fedora": [
+          "sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-{version_id}.rpm",
+          "sudo dnf install -y --enablerepo=remi php83-php-fpm php83-php-cli php83-php-common php83-php-mysqlnd php83-php-mbstring php83-php-xml php83-php-pecl-zip",
+          "sudo systemctl disable --now php83-php-fpm"
         ]
       },
       "versions": {
@@ -324,6 +343,11 @@
           "sudo dnf module enable -y php:remi-8.2",
           "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
           "sudo systemctl disable --now php-fpm"
+        ],
+        "fedora": [
+          "sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-{version_id}.rpm",
+          "sudo dnf install -y --enablerepo=remi php82-php-fpm php82-php-cli php82-php-common php82-php-mysqlnd php82-php-mbstring php82-php-xml php82-php-pecl-zip",
+          "sudo systemctl disable --now php82-php-fpm"
         ]
       },
       "versions": {
@@ -384,6 +408,10 @@
         "centos": [
           "sudo dnf install -y redis",
           "sudo systemctl disable --now redis"
+        ],
+        "fedora": [
+          "sudo dnf install -y redis",
+          "sudo systemctl disable --now redis"
         ]
       },
       "versions": {
@@ -424,6 +452,10 @@
           "sudo systemctl disable --now postgresql"
         ],
         "centos": [
+          "sudo dnf install -y postgresql-server postgresql-contrib",
+          "sudo systemctl disable --now postgresql"
+        ],
+        "fedora": [
           "sudo dnf install -y postgresql-server postgresql-contrib",
           "sudo systemctl disable --now postgresql"
         ]

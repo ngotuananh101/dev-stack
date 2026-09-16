@@ -192,13 +192,27 @@ VERSION_CODENAME=bookworm
         'ID=rhel',
         'ID=rocky\nID_LIKE="rhel centos fedora"',
         'ID=almalinux\nID_LIKE="rhel centos fedora"',
-        'ID=fedora\nID_LIKE=""',
         'ID=ol\nID_LIKE="fedora"',
       ]) {
         expect(
           LinuxDistroResolver.detectFamily(osReleaseContent: content, isLinux: true),
           equals('centos'),
           reason: 'os-release "$content" should map to centos family',
+        );
+      }
+    });
+
+    test('maps fedora and fedora derivatives to fedora family', () {
+      for (final content in [
+        'ID=fedora\nID_LIKE=""',
+        'ID=fedora\nVERSION_ID=41',
+        'ID=nobara\nID_LIKE="fedora"',
+        'ID=bazzite\nID_LIKE="fedora"',
+      ]) {
+        expect(
+          LinuxDistroResolver.detectFamily(osReleaseContent: content, isLinux: true),
+          equals('fedora'),
+          reason: 'os-release "$content" should map to fedora family',
         );
       }
     });

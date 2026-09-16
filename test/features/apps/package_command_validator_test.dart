@@ -38,6 +38,15 @@ void main() {
         ];
         expect(PackageCommandValidator.validateAll(commands), isEmpty);
       });
+
+      test('accepts fedora dnf remi flow', () {
+        final commands = [
+          'sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-41.rpm',
+          'sudo dnf install -y --enablerepo=remi php83-php-fpm php83-php-cli php83-php-common php83-php-mysqlnd php83-php-mbstring php83-php-xml php83-php-pecl-zip',
+          'sudo systemctl disable --now php83-php-fpm',
+        ];
+        expect(PackageCommandValidator.validateAll(commands), isEmpty);
+      });
     });
 
     group('rejected commands (negative cases)', () {

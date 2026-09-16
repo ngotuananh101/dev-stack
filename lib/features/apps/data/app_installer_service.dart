@@ -2531,16 +2531,19 @@ security:
   ///
   /// - For `apache`, candidates span both Debian (`apache2`) and RHEL (`httpd`)
   ///   packaging.
-  /// - For PHP apps, the daemon is `php-fpm` (or `php-fpm<version>`).
+  /// - For PHP apps, candidates include versioned `php-fpm<version>` (Debian/Ubuntu)
+  ///   and standard `php-fpm` (Fedora/CentOS/RHEL).
   /// - Otherwise falls back to `app.execFile` or `'php'`.
-  static List<String> _resolveExecNames(AppModel app) {
+  @visibleForTesting
+  static List<String> resolveExecNames(AppModel app) {
     if (app.appId == 'apache') {
       return ['apache2', 'httpd'];
     }
     if (app.groupName == 'php') {
       final prefix = phpPrefixFor(app.appId);
       if (prefix != null) {
-        return ['php-fpm$prefix'];
+        final noDot = prefix.replaceAll('.', '');
+        return ['php-fpm$prefix', 'php$noDot-php-fpm', 'php-fpm'];
       }
       return ['php-fpm'];
     }
@@ -2577,10 +2580,12 @@ security:
       final prefix = phpPrefixFor(app.appId);
       final candidates = <String>[];
       if (prefix != null) {
+        final noDot = prefix.replaceAll('.', '');
         candidates.add('/usr/sbin/php-fpm$prefix');
         candidates.add('/usr/bin/php-fpm$prefix');
         candidates.add('/usr/local/bin/php-fpm$prefix');
         candidates.add('/usr/local/sbin/php-fpm$prefix');
+        candidates.add('/opt/remi/php$noDot/root/usr/sbin/php-fpm');
       }
       candidates.addAll([
         '/usr/sbin/php-fpm',
@@ -2590,15 +2595,20 @@ security:
       ]);
       // Also add specific version candidates (php-fpm8.5, etc.)
       for (final v in ['8.5', '8.4', '8.3', '8.2']) {
+        final noDot = v.replaceAll('.', '');
         candidates.add('/usr/sbin/php-fpm$v');
         candidates.add('/usr/bin/php-fpm$v');
+        candidates.add('/opt/remi/php$noDot/root/usr/sbin/php-fpm');
       }
       return candidates;
     }
     if (app.appId.contains('postgresql')) {
-      // The glob-style candidate is dead (File.existsSync won't expand *),
-      // so rely on searchDirectories for the recursive postgresql/*/bin search.
-      return [];
+      return [
+        '/usr/bin/postgres',
+        '/usr/sbin/postgres',
+        '/usr/local/bin/postgres',
+        '/usr/local/sbin/postgres',
+      ];
     }
     return [
       '/usr/bin/$execName',
@@ -2610,7 +2620,23 @@ security:
 
   /// Directories to recursively search for the installed binary.
   static List<String>? _execSearchDirs(AppModel app) {
-    if (app.appId.contains('postgresql')) return ['/usr/lib/postgresql'];
+    if (app.appId.contains('postgresql')) {
+      return [
+        '/usr/lib/postgresql',
+        '/usr/pgsql-18',
+        '/usr/pgsql-17',
+        '/usr/pgsql-16',
+      ];
+    }
+    if (app.groupName == 'php') {
+      final prefix = phpPrefixFor(app.appId);
+      final noDot = prefix?.replaceAll('.', '');
+      return [
+        if (noDot != null) '/opt/remi/php$noDot',
+        '/opt/remi',
+        '/etc/php',
+      ];
+    }
     return null;
   }
 
@@ -2817,7 +2843,7 @@ security:
 
     // 6. Find installed executable
     logInfo('Locating installed ${app.name} executable...');
-    final execNames = _resolveExecNames(app);
+    final execNames = resolveExecNames(app);
     final candidates = _execCandidates(app, execNames.first);
     final searchDirs = _execSearchDirs(app);
     String? execPath;
@@ -2928,8 +2954,17 @@ security:
     } else if (app.appId.contains('postgresql')) {
       final initdb = await findInstalledBinary(
         'initdb',
-        candidates: ['/usr/bin/initdb'],
-        searchDirectories: ['/usr/lib/postgresql'],
+        candidates: [
+          '/usr/bin/initdb',
+          '/usr/sbin/initdb',
+          '/usr/local/bin/initdb',
+        ],
+        searchDirectories: [
+          '/usr/lib/postgresql',
+          '/usr/pgsql-18',
+          '/usr/pgsql-17',
+          '/usr/pgsql-16',
+        ],
         logInfo: logInfo,
       );
       if (initdb == null) {

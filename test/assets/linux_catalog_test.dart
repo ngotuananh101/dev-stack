@@ -76,8 +76,8 @@ void main() {
           expect(cmds, isA<Map<String, dynamic>>(),
               reason: 'package_manager app $id must define package_manager_commands');
           final cmdMap = cmds as Map<String, dynamic>;
-          expect(cmdMap.keys, containsAll(['ubuntu', 'debian', 'centos']),
-              reason: 'package_manager app $id must cover ubuntu/debian/centos');
+          expect(cmdMap.keys, containsAll(['ubuntu', 'debian', 'centos', 'fedora']),
+              reason: 'package_manager app $id must cover ubuntu/debian/centos/fedora');
           for (final list in cmdMap.values) {
             expect(list, isA<List>(), reason: 'Commands in $id must be a list');
             expect((list as List), isNotEmpty,
@@ -129,10 +129,11 @@ void main() {
       final versions = apache['versions'] as Map<String, dynamic>;
       expect(versions['system'], equals('package_manager'));
       final cmds = apache['package_manager_commands'] as Map<String, dynamic>;
-      expect(cmds.keys, containsAll(['ubuntu', 'debian', 'centos']));
-      // Ubuntu/Debian install apache2; CentOS installs httpd.
+      expect(cmds.keys, containsAll(['ubuntu', 'debian', 'centos', 'fedora']));
+      // Ubuntu/Debian install apache2; CentOS/Fedora install httpd.
       expect((cmds['ubuntu'] as List).last, contains('apache2'));
       expect((cmds['centos'] as List).last, contains('httpd'));
+      expect((cmds['fedora'] as List).last, contains('httpd'));
     });
 
     test('redis installs via package_manager with systemctl disable commands',
@@ -143,7 +144,7 @@ void main() {
       final versions = redis['versions'] as Map<String, dynamic>;
       expect(versions['system'], equals('package_manager'));
       final cmds = redis['package_manager_commands'] as Map<String, dynamic>;
-      expect(cmds.keys, containsAll(['ubuntu', 'debian', 'centos']));
+      expect(cmds.keys, containsAll(['ubuntu', 'debian', 'centos', 'fedora']));
       // Each distro command list ends with a systemctl disable directive.
       for (final list in cmds.values) {
         expect((list as List).last, contains('systemctl disable'));
@@ -158,7 +159,7 @@ void main() {
       final versions = pg['versions'] as Map<String, dynamic>;
       expect(versions['system'], equals('package_manager'));
       final cmds = pg['package_manager_commands'] as Map<String, dynamic>;
-      expect(cmds.keys, containsAll(['ubuntu', 'debian', 'centos']));
+      expect(cmds.keys, containsAll(['ubuntu', 'debian', 'centos', 'fedora']));
       for (final list in cmds.values) {
         expect((list as List).last, contains('systemctl disable'));
       }

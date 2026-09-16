@@ -44,6 +44,16 @@ void main() {
       );
       expect(args, containsAll(['-F', '-y']));
       expect(args.last, contains('php-fpm.conf'));
+
+      // Also supports Remi SCL style binary names (php83-php-fpm)
+      final remiArgs = AppServiceManager.argumentsForExecutable(
+        'php83-php-fpm',
+        '/opt/remi/php83/root/usr/sbin',
+        appId: 'php83',
+        isLinux: true,
+      );
+      expect(remiArgs, containsAll(['-F', '-y']));
+      expect(remiArgs.last, contains('php83'));
     });
 
     test('postgres receives -D with isolated data directory and -k /tmp on linux', () {
@@ -96,6 +106,12 @@ void main() {
         appId: 'php82',
       );
       expect(sockets.any((s) => s.port == 9082), isTrue);
+
+      final remiSockets = AppServiceManager.requiredSocketsForExecutable(
+        'php83-php-fpm',
+        appId: 'php83',
+      );
+      expect(remiSockets.any((s) => s.port == 9083), isTrue);
     });
   });
 
