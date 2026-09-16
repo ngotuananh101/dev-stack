@@ -1150,6 +1150,9 @@ class AppInstallerService {
               RegExp(r"^#?listen_addresses\s*=\s*'.*?'", multiLine: true),
               "listen_addresses = '$listenAddress'",
             );
+            if (Platform.isLinux) {
+              content = ensurePostgresUnixSocketDirectory(content);
+            }
             await confFile.writeAsString(content);
             logInfo('Updated PostgreSQL listen_addresses to $listenAddress (allowLanAccess: $allowLan)');
           }
@@ -3118,6 +3121,23 @@ IncludeOptional "$vhostsGlob"
     }
   }
 
+  /// Ensures `unix_socket_directories = '/tmp'` is set in PostgreSQL config.
+  /// On Linux, PostgreSQL package builds default to `/var/run/postgresql` which
+  /// requires root permissions to create lock files and sockets, causing permission
+  /// denied errors when running as a regular user.
+  @visibleForTesting
+  static String ensurePostgresUnixSocketDirectory(String confContent) {
+    if (confContent.contains(RegExp(r"^#?unix_socket_directories\s*=", multiLine: true))) {
+      return confContent.replaceAll(
+        RegExp(r"^#?unix_socket_directories\s*=\s*'.*?'", multiLine: true),
+        "unix_socket_directories = '/tmp'",
+      );
+    } else {
+      final prefix = (confContent.isNotEmpty && !confContent.endsWith('\n')) ? '\n' : '';
+      return '$confContent${prefix}unix_socket_directories = \'/tmp\'\n';
+    }
+  }
+
   @visibleForTesting
   Future<void> configureIsolatedPostgresql(
     AppModel app,
@@ -3125,7 +3145,9 @@ IncludeOptional "$vhostsGlob"
     String initdbPath,
     Function(String) logInfo, {
     Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isLinux,
   }) async {
+    final onLinux = isLinux ?? Platform.isLinux;
     final clusterName = 'postgresql-$version';
     final dataDir = Directory(p.join(AppConfig.dataDir, clusterName));
     if (dataDir.existsSync() && dataDir.listSync().isNotEmpty) {
@@ -3139,7 +3161,7 @@ IncludeOptional "$vhostsGlob"
 
     // Set 0700 permissions required by initdb on POSIX
     final runner = runProcess ?? Process.run;
-    if (Platform.isLinux) {
+    if (onLinux) {
       try {
         final chmodResult = await runner('chmod', ['700', dataDir.path]);
         if (chmodResult.exitCode != 0) {
@@ -3211,6 +3233,9 @@ IncludeOptional "$vhostsGlob"
         RegExp(r"^#?listen_addresses\s*=\s*'.*?'", multiLine: true),
         "listen_addresses = '127.0.0.1'",
       );
+      if (onLinux) {
+        conf = ensurePostgresUnixSocketDirectory(conf);
+      }
       await confFile.writeAsString(conf);
     }
     logInfo('Initialized isolated PostgreSQL cluster at ${dataDir.path}');

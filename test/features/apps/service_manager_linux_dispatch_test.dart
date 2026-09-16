@@ -46,7 +46,7 @@ void main() {
       expect(args.last, contains('php-fpm.conf'));
     });
 
-    test('postgres receives -D with isolated data directory', () {
+    test('postgres receives -D with isolated data directory and -k /tmp on linux', () {
       final args = AppServiceManager.argumentsForExecutable(
         'postgres',
         '/usr/lib/postgresql/16/bin',
@@ -55,8 +55,21 @@ void main() {
         isLinux: true,
       );
       expect(args, contains('-D'));
-      expect(args, hasLength(2));
-      expect(args.last, contains('postgresql-16'));
+      expect(args, contains('-k'));
+      expect(args, contains('/tmp'));
+      expect(args, hasLength(4));
+      expect(args[1], contains('postgresql-16'));
+    });
+
+    test('postgres receives only -D on non-linux', () {
+      final args = AppServiceManager.argumentsForExecutable(
+        'postgres',
+        'C:\\PostgreSQL\\bin',
+        appId: 'postgresql',
+        installedVersion: '16',
+        isLinux: false,
+      );
+      expect(args, ['-D', contains('postgresql-16')]);
     });
   });
 

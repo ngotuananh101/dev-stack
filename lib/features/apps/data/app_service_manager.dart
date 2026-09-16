@@ -309,6 +309,9 @@ class AppServiceManager {
       final ver = installedVersion ?? 'system';
       final targetId = appId ?? 'postgresql';
       final dataDir = p.join(AppConfig.dataDir, '$targetId-$ver');
+      if (onLinux) {
+        return ['-D', dataDir, '-k', '/tmp'];
+      }
       return ['-D', dataDir];
     }
     return <String>[];
@@ -490,6 +493,27 @@ class AppServiceManager {
       } else if (fileName == 'elasticsearch') {
         // No special environment or args needed anymore as we edit the config in the app dir
         // but still point data to our managed data dir inside the yml.
+      } else if (fileName == 'postgres') {
+        if (Platform.isLinux) {
+          final ver = app.installedVersion ?? 'system';
+          final targetId = app.appId;
+          final dataDir = p.join(AppConfig.dataDir, '$targetId-$ver');
+          final confFile = File(p.join(dataDir, 'postgresql.conf'));
+          if (confFile.existsSync()) {
+            try {
+              final conf = confFile.readAsStringSync();
+              final updated =
+                  AppInstallerService.ensurePostgresUnixSocketDirectory(conf);
+              if (updated != conf) {
+                confFile.writeAsStringSync(updated);
+              }
+            } catch (e) {
+              _logger.warning(
+                'Could not ensure unix_socket_directories in postgresql.conf: $e',
+              );
+            }
+          }
+        }
       }
 
       final runsDetached = runsDetachedExecutable(fileName);

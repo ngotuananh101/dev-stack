@@ -75,4 +75,22 @@ void main() {
       expect(stripped.contains("'"), isFalse);
     });
   });
+
+  group('DatabasesNotifier.postgresCliArgs', () {
+    test('prepends -h /tmp on Linux', () {
+      final args = DatabasesNotifier.postgresCliArgs(
+        ['-U', 'postgres', '-l'],
+        isLinux: true,
+      );
+      expect(args, ['-h', '/tmp', '-U', 'postgres', '-l']);
+    });
+
+    test('preserves arguments as-is on non-Linux', () {
+      final args = DatabasesNotifier.postgresCliArgs(
+        ['-U', 'postgres', '-l'],
+        isLinux: false,
+      );
+      expect(args, ['-U', 'postgres', '-l']);
+    });
+  });
 }
