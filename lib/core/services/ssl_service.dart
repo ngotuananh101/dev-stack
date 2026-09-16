@@ -105,12 +105,21 @@ class SslService extends _$SslService {
 
   Future<bool> checkStatus() async {
     try {
-      // First check if CAROOT exists
+      // `mkcert -CAROOT` prints the configured path even before a CA has been
+      // created, so checking its output alone would make this method create a
+      // CA as a side effect of the certificate-generation probe below.
       final carootResult = await BackgroundProcess.run(mkcertPath, ['-CAROOT']);
+      final carootPath = carootResult.stdout.toString().trim();
+      final rootCaPath = p.join(carootPath, 'rootCA.pem');
       if (carootResult.exitCode != 0 ||
-          carootResult.stdout.toString().trim().isEmpty) {
+          carootPath.isEmpty ||
+          !File(rootCaPath).existsSync()) {
         AppLogger.info('CAROOT not found or invalid');
         return false;
+      }
+
+      if (Platform.isLinux) {
+        return _checkLinuxSystemTrust(rootCaPath);
       }
 
       // Now verify the CA is actually installed in the system trust store
@@ -145,6 +154,41 @@ class SslService extends _$SslService {
       return false;
     }
   }
+
+  /// Linux exposes its system trust store as one of these PEM bundles. Verify
+  /// the mkcert root against them instead of asking mkcert to create a throwaway
+  /// certificate: mkcert's warning is not a reliable status API when it runs
+  /// unprivileged from an AppImage after a separate pkexec installation.
+  Future<bool> _checkLinuxSystemTrust(String rootCaPath) async {
+    for (final trustStore in linuxTrustStoreBundles()) {
+      if (!File(trustStore).existsSync()) continue;
+
+      final result = await BackgroundProcess.run('openssl', [
+        'verify',
+        '-CAfile',
+        trustStore,
+        rootCaPath,
+      ]);
+      if (result.exitCode == 0) {
+        AppLogger.info('SSL Root CA is properly installed and trusted');
+        return true;
+      }
+    }
+
+    AppLogger.warning(
+      'CAROOT exists but CA is not installed in system trust store',
+    );
+    return false;
+  }
+
+  @visibleForTesting
+  static List<String> linuxTrustStoreBundles() => const [
+        '/etc/ssl/certs/ca-certificates.crt', // Debian, Ubuntu
+        '/etc/pki/tls/certs/ca-bundle.crt', // RHEL, Fedora
+        '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem',
+        '/etc/ssl/ca-bundle.pem', // SUSE
+        '/etc/ssl/cert.pem', // Alpine, Arch
+      ];
 
   String getSiteCertDir(String domain) => p.join(AppConfig.certsDir, domain);
   String getSiteCertPath(String domain) =>
@@ -224,7 +268,7 @@ class SslService extends _$SslService {
         executable: 'sh',
         arguments: [
           '-c',
-          'export CAROOT="\$1"; "\$2" "\$3"; if [ -n "\$4" ]; then chown -R "\$4" "\$1" 2>/dev/null || true; fi',
+          'set -e; export CAROOT="\$1"; "\$2" "\$3"; if [ -n "\$4" ]; then chown -R "\$4" "\$1" 2>/dev/null || true; fi',
           'sh',
           carootPath,
           mkcertPath,

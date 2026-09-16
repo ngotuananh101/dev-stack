@@ -44,6 +44,7 @@ void main() {
 
       expect(cmd.executable, equals('sh'));
       expect(cmd.arguments[0], equals('-c'));
+      expect(cmd.arguments[1], startsWith('set -e;'));
       expect(cmd.arguments[1], contains('export CAROOT="\$1"'));
       expect(cmd.arguments[1], contains('chown -R "\$4" "\$1"'));
       expect(cmd.arguments[2], equals('sh'));
@@ -79,5 +80,16 @@ void main() {
       expect(cmd.executable, equals(r'C:\ponta\bin\mkcert.exe'));
       expect(cmd.arguments, equals(['-install']));
     });
+  });
+
+  test('checks the standard Linux system trust-store bundles', () {
+    expect(
+      SslService.linuxTrustStoreBundles(),
+      containsAll([
+        '/etc/ssl/certs/ca-certificates.crt',
+        '/etc/pki/tls/certs/ca-bundle.crt',
+        '/etc/ssl/cert.pem',
+      ]),
+    );
   });
 }
