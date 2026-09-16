@@ -224,7 +224,7 @@ class SslService extends _$SslService {
         executable: 'sh',
         arguments: [
           '-c',
-          'export CAROOT="\$1"; "\$2" "\$3"; if [ -n "\$4" ]; then chown -R "\$4" "\$1" 2>/dev/null || true; fi',
+          'set -e; export CAROOT="\$1"; "\$2" "\$3"; if [ -n "\$4" ]; then chown -R "\$4" "\$1" 2>/dev/null || true; fi',
           'sh',
           carootPath,
           mkcertPath,
