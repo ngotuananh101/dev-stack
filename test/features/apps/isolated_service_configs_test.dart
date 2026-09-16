@@ -118,5 +118,52 @@ void main() {
       final dataDir = Directory(p.join(AppConfig.dataDir, 'postgresql-16'));
       expect(dataDir.existsSync(), isTrue);
     });
+
+    test('configures unix_socket_directories = /tmp on Linux during init', () async {
+      final app = AppModel(
+        appId: 'postgresql',
+        name: 'PostgreSQL',
+        categories: ['database'],
+        groupName: 'database',
+        installMethod: 'package_manager',
+      );
+
+      final fakeInitdb = File(p.join(tempBaseDir.path, 'initdb2'))..createSync();
+
+      await installer.configureIsolatedPostgresql(
+        app,
+        '17',
+        fakeInitdb.path,
+        (msg) {},
+        isLinux: true,
+        runProcess: (exec, args) async {
+          if (exec == fakeInitdb.path && args.contains('-D')) {
+            final targetDir = args[args.indexOf('-D') + 1];
+            File(p.join(targetDir, 'postgresql.conf')).writeAsStringSync(
+              "#unix_socket_directories = '/var/run/postgresql'\nlisten_addresses = 'localhost'\n",
+            );
+            return ProcessResult(1, 0, 'ok', '');
+          }
+          return ProcessResult(2, 0, '', '');
+        },
+      );
+
+      final confFile = File(p.join(AppConfig.dataDir, 'postgresql-17', 'postgresql.conf'));
+      expect(confFile.existsSync(), isTrue);
+      final content = confFile.readAsStringSync();
+      expect(content, contains("unix_socket_directories = '/tmp'"));
+      expect(content, contains("listen_addresses = '127.0.0.1'"));
+    });
+
+    test('ensurePostgresUnixSocketDirectory adds or replaces socket directory', () {
+      const commented = "#unix_socket_directories = '/var/run/postgresql'\nport = 5432\n";
+      final updated = AppInstallerService.ensurePostgresUnixSocketDirectory(commented);
+      expect(updated, contains("unix_socket_directories = '/tmp'"));
+      expect(updated, isNot(contains('/var/run/postgresql')));
+
+      const missing = "port = 5432\n";
+      final added = AppInstallerService.ensurePostgresUnixSocketDirectory(missing);
+      expect(added, contains("unix_socket_directories = '/tmp'"));
+    });
   });
 }

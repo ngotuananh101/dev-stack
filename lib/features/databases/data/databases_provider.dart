@@ -157,24 +157,30 @@ class DatabasesNotifier extends _$DatabasesNotifier {
         throw Exception('Grant error: ${grantRes.stderr}');
       }
     } else if (app.appId.contains('postgresql')) {
-      // CREATE DATABASE
-      final createDb = await Process.run(cliPath, [
-        '-U',
-        'postgres',
-        '-c',
-        'CREATE DATABASE "$name";',
-      ]);
+      // 1. Create Database
+      final createDb = await Process.run(
+        cliPath,
+        postgresCliArgs([
+          '-U',
+          'postgres',
+          '-c',
+          'CREATE DATABASE "$name";',
+        ]),
+      );
       if (createDb.exitCode != 0) {
         throw Exception('Create DB error: ${createDb.stderr}');
       }
 
-      // CREATE USER and GRANT
-      final grantRes = await Process.run(cliPath, [
-        '-U',
-        'postgres',
-        '-c',
-        'CREATE USER "$user" WITH PASSWORD \'$safePassword\'; GRANT ALL PRIVILEGES ON DATABASE "$name" TO "$user";',
-      ]);
+      // 2. Create User and GRANT
+      final grantRes = await Process.run(
+        cliPath,
+        postgresCliArgs([
+          '-U',
+          'postgres',
+          '-c',
+          'CREATE USER "$user" WITH PASSWORD \'$safePassword\'; GRANT ALL PRIVILEGES ON DATABASE "$name" TO "$user";',
+        ]),
+      );
       if (grantRes.exitCode != 0) {
         // Same orphan-DB concern as MySQL: roll back the created database.
         await _safeDropDatabase(cliPath, name, isPostgres: true);
@@ -234,12 +240,15 @@ class DatabasesNotifier extends _$DatabasesNotifier {
           throw Exception('Rename user error: ${res.stderr}');
         }
       } else {
-        final res = await Process.run(cliPath, [
-          '-U',
-          'postgres',
-          '-c',
-          renameSql,
-        ]);
+        final res = await Process.run(
+          cliPath,
+          postgresCliArgs([
+            '-U',
+            'postgres',
+            '-c',
+            renameSql,
+          ]),
+        );
         if (res.exitCode != 0) {
           throw Exception('Rename user error: ${res.stderr}');
         }
@@ -268,7 +277,10 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     } else if (app.appId.contains('postgresql')) {
       if (newPassword.isNotEmpty) {
         final sql = "ALTER USER \"$newUser\" WITH PASSWORD '$safeNewPassword';";
-        final res = await Process.run(cliPath, ['-U', 'postgres', '-c', sql]);
+        final res = await Process.run(
+          cliPath,
+          postgresCliArgs(['-U', 'postgres', '-c', sql]),
+        );
         if (res.exitCode != 0) {
           throw Exception('Update password error: ${res.stderr}');
         }
@@ -319,12 +331,15 @@ class DatabasesNotifier extends _$DatabasesNotifier {
       }
     } else if (app.appId.contains('postgresql')) {
       // Drop the database first
-      final dropRes = await Process.run(cliPath, [
-        '-U',
-        'postgres',
-        '-c',
-        'DROP DATABASE IF EXISTS "${record.name}";',
-      ]);
+      final dropRes = await Process.run(
+        cliPath,
+        postgresCliArgs([
+          '-U',
+          'postgres',
+          '-c',
+          'DROP DATABASE IF EXISTS "${record.name}";',
+        ]),
+      );
       if (dropFailed(dropRes)) {
         throw Exception(
           'Failed to drop database "${record.name}": ${dropRes.stderr}',
@@ -333,12 +348,15 @@ class DatabasesNotifier extends _$DatabasesNotifier {
 
       // Drop the associated user
       if (username.isNotEmpty && username != 'postgres') {
-        await Process.run(cliPath, [
-          '-U',
-          'postgres',
-          '-c',
-          'DROP USER IF EXISTS "$username";',
-        ]);
+        await Process.run(
+          cliPath,
+          postgresCliArgs([
+            '-U',
+            'postgres',
+            '-c',
+            'DROP USER IF EXISTS "$username";',
+          ]),
+        );
       }
     } else if (app.appId.contains('redis')) {
       // Extract DB index from name (e.g., "db0" -> "0"). Strip a leading
@@ -380,12 +398,15 @@ class DatabasesNotifier extends _$DatabasesNotifier {
   }) async {
     try {
       if (isPostgres) {
-        await Process.run(cliPath, [
-          '-U',
-          'postgres',
-          '-c',
-          'DROP DATABASE IF EXISTS "$name";',
-        ]);
+        await Process.run(
+          cliPath,
+          postgresCliArgs([
+            '-U',
+            'postgres',
+            '-c',
+            'DROP DATABASE IF EXISTS "$name";',
+          ]),
+        );
       } else {
         await Process.run(cliPath, [
           '-u',
@@ -483,12 +504,31 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     return dbs;
   }
 
+  /// Formats command-line arguments for PostgreSQL CLI (`psql`).
+  /// On Linux, adds `-h /tmp` to connect to the Unix domain socket in `/tmp`,
+  /// matching the isolated runtime socket directory and avoiding permission
+  /// errors on `/var/run/postgresql`.
+  @visibleForTesting
+  static List<String> postgresCliArgs(
+    List<String> specificArgs, {
+    bool? isLinux,
+  }) {
+    final onLinux = isLinux ?? Platform.isLinux;
+    return [
+      if (onLinux) ...['-h', '/tmp'],
+      ...specificArgs,
+    ];
+  }
+
   Future<List<String>> _getPostgresNames(String cliPath) async {
-    final result = await Process.run(cliPath, [
-      '-U', 'postgres',
-      '-l', // list databases
-      '-t', // tuples only
-    ]);
+    final result = await Process.run(
+      cliPath,
+      postgresCliArgs([
+        '-U', 'postgres',
+        '-l', // list databases
+        '-t', // tuples only
+      ]),
+    );
     if (result.exitCode != 0) return [];
 
     final lines = result.stdout.toString().split('\n');
