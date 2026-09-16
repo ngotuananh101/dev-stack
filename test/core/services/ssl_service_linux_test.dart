@@ -44,6 +44,7 @@ void main() {
 
       expect(cmd.executable, equals('sh'));
       expect(cmd.arguments[0], equals('-c'));
+      expect(cmd.arguments[1], startsWith('set -e;'));
       expect(cmd.arguments[1], contains('export CAROOT="\$1"'));
       expect(cmd.arguments[1], contains('chown -R "\$4" "\$1"'));
       expect(cmd.arguments[2], equals('sh'));
