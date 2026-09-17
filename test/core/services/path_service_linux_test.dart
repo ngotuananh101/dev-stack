@@ -78,9 +78,9 @@ void main() {
         isLinux: false,
       );
       expect(paths, equals([
-        p.join(r'C:\Ponta\bin', 'node.bat'),
-        p.join(r'C:\Ponta\bin', 'node.cmd'),
-        p.join(r'C:\Ponta\bin', 'node'),
+        r'C:\Ponta\bin\node.bat',
+        r'C:\Ponta\bin\node.cmd',
+        r'C:\Ponta\bin\node',
       ]));
     });
   });

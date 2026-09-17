@@ -14,7 +14,7 @@ void main() {
   group('AppServiceManager.forceKillPid process-tree kill', () {
     test(
       'uses /T so the whole process tree dies, not just the wrapper PID',
-      () {
+      () async {
         final recorded = <List<String>>[];
         Future<List<String>> captureRunner(
           String exec,
@@ -24,9 +24,13 @@ void main() {
           return <String>[];
         }
 
-        final manager = AppServiceManager(AppLogger, runProcess: captureRunner);
+        final manager = AppServiceManager(
+          AppLogger,
+          platformIsWindows: () => true,
+          runProcess: captureRunner,
+        );
 
-        manager.forceKillPid('php84', 12345);
+        await manager.forceKillPid('php84', 12345);
 
         expect(recorded, hasLength(1));
         expect(recorded[0].first, 'taskkill');
@@ -38,7 +42,7 @@ void main() {
       },
     );
 
-    test('skips kill when no PID is recorded (pid <= 0)', () {
+    test('skips kill when no PID is recorded (pid <= 0)', () async {
       final recorded = <List<String>>[];
       final manager = AppServiceManager(
         AppLogger,
@@ -48,12 +52,12 @@ void main() {
         },
       );
 
-      manager.forceKillPid('php84', 0);
+      await manager.forceKillPid('php84', 0);
 
       expect(recorded, isEmpty, reason: 'no PID → nothing to kill');
     });
 
-    test('is a no-op on non-Windows hosts (no taskkill)', () {
+    test('does not use taskkill on non-Windows hosts', () async {
       final recorded = <List<String>>[];
       final manager = AppServiceManager(
         AppLogger,
@@ -64,9 +68,10 @@ void main() {
         },
       );
 
-      manager.forceKillPid('php84', 99999);
+      await manager.forceKillPid('php84', 99999);
 
-      expect(recorded, isEmpty);
+      expect(recorded.any((cmd) => cmd.first == 'taskkill'), isFalse);
+      expect(recorded.first, ['kill', '-9', '--', '-99999']);
     });
   });
 }
