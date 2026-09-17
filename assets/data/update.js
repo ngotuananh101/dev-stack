@@ -556,6 +556,10 @@ function createServicePackageManagerCommands({
       `sudo dnf install -y ${rpmPackage}`,
       `sudo systemctl disable --now ${rpmServiceName}`,
     ],
+    fedora: [
+      `sudo dnf install -y ${rpmPackage}`,
+      `sudo systemctl disable --now ${rpmServiceName}`,
+    ],
   };
 }
 
@@ -596,6 +600,11 @@ function createLinuxPhpApps(versions) {
         `sudo dnf module enable -y php:remi-${ver}`,
         "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
         "sudo systemctl disable --now php-fpm",
+      ],
+      fedora: [
+        "sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-{version_id}.rpm",
+        `sudo dnf install -y --enablerepo=remi php${ver.replace(".", "")}-php-fpm php${ver.replace(".", "")}-php-cli php${ver.replace(".", "")}-php-common php${ver.replace(".", "")}-php-mysqlnd php${ver.replace(".", "")}-php-mbstring php${ver.replace(".", "")}-php-xml php${ver.replace(".", "")}-php-pecl-zip`,
+        `sudo systemctl disable --now php${ver.replace(".", "")}-php-fpm`,
       ],
     },
     versions: {

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,12 +22,17 @@ import 'features/tunnels/data/tunnels_provider.dart';
 import 'features/tunnels/domain/tunnel_model.dart';
 import 'core/services/window_service.dart';
 import 'core/services/ssl_service.dart';
+import 'core/services/linux_desktop_service.dart';
 import 'features/apps/data/app_installer_service.dart';
 import 'features/settings/domain/app_settings.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (Platform.isLinux) {
+    await LinuxDesktopService.ensureDesktopIntegration();
+  }
 
   // Load persisted baseDir from Isar before anything else
   final isar = await IsarInstance.getInstance();
@@ -45,14 +51,19 @@ void main(List<String> args) async {
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.normal,
-    title: 'DevStack v$appVersion',
+    title: 'Ponta DevStack v$appVersion',
   );
 
   final isMinimized = args.contains('--minimized');
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     // Set icon for the window taskbar
-    await windowManager.setIcon('assets/images/icon.png');
+    final iconPath = Platform.isWindows
+        ? 'assets/images/icon.ico'
+        : (Platform.isLinux
+            ? LinuxDesktopService.resolveIconPath()
+            : 'assets/images/icon.png');
+    await windowManager.setIcon(iconPath);
 
     if (!isMinimized) {
       await windowManager.show();
@@ -70,7 +81,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DevStack v$appVersion',
+      title: 'Ponta DevStack v$appVersion',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: const MainScreen(),
