@@ -70,6 +70,42 @@ Active Connections
         isFalse,
       );
     });
+
+    test('wildcard host * held when specific address is listening', () {
+      final sockets = {'127.0.0.1:80'};
+      expect(
+        AppServiceManager.portIsHeld(
+          host: '*',
+          port: 80,
+          listeningSockets: sockets,
+        ),
+        isTrue,
+      );
+    });
+
+    test('wildcard host 0.0.0.0 held when specific address is listening', () {
+      final sockets = {'127.0.0.1:80'};
+      expect(
+        AppServiceManager.portIsHeld(
+          host: '0.0.0.0',
+          port: 80,
+          listeningSockets: sockets,
+        ),
+        isTrue,
+      );
+    });
+
+    test('wildcard host * free when different port is listening', () {
+      final sockets = {'127.0.0.1:8080', '0.0.0.0:443'};
+      expect(
+        AppServiceManager.portIsHeld(
+          host: '*',
+          port: 80,
+          listeningSockets: sockets,
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('AppServiceManager.parseHostPort', () {

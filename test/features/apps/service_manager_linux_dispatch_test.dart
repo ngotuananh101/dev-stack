@@ -164,7 +164,7 @@ void main() {
         'nginx',
         '/opt/ponta/apps/nginx/1.30.4',
       );
-      expect(args, containsAll(['-p', '/opt/ponta/apps/nginx/1.30.4/', '-c', '/opt/ponta/apps/nginx/1.30.4/conf/nginx.conf']));
+      expect(args, containsAll(['-p', '/opt/ponta/apps/nginx/1.30.4/', '-c', '/opt/ponta/apps/nginx/1.30.4/conf/nginx.conf', '-g', 'daemon off;']));
     });
   });
 
