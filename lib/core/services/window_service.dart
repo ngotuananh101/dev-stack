@@ -10,6 +10,7 @@ import '../../features/apps/data/apps_provider.dart';
 import '../../features/apps/data/app_service_manager.dart';
 import '../../features/settings/data/settings_provider.dart';
 import 'package:dev_stack/core/services/log_service.dart';
+import 'linux_desktop_service.dart';
 
 part 'window_service.g.dart';
 
@@ -100,7 +101,9 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
   Future<void> _initSystemTray() async {
     String iconPath = Platform.isWindows
         ? 'assets/images/icon.ico'
-        : 'assets/images/icon.png';
+        : (Platform.isLinux
+            ? LinuxDesktopService.resolveIconPath()
+            : 'assets/images/icon.png');
 
     try {
       await trayManager.setIcon(iconPath);
@@ -172,11 +175,15 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
       PackageInfo packageInfo = await PackageInfo.fromPlatform();
       String appName = packageInfo.appName.isNotEmpty
           ? packageInfo.appName
-          : "DevStack";
+          : "Ponta DevStack";
+
+      final appPath = Platform.isLinux
+          ? (Platform.environment['APPIMAGE'] ?? Platform.resolvedExecutable)
+          : Platform.resolvedExecutable;
 
       launchAtStartup.setup(
         appName: appName,
-        appPath: Platform.resolvedExecutable,
+        appPath: appPath,
         args: ['--minimized'],
       );
 

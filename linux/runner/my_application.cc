@@ -1,5 +1,8 @@
 #include "my_application.h"
 
+#include <limits.h>
+#include <unistd.h>
+
 #include <flutter_linux/flutter_linux.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -25,6 +28,10 @@ static void my_application_activate(GApplication* application) {
   auto* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 
+  // Always set the window title explicitly. Some desktop environments,
+  // Wayland compositors, and task switchers read the window title directly.
+  gtk_window_set_title(window, "Ponta DevStack");
+
   // Use a header bar when running in GNOME as this is the common style used
   // by applications and is the setup most users will be using (e.g. Ubuntu
   // desktop).
@@ -48,8 +55,29 @@ static void my_application_activate(GApplication* application) {
     gtk_header_bar_set_title(header_bar, "Ponta DevStack");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
-  } else {
-    gtk_window_set_title(window, "Ponta DevStack");
+  }
+
+  // Load and set application icon from bundle assets if available.
+  char exe_path[PATH_MAX];
+  ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+  if (len != -1) {
+    exe_path[len] = '\0';
+    g_autofree gchar* exe_dir = g_path_get_dirname(exe_path);
+    const char* possible_icons[] = {
+        "data/flutter_assets/assets/images/icon.png",
+        "dev_stack.png",
+        "com.ponta.dev_stack.png",
+        nullptr
+    };
+    for (int i = 0; possible_icons[i] != nullptr; ++i) {
+      g_autofree gchar* icon_path =
+          g_build_filename(exe_dir, possible_icons[i], nullptr);
+      if (g_file_test(icon_path, G_FILE_TEST_EXISTS)) {
+        gtk_window_set_icon_from_file(window, icon_path, nullptr);
+        gtk_window_set_default_icon_from_file(icon_path, nullptr);
+        break;
+      }
+    }
   }
 
   gtk_window_set_default_size(window, 1200, 800);
@@ -139,6 +167,8 @@ MyApplication* my_application_new() {
   // corresponding .desktop file. This ensures better integration by allowing
   // the application to be recognized beyond its binary name.
   g_set_prgname(APPLICATION_ID);
+  g_set_application_name("Ponta DevStack");
+  gtk_window_set_default_icon_name(APPLICATION_ID);
 
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID, "flags",
