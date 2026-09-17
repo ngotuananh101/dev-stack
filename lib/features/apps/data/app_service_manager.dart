@@ -229,13 +229,18 @@ class AppServiceManager {
 
   /// Returns true if [port] on [host] is already taken by a listening socket.
   /// A wildcard bind (`0.0.0.0:port` or `[::]:port`) covers any host, so it
-  /// also counts as holding `127.0.0.1:port`.
+  /// also counts as holding `127.0.0.1:port`. Conversely, when binding to a
+  /// wildcard (`*`, `0.0.0.0`, `[::]`, or `::`), any socket already listening
+  /// on that port counts as a conflict.
   @visibleForTesting
   static bool portIsHeld({
     required String host,
     required int port,
     required Set<String> listeningSockets,
   }) {
+    if (host == '*' || host == '0.0.0.0' || host == '[::]' || host == '::') {
+      return listeningSockets.any((s) => s.endsWith(':$port'));
+    }
     final exact = '$host:$port';
     final wildcardV4 = '0.0.0.0:$port';
     final wildcardV6 = '[::]:$port';
@@ -283,7 +288,7 @@ class AppServiceManager {
     if (name == 'nginx') {
       final prefix = workingDir.replaceAll('\\', '/');
       final conf = p.join(workingDir, 'conf', 'nginx.conf').replaceAll('\\', '/');
-      return ['-p', '$prefix/', '-c', conf];
+      return ['-p', '$prefix/', '-c', conf, '-g', 'daemon off;'];
     }
     if (onLinux && (name == 'apache2' || name == 'httpd')) {
       final conf = p.join(AppConfig.vhostsDir, 'apache', 'httpd.conf');
