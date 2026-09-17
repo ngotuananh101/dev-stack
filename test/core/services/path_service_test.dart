@@ -6,7 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('PathService.shimPathsFor', () {
     test('returns all three shim paths for simple command', () {
-      final paths = PathService.shimPathsFor('C:\\Ponta\\bin', 'node');
+      final paths =
+          PathService.shimPathsFor('C:\\Ponta\\bin', 'node', isLinux: false);
 
       expect(paths.length, equals(3));
       expect(paths[0], equals('C:\\Ponta\\bin\\node.bat'));
@@ -15,7 +16,8 @@ void main() {
     });
 
     test('handles command names with hyphens', () {
-      final paths = PathService.shimPathsFor('C:\\Ponta\\bin', 'php-cgi');
+      final paths =
+          PathService.shimPathsFor('C:\\Ponta\\bin', 'php-cgi', isLinux: false);
 
       expect(paths[0], equals('C:\\Ponta\\bin\\php-cgi.bat'));
       expect(paths[1], equals('C:\\Ponta\\bin\\php-cgi.cmd'));
@@ -23,7 +25,11 @@ void main() {
     });
 
     test('handles paths with spaces', () {
-      final paths = PathService.shimPathsFor('C:\\Program Files\\bin', 'tool');
+      final paths = PathService.shimPathsFor(
+        'C:\\Program Files\\bin',
+        'tool',
+        isLinux: false,
+      );
 
       expect(paths[0], equals('C:\\Program Files\\bin\\tool.bat'));
       expect(paths[1], equals('C:\\Program Files\\bin\\tool.cmd'));
@@ -31,7 +37,8 @@ void main() {
     });
 
     test('handles forward slash paths', () {
-      final paths = PathService.shimPathsFor('C:/Ponta/bin', 'npm');
+      final paths =
+          PathService.shimPathsFor('C:/Ponta/bin', 'npm', isLinux: false);
 
       // path.join normalizes to backslashes on Windows
       expect(paths[0], contains('npm.bat'));
@@ -40,7 +47,7 @@ void main() {
     });
 
     test('handles empty bin directory', () {
-      final paths = PathService.shimPathsFor('', 'cmd');
+      final paths = PathService.shimPathsFor('', 'cmd', isLinux: false);
 
       expect(paths.length, equals(3));
       expect(paths[0], equals('cmd.bat'));

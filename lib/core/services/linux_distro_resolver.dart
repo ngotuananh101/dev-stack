@@ -33,7 +33,7 @@ class LinuxDistroResolver {
 
     try {
       String content = osReleaseContent ?? '';
-      if (content.isEmpty) {
+      if (osReleaseContent == null) {
         final file = File('/etc/os-release');
         if (file.existsSync()) {
           content = file.readAsStringSync();
@@ -113,7 +113,7 @@ class LinuxDistroResolver {
 
     try {
       String content = osReleaseContent ?? '';
-      if (content.isEmpty) {
+      if (osReleaseContent == null) {
         final file = File('/etc/os-release');
         if (file.existsSync()) {
           content = file.readAsStringSync();
@@ -176,7 +176,7 @@ class LinuxDistroResolver {
 
     try {
       String content = osReleaseContent ?? '';
-      if (content.isEmpty) {
+      if (osReleaseContent == null) {
         final file = File('/etc/os-release');
         if (file.existsSync()) {
           content = file.readAsStringSync();

@@ -119,7 +119,7 @@ class SslService extends _$SslService {
       }
 
       if (Platform.isLinux) {
-        return _checkLinuxSystemTrust(rootCaPath);
+        return await _checkLinuxSystemTrust(rootCaPath);
       }
 
       // Now verify the CA is actually installed in the system trust store

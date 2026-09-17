@@ -221,6 +221,40 @@ class AppInstallerService {
     }
   }
 
+  static Future<void> ensureLinuxExecutablePermissions(
+    String filePath, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    Function(String)? logInfo,
+    bool? isLinuxOverride,
+  }) async {
+    final isLinux = isLinuxOverride ?? Platform.isLinux;
+    if (!isLinux) return;
+
+    final type = FileSystemEntity.typeSync(filePath);
+    if (type == FileSystemEntityType.notFound) {
+      logInfo?.call(
+        'Warning: File not found at $filePath to set executable permissions',
+      );
+      return;
+    }
+
+    final runner = runProcess ?? Process.run;
+    try {
+      final res = await runner('chmod', ['u+x', filePath]);
+      if (res.exitCode != 0) {
+        logInfo?.call(
+          'Warning: chmod u+x failed on $filePath (code ${res.exitCode}): ${res.stderr}',
+        );
+      } else {
+        logInfo?.call('Ensured executable permission on $filePath');
+      }
+    } catch (e) {
+      logInfo?.call(
+        'Warning: Could not set executable permission on $filePath: $e',
+      );
+    }
+  }
+
   String _generateSecret({int length = 32}) {
     final random = Random.secure();
     final bytes = List<int>.generate(length, (_) => random.nextInt(256));
@@ -505,6 +539,7 @@ class AppInstallerService {
     final targetFile = File(p.join(installPath, fileName));
     await tempFile.copy(targetFile.path);
     await ensureLinuxPermissions(installPath, logInfo: logInfo);
+    await ensureLinuxExecutablePermissions(targetFile.path, logInfo: logInfo);
     onProgress?.call(0.9, 'Binary ready');
   }
 
@@ -602,6 +637,7 @@ class AppInstallerService {
     if (Platform.isLinux) {
       await ensureLinuxPermissions(installPath, logInfo: logInfo);
     }
+    await ensureLinuxExecutablePermissions(targetFile.path, logInfo: logInfo);
     onProgress?.call(0.9, 'Binary ready');
   }
 
@@ -831,12 +867,31 @@ class AppInstallerService {
     }
   }
 
+  @visibleForTesting
+  Future<Map<String, String?>> detectFiles(
+    String installPath,
+    String? execName,
+    String? cliName,
+    Function(String) logInfo, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isLinuxOverride,
+  }) => _detectFiles(
+    installPath,
+    execName,
+    cliName,
+    logInfo,
+    runProcess: runProcess,
+    isLinuxOverride: isLinuxOverride,
+  );
+
   Future<Map<String, String?>> _detectFiles(
     String installPath,
     String? execName,
     String? cliName,
-    Function(String) logInfo,
-  ) async {
+    Function(String) logInfo, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+    bool? isLinuxOverride,
+  }) async {
     final result = <String, String?>{'exec': null, 'cli': null};
 
     if (execName == null && cliName == null) return result;
@@ -862,6 +917,22 @@ class AppInstallerService {
             result['cli'] = entity.path;
             logInfo('Detected CLI: ${entity.path}');
           }
+        }
+      }
+
+      final isLinux = isLinuxOverride ?? Platform.isLinux;
+      if (isLinux) {
+        final pathsToChmod = <String>{
+          if (result['exec'] != null) result['exec']!,
+          if (result['cli'] != null) result['cli']!,
+        };
+        for (final path in pathsToChmod) {
+          await ensureLinuxExecutablePermissions(
+            path,
+            runProcess: runProcess,
+            logInfo: logInfo,
+            isLinuxOverride: isLinux,
+          );
         }
       }
     } catch (e) {
@@ -2984,10 +3055,10 @@ security:
   ///
   /// Resolution order:
   /// 1. `which <binaryName>` (when [runProcess] allows it).
-  /// 2. Explicit [candidates] list, or a default set of standard locations when
-  ///    [candidates] is omitted.
+  /// 2. Explicit [candidates] list when provided.
   /// 3. Recursive directory tree search through [searchDirectories] to support
   ///    glob-like patterns such as `/usr/lib/postgresql/*/bin/<binaryName>`.
+  /// 4. Default set of standard system locations when [candidates] is omitted.
   ///
   /// Returns the first matching executable path, or `null` if none is found.
   @visibleForTesting
@@ -3015,19 +3086,13 @@ security:
       // `which` may not be available; continue to candidate search.
     }
 
-    // 2. Check explicit candidates, defaulting to standard system locations.
-    final defaultCandidates = candidates ??
-        [
-          '/usr/bin/$binaryName',
-          '/usr/sbin/$binaryName',
-          '/usr/local/bin/$binaryName',
-          '/usr/local/sbin/$binaryName',
-        ];
-
-    for (final candidate in defaultCandidates) {
-      if (File(candidate).existsSync()) {
-        logInfo('Found $binaryName at candidate path: $candidate');
-        return candidate;
+    // 2. Check explicit candidates if provided.
+    if (candidates != null) {
+      for (final candidate in candidates) {
+        if (File(candidate).existsSync()) {
+          logInfo('Found $binaryName at candidate path: $candidate');
+          return candidate;
+        }
       }
     }
 
@@ -3046,6 +3111,23 @@ security:
           } catch (_) {
             // Listing a tree may be permission-limited; skip and continue.
           }
+        }
+      }
+    }
+
+    // 4. Default standard system locations if explicit candidates were not supplied.
+    if (candidates == null) {
+      final defaultCandidates = [
+        '/usr/bin/$binaryName',
+        '/usr/sbin/$binaryName',
+        '/usr/local/bin/$binaryName',
+        '/usr/local/sbin/$binaryName',
+      ];
+
+      for (final candidate in defaultCandidates) {
+        if (File(candidate).existsSync()) {
+          logInfo('Found $binaryName at candidate path: $candidate');
+          return candidate;
         }
       }
     }
@@ -3160,7 +3242,6 @@ IncludeOptional "$vhostsGlob"
   /// On Linux, PostgreSQL package builds default to `/var/run/postgresql` which
   /// requires root permissions to create lock files and sockets, causing permission
   /// denied errors when running as a regular user.
-  @visibleForTesting
   static String ensurePostgresUnixSocketDirectory(String confContent) {
     if (confContent.contains(RegExp(r"^#?unix_socket_directories\s*=", multiLine: true))) {
       return confContent.replaceAll(

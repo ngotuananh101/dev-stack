@@ -193,12 +193,13 @@ class PathService {
   }) {
     final linux = isLinux ?? Platform.isLinux;
     if (linux) {
-      return [p.join(binDir, commandName)];
+      return [p.posix.join(binDir, commandName)];
     }
+    final win = p.windows;
     return [
-      p.join(binDir, '$commandName.bat'),
-      p.join(binDir, '$commandName.cmd'),
-      p.join(binDir, commandName),
+      win.join(binDir, '$commandName.bat'),
+      win.join(binDir, '$commandName.cmd'),
+      win.join(binDir, commandName),
     ];
   }
 
@@ -821,7 +822,7 @@ class PathService {
       await legacyPowerShellShim.delete();
     }
 
-    final paths = shimPathsFor(binDir, commandName);
+    final paths = shimPathsFor(binDir, commandName, isLinux: false);
     final batchContent = windowsBatchShimContent(targetPath);
     await File(paths[0]).writeAsString(batchContent);
     await File(paths[1]).writeAsString(batchContent);
@@ -830,7 +831,7 @@ class PathService {
 
   Future<void> _deleteShimSet(String commandName) async {
     final paths = [
-      ...shimPathsFor(binDir, commandName),
+      ...shimPathsFor(binDir, commandName, isLinux: false),
       // Remove legacy PowerShell shims so PowerShell does not prefer blocked .ps1 files.
       p.join(binDir, '$commandName.ps1'),
     ];

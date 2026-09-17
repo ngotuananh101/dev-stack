@@ -42,13 +42,16 @@ class AppServiceManager {
   /// Injectable host check (defaults to [Platform.isWindows]) so the
   /// Windows-only kill paths can be exercised in tests on any host.
   final bool Function() _isWindows;
+  final bool Function() _isLinux;
 
   AppServiceManager(
     this._logger, {
     Future<List<String>> Function(String, List<String>)? runProcess,
     bool Function()? platformIsWindows,
+    bool Function()? platformIsLinux,
   }) : _runProcess = runProcess,
-       _isWindows = platformIsWindows ?? (() => Platform.isWindows);
+       _isWindows = platformIsWindows ?? (() => Platform.isWindows),
+       _isLinux = platformIsLinux ?? (() => Platform.isLinux);
 
   /// Runs an executable via the injected runner (tests) or [BackgroundProcess.run]
   /// (production). Returns stdout lines.
@@ -368,6 +371,21 @@ class AppServiceManager {
       final fileName = normalizeExecutableName(
         exeFile.path.split(Platform.pathSeparator).last,
       );
+
+      // Pre-flight permission check/repair on Linux: ensure u+x is set before spawning.
+      if (_isLinux()) {
+        await AppInstallerService.ensureLinuxExecutablePermissions(
+          execPath,
+          runProcess: _runProcess != null
+              ? (exec, args) async {
+                  final out = await _runProcess(exec, args);
+                  return ProcessResult(0, 0, out.join('\n'), '');
+                }
+              : null,
+          logInfo: (msg) => _logger.info(msg),
+          isLinuxOverride: true,
+        );
+      }
 
       // Specific arguments for certain apps
       List<String> args = argumentsForExecutable(
@@ -707,7 +725,7 @@ class AppServiceManager {
       return BackgroundProcess.run(exec, args);
     };
 
-    final onWindows = isWindows ?? Platform.isWindows;
+    final onWindows = isWindows ?? _isWindows();
     if (!onWindows) {
       bool needFallback = false;
       try {

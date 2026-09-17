@@ -18,7 +18,10 @@ import 'package:re_highlight/languages/yaml.dart';
 /// still renders without a highlight crash. Returning `null` would leave the
 /// editor theme-less; an explicit plaintext mode is more predictable.
 Mode languageForConfigPath(String path) {
-  final name = p.basename(path).toLowerCase();
+  // Normalize backslashes to forward slashes so Windows paths resolve their
+  // basename correctly on Linux/macOS runners.
+  final normalized = path.replaceAll(r'\', '/');
+  final name = p.basename(normalized).toLowerCase();
 
   // File-name based mapping (extension alone is ambiguous).
   if (name == 'nginx.conf') return langNginx;
