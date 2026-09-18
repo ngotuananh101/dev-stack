@@ -51,4 +51,6 @@ innosetup/Output/
 /dist/
 .remember/
 .superpowers/
-/docs/
+/docs/*
+!/docs/superpowers/
+!/docs/*.md
