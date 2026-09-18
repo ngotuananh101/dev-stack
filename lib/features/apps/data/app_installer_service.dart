@@ -1183,7 +1183,11 @@ class AppInstallerService {
       );
     }
 
-    final passwordFile = File(p.join(dataDir.path, 'postgres-password.txt'));
+    // Write the password file to a temp location OUTSIDE the data dir first.
+    // initdb refuses to run in a non-empty directory, so writing
+    // postgres-password.txt into dataDir before initdb would cause failure.
+    final tempDir = await Directory.systemTemp.createTemp('ponta-pg-pw-');
+    final passwordFile = File(p.join(tempDir.path, 'postgres-password.txt'));
     if (!passwordFile.existsSync()) {
       await passwordFile.writeAsString(_generateSecret());
     }
@@ -1207,6 +1211,13 @@ class AppInstallerService {
       final result = await Process.run(initdbPath, args);
       if (result.exitCode == 0) {
         logInfo('PostgreSQL database cluster initialized successfully.');
+
+        // Copy postgres-password.txt into the data dir for restarts/management.
+        final destPasswordFile =
+            File(p.join(dataDir.path, 'postgres-password.txt'));
+        if (!destPasswordFile.existsSync()) {
+          await passwordFile.copy(destPasswordFile.path);
+        }
 
         // Configure network binding based on allowLanAccess setting
         try {
@@ -1260,6 +1271,15 @@ class AppInstallerService {
         rethrow;
       }
       throw Exception('PostgreSQL initialization failed: $e');
+    } finally {
+      // Clean up the temp password dir regardless of success or failure.
+      try {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      } catch (e) {
+        logInfo('Warning: Could not clean up temp password dir: $e');
+      }
     }
   }
 
