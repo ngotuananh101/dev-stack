@@ -34,6 +34,7 @@ $body
     required String runtimeErrorLogPath,
     String? certPath,
     String? keyPath,
+    int? phpPort,
   }) {
     if ((certPath == null) != (keyPath == null)) {
       throw ArgumentError('Certificate and key must be provided together');
@@ -42,9 +43,16 @@ $body
     final tlsLine = hasTls
         ? '\n    tls "${_path(certPath)}" "${_path(keyPath!)}"'
         : null;
+
+    // PHP fastcgi handler so http(s)://localhost serves .php files
+    String phpHandler = '';
+    if (phpPort != null) {
+      phpHandler = '\n    php_fastcgi 127.0.0.1:$phpPort';
+    }
+
     final body =
         '''    root * "${_path(webRoot)}"
-    file_server
+    file_server$phpHandler
     log {
 ${_fileLog(localhostAccessLogPath, indent: '        ')}
         format console

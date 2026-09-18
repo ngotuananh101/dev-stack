@@ -56,6 +56,7 @@ fastcgi_param  REDIRECT_STATUS    200;
     required bool isSslInstalled,
     String? certPath,
     String? keyPath,
+    int? phpPort,
   }) {
     final cleanWebRoot = _path(webRoot);
     final cleanVhostsGlob = _path(vhostsGlob);
@@ -75,6 +76,22 @@ fastcgi_param  REDIRECT_STATUS    200;
     if (isSslInstalled && certPath != null && keyPath != null) {
       final cleanCert = _path(certPath);
       final cleanKey = _path(keyPath);
+
+      // PHP handler block so HTTPS localhost serves .php files
+      String phpLocation = '';
+      if (phpPort != null) {
+        phpLocation = '''
+        location ~ \\.php\$ {
+            fastcgi_pass 127.0.0.1:$phpPort;
+            fastcgi_index index.php;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+            fastcgi_read_timeout 1800;
+        }
+
+''';
+      }
+
       sslBlock = '''
     # HTTPS server
     server {
@@ -94,7 +111,7 @@ fastcgi_param  REDIRECT_STATUS    200;
         location / {
             index  index.html index.htm index.php;
         }
-
+$phpLocation
         # Global Integrations
         include "$cleanIntegrationsGlob";
     }''';
@@ -234,7 +251,13 @@ location /phpmyadmin {
         config += '    }\n';
       } else {
         config += '    location / {\n';
-        config += '        try_files \$uri \$uri/ /index.php?\$query_string;\n';
+        if (siteType == 'php') {
+          config +=
+              '        try_files \$uri \$uri/ /index.php?\$query_string;\n';
+        } else {
+          // Static sites: fall back to 404 (no PHP handler configured)
+          config += '        try_files \$uri \$uri/ =404;\n';
+        }
         config += '    }\n';
 
         if (siteType == 'php') {

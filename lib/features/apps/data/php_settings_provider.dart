@@ -129,32 +129,37 @@ class PhpSettings extends _$PhpSettings {
 
     final content = iniContent ?? await readPhpIni(app);
     final List<FileSystemEntity> entities = await extDir.list().toList();
-    final dllFiles = entities.where((f) => f.path.toLowerCase().endsWith('.dll')).toList();
+    // Scan for both .dll (Windows) and .so (Linux) extension files
+    final extFiles = entities.where((f) {
+      final lower = f.path.toLowerCase();
+      return lower.endsWith('.dll') || lower.endsWith('.so');
+    }).toList();
 
     // Optimize: Parse ini once to find all extension lines
     final activeExtensions = <String>{};
     final disabledExtensions = <String>{};
-    
+
     // Regex to match extension/zend_extension lines and capture the name
     // Matches: extension=mbstring, ;extension=curl, zend_extension="opcache"
+    // Also matches .dll and .so extensions
     final extLineRegex = RegExp(
-      r'^;?\s*(?:extension|zend_extension)\s*=\s*"?\s*(?:php_)?([^"\r\n]+?)(?:\.dll)?"?\s*$', 
-      multiLine: true, 
+      r'^;?\s*(?:extension|zend_extension)\s*=\s*"?\s*(?:php_)?([^"\r\n]+?)(?:\.d?ll|\.so)?"?\s*$',
+      multiLine: true,
       caseSensitive: false
     );
-    
+
     final matches = extLineRegex.allMatches(content);
     for (final match in matches) {
       final fullLine = match.group(0)!;
       String name = match.group(1)!.toLowerCase();
-      
+
       // If it's an absolute path, extract the filename
       if (name.contains('\\') || name.contains('/')) {
         name = name.split(RegExp(r'[\\/]')).last;
-        // Clean up php_ prefix and .dll if present in filename
-        name = name.replaceAll('.dll', '').replaceFirst('php_', '');
+        // Clean up php_ prefix and extension suffix if present in filename
+        name = name.replaceAll('.dll', '').replaceAll('.so', '').replaceFirst('php_', '');
       }
-      
+
       if (fullLine.trim().startsWith(';')) {
         disabledExtensions.add(name);
       } else {
@@ -163,11 +168,12 @@ class PhpSettings extends _$PhpSettings {
     }
 
     final List<PhpExtension> extensions = [];
-    
-    for (final file in dllFiles) {
+
+    for (final file in extFiles) {
       final fileName = file.path.split(Platform.pathSeparator).last;
-      
-      String name = fileName.replaceAll('.dll', '');
+
+      // Strip both .dll and .so extensions
+      String name = fileName.replaceAll('.dll', '').replaceAll('.so', '');
       if (name.startsWith('php_')) {
         name = name.substring(4);
       }

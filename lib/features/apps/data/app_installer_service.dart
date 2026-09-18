@@ -22,6 +22,7 @@ import '../../../core/services/linux_distro_resolver.dart';
 import '../../../core/services/background_process.dart';
 import 'package_command_validator.dart';
 import '../../settings/data/settings_provider.dart';
+import 'apps_provider.dart';
 
 part 'app_installer_service.g.dart';
 
@@ -1013,12 +1014,14 @@ class AppInstallerService {
     ];
 
     for (final ext in extensions) {
-      final dllName = 'php_$ext.dll';
-      final extPath = p.join(installPath, 'ext', dllName);
+      // On Windows extensions use .dll; on Linux/BSD they use .so
+      final isDll = Platform.isWindows;
+      final extFile = isDll ? 'php_$ext.dll' : 'php_$ext.so';
+      final extPath = p.join(installPath, 'ext', extFile);
 
-      // Verify the DLL exists before enabling
+      // Verify the extension file exists before enabling
       if (!File(extPath).existsSync()) {
-        logInfo('Skipping $ext: DLL not found at $extPath');
+        logInfo('Skipping $ext: extension file not found at $extPath');
         continue;
       }
 
@@ -1028,7 +1031,7 @@ class AppInstallerService {
       final searchRegex = RegExp(
         r'^;?\s*(?:extension|zend_extension)\s*=\s*"?\s*(?:[^"\r\n]*?[\\/])?(?:php_)?' +
             RegExp.escape(ext) +
-            r'(?:\.dll)?"?\s*$\r?\n?',
+            r'(?:\.d?ll|\.so)?"?\s*$\r?\n?',
         multiLine: true,
         caseSensitive: false,
       );
@@ -1036,7 +1039,7 @@ class AppInstallerService {
 
       // 2. Insert after opcache or append
       final opcacheRegex = RegExp(
-        r'^;?\s*zend_extension\s*=\s*"?\s*opcache(?:\.dll)?"?\s*$',
+        r'^;?\s*zend_extension\s*=\s*"?\s*opcache(?:\.d?ll|\.so)?"?\s*$',
         multiLine: true,
         caseSensitive: false,
       );
@@ -1090,7 +1093,7 @@ class AppInstallerService {
       initExec = resolveDbTool(installPath, 'mysqld');
       args = [
         '--initialize-insecure',
-        '--console',
+        if (Platform.isWindows) '--console',
         '--datadir=${dataDir.path}',
       ];
     } else if (app.appId.contains('mariadb')) {
@@ -1167,6 +1170,13 @@ class AppInstallerService {
     }
     if (!dataDir.existsSync()) {
       await dataDir.create(recursive: true);
+    }
+
+    // PostgreSQL initdb requires the data directory to have 700 (owner-only)
+    // permissions on Linux/macOS. Set explicitly to avoid "could not change
+    // permissions of existing directory" or "Data directory is invalid" errors.
+    if (Platform.isLinux || Platform.isMacOS) {
+      await Process.run('chmod', ['700', dataDir.path]);
     }
 
     final binDir = Directory(p.join(installPath, 'bin'));
@@ -1471,6 +1481,8 @@ class AppInstallerService {
       final certPath = sslNotifier.getSiteCertPath('localhost');
       final keyPath = sslNotifier.getSiteKeyPath('localhost');
 
+      final phpPort = _resolveDefaultPhpPort();
+
       final nginxConfig = NginxConfigBuilder.buildMainConfig(
         webRoot: webRoot,
         vhostsGlob: p.join(AppConfig.vhostsDir, 'nginx', '*.conf'),
@@ -1484,6 +1496,7 @@ class AppInstallerService {
         isSslInstalled: isSslInstalled,
         certPath: certPath,
         keyPath: keyPath,
+        phpPort: phpPort,
       );
 
       await confFile.writeAsString(nginxConfig);
@@ -1515,6 +1528,7 @@ class AppInstallerService {
         runtimeErrorLogPath: p.join(AppConfig.logsDir, 'caddy_error.log'),
         certPath: isSslInstalled ? certPath : null,
         keyPath: isSslInstalled ? keyPath : null,
+        phpPort: _resolveDefaultPhpPort(),
       );
       await caddyFile.writeAsString(config);
       logInfo('Caddyfile generated successfully.');
@@ -1741,6 +1755,33 @@ security:
     return (port >= 1024 && port <= 65535) ? port : 9000;
   }
 
+  /// Resolves the PHP-FPM port of the default installed PHP app, or null if
+  /// none is installed. Used by the webserver main config to wire localhost
+  /// to the default PHP-FPM so https://localhost/*.php is served.
+  int? _resolveDefaultPhpPort() {
+    try {
+      final apps = _ref.read(appsNotifierProvider).valueOrNull;
+      if (apps == null) return null;
+      final phpApps = apps
+          .where((a) => a.isInstalled && a.groupName == 'php')
+          .toList()
+        ..sort((a, b) {
+          if (a.isDefault && !b.isDefault) return -1;
+          if (!a.isDefault && b.isDefault) return 1;
+          return b.appId.compareTo(a.appId);
+        });
+      final best = phpApps.firstOrNull;
+      if (best == null) return null;
+      final customPort = int.tryParse(
+        best.extraInfo['port']?.toString() ?? '',
+      );
+      if (customPort != null) return customPort;
+      return AppInstallerService.phpPortFor(best.appId);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Moves the version-keyed data directory from [oldVersion] to [newVersion]
   /// so an updated engine keeps the user's existing databases.
   ///
@@ -1942,6 +1983,15 @@ security:
       final dataDir = Directory(p.join(AppConfig.dataDir, 'elasticsearch'));
       if (dataDir.existsSync()) {
         _logger.info('Deleting Elasticsearch data directory: ${dataDir.path}');
+        await dataDir.delete(recursive: true);
+      }
+    }
+
+    // Delete MongoDB data directory
+    if (appId == 'mongodb' || appId.contains('mongodb')) {
+      final dataDir = Directory(p.join(AppConfig.dataDir, 'mongodb'));
+      if (dataDir.existsSync()) {
+        _logger.info('Deleting MongoDB data directory: ${dataDir.path}');
         await dataDir.delete(recursive: true);
       }
     }
@@ -2450,6 +2500,7 @@ security:
       buffer.writeln('http.port: 9200');
       buffer.writeln('discovery.type: single-node');
       buffer.writeln('xpack.security.enabled: true');
+      buffer.writeln('xpack.security.enrollment.enabled: false');
       buffer.writeln('ingest.geoip.downloader.enabled: false');
 
       // Points data and logs to the managed Ponta data directory
@@ -2457,7 +2508,20 @@ security:
       buffer.writeln('path.logs: "${logsPath.path.replaceAll('\\', '/')}"');
 
       await confFile.writeAsString(buffer.toString());
-      logInfo('Applied managed configuration to ${confFile.path}');
+      logInfo('Applied managed elasticsearch.yml to ${confFile.path}');
+
+      // Generate and store bootstrap password for the elastic user.
+      // ES requires ELASTIC_PASSWORD env var when security is enabled but
+      // enrollment is disabled — otherwise it starts with an unknown password.
+      final passwordFile = File(p.join(esDataDir.path, 'elastic-password.txt'));
+      if (!passwordFile.existsSync()) {
+        final password = _generateSecret(length: 24);
+        await passwordFile.writeAsString(password);
+        if (Platform.isLinux || Platform.isMacOS) {
+          await Process.run('chmod', ['600', passwordFile.path]);
+        }
+        logInfo('Generated elastic user bootstrap password at ${passwordFile.path}');
+      }
     }
   }
 

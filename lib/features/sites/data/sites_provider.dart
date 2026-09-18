@@ -780,7 +780,13 @@ class SitesNotifier extends _$SitesNotifier {
         config += '    }\n';
       } else {
         config += '    location / {\n';
-        config += '        try_files \$uri \$uri/ /index.php?\$query_string;\n';
+        if (site.siteType == 'php') {
+          config +=
+              '        try_files \$uri \$uri/ /index.php?\$query_string;\n';
+        } else {
+          // Static sites: fall back to 404 (no PHP handler configured)
+          config += '        try_files \$uri \$uri/ =404;\n';
+        }
         config += '    }\n';
 
         if (site.siteType == 'php') {
@@ -842,8 +848,14 @@ class SitesNotifier extends _$SitesNotifier {
         // Re-validate stored value: records may predate the data-layer guard.
         final safeTarget = validateProxyTarget(site.proxyTarget ?? '');
         config += '    ProxyPreserveHost On\n';
-        config += '    ProxyPass / $safeTarget/\n';
-        config += '    ProxyPassReverse / $safeTarget/\n';
+        config += '    ProxyRequests Off\n';
+        // Normalize trailing slash to avoid double-slash when the user enters a
+        // proxy target that already ends with '/' (e.g. http://host:3000/)
+        final normalizedTarget = safeTarget.endsWith('/')
+            ? safeTarget
+            : '$safeTarget/';
+        config += '    ProxyPass / $normalizedTarget\n';
+        config += '    ProxyPassReverse / $normalizedTarget\n';
       } else {
         config += '    <Directory "$rootDirUnix">\n';
         config += '        Options Indexes FollowSymLinks\n';

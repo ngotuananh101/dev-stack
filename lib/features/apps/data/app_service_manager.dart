@@ -347,6 +347,28 @@ class AppServiceManager {
     return const [];
   }
 
+  @visibleForTesting
+  static Map<String, String>? environmentForExecutable(
+    String fileName, {
+    String? elasticPasswordPath,
+  }) {
+    final name = normalizeExecutableName(fileName);
+    if (name == 'elasticsearch') {
+      final path = elasticPasswordPath ??
+          p.join(AppConfig.dataDir, 'elasticsearch', 'elastic-password.txt');
+      final passwordFile = File(path);
+      if (passwordFile.existsSync()) {
+        try {
+          final password = passwordFile.readAsStringSync().trim();
+          if (password.isNotEmpty) {
+            return {'ELASTIC_PASSWORD': password};
+          }
+        } catch (_) {}
+      }
+    }
+    return null;
+  }
+
   void syncAppState(AppModel newApp) {
     if (_activeApps.containsKey(newApp.appId)) {
       final oldApp = _activeApps[newApp.appId]!;
@@ -431,7 +453,10 @@ class AppServiceManager {
         // Force output to console for capturing logs
         final version = app.installedVersion ?? 'unknown';
         final dataDir = p.join(AppConfig.dataDir, '${app.appId}-$version');
-        args = ['--console', '--datadir=${dataDir.replaceAll('\\', '/')}'];
+        args = [
+          if (Platform.isWindows) '--console',
+          '--datadir=${dataDir.replaceAll('\\', '/')}',
+        ];
       } else if (fileName == 'mongod') {
         // Look for mongod.cfg in the same directory as mongod.exe or its parent
         final confFile = File(p.join(workingDir, 'mongod.cfg'));
@@ -514,8 +539,7 @@ class AppServiceManager {
         // Actually, Meilisearch defaults to ./data.ms, better to be explicit or let config handle it.
         // For now, if config exists, we use it. If not, we might want to pass --db-path.
       } else if (fileName == 'elasticsearch') {
-        // No special environment or args needed anymore as we edit the config in the app dir
-        // but still point data to our managed data dir inside the yml.
+        env = environmentForExecutable(fileName);
       } else if (fileName == 'postgres') {
         if (Platform.isLinux) {
           final ver = app.installedVersion ?? 'system';
