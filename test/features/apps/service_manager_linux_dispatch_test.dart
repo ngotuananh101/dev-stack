@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:dev_stack/features/apps/data/app_service_manager.dart';
 
 void main() {
@@ -216,6 +218,58 @@ void main() {
           'tcp LISTEN 0 128 0.0.0.0:3306 0.0.0.0:*\n';
       final sockets = AppServiceManager.parseListeningSocketsLinux(ss);
       expect(sockets, equals({'0.0.0.0:3306'}));
+    });
+  });
+
+  group('environmentForExecutable', () {
+    test('returns null for services without special environment', () {
+      expect(AppServiceManager.environmentForExecutable('nginx'), isNull);
+      expect(AppServiceManager.environmentForExecutable('caddy'), isNull);
+      expect(AppServiceManager.environmentForExecutable('postgres'), isNull);
+    });
+
+    test('returns ELASTIC_PASSWORD for elasticsearch when password file exists', () async {
+      final tempDir = await Directory.systemTemp.createTemp('es_pwd_test');
+      try {
+        final pwdFile = File(p.join(tempDir.path, 'elastic-password.txt'));
+        await pwdFile.writeAsString('my-secret-token-123\n');
+
+        final env = AppServiceManager.environmentForExecutable(
+          'elasticsearch.bat',
+          elasticPasswordPath: pwdFile.path,
+        );
+
+        expect(env, isNotNull);
+        expect(env!['ELASTIC_PASSWORD'], equals('my-secret-token-123'));
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    test('returns null when elasticsearch password file does not exist or is empty', () async {
+      final tempDir = await Directory.systemTemp.createTemp('es_pwd_test_empty');
+      try {
+        final nonExistent = p.join(tempDir.path, 'non_existent.txt');
+        expect(
+          AppServiceManager.environmentForExecutable(
+            'elasticsearch',
+            elasticPasswordPath: nonExistent,
+          ),
+          isNull,
+        );
+
+        final emptyFile = File(p.join(tempDir.path, 'empty.txt'));
+        await emptyFile.writeAsString('   \n');
+        expect(
+          AppServiceManager.environmentForExecutable(
+            'elasticsearch',
+            elasticPasswordPath: emptyFile.path,
+          ),
+          isNull,
+        );
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
     });
   });
 }

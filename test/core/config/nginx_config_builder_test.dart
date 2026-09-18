@@ -53,6 +53,36 @@ void main() {
       expect(config, contains('ssl_session_cache    shared:SSL:1m;'));
       expect(config, contains('ssl_prefer_server_ciphers  on;'));
     });
+
+    test('includes PHP FastCGI handler in HTTPS block when phpPort is provided', () {
+      final config = NginxConfigBuilder.buildMainConfig(
+        webRoot: r'C:\Ponta\www',
+        vhostsGlob: r'C:\Ponta\vhosts\nginx\*.conf',
+        integrationsGlob: r'C:\Ponta\vhosts\nginx\integrations\*.conf',
+        allowLanAccess: false,
+        isSslInstalled: true,
+        certPath: r'C:\Ponta\certs\localhost.crt',
+        keyPath: r'C:\Ponta\certs\localhost.key',
+        phpPort: 9082,
+      );
+
+      expect(config, contains('fastcgi_pass 127.0.0.1:9082;'));
+      expect(config, contains('fastcgi_param SCRIPT_FILENAME'));
+    });
+
+    test('does not include PHP handler when phpPort is not provided', () {
+      final config = NginxConfigBuilder.buildMainConfig(
+        webRoot: r'C:\Ponta\www',
+        vhostsGlob: r'C:\Ponta\vhosts\nginx\*.conf',
+        integrationsGlob: r'C:\Ponta\vhosts\nginx\integrations\*.conf',
+        allowLanAccess: false,
+        isSslInstalled: true,
+        certPath: r'C:\Ponta\certs\localhost.crt',
+        keyPath: r'C:\Ponta\certs\localhost.key',
+      );
+
+      expect(config, isNot(contains('fastcgi_pass')));
+    });
   });
 
   group('NginxConfigBuilder.buildPhpLocation', () {
@@ -107,6 +137,9 @@ void main() {
       expect(config, contains('error_log "C:/Sites/logs/error.log";'));
       expect(config, isNot(contains('fastcgi_pass')));
       expect(config, isNot(contains('proxy_pass')));
+      // Static sites must not fall back to index.php in try_files
+      expect(config, isNot(contains('/index.php?')));
+      expect(config, contains('try_files \$uri \$uri/ =404;'));
     });
 
     test('generates PHP site configuration with SSL', () {

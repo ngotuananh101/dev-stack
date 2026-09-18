@@ -57,6 +57,28 @@ abstract final class ApacheConfigBuilder {
       );
     }
 
+    // Enable proxy modules for PHP-CGI and proxy sites (always needed, not just for SSL)
+    content = content.replaceFirst(
+      RegExp(r'#\s*LoadModule\s+proxy_module\s+modules/mod_proxy.so'),
+      'LoadModule proxy_module modules/mod_proxy.so',
+    );
+    content = content.replaceFirst(
+      RegExp(
+        r'#\s*LoadModule\s+proxy_fcgi_module\s+modules/mod_proxy_fcgi.so',
+      ),
+      'LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so',
+    );
+    // Enable mod_proxy_http for ProxyPass to http:// backends
+    content = content.replaceFirst(
+      RegExp(r'#\s*LoadModule\s+proxy_http_module\s+modules/mod_proxy_http.so'),
+      'LoadModule proxy_http_module modules/mod_proxy_http.so',
+    );
+    // Enable mod_alias for Alias directive in phpMyAdmin config
+    content = content.replaceFirst(
+      RegExp(r'#\s*LoadModule\s+alias_module\s+modules/mod_alias.so'),
+      'LoadModule alias_module modules/mod_alias.so',
+    );
+
     // SSL Configuration for Apache
     const sslVhostMarker = '# Ponta SSL Virtual Host';
     if (isSslInstalled) {
@@ -70,18 +92,6 @@ abstract final class ApacheConfigBuilder {
           r'#\s*LoadModule\s+socache_shmcb_module\s+modules/mod_socache_shmcb.so',
         ),
         'LoadModule socache_shmcb_module modules/mod_socache_shmcb.so',
-      );
-
-      // Enable proxy modules for PHP-CGI
-      content = content.replaceFirst(
-        RegExp(r'#\s*LoadModule\s+proxy_module\s+modules/mod_proxy.so'),
-        'LoadModule proxy_module modules/mod_proxy.so',
-      );
-      content = content.replaceFirst(
-        RegExp(
-          r'#\s*LoadModule\s+proxy_fcgi_module\s+modules/mod_proxy_fcgi.so',
-        ),
-        'LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so',
       );
 
       final bindAddress = WebserverBindPolicy.address(
@@ -131,12 +141,6 @@ $sslVhostMarker
 
     return content;
   }
-
-  /// Builds a FastCGI SetHandler block for PHP-FPM
-  static String buildPhpFpmConfig({required int phpPort}) => '''
-    <FilesMatch \\.php\$>
-        SetHandler "proxy:fcgi://127.0.0.1:$phpPort"
-    </FilesMatch>''';
 
   /// Builds phpMyAdmin VirtualHost or Directory configuration for Apache
   static String buildPhpMyAdminConfig(

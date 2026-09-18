@@ -52,6 +52,33 @@ void main() {
       );
       expect('tls '.allMatches(config).length, 1);
     });
+
+    test('includes php_fastcgi when phpPort is provided', () {
+      final config = CaddyConfigBuilder.mainConfig(
+        webRoot: r'C:\Ponta\www',
+        bindAddress: '127.0.0.1',
+        vhostsGlob: r'C:\Ponta\vhosts\caddy\*.conf',
+        integrationsGlob: r'C:\Ponta\vhosts\caddy\integrations\*.conf',
+        localhostAccessLogPath: r'C:\Ponta\logs\localhost\caddy_access.log',
+        runtimeErrorLogPath: r'C:\Ponta\logs\caddy_error.log',
+        phpPort: 9082,
+      );
+
+      expect(config, contains('php_fastcgi 127.0.0.1:9082'));
+    });
+
+    test('does not include php_fastcgi when phpPort is not provided', () {
+      final config = CaddyConfigBuilder.mainConfig(
+        webRoot: r'C:\Ponta\www',
+        bindAddress: '127.0.0.1',
+        vhostsGlob: r'C:\Ponta\vhosts\caddy\*.conf',
+        integrationsGlob: r'C:\Ponta\vhosts\caddy\integrations\*.conf',
+        localhostAccessLogPath: r'C:\Ponta\logs\localhost\caddy_access.log',
+        runtimeErrorLogPath: r'C:\Ponta\logs\caddy_error.log',
+      );
+
+      expect(config, isNot(contains('php_fastcgi')));
+    });
   });
 
   group('CaddyConfigBuilder.siteConfig', () {

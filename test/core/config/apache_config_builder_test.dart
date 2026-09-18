@@ -44,6 +44,45 @@ DocumentRoot "c:/Apache24/htdocs"
       );
     });
 
+    test('enables proxy modules even when SSL is not installed', () {
+      const initialHttpd = '''
+Define SRVROOT "c:/Apache24"
+ServerRoot "\${SRVROOT}"
+Listen 80
+ServerRoot "\${SRVROOT}"
+DocumentRoot "c:/Apache24/htdocs"
+#LoadModule proxy_module modules/mod_proxy.so
+#LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
+#LoadModule proxy_http_module modules/mod_proxy_http.so
+#LoadModule alias_module modules/mod_alias.so
+#LoadModule ssl_module modules/mod_ssl.so
+#LoadModule socache_shmcb_module modules/mod_socache_shmcb.so
+''';
+
+      final updated = ApacheConfigBuilder.buildMainConfig(
+        initialContent: initialHttpd,
+        serverRoot: r'C:\Ponta\apps\apache\2.4.58',
+        documentRoot: r'C:\Ponta\www',
+        vhostsGlob: r'C:\Ponta\vhosts\apache\*.conf',
+        allowLanAccess: false,
+        isSslInstalled: false,
+      );
+
+      // Proxy modules must be enabled regardless of SSL
+      expect(updated, contains('LoadModule proxy_module modules/mod_proxy.so'));
+      expect(
+        updated,
+        contains('LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so'),
+      );
+      expect(
+        updated,
+        contains('LoadModule proxy_http_module modules/mod_proxy_http.so'),
+      );
+      expect(updated, contains('LoadModule alias_module modules/mod_alias.so'));
+      // SSL modules must remain commented when SSL is not installed
+      expect(updated, contains('#LoadModule ssl_module'));
+    });
+
     test('configures mod_ssl and mod_proxy when SSL is installed', () {
       const initialHttpd = '''
 Define SRVROOT "c:/Apache24"
@@ -93,16 +132,6 @@ DocumentRoot "c:/Apache24/htdocs"
         updated,
         contains('SSLCertificateKeyFile "C:/Ponta/certs/localhost.key"'),
       );
-    });
-  });
-
-  group('ApacheConfigBuilder.buildPhpFpmConfig', () {
-    test('generates FastCGI SetHandler for PHP', () {
-      final config = ApacheConfigBuilder.buildPhpFpmConfig(phpPort: 9000);
-
-      expect(config, contains(r'<FilesMatch \.php$>'));
-      expect(config, contains('SetHandler "proxy:fcgi://127.0.0.1:9000"'));
-      expect(config, contains('</FilesMatch>'));
     });
   });
 
