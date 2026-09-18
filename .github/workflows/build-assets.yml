@@ -132,7 +132,7 @@ jobs:
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
           cp assets/images/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/com.ponta.dev_stack.png
 
-          cat << 'EOF' > AppDir/com.ponta.dev_stack.desktop
+          cat << 'EOF' | sed 's/^[ ]*//' > AppDir/com.ponta.dev_stack.desktop
           [Desktop Entry]
           Type=Application
           Name=Ponta DevStack
@@ -148,7 +148,7 @@ jobs:
           mkdir -p AppDir/usr/share/applications
           cp AppDir/com.ponta.dev_stack.desktop AppDir/usr/share/applications/com.ponta.dev_stack.desktop
 
-          cat << 'EOF' > AppDir/AppRun
+          cat << 'EOF' | sed 's/^[ ]*//' > AppDir/AppRun
           #!/bin/sh
           SELF=$(readlink -f "$0")
           HERE=${SELF%/*}
@@ -162,21 +162,15 @@ jobs:
 
           if [ -n "$TARGET_APPIMAGE" ] && [ -d "$HOME" ]; then
               mkdir -p "$DESKTOP_DIR" "$ICON_DIR" 2>/dev/null || true
-              if [ ! -f "$ICON_DIR/com.ponta.dev_stack.png" ] || [ "${HERE}/com.ponta.dev_stack.png" -nt "$ICON_DIR/com.ponta.dev_stack.png" ]; then
-                  cp "${HERE}/com.ponta.dev_stack.png" "$ICON_DIR/com.ponta.dev_stack.png" 2>/dev/null || true
+              if [ -f "${HERE}/com.ponta.dev_stack.png" ]; then
+                  if [ ! -f "$ICON_DIR/com.ponta.dev_stack.png" ] || [ "${HERE}/com.ponta.dev_stack.png" -nt "$ICON_DIR/com.ponta.dev_stack.png" ]; then
+                      cp "${HERE}/com.ponta.dev_stack.png" "$ICON_DIR/com.ponta.dev_stack.png" 2>/dev/null || true
+                  fi
               fi
               DESKTOP_FILE="$DESKTOP_DIR/com.ponta.dev_stack.desktop"
-              cat << DESKTOPEOF > "$DESKTOP_FILE" 2>/dev/null || true
-[Desktop Entry]
-Type=Application
-Name=Ponta DevStack
-Comment=Local development stack for Web & Databases
-Exec="${TARGET_APPIMAGE}" %u
-Icon=com.ponta.dev_stack
-Terminal=false
-Categories=Development;
-StartupWMClass=com.ponta.dev_stack
-DESKTOPEOF
+              if [ -f "${HERE}/com.ponta.dev_stack.desktop" ]; then
+                  sed "s|^Exec=.*|Exec=\"${TARGET_APPIMAGE}\" %u|" "${HERE}/com.ponta.dev_stack.desktop" > "$DESKTOP_FILE" 2>/dev/null || true
+              fi
               chmod +x "$DESKTOP_FILE" 2>/dev/null || true
               if command -v update-desktop-database >/dev/null 2>&1; then
                   update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
