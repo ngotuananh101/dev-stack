@@ -91,4 +91,54 @@ void main() {
       expect(fake.lastSignal, equals(ProcessSignal.sigterm));
     });
   });
+
+  group('BackgroundProcess.writeStringElevated', () {
+    test('writes directly when file is writable', () async {
+      final tempDir = Directory.systemTemp.createTempSync('bp_test_direct_');
+      try {
+        final testFile = File('${tempDir.path}/test.txt');
+        final success = await BackgroundProcess.writeStringElevated(
+          testFile.path,
+          'direct content',
+          isLinux: true,
+        );
+        expect(success, isTrue);
+        expect(testFile.existsSync(), isTrue);
+        expect(testFile.readAsStringSync(), equals('direct content'));
+      } finally {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
+    test('falls back to elevated pkexec cp with chmod 600 when direct write fails', () async {
+      final executedCommands = <({String exec, List<String> args})>[];
+
+      final success = await BackgroundProcess.writeStringElevated(
+        '/etc/php/8.4/fpm/php.ini',
+        'elevated content',
+        isLinux: true,
+        skipDirectWrite: true,
+        runProcess: (exec, args) async {
+          executedCommands.add((exec: exec, args: args));
+          return ProcessResult(1234, 0, '', '');
+        },
+      );
+
+      expect(success, isTrue);
+      expect(executedCommands.length, equals(2));
+
+      // 1. First command is chmod 600 on temp file
+      expect(executedCommands[0].exec, equals('chmod'));
+      expect(executedCommands[0].args.first, equals('600'));
+      expect(executedCommands[0].args[1], contains('temp_file'));
+
+      // 2. Second command is pkexec cp tempFile destFile
+      expect(executedCommands[1].exec, equals('pkexec'));
+      expect(executedCommands[1].args, equals([
+        'cp',
+        executedCommands[0].args[1],
+        '/etc/php/8.4/fpm/php.ini',
+      ]));
+    });
+  });
 }

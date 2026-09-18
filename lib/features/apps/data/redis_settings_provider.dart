@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
+import '../../../core/config/app_config.dart';
+import '../../../core/services/background_process.dart';
 import '../domain/app_model.dart';
 
 part 'redis_settings_provider.g.dart';
@@ -14,9 +16,11 @@ class RedisSettings extends _$RedisSettings {
     if (app.location == null) return null;
 
     final location = app.location!;
+    final isolatedPath = p.join(AppConfig.dataDir, 'redis', 'redis.conf');
 
     // Check candidate config files (Valkey / Redis Linux & Windows)
     final candidates = [
+      if (Platform.isLinux || location == 'system_package') isolatedPath,
       p.join(location, 'valkey.conf'),
       p.join(location, 'redis.conf'),
       p.join(location, 'redis.windows.conf'),
@@ -29,8 +33,12 @@ class RedisSettings extends _$RedisSettings {
       }
     }
 
+    if (Platform.isLinux || location == 'system_package') {
+      return File(isolatedPath);
+    }
+
     // Default fallback
-    return File(Platform.isWindows ? candidates[2] : candidates[1]);
+    return File(Platform.isWindows ? candidates.last : p.join(location, 'redis.conf'));
   }
 
   Future<String> readConfig(AppModel app) async {
@@ -42,6 +50,6 @@ class RedisSettings extends _$RedisSettings {
   Future<void> saveConfig(AppModel app, String content) async {
     final file = _getConfigFile(app);
     if (file == null) return;
-    await file.writeAsString(content);
+    await BackgroundProcess.writeStringElevated(file.path, content);
   }
 }

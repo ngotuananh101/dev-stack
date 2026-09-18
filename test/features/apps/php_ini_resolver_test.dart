@@ -141,5 +141,41 @@ void main() {
       );
       expect(resolvedPath, '/etc/opt/remi/php85/php.ini');
     });
+
+    test('Test 9: Remi candidate is preferred over /etc/php.ini when both exist', () {
+      final app = createApp(appId: 'php82', location: 'system_package');
+      final existingPaths = {
+        '/etc/opt/remi/php82/php.ini',
+        '/etc/php.ini',
+      };
+
+      final resolvedPath = resolvePhpIniPath(
+        app,
+        isLinux: true,
+        fileExists: (path) => existingPaths.contains(path),
+      );
+      expect(resolvedPath, '/etc/opt/remi/php82/php.ini');
+    });
+
+    test('Test 10: Resolves version from installedVersion when appId lacks version numbers', () {
+      final app = AppModel(
+        appId: 'php',
+        name: 'PHP',
+        installedVersion: '8.4.1',
+        categories: ['runtime'],
+        location: 'system_package',
+      );
+      final existingPaths = {
+        '/etc/opt/remi/php84/php.ini',
+        '/etc/php.ini',
+      };
+
+      final resolvedPath = resolvePhpIniPath(
+        app,
+        isLinux: true,
+        fileExists: (path) => existingPaths.contains(path),
+      );
+      expect(resolvedPath, '/etc/opt/remi/php84/php.ini');
+    });
   });
 }

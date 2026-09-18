@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'log_service.dart';
 
 /// Runs non-interactive child processes without creating console windows.
@@ -236,6 +237,85 @@ try {
       '-EncodedCommand',
       _powerShellEncodedCommand(script),
     ]);
+  }
+
+  /// Writes string content to a destination file, falling back to elevated
+  /// permissions (pkexec cp on Linux, PowerShell Copy-Item on Windows)
+  /// if a direct write fails (e.g. system files like /etc/php.ini).
+  static Future<bool> writeStringElevated(
+    String filePath,
+    String content, {
+    bool? isLinux,
+    bool skipDirectWrite = false,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+  }) async {
+    // 1. Try direct write first
+    if (!skipDirectWrite) {
+      try {
+        final file = File(filePath);
+        await file.writeAsString(content);
+        return true;
+      } catch (e) {
+        AppLogger.info(
+          'Direct write to $filePath failed, trying elevation... $e',
+        );
+      }
+    }
+
+    // 2. Elevate via temporary file
+    Directory? tempDir;
+    try {
+      tempDir = await Directory.systemTemp.createTemp('ponta_write_');
+      final tempFile = File(p.join(tempDir.path, 'temp_file'));
+      await tempFile.writeAsString(content);
+
+      final onLinux = isLinux ?? Platform.isLinux;
+      if (onLinux) {
+        final runner = runProcess ?? Process.run;
+        try {
+          final chmodResult = await runner('chmod', ['600', tempFile.path]);
+          if (chmodResult.exitCode != 0) {
+            AppLogger.warning(
+              'chmod 600 returned code ${chmodResult.exitCode}: ${chmodResult.stderr}',
+            );
+          }
+        } catch (e) {
+          AppLogger.warning('Could not set permissions 0600 on temp file: $e');
+        }
+
+        final result = await runElevated(
+          'cp',
+          [tempFile.path, filePath],
+          isLinux: true,
+          runProcess: runner,
+        );
+        if (result.exitCode == 0) {
+          return true;
+        }
+        AppLogger.error('Elevated write failed: ${result.stderr}');
+        return false;
+      } else {
+        final escapedTemp = tempFile.path.replaceAll("'", "''");
+        final escapedDest = filePath.replaceAll("'", "''");
+        final result = await runElevatedPowerShell(
+          "Copy-Item -LiteralPath '$escapedTemp' -Destination '$escapedDest' -Force",
+        );
+        if (result.exitCode == 0) {
+          return true;
+        }
+        AppLogger.error('Elevated write failed: ${result.stderr}');
+        return false;
+      }
+    } catch (e) {
+      AppLogger.error('Elevation failed for $filePath: $e');
+      return false;
+    } finally {
+      if (tempDir != null && tempDir.existsSync()) {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
+      }
+    }
   }
 
   static String _buildManagedStartScript(

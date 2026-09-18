@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../core/services/background_process.dart';
 import '../domain/app_model.dart';
 
 part 'php_settings_provider.g.dart';
@@ -38,9 +39,9 @@ String? resolvePhpIniPath(
   final candidates = <String>[
     if (version != null) '/etc/php/$version/fpm/php.ini',
     if (version != null) '/etc/php/$version/cli/php.ini',
-    '/etc/php.ini',
-    if (version != null) '/etc/php.d/$version.ini',
     if (versionRaw != null) '/etc/opt/remi/php$versionRaw/php.ini',
+    if (version != null) '/etc/php.d/$version.ini',
+    '/etc/php.ini',
   ];
 
   for (final candidate in candidates) {
@@ -117,7 +118,7 @@ class PhpSettings extends _$PhpSettings {
   Future<void> savePhpIni(AppModel app, String content) async {
     final file = _getPhpIni(app);
     if (file == null) return;
-    await file.writeAsString(content);
+    await BackgroundProcess.writeStringElevated(file.path, content);
   }
 
   Future<List<PhpExtension>> getExtensions(AppModel app, [String? iniContent]) async {
@@ -231,7 +232,7 @@ class PhpSettings extends _$PhpSettings {
       }
     }
 
-    await file.writeAsString(content);
+    await BackgroundProcess.writeStringElevated(file.path, content);
   }
 }
 
