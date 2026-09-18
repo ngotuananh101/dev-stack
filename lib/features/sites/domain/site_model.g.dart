@@ -17,43 +17,58 @@ const SiteModelSchema = CollectionSchema(
   name: r'SiteModel',
   id: 2283781731892198758,
   properties: {
-    r'createdAt': PropertySchema(
+    r'autoStart': PropertySchema(
       id: 0,
+      name: r'autoStart',
+      type: IsarType.bool,
+    ),
+    r'command': PropertySchema(
+      id: 1,
+      name: r'command',
+      type: IsarType.string,
+    ),
+    r'createdAt': PropertySchema(
+      id: 2,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'domain': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'domain',
       type: IsarType.string,
     ),
     r'phpPort': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'phpPort',
       type: IsarType.long,
     ),
     r'phpVersion': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'phpVersion',
       type: IsarType.string,
     ),
+    r'port': PropertySchema(
+      id: 6,
+      name: r'port',
+      type: IsarType.long,
+    ),
     r'proxyTarget': PropertySchema(
-      id: 4,
+      id: 7,
       name: r'proxyTarget',
       type: IsarType.string,
     ),
     r'rootDir': PropertySchema(
-      id: 5,
+      id: 8,
       name: r'rootDir',
       type: IsarType.string,
     ),
     r'siteType': PropertySchema(
-      id: 6,
+      id: 9,
       name: r'siteType',
       type: IsarType.string,
     ),
     r'useSsl': PropertySchema(
-      id: 7,
+      id: 10,
       name: r'useSsl',
       type: IsarType.bool,
     )
@@ -92,6 +107,12 @@ int _siteModelEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.command;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.domain.length * 3;
   {
     final value = object.phpVersion;
@@ -116,14 +137,17 @@ void _siteModelSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeDateTime(offsets[0], object.createdAt);
-  writer.writeString(offsets[1], object.domain);
-  writer.writeLong(offsets[2], object.phpPort);
-  writer.writeString(offsets[3], object.phpVersion);
-  writer.writeString(offsets[4], object.proxyTarget);
-  writer.writeString(offsets[5], object.rootDir);
-  writer.writeString(offsets[6], object.siteType);
-  writer.writeBool(offsets[7], object.useSsl);
+  writer.writeBool(offsets[0], object.autoStart);
+  writer.writeString(offsets[1], object.command);
+  writer.writeDateTime(offsets[2], object.createdAt);
+  writer.writeString(offsets[3], object.domain);
+  writer.writeLong(offsets[4], object.phpPort);
+  writer.writeString(offsets[5], object.phpVersion);
+  writer.writeLong(offsets[6], object.port);
+  writer.writeString(offsets[7], object.proxyTarget);
+  writer.writeString(offsets[8], object.rootDir);
+  writer.writeString(offsets[9], object.siteType);
+  writer.writeBool(offsets[10], object.useSsl);
 }
 
 SiteModel _siteModelDeserialize(
@@ -133,15 +157,18 @@ SiteModel _siteModelDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = SiteModel(
-    createdAt: reader.readDateTimeOrNull(offsets[0]),
-    domain: reader.readString(offsets[1]),
+    autoStart: reader.readBoolOrNull(offsets[0]) ?? false,
+    command: reader.readStringOrNull(offsets[1]),
+    createdAt: reader.readDateTimeOrNull(offsets[2]),
+    domain: reader.readString(offsets[3]),
     id: id,
-    phpPort: reader.readLongOrNull(offsets[2]),
-    phpVersion: reader.readStringOrNull(offsets[3]),
-    proxyTarget: reader.readStringOrNull(offsets[4]),
-    rootDir: reader.readString(offsets[5]),
-    siteType: reader.readStringOrNull(offsets[6]) ?? 'php',
-    useSsl: reader.readBoolOrNull(offsets[7]) ?? false,
+    phpPort: reader.readLongOrNull(offsets[4]),
+    phpVersion: reader.readStringOrNull(offsets[5]),
+    port: reader.readLongOrNull(offsets[6]),
+    proxyTarget: reader.readStringOrNull(offsets[7]),
+    rootDir: reader.readString(offsets[8]),
+    siteType: reader.readStringOrNull(offsets[9]) ?? 'php',
+    useSsl: reader.readBoolOrNull(offsets[10]) ?? false,
   );
   return object;
 }
@@ -154,20 +181,26 @@ P _siteModelDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readBoolOrNull(offset) ?? false) as P;
     case 1:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 2:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 3:
-      return (reader.readStringOrNull(offset)) as P;
-    case 4:
-      return (reader.readStringOrNull(offset)) as P;
-    case 5:
       return (reader.readString(offset)) as P;
+    case 4:
+      return (reader.readLongOrNull(offset)) as P;
+    case 5:
+      return (reader.readStringOrNull(offset)) as P;
     case 6:
-      return (reader.readStringOrNull(offset) ?? 'php') as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 7:
+      return (reader.readStringOrNull(offset)) as P;
+    case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
+      return (reader.readStringOrNull(offset) ?? 'php') as P;
+    case 10:
       return (reader.readBoolOrNull(offset) ?? false) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -365,6 +398,163 @@ extension SiteModelQueryWhere
 
 extension SiteModelQueryFilter
     on QueryBuilder<SiteModel, SiteModel, QFilterCondition> {
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> autoStartEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'autoStart',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'command',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'command',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'command',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'command',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'command',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'command',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'command',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'command',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'command',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'command',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> commandIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'command',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
+      commandIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'command',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> createdAtIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -839,6 +1029,75 @@ extension SiteModelQueryFilter
     });
   }
 
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> portIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'port',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> portIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'port',
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> portEqualTo(
+      int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'port',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> portGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'port',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> portLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'port',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition> portBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'port',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QAfterFilterCondition>
       proxyTargetIsNull() {
     return QueryBuilder.apply(this, (query) {
@@ -1271,6 +1530,30 @@ extension SiteModelQueryLinks
     on QueryBuilder<SiteModel, SiteModel, QFilterCondition> {}
 
 extension SiteModelQuerySortBy on QueryBuilder<SiteModel, SiteModel, QSortBy> {
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByAutoStart() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStart', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByAutoStartDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStart', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByCommand() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'command', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByCommandDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'command', Sort.desc);
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -1316,6 +1599,18 @@ extension SiteModelQuerySortBy on QueryBuilder<SiteModel, SiteModel, QSortBy> {
   QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByPhpVersionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'phpVersion', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByPort() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'port', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> sortByPortDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'port', Sort.desc);
     });
   }
 
@@ -1370,6 +1665,30 @@ extension SiteModelQuerySortBy on QueryBuilder<SiteModel, SiteModel, QSortBy> {
 
 extension SiteModelQuerySortThenBy
     on QueryBuilder<SiteModel, SiteModel, QSortThenBy> {
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByAutoStart() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStart', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByAutoStartDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'autoStart', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByCommand() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'command', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByCommandDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'command', Sort.desc);
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -1430,6 +1749,18 @@ extension SiteModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByPort() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'port', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByPortDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'port', Sort.desc);
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QAfterSortBy> thenByProxyTarget() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'proxyTarget', Sort.asc);
@@ -1481,6 +1812,19 @@ extension SiteModelQuerySortThenBy
 
 extension SiteModelQueryWhereDistinct
     on QueryBuilder<SiteModel, SiteModel, QDistinct> {
+  QueryBuilder<SiteModel, SiteModel, QDistinct> distinctByAutoStart() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'autoStart');
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QDistinct> distinctByCommand(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'command', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<SiteModel, SiteModel, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
@@ -1504,6 +1848,12 @@ extension SiteModelQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'phpVersion', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<SiteModel, SiteModel, QDistinct> distinctByPort() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'port');
     });
   }
 
@@ -1543,6 +1893,18 @@ extension SiteModelQueryProperty
     });
   }
 
+  QueryBuilder<SiteModel, bool, QQueryOperations> autoStartProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'autoStart');
+    });
+  }
+
+  QueryBuilder<SiteModel, String?, QQueryOperations> commandProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'command');
+    });
+  }
+
   QueryBuilder<SiteModel, DateTime?, QQueryOperations> createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
@@ -1564,6 +1926,12 @@ extension SiteModelQueryProperty
   QueryBuilder<SiteModel, String?, QQueryOperations> phpVersionProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'phpVersion');
+    });
+  }
+
+  QueryBuilder<SiteModel, int?, QQueryOperations> portProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'port');
     });
   }
 
