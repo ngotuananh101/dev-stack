@@ -1439,6 +1439,11 @@ class AppInstallerService {
       if (!mimeFile.existsSync()) {
         await mimeFile.writeAsString(NginxConfigBuilder.defaultMimeTypes());
       }
+      final fastcgiParamsFile = File(p.join(confDir.path, 'fastcgi_params'));
+      if (!fastcgiParamsFile.existsSync()) {
+        await fastcgiParamsFile
+            .writeAsString(NginxConfigBuilder.defaultFastcgiParams());
+      }
 
       final confFile = File(p.join(installPath, 'conf', 'nginx.conf'));
       logInfo('Generating fresh Nginx configuration...');

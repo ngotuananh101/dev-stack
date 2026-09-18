@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/services/background_process.dart';
 import '../../../../core/services/log_service.dart';
 import '../../domain/app_model.dart';
 import '../../data/php_settings_provider.dart';
@@ -172,7 +173,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (app.location == null) return null;
     final location = app.location!;
 
-    if (_isPhp) return p.join(location, 'php.ini');
+    if (_isPhp) return resolvePhpIniPath(app);
 
     if (_isDb) {
       if (_isPma) return p.join(location, 'config.inc.php');
@@ -198,8 +199,13 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (_isWebserver) return webserverConfigFileFor(app)?.path;
 
     if (_isRedis) {
+      final isolatedPath = p.join(AppConfig.dataDir, 'redis', 'redis.conf');
+      if (File(isolatedPath).existsSync()) return isolatedPath;
+      if (location == 'system_package') return isolatedPath;
       final winPath = p.join(location, 'redis.windows.conf');
       if (File(winPath).existsSync()) return winPath;
+      final valkeyPath = p.join(location, 'valkey.conf');
+      if (File(valkeyPath).existsSync()) return valkeyPath;
       return p.join(location, 'redis.conf');
     }
 
@@ -235,9 +241,14 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       return false;
     }
     try {
-      await File(path).writeAsString(content);
-      AppLogger.info('Saved config: $path');
-      return true;
+      final success = await BackgroundProcess.writeStringElevated(path, content);
+      if (success) {
+        AppLogger.info('Saved config: $path');
+        return true;
+      } else {
+        AppLogger.error('Failed to save config $path with writeStringElevated');
+        return false;
+      }
     } catch (e) {
       AppLogger.error('Failed to save config $path: $e');
       return false;

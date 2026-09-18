@@ -156,4 +156,20 @@ void main() {
     expect(mime, contains('application/json'));
     expect(mime, contains('image/png'));
   });
+
+  test('NginxConfigBuilder.defaultFastcgiParams returns standard params', () {
+    final params = NginxConfigBuilder.defaultFastcgiParams();
+    expect(params, contains(r'fastcgi_param  QUERY_STRING       $query_string;'));
+    expect(params, contains(r'fastcgi_param  REQUEST_METHOD     $request_method;'));
+    expect(params, contains(r'fastcgi_param  CONTENT_TYPE       $content_type;'));
+    expect(params, contains(r'fastcgi_param  CONTENT_LENGTH     $content_length;'));
+    expect(params, contains(r'fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;'));
+    expect(params, contains(r'fastcgi_param  DOCUMENT_ROOT      $document_root;'));
+    expect(params, contains(r'fastcgi_param  SERVER_PROTOCOL    $server_protocol;'));
+    expect(params, contains(r'fastcgi_param  REMOTE_ADDR        $remote_addr;'));
+    expect(params, contains(r'fastcgi_param  SERVER_PORT        $server_port;'));
+    expect(params, contains(r'fastcgi_param  SERVER_NAME        $server_name;'));
+    expect(params, contains('REDIRECT_STATUS    200;'));
+    expect(params, contains('GATEWAY_INTERFACE  CGI/1.1'));
+  });
 }
