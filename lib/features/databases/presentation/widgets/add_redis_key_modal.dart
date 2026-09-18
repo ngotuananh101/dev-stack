@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dev_stack/core/theme/app_text_size.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/redis_provider.dart';
 import '../../../apps/domain/app_model.dart';

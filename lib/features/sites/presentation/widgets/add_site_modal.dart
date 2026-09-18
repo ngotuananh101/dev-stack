@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
@@ -83,7 +83,9 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
             .updateSite(
               id: widget.initialData!.id,
               domain: _domainController.text.trim(),
-              rootDir: _rootDirController.text.trim(),
+              rootDir: _siteType == 'proxy'
+                  ? ''
+                  : _rootDirController.text.trim(),
               siteType: _siteType,
               phpAppId: _siteType == 'php' ? _selectedPhpAppId : null,
               proxyTarget: _siteType == 'proxy'
@@ -96,7 +98,9 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
             .read(sitesNotifierProvider.notifier)
             .addSite(
               domain: _domainController.text.trim(),
-              rootDir: _rootDirController.text.trim(),
+              rootDir: _siteType == 'proxy'
+                  ? ''
+                  : _rootDirController.text.trim(),
               siteType: _siteType,
               phpAppId: _siteType == 'php' ? _selectedPhpAppId : null,
               proxyTarget: _siteType == 'proxy'

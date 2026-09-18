@@ -206,12 +206,17 @@ class SitesNotifier extends _$SitesNotifier {
     // rootDir is interpolated into a double-quoted webserver directive; reject
     // any character that could break out of it before it reaches storage or a
     // generated vhost file.
-    validateRootDir(rootDir);
-
+    // Proxy sites forward traffic to an upstream target and do not have a
+    // local document root, so rootDir is optional and may be empty.
     if (siteType == 'proxy') {
+      if (rootDir.isNotEmpty) {
+        validateRootDir(rootDir);
+      }
       // proxyTarget is interpolated into webserver config; validate before it
       // reaches storage or a generated vhost file.
       validateProxyTarget(proxyTarget ?? '');
+    } else {
+      validateRootDir(rootDir);
     }
 
     final isar = await ref.read(isarProvider.future);
@@ -424,8 +429,12 @@ class SitesNotifier extends _$SitesNotifier {
 
     if (siteType == 'proxy') {
       validateProxyTarget(proxyTarget ?? '');
+      if (rootDir.isNotEmpty) {
+        validateRootDir(rootDir);
+      }
+    } else {
+      validateRootDir(rootDir);
     }
-    validateRootDir(rootDir);
 
     // Remove old vhost files if domain changed
     if (oldSite.domain != domain) {
@@ -703,7 +712,14 @@ class SitesNotifier extends _$SitesNotifier {
   Future<void> _generateVhostFiles(SiteModel site) async {
     // Re-validate stored rootDir: records may predate the data-layer guard, so
     // a stored path with a quote/newline can never reach a vhost directive.
-    validateRootDir(site.rootDir);
+    // Proxy sites do not have a local document root, so rootDir may be empty.
+    if (site.siteType == 'proxy') {
+      if (site.rootDir.isNotEmpty) {
+        validateRootDir(site.rootDir);
+      }
+    } else {
+      validateRootDir(site.rootDir);
+    }
     final rootDirUnix = site.rootDir.replaceAll('\\', '/');
     final sslNotifier = ref.read(sslServiceProvider.notifier);
     final settings = await ref.read(settingsNotifierProvider.future);

@@ -44,10 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Other 
+# Other
 .vscode/
 .claude/
 innosetup/Output/
+/dist/
 .remember/
 .superpowers/
 /docs/

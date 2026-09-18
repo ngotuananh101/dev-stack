@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:dev_stack/shared/widgets/code_editor/config_code_editor.dart';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import '../../../../core/theme/app_colors.dart';
