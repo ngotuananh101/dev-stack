@@ -25,6 +25,18 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
+
+  // If a window already exists, bring it to the foreground instead of creating
+  // a new instance.
+  GList* windows = gtk_application_get_windows(GTK_APPLICATION(application));
+  if (windows != nullptr) {
+    auto* window = GTK_WINDOW(windows->data);
+    gtk_widget_show(GTK_WIDGET(window));
+    gtk_window_deiconify(window);
+    gtk_window_present(window);
+    return;
+  }
+
   auto* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 
@@ -170,7 +182,13 @@ MyApplication* my_application_new() {
   g_set_application_name("Ponta DevStack");
   gtk_window_set_default_icon_name(APPLICATION_ID);
 
+#if GLIB_CHECK_VERSION(2, 74, 0)
+  GApplicationFlags flags = G_APPLICATION_DEFAULT_FLAGS;
+#else
+  GApplicationFlags flags = G_APPLICATION_FLAGS_NONE;
+#endif
+
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID, "flags",
-                                     G_APPLICATION_NON_UNIQUE, nullptr));
+                                     flags, nullptr));
 }
