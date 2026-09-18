@@ -97,10 +97,11 @@ import "${_path(vhostsGlob)}"
     required String accessLogPath,
     int? phpPort,
     String? proxyTarget,
+    int? cliPort,
     String? certPath,
     String? keyPath,
   }) {
-    if (!const {'static', 'php', 'proxy'}.contains(siteType)) {
+    if (!const {'static', 'php', 'proxy', 'cli'}.contains(siteType)) {
       throw ArgumentError('Unsupported site type: $siteType');
     }
     if (siteType == 'php' && (phpPort == null || phpPort <= 0)) {
@@ -109,12 +110,16 @@ import "${_path(vhostsGlob)}"
     if (siteType == 'proxy' && (proxyTarget == null || proxyTarget.isEmpty)) {
       throw ArgumentError('Proxy sites require a target');
     }
+    if (siteType == 'cli' && (cliPort == null || cliPort <= 0)) {
+      throw ArgumentError('CLI sites require a valid port');
+    }
     if (useSsl && (certPath == null || keyPath == null)) {
       throw ArgumentError('SSL sites require a certificate and key');
     }
 
     final handlers = switch (siteType) {
       'proxy' => '    reverse_proxy $proxyTarget',
+      'cli' => '    reverse_proxy 127.0.0.1:$cliPort',
       'php' =>
         '''    root * "${_path(rootDir)}"
     php_fastcgi 127.0.0.1:$phpPort
