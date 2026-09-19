@@ -7,6 +7,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
 import '../../../core/config/app_config.dart';
 import '../../../shared/utils/app_dialogs.dart';
+import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/terminal_log_view.dart';
 import '../../apps/data/apps_provider.dart';
 import '../../apps/domain/app_model.dart';
 
@@ -43,13 +45,6 @@ class LogsPage extends ConsumerStatefulWidget {
 class _LogsPageState extends ConsumerState<LogsPage> {
   String? _selectedId; // Can be appId (service) or filePath (file)
   bool _isService = true;
-  final ScrollController _scrollController = ScrollController();
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   Future<void> _deleteLogFile(String path) async {
     await AppDialogs.showConfirm(
@@ -308,40 +303,39 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                     // Compact Action Buttons
                     Row(
                       children: [
-                        IconButton(
+                        AppButton(
+                          label: 'REFRESH',
+                          icon: const Icon(Icons.refresh_rounded, size: 14),
                           onPressed: () => ref.invalidate(logFilesProvider),
-                          tooltip: 'Refresh Files',
-                          icon: const Icon(
-                            Icons.refresh_rounded,
-                            size: 18,
-                            color: AppColors.textMuted,
-                          ),
+                          style: AppButtonStyle.secondary,
+                          size: AppButtonSize.sm,
                         ),
                         const SizedBox(width: 8),
-                        _buildActionButton(
-                          icon: Icons.copy_rounded,
-                          label: 'COPY',
-                          onTap: () => _copyToClipboard(currentLogs),
-                        ),
                         if (_isService) ...[
-                          const SizedBox(width: 8),
-                          _buildActionButton(
-                            icon: Icons.delete_outline_rounded,
+                          AppButton(
                             label: 'CLEAR',
-                            color: AppColors.error,
-                            onTap: () {
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 14,
+                            ),
+                            onPressed: () {
                               setState(() {
                                 currentApp?.serviceLogs.clear();
                               });
                             },
+                            style: AppButtonStyle.danger,
+                            size: AppButtonSize.sm,
                           ),
                         ] else ...[
-                          const SizedBox(width: 8),
-                          _buildActionButton(
-                            icon: Icons.delete_forever_rounded,
+                          AppButton(
                             label: 'DELETE',
-                            color: AppColors.error,
-                            onTap: () => _deleteLogFile(_selectedId!),
+                            icon: const Icon(
+                              Icons.delete_forever_rounded,
+                              size: 14,
+                            ),
+                            onPressed: () => _deleteLogFile(_selectedId!),
+                            style: AppButtonStyle.danger,
+                            size: AppButtonSize.sm,
                           ),
                         ],
                       ],
@@ -349,100 +343,13 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                   ],
                 ),
               ),
-              // Full Width Terminal (Immersive)
+              // Full Width Terminal (Unified)
               Expanded(
-                child: Container(
-                  color: const Color(0xFF010409), // GitHub Darker
-                  child: Column(
-                    children: [
-                      // Status Bar / Info Bar
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 8,
-                        ),
-                        color: const Color(0xFF161B22),
-                        child: Row(
-                          children: [
-                            Icon(
-                              _isService
-                                  ? Icons.terminal_rounded
-                                  : Icons.description_outlined,
-                              size: 14,
-                              color: AppColors.textMuted,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              currentTitle,
-                              style: const TextStyle(
-                                fontFamily: 'JetBrainsMono',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                            const Spacer(),
-                            const Text(
-                              'UTF-8',
-                              style: TextStyle(
-                                fontFamily: 'JetBrainsMono',
-                                fontSize: 10,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              'Lines: ${currentLogs.length}',
-                              style: const TextStyle(
-                                fontFamily: 'JetBrainsMono',
-                                fontSize: 10,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Terminal Output
-                      Expanded(
-                        child: SelectionArea(
-                          child: ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 16,
-                            ),
-                            itemCount: currentLogs.length,
-                            itemBuilder: (context, index) {
-                              final log = currentLogs[index];
-                              final isError = log.contains('[ERROR]');
-                              final isSystem =
-                                  log.contains('Service started') ||
-                                  log.contains('Service exited');
-
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 2,
-                                ),
-                                child: Text(
-                                  log,
-                                  style: TextStyle(
-                                    fontFamily: 'JetBrainsMono',
-                                    fontSize: 13,
-                                    height: 1.4,
-                                    color: isError
-                                        ? AppColors.error
-                                        : isSystem
-                                        ? AppColors.primary
-                                        : const Color(0xFFE6EDF3),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                child: TerminalLogView(
+                  title: currentTitle,
+                  lines: currentLogs,
+                  isModal: false,
+                  onCopy: () => _copyToClipboard(currentLogs),
                 ),
               ),
             ],
@@ -454,36 +361,4 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    Color color = AppColors.textMuted,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
