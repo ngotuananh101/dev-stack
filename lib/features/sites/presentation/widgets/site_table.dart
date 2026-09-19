@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import '../../data/cli_process_manager.dart';
 import 'site_logs_modal.dart';
 import 'site_tunnel_dialog.dart';
+import '../../../../shared/widgets/app_icon_button.dart';
 
 class SiteTable extends ConsumerWidget {
   final List<SiteModel> sites;
@@ -166,23 +167,14 @@ class SiteTable extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                Tooltip(
-                  message: 'Open in browser',
-                  child: InkWell(
-                    onTap: () {
-                      final protocol = site.useSsl ? 'https' : 'http';
-                      launchUrlString('$protocol://${site.domain}');
-                    },
-                    borderRadius: BorderRadius.circular(4),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4.0),
-                      child: Icon(
-                        LucideIcons.externalLink,
-                        size: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
+                AppIconButton(
+                  icon: LucideIcons.externalLink,
+                  onPressed: () {
+                    final protocol = site.useSsl ? 'https' : 'http';
+                    launchUrlString('$protocol://${site.domain}');
+                  },
+                  color: AppColors.textSecondary,
+                  tooltip: 'Open in browser',
                 ),
               ],
             ),
@@ -268,7 +260,7 @@ class SiteTable extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     if (site.siteType == 'cli') ...[
-                      _buildActionButton(
+                      AppIconButton(
                         icon: isRunning ? LucideIcons.square : LucideIcons.play,
                         onPressed: () async {
                           if (isRunning) {
@@ -281,16 +273,16 @@ class SiteTable extends ConsumerWidget {
                         tooltip: isRunning ? 'Stop' : 'Start',
                       ),
                       const SizedBox(width: 8),
-                      _buildActionButton(
+                      AppIconButton(
                         icon: LucideIcons.rotateCw,
                         onPressed: isRunning
                             ? () => cliManager.restartSite(site)
-                            : () {},
+                            : null,
                         color: isRunning ? AppColors.info : AppColors.textMuted,
                         tooltip: isRunning ? 'Restart' : 'Not running',
                       ),
                       const SizedBox(width: 8),
-                      _buildActionButton(
+                      AppIconButton(
                         icon: LucideIcons.scrollText,
                         onPressed: () {
                           showDialog(
@@ -298,13 +290,13 @@ class SiteTable extends ConsumerWidget {
                             builder: (context) => SiteLogsModal(site: site),
                           );
                         },
-                        color: AppColors.accent,
+                        color: AppColors.textSecondary,
                         tooltip: 'Logs',
                       ),
                       const SizedBox(width: 8),
                     ],
                     if (site.siteType == 'php') ...[
-                      _buildActionButton(
+                      AppIconButton(
                         icon: LucideIcons.terminal,
                         onPressed: () => _openTerminal(site, ref),
                         color: AppColors.accent,
@@ -312,7 +304,7 @@ class SiteTable extends ConsumerWidget {
                       ),
                       const SizedBox(width: 8),
                     ],
-                    _buildActionButton(
+                    AppIconButton(
                       icon: LucideIcons.radio,
                       onPressed: () {
                         showDialog(
@@ -324,15 +316,15 @@ class SiteTable extends ConsumerWidget {
                       tooltip: 'Share / Tunnel',
                     ),
                     const SizedBox(width: 8),
-                    _buildActionButton(
+                    AppIconButton(
                       icon: LucideIcons.settings,
                       onPressed: () => onEdit(site),
                       color: AppColors.textSecondary,
                       tooltip: 'Config',
                     ),
                     const SizedBox(width: 8),
-                    _buildActionButton(
-                      icon: LucideIcons.trash2,
+                    AppIconButton(
+                      icon: Icons.delete_outline_rounded,
                       onPressed: () {
                         AppDialogs.showConfirm(
                           context: context,
@@ -356,33 +348,6 @@ class SiteTable extends ConsumerWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color color,
-    required String tooltip,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(4),
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              border: Border.all(color: AppColors.border, width: 0.5),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Icon(icon, size: 14, color: color),
-          ),
-        ),
       ),
     );
   }
