@@ -14,7 +14,9 @@ class AddSiteModal extends ConsumerStatefulWidget {
   final VoidCallback onClose;
   final SiteModel? initialData;
 
-  const AddSiteModal({super.key, required this.onClose, this.initialData});
+  static void _defaultOnClose() {}
+
+  const AddSiteModal({super.key, this.onClose = _defaultOnClose, this.initialData});
 
   @override
   ConsumerState<AddSiteModal> createState() => _AddSiteModalState();
@@ -25,13 +27,38 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
   final _domainController = TextEditingController();
   final _rootDirController = TextEditingController();
   final _proxyTargetController = TextEditingController();
+  final _commandController = TextEditingController();
+  final _portController = TextEditingController();
 
-  String _siteType = 'php'; // 'php', 'static', 'proxy'
+  String _siteType = 'php'; // 'php', 'static', 'proxy', 'cli'
   String? _selectedPhpAppId;
+  String _selectedPreset = 'node_npm';
   bool _useSsl = false;
+  bool _autoStart = false;
   bool _isSaving = false;
 
+  /// Preset CLI definitions. When a non-custom preset is selected, its command
+  /// and port are written into [_commandController] / [_portController].
+  final Map<String, ({String name, String command, int port})> _cliPresets = {
+    'node_npm': (name: 'Node.js (npm)', command: 'npm run dev', port: 3000),
+    'node_pnpm': (name: 'Node.js (pnpm)', command: 'pnpm dev', port: 3000),
+    'node_yarn': (name: 'Node.js (yarn)', command: 'yarn dev', port: 3000),
+    'bun': (name: 'Bun', command: 'bun dev', port: 3000),
+    'deno': (name: 'Deno', command: 'deno task dev', port: 8000),
+    'custom': (name: 'Custom', command: '', port: 3000),
+  };
+
   bool get isEdit => widget.initialData != null;
+
+  /// Returns the preset key whose command matches [command], or `'custom'` when
+  /// the command does not correspond to any preset.
+  String _presetForCommand(String? command) {
+    final trimmed = command?.trim() ?? '';
+    for (final entry in _cliPresets.entries) {
+      if (entry.value.command == trimmed) return entry.key;
+    }
+    return 'custom';
+  }
 
   @override
   void initState() {
@@ -42,7 +69,14 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
       _siteType = widget.initialData!.siteType;
       _proxyTargetController.text = widget.initialData!.proxyTarget ?? '';
       _useSsl = widget.initialData!.useSsl;
-      // We'll match PHP version later when apps are loaded
+      _commandController.text = widget.initialData!.command ?? 'npm run dev';
+      _portController.text =
+          widget.initialData!.port?.toString() ?? '3000';
+      _autoStart = widget.initialData!.autoStart;
+      _selectedPreset = _presetForCommand(widget.initialData!.command);
+    } else {
+      _commandController.text = 'npm run dev';
+      _portController.text = '3000';
     }
   }
 
@@ -51,6 +85,8 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
     _domainController.dispose();
     _rootDirController.dispose();
     _proxyTargetController.dispose();
+    _commandController.dispose();
+    _portController.dispose();
     super.dispose();
   }
 
@@ -91,6 +127,13 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
               proxyTarget: _siteType == 'proxy'
                   ? _proxyTargetController.text.trim()
                   : null,
+              command: _siteType == 'cli'
+                  ? _commandController.text.trim()
+                  : null,
+              port: _siteType == 'cli'
+                  ? int.tryParse(_portController.text.trim())
+                  : null,
+              autoStart: _siteType == 'cli' ? _autoStart : false,
               useSsl: _useSsl,
             );
       } else {
@@ -106,6 +149,13 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
               proxyTarget: _siteType == 'proxy'
                   ? _proxyTargetController.text.trim()
                   : null,
+              command: _siteType == 'cli'
+                  ? _commandController.text.trim()
+                  : null,
+              port: _siteType == 'cli'
+                  ? int.tryParse(_portController.text.trim())
+                  : null,
+              autoStart: _siteType == 'cli' ? _autoStart : false,
               useSsl: _useSsl,
             );
       }
@@ -162,6 +212,9 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
       color: Colors.transparent,
       child: Container(
         width: 500,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
@@ -228,14 +281,18 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
             ),
             const Divider(color: AppColors.border, height: 1),
 
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+            // Content (scrolls when the form is taller than the viewport,
+            // e.g. on small screens or when the CLI options are shown).
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                     _buildLabel('Domain Name'),
                     _buildTextField(
                       controller: _domainController,
@@ -256,17 +313,18 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                     const SizedBox(height: 20),
 
                     _buildLabel('Site Type'),
-                    Row(
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
                       children: [
                         _buildTypeOption('PHP', 'php', LucideIcons.code),
-                        const SizedBox(width: 12),
                         _buildTypeOption(
                           'Static',
                           'static',
                           LucideIcons.fileCode,
                         ),
-                        const SizedBox(width: 12),
                         _buildTypeOption('Proxy', 'proxy', LucideIcons.shuffle),
+                        _buildTypeOption('CLI App', 'cli', LucideIcons.terminal),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -313,6 +371,69 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                                 size: 18,
                               ),
                             ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
+                    // --- CLI App options ---
+                    // A directory selector (working directory) is already shown
+                    // above via the `if (_siteType != 'proxy')` block. When the
+                    // site type is CLI, additionally surface the preset, start
+                    // command, internal port and auto-start toggle that the
+                    // CliProcessManager uses to spawn and proxy the process.
+                    if (_siteType == 'cli') ...[
+                      _buildLabel('Preset'),
+                      _buildPresetDropdown(),
+                      const SizedBox(height: 20),
+                      _buildLabel('Start Command'),
+                      _buildTextField(
+                        controller: _commandController,
+                        hint: 'e.g. npm run dev',
+                        icon: LucideIcons.terminal,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter a start command';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      _buildLabel('Internal Port'),
+                      _buildTextField(
+                        controller: _portController,
+                        hint: 'e.g. 3000',
+                        icon: LucideIcons.server,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter a port';
+                          }
+                          final parsed = int.tryParse(value.trim());
+                          if (parsed == null ||
+                              parsed < 1 ||
+                              parsed > 65535) {
+                            return 'Enter a valid port (1-65535)';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Auto-start on launch',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Switch.adaptive(
+                            value: _autoStart,
+                            onChanged: (v) => setState(() => _autoStart = v),
+                            activeThumbColor: AppColors.success,
                           ),
                         ],
                       ),
@@ -468,6 +589,8 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                 ),
               ),
             ),
+          ),
+        ),
             const Divider(color: AppColors.border, height: 1),
 
             // Footer
@@ -532,43 +655,44 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
 
   Widget _buildTypeOption(String label, String value, IconData icon) {
     final isSelected = _siteType == value;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _siteType = value),
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: isSelected
-                ? AppColors.primary.withValues(alpha: 0.1)
-                : AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
-              width: isSelected ? 1.5 : 1,
+    return InkWell(
+      onTap: () => setState(() => _siteType = value),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? AppColors.primary : AppColors.textMuted,
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? AppColors.primary : AppColors.textMuted,
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight:
+                    isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
               ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -583,6 +707,53 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
           color: AppColors.textSecondary,
           fontSize: 12,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPresetDropdown() {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedPreset,
+          isExpanded: true,
+          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+          dropdownColor: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          icon: const Icon(LucideIcons.chevronDown, size: 16, color: AppColors.textMuted),
+          items: _cliPresets.entries.map((entry) {
+            return DropdownMenuItem(
+              value: entry.key,
+              child: Text(
+                entry.value.name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val == null) return;
+            setState(() {
+              _selectedPreset = val;
+              // Auto-fill command and port from the preset, unless the user
+              // explicitly chose "Custom" (which leaves their input untouched).
+              if (val != 'custom') {
+                final preset = _cliPresets[val]!;
+                _commandController.text = preset.command;
+                _portController.text = preset.port.toString();
+              }
+            });
+          },
         ),
       ),
     );
