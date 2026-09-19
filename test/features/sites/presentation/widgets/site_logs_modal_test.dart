@@ -1,4 +1,3 @@
-import 'package:dev_stack/features/sites/data/cli_process_manager.dart';
 import 'package:dev_stack/features/sites/domain/site_model.dart';
 import 'package:dev_stack/features/sites/presentation/widgets/site_logs_modal.dart';
 import 'package:flutter/material.dart';
