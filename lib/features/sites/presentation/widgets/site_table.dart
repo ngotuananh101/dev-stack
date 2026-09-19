@@ -11,6 +11,8 @@ import '../../domain/site_model.dart';
 import '../../data/sites_provider.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import '../../data/cli_process_manager.dart';
+import 'site_logs_modal.dart';
 import 'site_tunnel_dialog.dart';
 
 class SiteTable extends ConsumerWidget {
@@ -94,7 +96,7 @@ class SiteTable extends ConsumerWidget {
           SizedBox(width: 50, child: _buildHeaderCell('SSL')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 180,
+            width: 220,
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
@@ -188,29 +190,58 @@ class SiteTable extends ConsumerWidget {
           const SizedBox(width: 12),
           Expanded(
             flex: 4,
-            child: Text(
-              site.siteType == 'proxy'
-                  ? (site.proxyTarget ?? '-')
-                  : site.rootDir,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
+            child: Tooltip(
+              message: site.siteType == 'cli' && site.command != null
+                  ? 'Command: ${site.command}'
+                  : (site.siteType == 'proxy'
+                      ? (site.proxyTarget ?? '-')
+                      : site.rootDir),
+              child: Text(
+                site.siteType == 'proxy'
+                    ? (site.proxyTarget ?? '-')
+                    : site.rootDir,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
-              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 12),
           SizedBox(
             width: 100,
-            child: Text(
-              site.siteType == 'php'
-                  ? 'PHP ${site.phpVersion}'
-                  : site.siteType.toUpperCase(),
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
-            ),
+            child: site.siteType == 'cli'
+                ? Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.terminal,
+                        size: 12,
+                        color: AppColors.accent,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'CLI :${site.port ?? 3000}',
+                          style: const TextStyle(
+                            color: AppColors.accent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    site.siteType == 'php'
+                        ? 'PHP ${site.phpVersion}'
+                        : site.siteType.toUpperCase(),
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
           ),
           const SizedBox(width: 12),
           SizedBox(
@@ -226,58 +257,102 @@ class SiteTable extends ConsumerWidget {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 180,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (site.siteType == 'php') ...[
-                  _buildActionButton(
-                    icon: LucideIcons.terminal,
-                    onPressed: () => _openTerminal(site, ref),
-                    color: AppColors.accent,
-                    tooltip: 'Open Terminal',
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                _buildActionButton(
-                  icon: LucideIcons.radio,
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => SiteTunnelDialog(site: site),
-                    );
-                  },
-                  color: AppColors.info,
-                  tooltip: 'Share / Tunnel',
-                ),
-                const SizedBox(width: 8),
-                _buildActionButton(
-                  icon: LucideIcons.settings,
-                  onPressed: () => onEdit(site),
-                  color: AppColors.textSecondary,
-                  tooltip: 'Config',
-                ),
-                const SizedBox(width: 8),
-                _buildActionButton(
-                  icon: LucideIcons.trash2,
-                  onPressed: () {
-                    AppDialogs.showConfirm(
-                      context: context,
-                      title: 'Delete Site',
-                      text:
-                          'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
-                      confirmBtnText: 'DELETE',
-                      onConfirm: () {
-                        ref
-                            .read(sitesNotifierProvider.notifier)
-                            .deleteSite(site.id);
+            width: 220,
+            child: StreamBuilder<int>(
+              stream: ref.watch(cliProcessManagerProvider).statusStream,
+              builder: (context, _) {
+                final cliManager = ref.read(cliProcessManagerProvider);
+                final isRunning = cliManager.isSiteRunning(site.id);
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (site.siteType == 'cli') ...[
+                      _buildActionButton(
+                        icon: isRunning ? LucideIcons.square : LucideIcons.play,
+                        onPressed: () async {
+                          if (isRunning) {
+                            await cliManager.stopSite(site.id);
+                          } else {
+                            await cliManager.startSite(site);
+                          }
+                        },
+                        color: isRunning ? AppColors.error : AppColors.success,
+                        tooltip: isRunning ? 'Stop' : 'Start',
+                      ),
+                      const SizedBox(width: 8),
+                      _buildActionButton(
+                        icon: LucideIcons.rotateCw,
+                        onPressed: isRunning
+                            ? () => cliManager.restartSite(site)
+                            : () {},
+                        color: isRunning ? AppColors.info : AppColors.textMuted,
+                        tooltip: isRunning ? 'Restart' : 'Not running',
+                      ),
+                      const SizedBox(width: 8),
+                      _buildActionButton(
+                        icon: LucideIcons.scrollText,
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => SiteLogsModal(site: site),
+                          );
+                        },
+                        color: AppColors.accent,
+                        tooltip: 'Logs',
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    if (site.siteType == 'php') ...[
+                      _buildActionButton(
+                        icon: LucideIcons.terminal,
+                        onPressed: () => _openTerminal(site, ref),
+                        color: AppColors.accent,
+                        tooltip: 'Open Terminal',
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    _buildActionButton(
+                      icon: LucideIcons.radio,
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => SiteTunnelDialog(site: site),
+                        );
                       },
-                    );
-                  },
-                  color: AppColors.error,
-                  tooltip: 'Delete',
-                ),
-              ],
+                      color: AppColors.info,
+                      tooltip: 'Share / Tunnel',
+                    ),
+                    const SizedBox(width: 8),
+                    _buildActionButton(
+                      icon: LucideIcons.settings,
+                      onPressed: () => onEdit(site),
+                      color: AppColors.textSecondary,
+                      tooltip: 'Config',
+                    ),
+                    const SizedBox(width: 8),
+                    _buildActionButton(
+                      icon: LucideIcons.trash2,
+                      onPressed: () {
+                        AppDialogs.showConfirm(
+                          context: context,
+                          title: 'Delete Site',
+                          text:
+                              'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
+                          confirmBtnText: 'DELETE',
+                          onConfirm: () {
+                            ref
+                                .read(sitesNotifierProvider.notifier)
+                                .deleteSite(site.id);
+                          },
+                        );
+                      },
+                      color: AppColors.error,
+                      tooltip: 'Delete',
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
