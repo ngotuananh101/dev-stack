@@ -175,6 +175,7 @@ Alias /phpmyadmin "$trailingSlashPmaPath"
     required bool allowLanAccess,
     int? phpPort,
     String? proxyTarget,
+    int? cliPort,
     String? certPath,
     String? keyPath,
   }) {
@@ -190,7 +191,7 @@ Alias /phpmyadmin "$trailingSlashPmaPath"
       var config = '<VirtualHost $virtualHost>\n';
       config += '    ServerName $domain\n';
 
-      if (siteType != 'proxy') {
+      if (siteType != 'proxy' && siteType != 'cli') {
         config += '    DocumentRoot "$rootDirUnix"\n';
       }
 
@@ -213,6 +214,13 @@ Alias /phpmyadmin "$trailingSlashPmaPath"
         config += '    ProxyPreserveHost On\n';
         config += '    ProxyPass / $safeTarget\n';
         config += '    ProxyPassReverse / $safeTarget\n';
+      } else if (siteType == 'cli') {
+        config += '    RewriteEngine On\n';
+        config += '    RewriteCond %{HTTP:Upgrade} =websocket [NC]\n';
+        config += '    RewriteRule /(.*) ws://127.0.0.1:$cliPort/\$1 [P,L]\n';
+        config += '    RewriteCond %{HTTP:Upgrade} !=websocket [NC]\n';
+        config += '    RewriteRule /(.*) http://127.0.0.1:$cliPort/\$1 [P,L]\n';
+        config += '    ProxyPassReverse / http://127.0.0.1:$cliPort/\n';
       } else {
         config += '    <Directory "$rootDirUnix">\n';
         config += '        Options Indexes FollowSymLinks\n';

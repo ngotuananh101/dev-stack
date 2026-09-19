@@ -17,8 +17,34 @@ import '../../settings/data/settings_provider.dart';
 import '../../hosts/data/hosts_repository.dart';
 import '../../../core/services/log_service.dart';
 import '../../../shared/utils/bounded_runner.dart';
+import 'cli_process_manager.dart';
 
 part 'sites_provider.g.dart';
+
+/// Validates a CLI site port. The port is interpolated into webserver
+/// directives (nginx ``proxy_pass``, Apache ``RewriteRule``, Caddy
+/// ``reverse_proxy``) that proxy traffic to the CLI process, so it must be a
+/// sane TCP port to avoid generating broken or injectable configs.
+///
+/// Returns the port on success; throws [ArgumentError] otherwise.
+int validateCliPort(int? port) {
+  if (port == null || port < 1 || port > 65535) {
+    throw ArgumentError('Port must be an integer between 1 and 65535');
+  }
+  return port;
+}
+
+/// Validates a CLI site start command before it is persisted and used to spawn
+/// a child process. A command is interpolated into ``sh -c`` / ``cmd /c`` by
+/// [CliProcessManager.startSite], so it must be a non-empty, trimmed string.
+///
+/// Returns the trimmed command on success; throws [ArgumentError] otherwise.
+String validateCliCommand(String? command) {
+  if (command == null || command.trim().isEmpty) {
+    throw ArgumentError('Start command cannot be empty');
+  }
+  return command.trim();
+}
 
 @riverpod
 class SitesNotifier extends _$SitesNotifier {
@@ -187,7 +213,27 @@ class SitesNotifier extends _$SitesNotifier {
   @override
   Future<List<SiteModel>> build() async {
     final isar = await ref.watch(isarProvider.future);
-    return isar.siteModels.where().sortByCreatedAtDesc().findAll();
+    final sites =
+        await isar.siteModels.where().sortByCreatedAtDesc().findAll();
+
+    // Auto-start CLI sites that were persisted with autoStart == true. This
+    // runs after the DB load completes (via microtask) so it does not delay the
+    // initial sites read, and failures are logged but never propagated (a bad
+    // port/command or missing dir on a prior record must not crash startup).
+    Future.microtask(() {
+      final cliManager = ref.read(cliProcessManagerProvider);
+      final logger = ref.read(logServiceProvider);
+      for (final site in sites) {
+        if (site.siteType == 'cli' && site.autoStart) {
+          cliManager.startSite(site).catchError((e) {
+            logger.error('Auto-start failed for ${site.domain}: $e');
+            return false;
+          });
+        }
+      }
+    });
+
+    return sites;
   }
 
   Future<void> addSite({
@@ -196,6 +242,9 @@ class SitesNotifier extends _$SitesNotifier {
     required String siteType,
     String? phpAppId,
     String? proxyTarget,
+    String? command,
+    int? port,
+    bool autoStart = false,
     required bool useSsl,
     bool restartWebserver = true,
   }) async {
@@ -219,6 +268,13 @@ class SitesNotifier extends _$SitesNotifier {
       validateRootDir(rootDir);
     }
 
+    // CLI sites proxy to a spawned command on [port]; validate the command and
+    // port before they are persisted or interpolated into a vhost directive.
+    if (siteType == 'cli') {
+      validateCliCommand(command);
+      validateCliPort(port);
+    }
+
     final isar = await ref.read(isarProvider.future);
 
     String? phpVersion;
@@ -236,6 +292,9 @@ class SitesNotifier extends _$SitesNotifier {
       phpVersion: phpVersion,
       phpPort: phpPort,
       proxyTarget: proxyTarget,
+      command: command,
+      port: port,
+      autoStart: autoStart,
       useSsl: useSsl,
       createdAt: DateTime.now(),
     );
@@ -261,6 +320,22 @@ class SitesNotifier extends _$SitesNotifier {
     }
 
     await _finalize(restartWebserver: restartWebserver);
+
+    // Start the CLI process now if auto-start was requested. The vhost config
+    // (which reverse-proxies to site.port) is already in place after
+    // _finalize above, so the webserver restart that just ran will route to
+    // the freshly spawned process.
+    if (site.siteType == 'cli' && site.autoStart) {
+      ref
+          .read(cliProcessManagerProvider)
+          .startSite(site)
+          .catchError((e) {
+            ref
+                .read(logServiceProvider)
+                .error('Auto-start failed for ${site.domain}: $e');
+            return false;
+          });
+    }
   }
 
   /// Generates the SSL cert for [site]; retries once immediately if the cert or
@@ -421,6 +496,9 @@ class SitesNotifier extends _$SitesNotifier {
     required String siteType,
     String? phpAppId,
     String? proxyTarget,
+    String? command,
+    int? port,
+    bool autoStart = false,
     required bool useSsl,
   }) async {
     final isar = await ref.read(isarProvider.future);
@@ -434,6 +512,13 @@ class SitesNotifier extends _$SitesNotifier {
       }
     } else {
       validateRootDir(rootDir);
+    }
+
+    // CLI sites proxy to a spawned command on [port]; validate the command and
+    // port before they are persisted or interpolated into a vhost directive.
+    if (siteType == 'cli') {
+      validateCliCommand(command);
+      validateCliPort(port);
     }
 
     // Remove old vhost files if domain changed
@@ -457,6 +542,9 @@ class SitesNotifier extends _$SitesNotifier {
       phpVersion: phpVersion,
       phpPort: phpPort,
       proxyTarget: proxyTarget,
+      command: command,
+      port: port,
+      autoStart: autoStart,
       useSsl: useSsl,
       createdAt: oldSite.createdAt,
     );
@@ -487,6 +575,21 @@ class SitesNotifier extends _$SitesNotifier {
     await _generateVhostFiles(updatedSite);
 
     await _finalize();
+
+    // Restart the CLI process if this is an auto-start CLI site. The vhost
+    // config was just regenerated, so a fresh process ensures the webserver
+    // routes to the current command/port.
+    if (updatedSite.siteType == 'cli' && updatedSite.autoStart) {
+      ref
+          .read(cliProcessManagerProvider)
+          .restartSite(updatedSite)
+          .catchError((e) {
+            ref
+                .read(logServiceProvider)
+                .error('Auto-start failed for ${updatedSite.domain}: $e');
+            return false;
+          });
+    }
   }
 
   Future<void> deleteSite(int id, {bool restartWebserver = true}) async {
@@ -494,6 +597,13 @@ class SitesNotifier extends _$SitesNotifier {
     final site = await isar.siteModels.get(id);
 
     if (site != null) {
+      // Stop the CLI process before tearing down files/DB so its open log file
+      // handle is released and we don't leave a worker running after the site
+      // record is gone.
+      if (site.siteType == 'cli') {
+        ref.read(cliProcessManagerProvider).stopSite(site.id);
+      }
+
       // Delete the DB row FIRST so a locked log/cert file can never block the
       // deletion: the site always disappears from the app, and a leftover
       // file is benign (cleared on a later regen or manually). The previous
@@ -540,8 +650,14 @@ class SitesNotifier extends _$SitesNotifier {
     final failed = <String>[];
     final removedIds = <int>[];
 
+    final cliManager = ref.read(cliProcessManagerProvider);
     await runBounded<SiteModel, void>(sites, 8, (site, index) async {
       try {
+        // Stop the CLI process before tearing down files/DB so its open log
+        // file handle is released and we don't leave a worker running.
+        if (site.siteType == 'cli') {
+          cliManager.stopSite(site.id);
+        }
         await _removeVhostFiles(site);
         removedIds.add(site.id);
       } catch (e) {
@@ -757,7 +873,9 @@ class SitesNotifier extends _$SitesNotifier {
       config += '    send_timeout 1800;\n';
       config += '    proxy_read_timeout 1800;\n';
 
-      if (site.siteType != 'proxy') {
+      // CLI sites proxy to a spawned process on site.port, so they (like
+      // proxy sites) do not have a local document root.
+      if (site.siteType != 'proxy' && site.siteType != 'cli') {
         config += '    root "$rootDirUnix";\n';
         config += '    index index.php index.html;\n';
       }
@@ -793,6 +911,23 @@ class SitesNotifier extends _$SitesNotifier {
         config +=
             '        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\n';
         config += '        proxy_set_header X-Forwarded-Proto \$scheme;\n';
+        config += '    }\n';
+      } else if (site.siteType == 'cli') {
+        // CLI sites reverse-proxy to the spawned process on site.port.
+        config += '    location / {\n';
+        config +=
+            '        proxy_pass http://127.0.0.1:${site.port};\n';
+        config += '        proxy_http_version 1.1;\n';
+        config +=
+            '        proxy_set_header Upgrade \$http_upgrade;\n';
+        config += '        proxy_set_header Connection "upgrade";\n';
+        config += '        proxy_set_header Host \$host;\n';
+        config += '        proxy_set_header X-Real-IP \$remote_addr;\n';
+        config +=
+            '        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\n';
+        config += '        proxy_set_header X-Forwarded-Proto \$scheme;\n';
+        config += '        proxy_read_timeout 86400s;\n';
+        config += '        proxy_send_timeout 86400s;\n';
         config += '    }\n';
       } else {
         config += '    location / {\n';
@@ -839,7 +974,9 @@ class SitesNotifier extends _$SitesNotifier {
       String config = '<VirtualHost $virtualHost>\n';
       config += '    ServerName ${site.domain}\n';
 
-      if (site.siteType != 'proxy') {
+      // CLI sites reverse-proxy to a spawned process, so (like proxy sites)
+      // they have no local DocumentRoot.
+      if (site.siteType != 'proxy' && site.siteType != 'cli') {
         config += '    DocumentRoot "$rootDirUnix"\n';
       }
 
@@ -872,6 +1009,18 @@ class SitesNotifier extends _$SitesNotifier {
             : '$safeTarget/';
         config += '    ProxyPass / $normalizedTarget\n';
         config += '    ProxyPassReverse / $normalizedTarget\n';
+      } else if (site.siteType == 'cli') {
+        // CLI sites reverse-proxy (with WebSocket support) to the spawned
+        // process on site.port.
+        config += '    RewriteEngine On\n';
+        config += '    RewriteCond %{HTTP:Upgrade} =websocket [NC]\n';
+        config +=
+            '    RewriteRule /(.*) ws://127.0.0.1:${site.port}/\$1 [P,L]\n';
+        config += '    RewriteCond %{HTTP:Upgrade} !=websocket [NC]\n';
+        config +=
+            '    RewriteRule /(.*) http://127.0.0.1:${site.port}/\$1 [P,L]\n';
+        config +=
+            '    ProxyPassReverse / http://127.0.0.1:${site.port}/\n';
       } else {
         config += '    <Directory "$rootDirUnix">\n';
         config += '        Options Indexes FollowSymLinks\n';
@@ -920,6 +1069,7 @@ class SitesNotifier extends _$SitesNotifier {
       siteType: site.siteType,
       phpPort: site.phpPort,
       proxyTarget: safeTarget,
+      cliPort: site.port,
       useSsl: site.useSsl,
       certPath: certPath,
       keyPath: keyPath,

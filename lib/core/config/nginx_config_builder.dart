@@ -197,6 +197,7 @@ location /phpmyadmin {
     required bool allowLanAccess,
     int? phpPort,
     String? proxyTarget,
+    int? cliPort,
     String? certPath,
     String? keyPath,
   }) {
@@ -218,7 +219,7 @@ location /phpmyadmin {
       config += '    send_timeout 1800;\n';
       config += '    proxy_read_timeout 1800;\n';
 
-      if (siteType != 'proxy') {
+      if (siteType != 'proxy' && siteType != 'cli') {
         config += '    root "$rootDirUnix";\n';
         config += '    index index.php index.html;\n';
       }
@@ -248,6 +249,20 @@ location /phpmyadmin {
         config +=
             '        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\n';
         config += '        proxy_set_header X-Forwarded-Proto \$scheme;\n';
+        config += '    }\n';
+      } else if (siteType == 'cli') {
+        config += '    location / {\n';
+        config += '        proxy_pass http://127.0.0.1:$cliPort;\n';
+        config += '        proxy_http_version 1.1;\n';
+        config += '        proxy_set_header Upgrade \$http_upgrade;\n';
+        config += '        proxy_set_header Connection "upgrade";\n';
+        config += '        proxy_set_header Host \$host;\n';
+        config += '        proxy_set_header X-Real-IP \$remote_addr;\n';
+        config +=
+            '        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\n';
+        config += '        proxy_set_header X-Forwarded-Proto \$scheme;\n';
+        config += '        proxy_read_timeout 86400s;\n';
+        config += '        proxy_send_timeout 86400s;\n';
         config += '    }\n';
       } else {
         config += '    location / {\n';

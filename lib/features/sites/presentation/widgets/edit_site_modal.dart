@@ -127,10 +127,35 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
   late TextEditingController _domainController;
   late TextEditingController _rootDirController;
   late TextEditingController _proxyTargetController;
+  late TextEditingController _commandController;
+  late TextEditingController _portController;
   late String _siteType;
   String? _selectedPhpAppId;
   late bool _useSsl;
   bool _isSaving = false;
+
+  /// Preset CLI definitions. When a non-custom preset is selected, its command
+  /// and port are written into [_commandController] / [_portController].
+  final Map<String, ({String name, String command, int port})> _cliPresets = {
+    'node_npm': (name: 'Node.js (npm)', command: 'npm run dev', port: 3000),
+    'node_pnpm': (name: 'Node.js (pnpm)', command: 'pnpm dev', port: 3000),
+    'node_yarn': (name: 'Node.js (yarn)', command: 'yarn dev', port: 3000),
+    'bun': (name: 'Bun', command: 'bun dev', port: 3000),
+    'deno': (name: 'Deno', command: 'deno task dev', port: 8000),
+    'custom': (name: 'Custom', command: '', port: 3000),
+  };
+  late String _selectedPreset;
+  bool _autoStart = false;
+
+  /// Returns the preset key whose command matches [command], or `'custom'` when
+  /// the command does not correspond to any preset.
+  String _presetForCommand(String? command) {
+    final trimmed = command?.trim() ?? '';
+    for (final entry in _cliPresets.entries) {
+      if (entry.value.command == trimmed) return entry.key;
+    }
+    return 'custom';
+  }
 
   @override
   void initState() {
@@ -142,6 +167,14 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
     );
     _siteType = widget.site.siteType;
     _useSsl = widget.site.useSsl;
+    _commandController = TextEditingController(
+      text: widget.site.command ?? 'npm run dev',
+    );
+    _portController = TextEditingController(
+      text: widget.site.port?.toString() ?? '3000',
+    );
+    _autoStart = widget.site.autoStart;
+    _selectedPreset = _presetForCommand(widget.site.command);
   }
 
   @override
@@ -149,6 +182,8 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
     _domainController.dispose();
     _rootDirController.dispose();
     _proxyTargetController.dispose();
+    _commandController.dispose();
+    _portController.dispose();
     super.dispose();
   }
 
@@ -186,6 +221,13 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
             proxyTarget: _siteType == 'proxy'
                 ? _proxyTargetController.text.trim()
                 : null,
+            command: _siteType == 'cli'
+                ? _commandController.text.trim()
+                : null,
+            port: _siteType == 'cli'
+                ? int.tryParse(_portController.text.trim())
+                : null,
+            autoStart: _siteType == 'cli' ? _autoStart : false,
             useSsl: _useSsl,
           );
       if (mounted) {
@@ -231,9 +273,10 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
           padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 _buildLabel('Domain Name'),
                 _buildTextField(
                   controller: _domainController,
@@ -245,16 +288,77 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                 ),
                 const SizedBox(height: 20),
                 _buildLabel('Site Type'),
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
                   children: [
                     _buildTypeOption('PHP', 'php', LucideIcons.code),
-                    const SizedBox(width: 12),
                     _buildTypeOption('Static', 'static', LucideIcons.fileCode),
-                    const SizedBox(width: 12),
                     _buildTypeOption('Proxy', 'proxy', LucideIcons.shuffle),
+                    _buildTypeOption('CLI App', 'cli', LucideIcons.terminal),
                   ],
                 ),
                 const SizedBox(height: 20),
+
+                // --- CLI App options ---
+                // When the site type is CLI, surface the preset (which
+                // auto-fills command + port), the start command, the internal
+                // port and the auto-start toggle that CliProcessManager uses to
+                // spawn and proxy the process.
+                if (_siteType == 'cli') ...[
+                  _buildLabel('Preset'),
+                  _buildPresetDropdown(),
+                  const SizedBox(height: 20),
+                  _buildLabel('Start Command'),
+                  _buildTextField(
+                    controller: _commandController,
+                    hint: 'e.g. npm run dev',
+                    icon: LucideIcons.terminal,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a start command';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  _buildLabel('Internal Port'),
+                  _buildTextField(
+                    controller: _portController,
+                    hint: 'e.g. 3000',
+                    icon: LucideIcons.server,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a port';
+                      }
+                      final parsed = int.tryParse(value.trim());
+                      if (parsed == null || parsed < 1 || parsed > 65535) {
+                        return 'Enter a valid port (1-65535)';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Auto-start on launch',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: _autoStart,
+                        onChanged: (v) => setState(() => _autoStart = v),
+                        activeThumbColor: AppColors.success,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
 
                 if (_siteType != 'proxy') ...[
                   _buildLabel('Root Directory'),
@@ -386,7 +490,6 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                     ),
                   ],
                 ),
-                const Spacer(),
                 Align(
                   alignment: Alignment.bottomRight,
                   child: ElevatedButton.icon(
@@ -408,6 +511,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
               ],
             ),
           ),
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -417,43 +521,95 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
 
   Widget _buildTypeOption(String label, String value, IconData icon) {
     final isSelected = _siteType == value;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _siteType = value),
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: isSelected
-                ? AppColors.primary.withValues(alpha: 0.1)
-                : AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
-              width: isSelected ? 1.5 : 1,
-            ),
+    return InkWell(
+      onTap: () => setState(() => _siteType = value),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 1.5 : 1,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? AppColors.primary : AppColors.textMuted,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? AppColors.primary : AppColors.textMuted,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight:
+                    isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
               ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPresetDropdown() {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedPreset,
+          isExpanded: true,
+          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+          dropdownColor: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          icon: const Icon(
+            LucideIcons.chevronDown,
+            size: 16,
+            color: AppColors.textMuted,
+          ),
+          items: _cliPresets.entries.map((entry) {
+            return DropdownMenuItem(
+              value: entry.key,
+              child: Text(
+                entry.value.name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
                 ),
               ),
-            ],
-          ),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val == null) return;
+            setState(() {
+              _selectedPreset = val;
+              // Auto-fill command and port from the preset, unless the user
+              // explicitly chose "Custom" (which leaves their input untouched).
+              if (val != 'custom') {
+                final preset = _cliPresets[val]!;
+                _commandController.text = preset.command;
+                _portController.text = preset.port.toString();
+              }
+            });
+          },
         ),
       ),
     );

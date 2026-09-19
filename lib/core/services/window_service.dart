@@ -10,6 +10,7 @@ import '../../features/apps/data/apps_provider.dart';
 import '../../features/apps/data/app_service_manager.dart';
 import '../../features/settings/data/settings_provider.dart';
 import 'package:dev_stack/core/services/log_service.dart';
+import '../../features/sites/data/cli_process_manager.dart';
 import 'linux_desktop_service.dart';
 
 part 'window_service.g.dart';
@@ -78,6 +79,8 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
     } else if (key == 'quit_app') {
       // Dừng tất cả dịch vụ nhưng không lưu trạng thái (giữ nguyên auto-start)
       await ref.read(appsNotifierProvider.notifier).stopAllServicesQuietly();
+      // Stop all CLI site processes so spawned dev servers are reaped on quit.
+      await ref.read(cliProcessManagerProvider).stopAll();
       await windowManager.destroy();
     } else if (key == 'stop_all') {
       ref.read(appsNotifierProvider.notifier).stopAllServices();
@@ -210,6 +213,8 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
     } else {
       // Dừng tất cả dịch vụ nhưng không lưu trạng thái (giữ nguyên auto-start)
       await ref.read(appsNotifierProvider.notifier).stopAllServicesQuietly();
+      // Stop all CLI site processes so spawned dev servers are reaped on exit.
+      await ref.read(cliProcessManagerProvider).stopAll();
       await windowManager.destroy();
     }
   }
