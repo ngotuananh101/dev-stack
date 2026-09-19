@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_brand_resolver.dart';
 import '../../domain/app_model.dart';
@@ -273,23 +274,23 @@ class CompactAppsTable extends StatelessWidget {
         return Row(
           children: [
             if (app.serviceStatus == 'stopped')
-              _buildServiceButton(
+              AppIconButton(
                 icon: Icons.play_arrow_rounded,
-                label: 'Start',
+                tooltip: 'Start',
                 color: AppColors.success,
                 onPressed: () => onStartService(app),
               )
             else if (app.serviceStatus == 'running') ...[
-              _buildServiceButton(
+              AppIconButton(
                 icon: Icons.stop_rounded,
-                label: 'Stop',
+                tooltip: 'Stop',
                 color: AppColors.error,
                 onPressed: () => onStopService(app),
               ),
               const SizedBox(width: 4),
-              _buildServiceButton(
+              AppIconButton(
                 icon: Icons.refresh_rounded,
-                label: 'Restart',
+                tooltip: 'Restart',
                 color: AppColors.primary,
                 onPressed: () => onRestartService(app),
               ),
@@ -412,69 +413,12 @@ class CompactAppsTable extends StatelessWidget {
     );
   }
 
-  Widget _buildServiceButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return Tooltip(
-      message: label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(4),
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: color.withValues(alpha: 0.3),
-                width: 0.5,
-              ),
-            ),
-            child: Icon(icon, size: 14, color: color),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIconButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color color,
-    required String tooltip,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(4),
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              border: Border.all(color: AppColors.border, width: 0.5),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Icon(icon, size: 14, color: color),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildOperateButtons(BuildContext context, AppModel app) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         if (app.appId == 'pyenv' && app.isInstalled) ...[
-          _buildIconButton(
+          AppIconButton(
             icon: Icons.list_alt_rounded,
             onPressed: () => _showPyenvModal(context, app),
             color: AppColors.primary,
@@ -484,7 +428,7 @@ class CompactAppsTable extends StatelessWidget {
         ],
         if (app.isInstalled) ...[
           if (app.hasUpdateAvailable) ...[
-            _buildIconButton(
+            AppIconButton(
               icon: Icons.refresh_rounded,
               onPressed: () {
                 // Find the latest compatible version
@@ -503,7 +447,7 @@ class CompactAppsTable extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           if (app.isService) ...[
-            _buildIconButton(
+            AppIconButton(
               icon: Icons.terminal_rounded,
               onPressed: () => _showLogsModal(context, app),
               color: AppColors.primary,
@@ -512,7 +456,7 @@ class CompactAppsTable extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           if (app.groupName == 'php' && !app.isDefault) ...[
-            _buildIconButton(
+            AppIconButton(
               icon: Icons.star_border_rounded,
               onPressed: () => onChangeDefault(app.appId),
               color: Colors.amber,
@@ -520,14 +464,14 @@ class CompactAppsTable extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
-          _buildIconButton(
+          AppIconButton(
             icon: Icons.settings_outlined,
             onPressed: () => _showSettingsModal(context, app),
             color: AppColors.textSecondary,
             tooltip: 'Settings',
           ),
           const SizedBox(width: 8),
-          _buildIconButton(
+          AppIconButton(
             icon: Icons.delete_outline_rounded,
             onPressed: () {
               AppDialogs.showConfirm(
@@ -553,7 +497,7 @@ class CompactAppsTable extends StatelessWidget {
             ),
           )
         else
-          _buildIconButton(
+          AppIconButton(
             icon: Icons.file_download_outlined,
             onPressed: () => _showVersionModal(context, app),
             color: AppColors.primary,
@@ -564,7 +508,7 @@ class CompactAppsTable extends StatelessWidget {
                 app.appId == 'heidisql' ||
                 app.appId == 'rustfs')) ...[
           const SizedBox(width: 8),
-          _buildIconButton(
+          AppIconButton(
             icon: Icons.open_in_new_rounded,
             onPressed: () => onOpen(app),
             color: AppColors.success,

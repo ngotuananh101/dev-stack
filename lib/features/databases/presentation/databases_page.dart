@@ -15,6 +15,7 @@ import '../../../shared/providers/navigation_provider.dart';
 import 'widgets/add_database_modal.dart';
 import 'widgets/add_redis_key_modal.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
+import 'package:dev_stack/shared/widgets/app_button.dart';
 
 class DatabasesPage extends ConsumerStatefulWidget {
   const DatabasesPage({super.key});
@@ -422,11 +423,12 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     return Row(
       children: [
         if (!isRedis && !isMongo) ...[
-          _buildActionButton(
-            'Add DB',
-            LucideIcons.plus,
-            color: AppColors.success,
-            onTap: _showAddDatabaseDialog,
+          AppButton(
+            label: 'Add DB',
+            icon: const Icon(LucideIcons.plus, size: 16),
+            style: AppButtonStyle.primary,
+            size: AppButtonSize.md,
+            onPressed: _showAddDatabaseDialog,
           ),
           const SizedBox(width: 12),
           if (hasPhpMyAdmin) ...[

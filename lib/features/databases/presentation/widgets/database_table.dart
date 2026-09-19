@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/core/theme/app_text_size.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
+import 'package:dev_stack/shared/widgets/app_icon_button.dart';
 import '../../domain/database_record.dart';
 
 class DatabaseTable extends StatelessWidget {
@@ -147,14 +148,14 @@ class DatabaseTable extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  _buildActionIconButton(
+                  AppIconButton(
                     icon: Icons.refresh_rounded,
                     onPressed: () {},
                     color: AppColors.accent,
                     tooltip: 'Flush DB',
                   ),
                   const SizedBox(width: 8),
-                  _buildActionIconButton(
+                  AppIconButton(
                     icon: Icons.delete_outline_rounded,
                     onPressed: () => onDelete(db),
                     color: AppColors.error,
@@ -229,14 +230,14 @@ class DatabaseTable extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  _buildActionIconButton(
+                  AppIconButton(
                     icon: Icons.edit_outlined,
                     onPressed: () => onEdit(db),
                     color: AppColors.textSecondary,
                     tooltip: 'Edit Database',
                   ),
                   const SizedBox(width: 8),
-                  _buildActionIconButton(
+                  AppIconButton(
                     icon: Icons.delete_outline_rounded,
                     onPressed: () => onDelete(db),
                     color: AppColors.error,
@@ -250,30 +251,4 @@ class DatabaseTable extends StatelessWidget {
     );
   }
 
-  Widget _buildActionIconButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color color,
-    required String tooltip,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(4),
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              border: Border.all(color: AppColors.border, width: 0.5),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Icon(icon, size: 14, color: color),
-          ),
-        ),
-      ),
-    );
-  }
 }

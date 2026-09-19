@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:isar/isar.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../domain/tunnel_model.dart';
 import '../../data/tunnel_manager_service.dart';
 import '../../../sites/data/sites_provider.dart';
@@ -152,12 +154,11 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Name
-                  TextFormField(
+                  AppTextField(
                     controller: _nameController,
-                    decoration: _inputDecoration('Name'),
+                    hint: 'Name',
                     validator: (v) =>
                         (v == null || v.trim().isEmpty) ? 'Required' : null,
-                    style: _inputStyle,
                   ),
                   const SizedBox(height: 16),
 
@@ -198,19 +199,17 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                   const SizedBox(height: 16),
 
                   // Auth token
-                  TextFormField(
+                  AppTextField(
                     controller: _authTokenController,
-                    decoration: _inputDecoration('Auth Token (optional)'),
+                    hint: 'Auth Token (optional)',
                     obscureText: true,
-                    style: _inputStyle,
                   ),
                   const SizedBox(height: 16),
 
                   // Custom domain
-                  TextFormField(
+                  AppTextField(
                     controller: _customDomainController,
-                    decoration: _inputDecoration('Custom Domain (optional)'),
-                    style: _inputStyle,
+                    hint: 'Custom Domain (optional)',
                   ),
                   const SizedBox(height: 16),
 
@@ -232,20 +231,19 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
+                AppButton(
+                  label: 'Cancel',
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel',
-                      style: TextStyle(color: AppColors.textSecondary)),
+                  style: AppButtonStyle.ghost,
+                  size: AppButtonSize.md,
                 ),
                 const SizedBox(width: 12),
-                FilledButton.icon(
+                AppButton(
+                  label: widget.initialTunnel == null ? 'Create' : 'Save',
                   onPressed: _save,
+                  style: AppButtonStyle.primary,
+                  size: AppButtonSize.md,
                   icon: const Icon(LucideIcons.save, size: 16),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: Colors.black,
-                  ),
-                  label: Text(widget.initialTunnel == null ? 'Create' : 'Save'),
                 ),
               ],
             ),
@@ -365,10 +363,9 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
     }
 
     // targetType == 'port'
-    return TextFormField(
+    return AppTextField(
       controller: _targetPortController,
-      decoration: _inputDecoration('Target Port'),
-      style: _inputStyle,
+      hint: 'Target Port',
       keyboardType: TextInputType.number,
       validator: (v) {
         if (v == null || v.trim().isEmpty) return 'Required';
