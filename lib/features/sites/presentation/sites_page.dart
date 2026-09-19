@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/utils/app_dialogs.dart';
+import '../../../shared/widgets/app_button.dart';
 import 'widgets/site_table.dart';
 import '../domain/site_model.dart';
 import '../domain/batch_models.dart';
@@ -87,21 +88,12 @@ class _SitesPageState extends ConsumerState<SitesPage> {
   Widget _buildHeader() {
     return Row(
       children: [
-        ElevatedButton.icon(
-          onPressed: () => _showSiteDialog(),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.success,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
+        AppButton(
+          label: 'Add Site',
           icon: const Icon(LucideIcons.plus, size: 16),
-          label: const Text(
-            'Add Site',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
+          size: AppButtonSize.md,
+          style: AppButtonStyle.primary,
+          onPressed: () => _showSiteDialog(),
         ),
         const SizedBox(width: 12),
         ElevatedButton.icon(

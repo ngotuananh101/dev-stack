@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/databases_provider.dart';
 import '../../domain/database_record.dart';
 import '../../../apps/domain/app_model.dart';
@@ -198,10 +200,10 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildLabel('Database Name'),
-                    _buildTextField(
+                    AppTextField(
                       controller: _nameController,
                       hint: 'e.g. my_project_db',
-                      icon: LucideIcons.tag,
+                      prefixIcon: LucideIcons.tag,
                       enabled: !isEdit,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -221,10 +223,10 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildLabel('Username'),
-                              _buildTextField(
+                              AppTextField(
                                 controller: _userController,
                                 hint: 'Same as DB name',
-                                icon: LucideIcons.user,
+                                prefixIcon: LucideIcons.user,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Required';
@@ -246,11 +248,11 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildLabel('Password'),
-                              _buildTextField(
+                              AppTextField(
                                 controller: _passController,
                                 hint: 'Leave empty if none',
-                                icon: LucideIcons.key,
-                                isPassword: true,
+                                prefixIcon: LucideIcons.key,
+                                obscureText: true,
                               ),
                             ],
                           ),
@@ -259,10 +261,10 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                     ),
                     const SizedBox(height: 20),
                     _buildLabel('Note (Optional)'),
-                    _buildTextField(
+                    AppTextField(
                       controller: _noteController,
                       hint: 'Description or project name',
-                      icon: LucideIcons.fileText,
+                      prefixIcon: LucideIcons.fileText,
                       maxLines: 2,
                     ),
                   ],
@@ -280,47 +282,20 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  OutlinedButton(
+                  AppButton(
+                    label: 'Cancel',
                     onPressed: widget.onClose,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      side: const BorderSide(
-                        color: AppColors.border,
-                        width: 0.5,
-                      ),
-                    ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        fontSize: AppTextSize.xs,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                    style: AppButtonStyle.ghost,
+                    size: AppButtonSize.md,
                   ),
                   const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _isCreating ? null : _handleCreate,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.success,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 12,
-                      ),
-                    ),
-                    child: Text(
-                      _isCreating
-                          ? (isEdit ? 'Updating...' : 'Creating...')
-                          : (isEdit ? 'Update Database' : 'Create Database'),
-                      style: const TextStyle(
-                        fontSize: AppTextSize.xs,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                  AppButton(
+                    label: isEdit ? 'Update Database' : 'Create Database',
+                    onPressed: _handleCreate,
+                    style: AppButtonStyle.primary,
+                    size: AppButtonSize.md,
+                    isLoading: _isCreating,
+                    icon: const Icon(LucideIcons.save, size: 16),
                   ),
                 ],
               ),
@@ -345,49 +320,4 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    bool isPassword = false,
-    bool enabled = true,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isPassword,
-      maxLines: maxLines,
-      enabled: enabled,
-      validator: validator,
-      style: TextStyle(
-        color: enabled ? AppColors.textPrimary : AppColors.textMuted,
-        fontSize: 14,
-      ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-        prefixIcon: Icon(icon, size: 16, color: AppColors.textMuted),
-        filled: true,
-        fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primary),
-        ),
-        errorStyle: const TextStyle(color: AppColors.error, fontSize: 11),
-      ),
-    );
-  }
 }

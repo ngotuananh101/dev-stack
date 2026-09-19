@@ -7,6 +7,8 @@ import '../../domain/site_model.dart';
 import '../../../apps/data/apps_provider.dart';
 import '../../data/sites_provider.dart';
 import '../site_editor_options.dart';
+import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 
 class EditSiteModal extends ConsumerStatefulWidget {
   final SiteModel site;
@@ -278,11 +280,11 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                 _buildLabel('Domain Name'),
-                _buildTextField(
+                AppTextField(
                   controller: _domainController,
                   enabled: false,
                   hint: 'e.g. my-project.test',
-                  icon: LucideIcons.atSign,
+                  prefixIcon: LucideIcons.atSign,
                   validator: (v) =>
                       (v == null || v.isEmpty) ? 'Required' : null,
                 ),
@@ -310,10 +312,10 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                   _buildPresetDropdown(),
                   const SizedBox(height: 20),
                   _buildLabel('Start Command'),
-                  _buildTextField(
+                  AppTextField(
                     controller: _commandController,
                     hint: 'e.g. npm run dev',
-                    icon: LucideIcons.terminal,
+                    prefixIcon: LucideIcons.terminal,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter a start command';
@@ -323,10 +325,10 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                   ),
                   const SizedBox(height: 20),
                   _buildLabel('Internal Port'),
-                  _buildTextField(
+                  AppTextField(
                     controller: _portController,
                     hint: 'e.g. 3000',
-                    icon: LucideIcons.server,
+                    prefixIcon: LucideIcons.server,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter a port';
@@ -365,10 +367,10 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildTextField(
+                        child: AppTextField(
                           controller: _rootDirController,
                           hint: 'Path to project',
-                          icon: LucideIcons.folder,
+                          prefixIcon: LucideIcons.folder,
                           validator: (v) =>
                               (v == null || v.isEmpty) ? 'Required' : null,
                         ),
@@ -400,10 +402,10 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
 
                 if (_siteType == 'proxy') ...[
                   _buildLabel('Proxy Target URL'),
-                  _buildTextField(
+                  AppTextField(
                     controller: _proxyTargetController,
                     hint: 'e.g. http://localhost:3000',
-                    icon: LucideIcons.link,
+                    prefixIcon: LucideIcons.link,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter a target URL';
@@ -492,20 +494,12 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                 ),
                 Align(
                   alignment: Alignment.bottomRight,
-                  child: ElevatedButton.icon(
-                    onPressed: _isSaving ? null : _handleSave,
-                    icon: const Icon(LucideIcons.save, size: 16),
-                    label: Text(
-                      _isSaving ? 'Saving...' : 'Save General Settings',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                    ),
+                  child: AppButton(
+                    label: 'Save General Settings',
+                    style: AppButtonStyle.primary,
+                    size: AppButtonSize.md,
+                    isLoading: _isSaving,
+                    onPressed: _handleSave,
                   ),
                 ),
               ],
@@ -627,47 +621,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
     ),
   );
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    bool enabled = true,
-    String? Function(String?)? validator,
-  }) => TextFormField(
-    controller: controller,
-    validator: validator,
-    enabled: enabled,
-    style: TextStyle(
-      color: enabled ? AppColors.textPrimary : AppColors.textMuted,
-      fontSize: 14,
-    ),
-    decoration: InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-      prefixIcon: Icon(icon, size: 16, color: AppColors.textMuted),
-      filled: true,
-      fillColor: enabled
-          ? AppColors.surface
-          : AppColors.background.withValues(alpha: 0.5),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
-      ),
-      disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-      ),
-    ),
-  );
+  // _buildTextField removed: replaced with AppTextField from shared widgets.
 }
 
 class _ConfigTab extends ConsumerStatefulWidget {

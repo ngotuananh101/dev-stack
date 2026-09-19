@@ -9,6 +9,8 @@ import '../../domain/site_model.dart';
 import '../../../apps/data/apps_provider.dart';
 import '../../../apps/domain/app_model.dart';
 import '../../data/sites_provider.dart';
+import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 
 class AddSiteModal extends ConsumerStatefulWidget {
   final VoidCallback onClose;
@@ -294,10 +296,10 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                     _buildLabel('Domain Name'),
-                    _buildTextField(
+                    AppTextField(
                       controller: _domainController,
                       hint: 'e.g. my-project.test',
-                      icon: LucideIcons.atSign,
+                      prefixIcon: LucideIcons.atSign,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter a domain';
@@ -334,10 +336,10 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildTextField(
+                            child: AppTextField(
                               controller: _rootDirController,
                               hint: 'C:\\Projects\\my-project',
-                              icon: LucideIcons.folder,
+                              prefixIcon: LucideIcons.folder,
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
                                   return 'Please select a directory';
@@ -388,10 +390,10 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                       _buildPresetDropdown(),
                       const SizedBox(height: 20),
                       _buildLabel('Start Command'),
-                      _buildTextField(
+                      AppTextField(
                         controller: _commandController,
                         hint: 'e.g. npm run dev',
-                        icon: LucideIcons.terminal,
+                        prefixIcon: LucideIcons.terminal,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter a start command';
@@ -401,10 +403,10 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                       ),
                       const SizedBox(height: 20),
                       _buildLabel('Internal Port'),
-                      _buildTextField(
+                      AppTextField(
                         controller: _portController,
                         hint: 'e.g. 3000',
-                        icon: LucideIcons.server,
+                        prefixIcon: LucideIcons.server,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter a port';
@@ -442,10 +444,10 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
 
                     if (_siteType == 'proxy') ...[
                       _buildLabel('Proxy Target URL'),
-                      _buildTextField(
+                      AppTextField(
                         controller: _proxyTargetController,
                         hint: 'e.g. http://localhost:3000',
-                        icon: LucideIcons.link,
+                        prefixIcon: LucideIcons.link,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a target URL';
@@ -602,47 +604,19 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  OutlinedButton(
+                  AppButton(
+                    label: 'Cancel',
+                    style: AppButtonStyle.ghost,
+                    size: AppButtonSize.md,
                     onPressed: widget.onClose,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      side: const BorderSide(
-                        color: AppColors.border,
-                        width: 0.5,
-                      ),
-                    ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        fontSize: AppTextSize.xs,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
                   ),
                   const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _isSaving ? null : _handleSave,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 12,
-                      ),
-                    ),
-                    child: Text(
-                      _isSaving
-                          ? 'Saving...'
-                          : (isEdit ? 'Update Site' : 'Add Site'),
-                      style: const TextStyle(
-                        fontSize: AppTextSize.xs,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                  AppButton(
+                    label: isEdit ? 'Update Site' : 'Add Site',
+                    style: AppButtonStyle.primary,
+                    size: AppButtonSize.md,
+                    isLoading: _isSaving,
+                    onPressed: _handleSave,
                   ),
                 ],
               ),
@@ -759,45 +733,4 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    bool enabled = true,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      enabled: enabled,
-      validator: validator,
-      style: TextStyle(
-        color: enabled ? AppColors.textPrimary : AppColors.textMuted,
-        fontSize: 14,
-      ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-        prefixIcon: Icon(icon, size: 16, color: AppColors.textMuted),
-        filled: true,
-        fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primary),
-        ),
-        errorStyle: const TextStyle(color: AppColors.error, fontSize: 11),
-      ),
-    );
-  }
 }

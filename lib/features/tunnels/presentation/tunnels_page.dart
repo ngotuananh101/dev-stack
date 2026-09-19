@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/core/theme/app_text_size.dart';
+import 'package:dev_stack/shared/widgets/app_button.dart';
 import 'package:dev_stack/shared/widgets/status_chip.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_model.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_session.dart';
@@ -51,21 +52,12 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
   Widget _buildHeader() {
     return Row(
       children: [
-        ElevatedButton.icon(
-          onPressed: _showCreateModal,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.success,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
+        AppButton(
+          label: 'New Tunnel',
           icon: const Icon(LucideIcons.plus, size: 16),
-          label: const Text(
-            'New Tunnel',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
+          size: AppButtonSize.md,
+          style: AppButtonStyle.primary,
+          onPressed: _showCreateModal,
         ),
         const Spacer(),
       ],
