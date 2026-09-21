@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../domain/batch_models.dart';
 
 /// Modal dialog showing live batch progress with a Cancel button. Cancel is
@@ -90,21 +91,17 @@ class _BatchProgressDialogState extends State<BatchProgressDialog> {
                   if (!isFinalizing)
                     Align(
                       alignment: Alignment.centerRight,
-                      child: TextButton(
+                      child: AppButton(
+                        label: _cancelling ? 'Cancelling…' : 'Cancel',
+                        style: AppButtonStyle.danger,
+                        size: AppButtonSize.sm,
+                        isLoading: _cancelling,
                         onPressed: _cancelling
                             ? null
                             : () {
                                 setState(() => _cancelling = true);
                                 widget.onCancel();
                               },
-                        child: Text(
-                          _cancelling ? 'Cancelling…' : 'Cancel',
-                          style: const TextStyle(
-                            color: AppColors.error,
-                            fontSize: AppTextSize.xs,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
                       ),
                     ),
                 ],

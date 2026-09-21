@@ -9,6 +9,7 @@ import '../../data/redis_provider.dart';
 import '../../../apps/domain/app_model.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:dev_stack/core/services/log_service.dart';
+import 'package:dev_stack/shared/widgets/app_button.dart';
 
 class AddRedisKeyModal extends ConsumerStatefulWidget {
   final AppModel engine;
@@ -404,48 +405,21 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  OutlinedButton(
+                  AppButton(
+                    label: 'Cancel',
                     onPressed: widget.onClose,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      side: const BorderSide(
-                        color: AppColors.border,
-                        width: 0.5,
-                      ),
-                    ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        fontSize: AppTextSize.xs,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                    style: AppButtonStyle.ghost,
+                    size: AppButtonSize.md,
                   ),
                   const SizedBox(width: 12),
                   if (!_isReadOnly)
-                    ElevatedButton(
+                    AppButton(
+                      label: isEdit ? 'Update Key' : 'Add Key',
                       onPressed: _isAdding ? null : _handleSave,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 12,
-                        ),
-                      ),
-                      child: Text(
-                        _isAdding
-                            ? (isEdit ? 'Updating...' : 'Adding...')
-                            : (isEdit ? 'Update Key' : 'Add Key'),
-                        style: TextStyle(
-                          fontSize: AppTextSize.xs,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      style: AppButtonStyle.primary,
+                      size: AppButtonSize.md,
+                      isLoading: _isAdding,
+                      icon: const Icon(LucideIcons.save, size: 16),
                     ),
                 ],
               ),

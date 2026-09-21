@@ -10,6 +10,7 @@ import '../../../apps/data/apps_provider.dart';
 import '../../../apps/domain/app_model.dart';
 import '../../data/sites_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 
 class AddSiteModal extends ConsumerStatefulWidget {
@@ -268,15 +269,12 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                       ],
                     ),
                   ),
-                  IconButton(
+                  AppIconButton(
                     onPressed: widget.onClose,
-                    icon: const Icon(
-                      LucideIcons.x,
-                      size: 18,
-                      color: AppColors.textMuted,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                    icon: LucideIcons.x,
+                    tooltip: 'Close',
+                    color: AppColors.textMuted,
+                    size: AppIconButtonSize.sm,
                   ),
                 ],
               ),
@@ -352,27 +350,15 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          SizedBox(
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed: _pickDirectory,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.surface,
-                                foregroundColor: AppColors.textPrimary,
-                                side: const BorderSide(color: AppColors.border),
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: const Icon(
-                                LucideIcons.folderOpen,
-                                size: 18,
-                              ),
+                          AppButton(
+                            label: '',
+                            style: AppButtonStyle.secondary,
+                            size: AppButtonSize.md,
+                            icon: const Icon(
+                              LucideIcons.folderOpen,
+                              size: 18,
                             ),
+                            onPressed: _pickDirectory,
                           ),
                         ],
                       ),

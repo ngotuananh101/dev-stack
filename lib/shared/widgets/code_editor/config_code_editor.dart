@@ -10,6 +10,7 @@ import 'package:re_highlight/styles/atom-one-dark.dart';
 
 import '../../../core/services/log_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/app_button.dart';
 import 'language_for_config.dart';
 
 /// Threshold above which the editor shows a "large file" banner. The editor
@@ -359,23 +360,17 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  TextButton(
+                  AppButton(
+                    label: 'Replace',
                     onPressed: readOnly ? null : controller.replaceMatch,
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(0, 32),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('Replace'),
+                    style: AppButtonStyle.ghost,
+                    size: AppButtonSize.sm,
                   ),
-                  TextButton(
+                  AppButton(
+                    label: 'Replace All',
                     onPressed: readOnly ? null : controller.replaceAllMatches,
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(0, 32),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('Replace All'),
+                    style: AppButtonStyle.ghost,
+                    size: AppButtonSize.sm,
                   ),
                 ],
               ),
@@ -488,56 +483,35 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                   ),
                 ),
               const SizedBox(width: 8),
-              OutlinedButton.icon(
+              AppButton(
+                label: 'Find',
                 onPressed: () {
                   _findController.findMode();
                   _findController.focusOnFindInput();
                 },
                 icon: const Icon(Icons.search, size: 14),
-                label: const Text('Find'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
+                style: AppButtonStyle.outline,
+                size: AppButtonSize.sm,
               ),
               const SizedBox(width: 8),
-              OutlinedButton.icon(
+              AppButton(
+                label: 'Reload',
                 onPressed: _loadFile,
                 icon: const Icon(Icons.refresh, size: 14),
-                label: const Text('Reload'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
+                style: AppButtonStyle.outline,
+                size: AppButtonSize.sm,
               ),
               if (!widget.readOnly) ...[
                 const SizedBox(width: 8),
-                ElevatedButton.icon(
+                AppButton(
+                  label: widget.saveLabel,
                   onPressed: (_isSaving || !_dirty) ? null : _save,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save, size: 14),
-                  label: Text(widget.saveLabel),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                  ),
+                  icon: const Icon(Icons.save, size: 14),
+                  style: AppButtonStyle.primary,
+                  size: AppButtonSize.sm,
+                  isLoading: _isSaving,
+                  backgroundColor: AppColors.success,
+                  textColor: Colors.white,
                 ),
               ],
             ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../domain/app_conflict_policy.dart';
 import '../../domain/app_brand_resolver.dart';
 import '../../domain/app_model.dart';
@@ -377,7 +378,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             ),
           ),
           const SizedBox(height: 16),
-          TextButton.icon(
+          AppButton(
             onPressed: () {
               // Delay to avoid modifying provider during build
               Future(() {
@@ -386,9 +387,9 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                     .refresh();
               });
             },
+            style: AppButtonStyle.ghost,
+            label: 'Retry',
             icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Retry'),
-            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
           ),
         ],
       ),
@@ -504,72 +505,37 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           if (!isInProgress) ...[
-            OutlinedButton(
+            AppButton(
               onPressed: widget.onClose,
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                side: const BorderSide(color: AppColors.border, width: 0.5),
-              ),
-              child: const Text(
-                'Close',
-                style: TextStyle(
-                  fontSize: AppTextSize.xs,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
-                ),
-              ),
+              style: AppButtonStyle.ghost,
+              label: 'Close',
             ),
             const SizedBox(width: 12),
-            ElevatedButton(
+            AppButton(
               onPressed: conflictingApp != null
                   ? null
                   : () {
                       widget.app.selectedVersion = _selectedVersion;
                       widget.onInstall();
                     },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
-                ),
-              ),
-              child: Text(
-                widget.isUpdate
-                    ? 'Update to ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}'
-                    : 'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
-                style: const TextStyle(
-                  fontSize: AppTextSize.xs,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              style: AppButtonStyle.primary,
+              backgroundColor: AppColors.success,
+              textColor: Colors.white,
+              label: widget.isUpdate
+                  ? 'Update to ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}'
+                  : 'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
+              icon: const Icon(Icons.download, size: 16),
             ),
           ] else
-            ElevatedButton(
+            AppButton(
               onPressed: appState.status == 'installed' ? widget.onClose : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: appState.status == 'installed'
-                    ? AppColors.success
-                    : AppColors.textMuted,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
-                ),
-              ),
-              child: Text(
-                appState.status == 'installed'
-                    ? 'Finish'
-                    : (widget.isUpdate ? 'Updating...' : 'Installing...'),
-                style: const TextStyle(
-                  fontSize: AppTextSize.xs,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              backgroundColor: appState.status == 'installed'
+                  ? AppColors.success
+                  : AppColors.textMuted,
+              textColor: Colors.white,
+              label: appState.status == 'installed'
+                  ? 'Finish'
+                  : (widget.isUpdate ? 'Updating...' : 'Installing...'),
             ),
         ],
       ),

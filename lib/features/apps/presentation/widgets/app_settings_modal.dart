@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/services/background_process.dart';
 import '../../../../core/services/log_service.dart';
@@ -349,31 +350,17 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           if (_hasConfigTab)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: OutlinedButton.icon(
+              child: AppButton(
                 onPressed: () => _tabController.animateTo(1),
+                style: AppButtonStyle.ghost,
+                label: 'Edit Config',
                 icon: const Icon(Icons.edit_note, size: 14),
-                label: const Text('Edit Config'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.accent,
-                  side: const BorderSide(color: AppColors.accent),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
               ),
             ),
           if (widget.app.serviceStatus == 'running')
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: OutlinedButton.icon(
+              child: AppButton(
                 onPressed: () async {
                   // Route through AppsNotifier so service status changes
                   // notify the apps table/provider, not only AppServiceManager.
@@ -390,23 +377,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                     );
                   }
                 },
+                style: AppButtonStyle.outline,
+                label: 'Restart',
                 icon: const Icon(Icons.refresh_rounded, size: 14),
-                label: const Text('Restart'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
               ),
             ),
           IconButton(

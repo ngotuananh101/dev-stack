@@ -96,43 +96,21 @@ class _SitesPageState extends ConsumerState<SitesPage> {
           onPressed: () => _showSiteDialog(),
         ),
         const SizedBox(width: 12),
-        ElevatedButton.icon(
-          onPressed: () => _handleBatchCreateSites(),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.surface,
-            foregroundColor: AppColors.textPrimary,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: AppColors.border),
-            ),
-            elevation: 0,
-          ),
+        AppButton(
+          label: 'Batch Create',
+          style: AppButtonStyle.outline,
+          size: AppButtonSize.md,
           icon: const Icon(LucideIcons.folderPlus, size: 16),
-          label: const Text(
-            'Batch Create',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
+          onPressed: () => _handleBatchCreateSites(),
         ),
         if (_selectedSiteIds.isNotEmpty) ...[
           const SizedBox(width: 12),
-          ElevatedButton.icon(
-            onPressed: () => _handleBulkDelete(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error.withValues(alpha: 0.1),
-              foregroundColor: AppColors.error,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: const BorderSide(color: AppColors.error),
-              ),
-              elevation: 0,
-            ),
+          AppButton(
+            label: 'Delete (${_selectedSiteIds.length})',
+            style: AppButtonStyle.danger,
+            size: AppButtonSize.md,
             icon: const Icon(LucideIcons.trash2, size: 16),
-            label: Text(
-              'Delete (${_selectedSiteIds.length})',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
+            onPressed: () => _handleBulkDelete(),
           ),
         ],
         const Spacer(),

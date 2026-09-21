@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../system/data/system_info_provider.dart';
 import '../../../system/domain/system_info.dart';
 
@@ -138,7 +139,8 @@ class SystemInfoModal extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          OutlinedButton.icon(
+          AppButton(
+            label: 'Copy to Clipboard',
             onPressed: () {
               final info = ref.read(systemInfoNotifierProvider).value;
               if (info != null) {
@@ -152,23 +154,18 @@ class SystemInfoModal extends ConsumerWidget {
                 );
               }
             },
-            icon: const Icon(LucideIcons.copy, size: 14),
-            label: const Text('Copy to Clipboard'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.textPrimary,
-              side: const BorderSide(color: AppColors.border),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
+            icon: const Icon(LucideIcons.copy, size: 16),
+            style: AppButtonStyle.outline,
+            size: AppButtonSize.md,
           ),
           const SizedBox(width: 12),
-          ElevatedButton(
+          AppButton(
+            label: 'Close',
             onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('Close'),
+            style: AppButtonStyle.primary,
+            size: AppButtonSize.md,
+            backgroundColor: AppColors.accent,
+            textColor: Colors.white,
           ),
         ],
       ),

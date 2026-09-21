@@ -8,6 +8,7 @@ import '../../../apps/data/apps_provider.dart';
 import '../../data/sites_provider.dart';
 import '../site_editor_options.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 
 class EditSiteModal extends ConsumerStatefulWidget {
@@ -83,13 +84,12 @@ class _EditSiteModalState extends ConsumerState<EditSiteModal> {
             ),
           ),
           const Spacer(),
-          IconButton(
+          AppIconButton(
             onPressed: widget.onClose,
-            icon: const Icon(
-              LucideIcons.x,
-              color: AppColors.textMuted,
-              size: 20,
-            ),
+            icon: LucideIcons.x,
+            tooltip: 'Close',
+            color: AppColors.textMuted,
+            size: AppIconButtonSize.sm,
           ),
         ],
       ),
@@ -376,24 +376,15 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      SizedBox(
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _pickDirectory,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.surface,
-                            foregroundColor: AppColors.textPrimary,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: BorderSide(
-                                color: AppColors.border.withValues(alpha: 0.5),
-                              ),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Icon(LucideIcons.folderOpen, size: 18),
+                      AppButton(
+                        style: AppButtonStyle.secondary,
+                        size: AppButtonSize.md,
+                        icon: const Icon(
+                          LucideIcons.folderOpen,
+                          size: 18,
                         ),
+                        onPressed: _pickDirectory,
+                        label: '',
                       ),
                     ],
                   ),
@@ -680,15 +671,13 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
                 ),
               ],
               const Spacer(),
-              ElevatedButton.icon(
-                onPressed: _saveConfig,
-                icon: const Icon(LucideIcons.save, size: 14),
-                label: const Text('Save Changes'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: Colors.white,
+              AppButton(
+                  style: AppButtonStyle.primary,
+                  size: AppButtonSize.md,
+                  icon: const Icon(LucideIcons.save, size: 14),
+                  label: 'Save Changes',
+                  onPressed: _saveConfig,
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -815,24 +804,22 @@ class _SslTabState extends ConsumerState<_SslTab> {
               const SizedBox(width: 8),
               _buildTypeButton('key', 'Private Key (key.pem)'),
               const Spacer(),
-              OutlinedButton.icon(
-                onPressed: _regenerate,
-                icon: const Icon(LucideIcons.refreshCcw, size: 14),
-                label: const Text('Regenerate SSL'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.accent,
-                ),
-              ),
+              AppButton(
+              style: AppButtonStyle.outline,
+              size: AppButtonSize.md,
+              icon: const Icon(LucideIcons.refreshCcw, size: 14),
+              label: 'Regenerate SSL',
+              onPressed: _regenerate,
+              textColor: AppColors.accent,
+            ),
               const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: _saveSslFile,
-                icon: const Icon(LucideIcons.save, size: 14),
-                label: const Text('Save Changes'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: Colors.white,
-                ),
-              ),
+              AppButton(
+              style: AppButtonStyle.primary,
+              size: AppButtonSize.md,
+              icon: const Icon(LucideIcons.save, size: 14),
+              label: 'Save Changes',
+              onPressed: _saveSslFile,
+            ),
             ],
           ),
           const SizedBox(height: 16),
@@ -940,10 +927,12 @@ class _LogTabState extends ConsumerState<_LogTab> {
             children: [
               _buildLogSelect(),
               const Spacer(),
-              IconButton(
+              AppIconButton(
+                icon: LucideIcons.refreshCw,
                 onPressed: _refreshLogs,
-                icon: const Icon(LucideIcons.refreshCw, size: 18),
                 tooltip: 'Refresh Logs',
+                color: AppColors.textSecondary,
+                size: AppIconButtonSize.sm,
               ),
             ],
           ),

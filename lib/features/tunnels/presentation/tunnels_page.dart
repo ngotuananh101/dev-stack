@@ -483,26 +483,24 @@ class _TunnelCard extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         if (isStopped || hasError)
-          FilledButton.icon(
+          AppButton(
+            label: 'Start',
             onPressed: () => _start(ref, context),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.success.withValues(alpha: 0.15),
-              foregroundColor: AppColors.success,
-              elevation: 0,
-            ),
             icon: const Icon(LucideIcons.play, size: 14),
-            label: const Text('Start'),
+            style: AppButtonStyle.primary,
+            size: AppButtonSize.md,
+            backgroundColor: AppColors.success.withValues(alpha: 0.15),
+            textColor: AppColors.success,
           )
         else if (!isConnecting)
-          FilledButton.icon(
+          AppButton(
+            label: 'Stop',
             onPressed: () => _stop(ref, context),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error.withValues(alpha: 0.15),
-              foregroundColor: AppColors.error,
-              elevation: 0,
-            ),
             icon: const Icon(LucideIcons.square, size: 14),
-            label: const Text('Stop'),
+            style: AppButtonStyle.primary,
+            size: AppButtonSize.md,
+            backgroundColor: AppColors.error.withValues(alpha: 0.15),
+            textColor: AppColors.error,
           ),
         const SizedBox(width: 8),
         _actionIcon(

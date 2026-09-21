@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_brand_resolver.dart';
@@ -486,15 +487,11 @@ class CompactAppsTable extends StatelessWidget {
             tooltip: 'Uninstall',
           ),
         ] else if (app.status == 'installing')
-          const OutlinedButton(
+          AppButton(
             onPressed: null,
-            child: Text(
-              'INSTALLING...',
-              style: TextStyle(
-                fontSize: AppTextSize.xxxs,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            style: AppButtonStyle.outline,
+            size: AppButtonSize.sm,
+            label: 'INSTALLING...',
           )
         else
           AppIconButton(
