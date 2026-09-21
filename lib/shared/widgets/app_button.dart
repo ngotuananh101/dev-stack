@@ -14,6 +14,8 @@ class AppButton extends StatelessWidget {
   final Widget? icon;
   final double? width;
   final bool isLoading;
+  final Color? backgroundColor;
+  final Color? textColor;
 
   const AppButton({
     super.key,
@@ -24,6 +26,8 @@ class AppButton extends StatelessWidget {
     this.icon,
     this.width,
     this.isLoading = false,
+    this.backgroundColor,
+    this.textColor,
   });
 
   double get _height {
@@ -111,6 +115,11 @@ class AppButton extends StatelessWidget {
   }
 
   Color _getBackgroundColor(bool isEnabled) {
+    if (backgroundColor != null) {
+      return isEnabled
+          ? backgroundColor!
+          : backgroundColor!.withValues(alpha: 0.5);
+    }
     if (!isEnabled) {
       return AppColors.surfaceLight.withValues(alpha: 0.5);
     }
@@ -128,6 +137,9 @@ class AppButton extends StatelessWidget {
   }
 
   Color _getTextColor(bool isEnabled) {
+    if (textColor != null) {
+      return isEnabled ? textColor! : AppColors.textMuted;
+    }
     if (!isEnabled) {
       return AppColors.textMuted;
     }
