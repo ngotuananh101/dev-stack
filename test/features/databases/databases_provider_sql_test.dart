@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:dev_stack/features/databases/data/databases_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -91,6 +93,31 @@ void main() {
         isLinux: false,
       );
       expect(args, ['-U', 'postgres', '-l']);
+    });
+  });
+
+
+  group('DatabasesNotifier.readPostgresPassword', () {
+    test('reads password from a sibling postgres-password.txt', () async {
+      final tmp = await Directory.systemTemp.createTemp('pg-pw-');
+      final binDir = Directory('${tmp.path}/install/bin')..createSync(recursive: true);
+      final cliPath = '${binDir.path}/psql';
+      File('${tmp.path}/install/postgres-password.txt')
+          .writeAsStringSync('s3cr3t\n');
+
+      final app = AppModel(appId: 'postgresql', name: 'PostgreSQL', categories: ['database'], installedVersion: '16.4');
+      final pwd = await DatabasesNotifier.readPostgresPassword(cliPath, app);
+      expect(pwd, 's3cr3t');
+      await tmp.delete(recursive: true);
+    });
+
+    test('returns empty string when no password file exists', () async {
+      final tmp = await Directory.systemTemp.createTemp('pg-pw-none-');
+      final cliPath = '${tmp.path}/psql';
+      final app = AppModel(appId: 'postgresql', name: 'PostgreSQL', categories: ['database'], installedVersion: '16.4');
+      final pwd = await DatabasesNotifier.readPostgresPassword(cliPath, app);
+      expect(pwd, '');
+      await tmp.delete(recursive: true);
     });
   });
 }

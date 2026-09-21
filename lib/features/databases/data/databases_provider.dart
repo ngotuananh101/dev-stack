@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:isar/isar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:path/path.dart' as p;
+import '../../../core/config/app_config.dart';
 import '../../../core/database/isar_provider.dart';
 import '../../../core/security/local_secret_vault.dart';
 import '../../apps/data/apps_provider.dart';
@@ -74,7 +76,7 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     } else if (app.appId.contains('redis')) {
       actualNames = await _getRedisNames(cliPath);
     } else if (app.appId.contains('postgresql')) {
-      actualNames = await _getPostgresNames(cliPath);
+      actualNames = await _getPostgresNames(cliPath, app);
     }
 
     final isar = await ref.read(isarProvider.future);
@@ -153,37 +155,39 @@ class DatabasesNotifier extends _$DatabasesNotifier {
         // The database was already created on the server; drop it so we don't
         // leave an orphan the app has no record of and the user can't retry
         // cleanly (CREATE DATABASE would then fail with "already exists").
-        await _safeDropDatabase(cliPath, name, isPostgres: false);
+        await _safeDropDatabase(cliPath, name, isPostgres: false, app: app);
         throw Exception('Grant error: ${grantRes.stderr}');
       }
     } else if (app.appId.contains('postgresql')) {
       // 1. Create Database
-      final createDb = await Process.run(
+      final createDb = await runPostgres(
         cliPath,
-        postgresCliArgs([
+        [
           '-U',
           'postgres',
           '-c',
           'CREATE DATABASE "$name";',
-        ]),
+        ],
+        app,
       );
       if (createDb.exitCode != 0) {
         throw Exception('Create DB error: ${createDb.stderr}');
       }
 
       // 2. Create User and GRANT
-      final grantRes = await Process.run(
+      final grantRes = await runPostgres(
         cliPath,
-        postgresCliArgs([
+        [
           '-U',
           'postgres',
           '-c',
           'CREATE USER "$user" WITH PASSWORD \'$safePassword\'; GRANT ALL PRIVILEGES ON DATABASE "$name" TO "$user";',
-        ]),
+        ],
+        app,
       );
       if (grantRes.exitCode != 0) {
         // Same orphan-DB concern as MySQL: roll back the created database.
-        await _safeDropDatabase(cliPath, name, isPostgres: true);
+        await _safeDropDatabase(cliPath, name, isPostgres: true, app: app);
         throw Exception('Grant error: ${grantRes.stderr}');
       }
     } else {
@@ -240,14 +244,15 @@ class DatabasesNotifier extends _$DatabasesNotifier {
           throw Exception('Rename user error: ${res.stderr}');
         }
       } else {
-        final res = await Process.run(
+        final res = await runPostgres(
           cliPath,
-          postgresCliArgs([
+          [
             '-U',
             'postgres',
             '-c',
             renameSql,
-          ]),
+          ],
+          app,
         );
         if (res.exitCode != 0) {
           throw Exception('Rename user error: ${res.stderr}');
@@ -277,9 +282,10 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     } else if (app.appId.contains('postgresql')) {
       if (newPassword.isNotEmpty) {
         final sql = "ALTER USER \"$newUser\" WITH PASSWORD '$safeNewPassword';";
-        final res = await Process.run(
+        final res = await runPostgres(
           cliPath,
-          postgresCliArgs(['-U', 'postgres', '-c', sql]),
+          ['-U', 'postgres', '-c', sql],
+          app,
         );
         if (res.exitCode != 0) {
           throw Exception('Update password error: ${res.stderr}');
@@ -331,14 +337,15 @@ class DatabasesNotifier extends _$DatabasesNotifier {
       }
     } else if (app.appId.contains('postgresql')) {
       // Drop the database first
-      final dropRes = await Process.run(
+      final dropRes = await runPostgres(
         cliPath,
-        postgresCliArgs([
+        [
           '-U',
           'postgres',
           '-c',
           'DROP DATABASE IF EXISTS "${record.name}";',
-        ]),
+        ],
+        app,
       );
       if (dropFailed(dropRes)) {
         throw Exception(
@@ -348,14 +355,15 @@ class DatabasesNotifier extends _$DatabasesNotifier {
 
       // Drop the associated user
       if (username.isNotEmpty && username != 'postgres') {
-        await Process.run(
+        await runPostgres(
           cliPath,
-          postgresCliArgs([
+          [
             '-U',
             'postgres',
             '-c',
             'DROP USER IF EXISTS "$username";',
-          ]),
+          ],
+          app,
         );
       }
     } else if (app.appId.contains('redis')) {
@@ -395,17 +403,19 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     String cliPath,
     String name, {
     required bool isPostgres,
+    required AppModel app,
   }) async {
     try {
       if (isPostgres) {
-        await Process.run(
+        await runPostgres(
           cliPath,
-          postgresCliArgs([
+          [
             '-U',
             'postgres',
             '-c',
             'DROP DATABASE IF EXISTS "$name";',
-          ]),
+          ],
+          app,
         );
       } else {
         await Process.run(cliPath, [
@@ -520,14 +530,84 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     ];
   }
 
-  Future<List<String>> _getPostgresNames(String cliPath) async {
-    final result = await Process.run(
+  /// Resolves the superuser (`postgres`) password that initdb wrote to
+  /// `<dataDir>/postgres-password.txt` when the cluster was initialized
+  /// (`-A scram-sha-256 --pwfile=...`). psql needs this via the `PGPASSWORD`
+  /// env var even for socket connections, because scram auth rejects an empty
+  /// password with `fe_sendauth: no password supplied`.
+  ///
+  /// Lookup order:
+  /// 1. `AppConfig.dataDir/<appId>-<installedVersion>/postgres-password.txt`
+  /// 2. walk up from `cliPath`'s directory tree for the same file (covers
+  ///    installs where the cluster data dir is the binary's parent).
+  @visibleForTesting
+  static Future<String> readPostgresPassword(
+    String cliPath,
+    AppModel app,
+  ) async {
+    final candidates = <String>[];
+    final version = app.installedVersion;
+    if (version != null && version.isNotEmpty) {
+      candidates.add(
+        p.join(
+          AppConfig.dataDir,
+          '${app.appId}-$version',
+          'postgres-password.txt',
+        ),
+      );
+    }
+    // Walk up from the CLI binary (e.g. <install>/bin/psql) looking for the
+    // password file in any ancestor directory.
+    var dir = p.dirname(cliPath);
+    for (var i = 0; i < 6; i++) {
+      candidates.add(p.join(dir, 'postgres-password.txt'));
+      final parent = p.dirname(dir);
+      if (parent == dir) break;
+      dir = parent;
+    }
+
+    for (final path in candidates) {
+      final file = File(path);
+      if (await file.exists()) {
+        final contents = await file.readAsString();
+        return contents.trim();
+      }
+    }
+    // No password file found — return empty so callers still attempt the
+    // connection (e.g. if the cluster was initialized with trust auth).
+    return '';
+  }
+
+  /// Runs a `psql` command with the superuser password injected as
+  /// `PGPASSWORD`, since the Postgres cluster uses scram-sha-256 auth. Without
+  /// this, socket connections fail with `fe_sendauth: no password supplied`.
+  @visibleForTesting
+  static Future<ProcessResult> runPostgres(
+    String cliPath,
+    List<String> specificArgs,
+    AppModel app, {
+    bool? isLinux,
+  }) async {
+    final password = await readPostgresPassword(cliPath, app);
+    return Process.run(
       cliPath,
-      postgresCliArgs([
+      postgresCliArgs(specificArgs, isLinux: isLinux),
+      environment: {'PGPASSWORD': password},
+    );
+  }
+
+  Future<List<String>> _getPostgresNames(
+    String cliPath,
+    AppModel app,
+  ) async {
+    final result = await runPostgres(
+      cliPath,
+      [
         '-U', 'postgres',
         '-l', // list databases
         '-t', // tuples only
-      ]),
+      ],
+      app,
     );
     if (result.exitCode != 0) return [];
 
