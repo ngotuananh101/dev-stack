@@ -284,56 +284,27 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                 ),
                 const SizedBox(height: 24),
                 if (isInstalled)
-                  ElevatedButton.icon(
-                    onPressed: () => ref
-                        .read(appsNotifierProvider.notifier)
-                        .openApp(mongoCompass),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF13AA52),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                  AppButton(
+                    label: 'Open MongoDB Compass',
+                    onPressed: () =>
+                        ref.read(appsNotifierProvider.notifier).openApp(mongoCompass),
                     icon: const Icon(LucideIcons.externalLink, size: 18),
-                    label: const Text(
-                      'Open MongoDB Compass',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    style: AppButtonStyle.primary,
+                    size: AppButtonSize.lg,
+                    backgroundColor: const Color(0xFF13AA52),
+                    textColor: Colors.white,
                   )
                 else
-                  OutlinedButton.icon(
+                  AppButton(
+                    label: 'Go to Apps to Install',
                     onPressed: () {
                       ref.read(navigationProvider.notifier).setTab(
                             NavigationTab.apps,
                           );
                     },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
                     icon: const Icon(LucideIcons.download, size: 18),
-                    label: const Text(
-                      'Go to Apps to Install',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    style: AppButtonStyle.outline,
+                    size: AppButtonSize.lg,
                   ),
               ],
             ),
@@ -617,19 +588,23 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     Color? color,
     VoidCallback? onTap,
   }) {
-    return ElevatedButton.icon(
+    if (color != null) {
+      return AppButton(
+        label: label,
+        onPressed: onTap,
+        icon: Icon(icon, size: 16),
+        style: AppButtonStyle.primary,
+        size: AppButtonSize.md,
+        backgroundColor: color,
+        textColor: Colors.white,
+      );
+    }
+    return AppButton(
+      label: label,
       onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color ?? AppColors.surfaceLight,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
       icon: Icon(icon, size: 16),
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-      ),
+      style: AppButtonStyle.secondary,
+      size: AppButtonSize.md,
     );
   }
 

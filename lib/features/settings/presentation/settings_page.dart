@@ -13,6 +13,7 @@ import '../../sites/data/sites_provider.dart';
 import '../../../core/services/ssl_service.dart';
 import '../data/settings_provider.dart';
 import 'widgets/system_info_modal.dart';
+import 'package:dev_stack/shared/widgets/app_button.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -343,23 +344,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ],
         ),
         actions: [
-          TextButton(
+          AppButton(
+            label: 'Cancel',
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
+            style: AppButtonStyle.ghost,
+            size: AppButtonSize.md,
           ),
-          ElevatedButton(
+          AppButton(
+            label: 'Migrate & Change',
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Migrate & Change'),
+            style: AppButtonStyle.primary,
+            size: AppButtonSize.md,
           ),
         ],
       ),
@@ -426,14 +421,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ),
           actions: [
-            TextButton(
+            AppButton(
+              label: 'Restart Later',
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text(
-                'Restart Later',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
+              style: AppButtonStyle.ghost,
+              size: AppButtonSize.md,
             ),
-            ElevatedButton(
+            AppButton(
+              label: 'Restart Now',
               onPressed: () async {
                 // Stop running services gracefully before tearing down the
                 // process. exit(0) alone skips stopAllServicesQuietly() and
@@ -448,14 +443,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 if (ctx.mounted) Navigator.of(ctx).pop();
                 exit(0);
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Restart Now'),
+              style: AppButtonStyle.primary,
+              size: AppButtonSize.md,
             ),
           ],
         ),
@@ -876,26 +865,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ],
               ),
             ),
-            ElevatedButton(
+            AppButton(
+              label: actionLabel,
               onPressed: onTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                actionLabel,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              style: AppButtonStyle.primary,
+              size: AppButtonSize.sm,
+              backgroundColor: AppColors.accent,
+              textColor: Colors.white,
             ),
           ],
         ),
@@ -999,22 +975,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ...actions.map(
             (action) => Padding(
               padding: const EdgeInsets.only(left: 8.0),
-              child: ElevatedButton(
-                onPressed: action.onTap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: action.color,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 0,
-                  ),
-                  minimumSize: const Size(0, 32),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(action.label, style: const TextStyle(fontSize: 11)),
-              ),
+              child: action.color == AppColors.error
+                  ? AppButton(
+                      label: action.label,
+                      onPressed: action.onTap,
+                      style: AppButtonStyle.danger,
+                      size: AppButtonSize.sm,
+                      textColor: Colors.white,
+                    )
+                  : AppButton(
+                      label: action.label,
+                      onPressed: action.onTap,
+                      style: AppButtonStyle.primary,
+                      size: AppButtonSize.sm,
+                      backgroundColor: action.color,
+                      textColor: Colors.white,
+                    ),
             ),
           ),
         ],
