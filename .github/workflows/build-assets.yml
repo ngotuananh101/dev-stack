@@ -1,18 +1,38 @@
-name: Build Assets (Windows & Linux)
+name: Build Assets
 
 on:
   workflow_dispatch:
     inputs:
-      build_windows:
-        description: 'Build Windows Asset (.zip)'
+      build_windows_portable:
+        description: 'Build Windows portable (.zip)'
         type: boolean
         default: true
-        required: true
-      build_linux:
-        description: 'Build Linux Asset (.AppImage, .tar.gz & .zip)'
+        required: false
+      build_windows_installer:
+        description: 'Build Windows Inno Setup installer (.exe)'
+        type: boolean
+        default: false
+        required: false
+      build_linux_appimage:
+        description: 'Build Linux AppImage'
         type: boolean
         default: true
-        required: true
+        required: false
+      build_linux_deb:
+        description: 'Build Linux .deb package (Debian/Ubuntu via fpm)'
+        type: boolean
+        default: false
+        required: false
+      build_linux_rpm:
+        description: 'Build Linux .rpm package (RedHat/Fedora via fpm)'
+        type: boolean
+        default: false
+        required: false
+      build_linux_archive:
+        description: 'Build Linux portable archives (.tar.gz + .zip)'
+        type: boolean
+        default: true
+        required: false
       create_release:
         description: 'Create GitHub Release with built assets'
         type: boolean
@@ -26,15 +46,14 @@ on:
 
 jobs:
   build-windows:
-    name: Build Windows (.zip)
-    if: ${{ github.event.inputs.build_windows == 'true' || github.event.inputs.build_windows == true }}
+    name: Build Windows
     runs-on: windows-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.18.0
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add64c2 # v2.18.0
         with:
           flutter-version: '3.47.4'
           channel: 'stable'
@@ -52,7 +71,8 @@ jobs:
       - name: Build Windows Release
         run: flutter build windows --release
 
-      - name: Package Windows Bundle (.zip)
+      - name: Package Windows Portable (.zip)
+        if: ${{ github.event.inputs.build_windows_portable == 'true' || github.event.inputs.build_windows_portable == true }}
         shell: pwsh
         run: |
           $buildDir = "build/windows/x64/runner/Release"
@@ -60,18 +80,54 @@ jobs:
           New-Item -ItemType Directory -Force -Path $outputDir
           $zipPath = "$outputDir/dev-stack-windows-x64.zip"
           Compress-Archive -Path "$buildDir/*" -DestinationPath $zipPath -Force
-          Write-Host "Created Windows artifact: $zipPath"
+          Write-Host "Created Windows portable artifact: $zipPath"
 
-      - name: Upload Windows (.zip)
+      - name: Upload Windows Portable (.zip)
+        if: ${{ github.event.inputs.build_windows_portable == 'true' || github.event.inputs.build_windows_portable == true }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dev-stack-windows-x64-zip
           path: dist/dev-stack-windows-x64.zip
           if-no-files-found: error
 
+      - name: Install Inno Setup
+        if: ${{ github.event.inputs.build_windows_installer == 'true' || github.event.inputs.build_windows_installer == true }}
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build Windows Installer (Inno Setup)
+        if: ${{ github.event.inputs.build_windows_installer == 'true' || github.event.inputs.build_windows_installer == true }}
+        shell: pwsh
+        run: |
+          $version = (Get-Content pubspec.yaml | Select-String -Pattern '^version:\s*(\d+\.\d+\.\d+)' | ForEach-Object { $_.Matches.Groups[1].Value }) -join ""
+          if ([string]::IsNullOrEmpty($version)) { $version = "1.0.0" }
+          Write-Host "Using app version: $version"
+          $outputDir = "dist"
+          New-Item -ItemType Directory -Force -Path $outputDir
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DMyAppVersion=$version" `
+            "/O$outputDir" `
+            "innosetup\installer.iss"
+          # Rename output to consistent naming scheme
+          $produced = Get-ChildItem "$outputDir\DevStack_Setup*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($produced) {
+            Rename-Item -Path $produced.FullName -NewName "dev-stack-windows-x64-installer.exe" -Force
+            Write-Host "Renamed installer to: $($produced.FullName | Split-Path -Leaf)"
+          } else {
+            Write-Error "Inno Setup did not produce an installer. Check .iss file."
+            exit 1
+          }
+
+      - name: Upload Windows Installer (.exe)
+        if: ${{ github.event.inputs.build_windows_installer == 'true' || github.event.inputs.build_windows_installer == true }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dev-stack-windows-x64-installer
+          path: dist/dev-stack-windows-x64-installer.exe
+          if-no-files-found: error
+
   build-linux:
-    name: Build Linux (.AppImage, .tar.gz & .zip)
-    if: ${{ github.event.inputs.build_linux == 'true' || github.event.inputs.build_linux == true }}
+    name: Build Linux
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -90,10 +146,12 @@ jobs:
             libayatana-appindicator3-dev \
             curl \
             file \
-            zip
+            zip \
+            ruby-dev \
+            rpm
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.18.0
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add64c2 # v2.18.0
         with:
           flutter-version: '3.47.4'
           channel: 'stable'
@@ -111,18 +169,70 @@ jobs:
       - name: Build Linux Release
         run: flutter build linux --release
 
-      - name: Package Linux Bundle (.tar.gz, .zip & .AppImage)
+      - name: Setup Linux package staging directory
+        if: ${{ github.event.inputs.build_linux_appimage == 'true' || github.event.inputs.build_linux_appimage == true || github.event.inputs.build_linux_deb == 'true' || github.event.inputs.build_linux_deb == true || github.event.inputs.build_linux_rpm == 'true' || github.event.inputs.build_linux_rpm == true }}
+        run: |
+          mkdir -p dist
+          BUNDLE_DIR="build/linux/x64/release/bundle"
+          PKG_ROOT="dist/staging/dev_stack"
+          mkdir -p "$PKG_ROOT"
+
+          # Copy Flutter Linux bundle
+          cp -r "$BUNDLE_DIR"/* "$PKG_ROOT"/
+
+          # Install icons (hicolor spec for desktop integration)
+          mkdir -p "$PKG_ROOT/usr/share/icons/hicolor/256x256/apps"
+          cp assets/images/icon.png "$PKG_ROOT/usr/share/icons/hicolor/256x256/apps/com.ponta.dev_stack.png"
+          mkdir -p "$PKG_ROOT/usr/share/applications"
+          cat > "$PKG_ROOT/usr/share/applications/com.ponta.dev_stack.desktop" << 'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Ponta DevStack
+          Comment=Local development stack for Web & Databases
+          Exec=dev_stack %u
+          Icon=com.ponta.dev_stack
+          Terminal=false
+          Categories=Development;
+          StartupWMClass=com.ponta.dev_stack
+          EOF
+
+          # Resolve version from pubspec.yaml
+          VERSION=$(grep -E '^version:\s*[0-9]+\.[0-9]+\.[0-9]+' pubspec.yaml | head -1 | sed -E 's/version:\s*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          if [ -z "$VERSION" ]; then VERSION="1.0.0"; fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Package Linux Archives (.tar.gz + .zip)
+        if: ${{ github.event.inputs.build_linux_archive == 'true' || github.event.inputs.build_linux_archive == true }}
         run: |
           mkdir -p dist
           BUNDLE_DIR="build/linux/x64/release/bundle"
 
-          # 1. Create full tar.gz preserving Linux executable permissions
+          # 1. Full tar.gz preserving Linux executable permissions
           tar -czf dist/dev-stack-linux-x64.tar.gz -C "$BUNDLE_DIR" .
 
-          # 2. Create zip bundle for portability
+          # 2. Zip bundle for portability
           (cd "$BUNDLE_DIR" && zip -r - .) > dist/dev-stack-linux-x64.zip
 
-          # 3. Create AppImage
+      - name: Upload Linux tar.gz
+        if: ${{ github.event.inputs.build_linux_archive == 'true' || github.event.inputs.build_linux_archive == true }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dev-stack-linux-x64-tar
+          path: dist/dev-stack-linux-x64.tar.gz
+          if-no-files-found: error
+
+      - name: Upload Linux zip
+        if: ${{ github.event.inputs.build_linux_archive == 'true' || github.event.inputs.build_linux_archive == true }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dev-stack-linux-x64-zip
+          path: dist/dev-stack-linux-x64.zip
+          if-no-files-found: error
+
+      - name: Package Linux AppImage
+        if: ${{ github.event.inputs.build_linux_appimage == 'true' || github.event.inputs.build_linux_appimage == true }}
+        run: |
+          BUNDLE_DIR="build/linux/x64/release/bundle"
           mkdir -p AppDir
           cp -r "$BUNDLE_DIR"/* AppDir/
           cp assets/images/icon.png AppDir/com.ponta.dev_stack.png
@@ -186,27 +296,78 @@ jobs:
           chmod +x appimagetool
           ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream AppDir dist/dev-stack-linux-x64.AppImage
 
-          ls -lh dist/
-
       - name: Upload Linux AppImage
+        if: ${{ github.event.inputs.build_linux_appimage == 'true' || github.event.inputs.build_linux_appimage == true }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dev-stack-linux-x64-appimage
           path: dist/dev-stack-linux-x64.AppImage
           if-no-files-found: error
 
-      - name: Upload Linux tar.gz
+      - name: Install fpm
+        if: ${{ github.event.inputs.build_linux_deb == 'true' || github.event.inputs.build_linux_deb == true || github.event.inputs.build_linux_rpm == 'true' || github.event.inputs.build_linux_rpm == true }}
+        run: sudo gem install fpm
+
+      - name: Package Linux .deb (via fpm)
+        if: ${{ github.event.inputs.build_linux_deb == 'true' || github.event.inputs.build_linux_deb == true }}
+        run: |
+          mkdir -p dist
+          # fpm builds from a staging directory (type=dir)
+          # Output is a .deb file with proper Debian metadata (control, conffiles, etc.)
+          fpm \
+              -s dir \
+              -t deb \
+              -n dev-stack \
+              -v "$VERSION" \
+              --iteration 1 \
+              --vendor "Ponta Dev" \
+              --maintainer "Ponta Dev <contact@pontadev.com>" \
+              --url "https://github.com/ngotuananh101/dev-stack" \
+              --description "Local development stack for Web & Databases" \
+              --license "MIT" \
+              --depends libgtk-3-0 \
+              --depends libayatana-appindicator3-0.1 \
+              --depends liblzma5 \
+              -C dist/staging/dev_stack \
+              -p dist/dev-stack-linux-x64.deb
+          ls -lh dist/*.deb
+
+      - name: Upload Linux .deb
+        if: ${{ github.event.inputs.build_linux_deb == 'true' || github.event.inputs.build_linux_deb == true }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: dev-stack-linux-x64-tar
-          path: dist/dev-stack-linux-x64.tar.gz
+          name: dev-stack-linux-x64-deb
+          path: dist/dev-stack-linux-x64.deb
           if-no-files-found: error
 
-      - name: Upload Linux zip
+      - name: Package Linux .rpm (via fpm)
+        if: ${{ github.event.inputs.build_linux_rpm == 'true' || github.event.inputs.build_linux_rpm == true }}
+        run: |
+          mkdir -p dist
+          fpm \
+              -s dir \
+              -t rpm \
+              -n dev-stack \
+              -v "$VERSION" \
+              --iteration 1 \
+              --vendor "Ponta Dev" \
+              --maintainer "Ponta Dev <contact@pontadev.com>" \
+              --url "https://github.com/ngotuananh101/dev-stack" \
+              --description "Local development stack for Web & Databases" \
+              --license "MIT" \
+              --depends gtk3 \
+              --depends libayatana-appindicator3 \
+              --depends xz-libs \
+              -C dist/staging/dev_stack \
+              -p dist/dev-stack-linux-x64.rpm
+          ls -lh dist/*.rpm
+
+      - name: Upload Linux .rpm
+        if: ${{ github.event.inputs.build_linux_rpm == 'true' || github.event.inputs.build_linux_rpm == true }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: dev-stack-linux-x64-zip
-          path: dist/dev-stack-linux-x64.zip
+          name: dev-stack-linux-x64-rpm
+          path: dist/dev-stack-linux-x64.rpm
           if-no-files-found: error
 
   release:
@@ -234,9 +395,14 @@ jobs:
         run: |
           TAG="${RELEASE_TAG:-v$(date +'%Y.%m.%d-%H%M')}"
           echo "Publishing release with tag: $TAG"
+          ASSETS=$(ls -1 release-assets/* 2>/dev/null | tr '\n' ' ')
+          if [ -z "$ASSETS" ]; then
+            echo "::error::No artifacts to release. Enable at least one build option."
+            exit 1
+          fi
           gh release create "$TAG" \
-            release-assets/* \
+            $ASSETS \
             --title "DevStack $TAG" \
-            --notes "Automated release build for Windows (.zip) and Linux (.AppImage, .tar.gz, .zip)." \
+            --notes "Automated release build (per-format selection)." \
             --draft=false \
             --prerelease=false
