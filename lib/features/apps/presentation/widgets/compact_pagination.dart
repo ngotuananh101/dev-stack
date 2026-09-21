@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../../../shared/widgets/app_icon_button.dart';
 
 class CompactPagination extends StatelessWidget {
   final int currentPage;
@@ -61,22 +62,11 @@ class CompactPagination extends StatelessWidget {
   }
 
   Widget _buildPageButton({required IconData icon, VoidCallback? onPressed}) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: IconButton(
-        icon: Icon(icon, size: 16),
-        onPressed: onPressed,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(),
-        color: onPressed == null
-            ? AppColors.textMuted
-            : AppColors.textSecondary,
-      ),
+    return AppIconButton(
+      icon: icon,
+      onPressed: onPressed,
+      tooltip: onPressed == null ? '' : 'Page',
+      color: onPressed == null ? AppColors.textMuted : AppColors.textSecondary,
     );
   }
 

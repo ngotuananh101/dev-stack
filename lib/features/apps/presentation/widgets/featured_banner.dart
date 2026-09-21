@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../../../shared/widgets/app_button.dart';
 
 class FeaturedBanner extends StatelessWidget {
   const FeaturedBanner({super.key});
@@ -42,23 +43,11 @@ class FeaturedBanner extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ElevatedButton(
+                      AppButton(
                         onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: const Text(
-                          'FEATURED DEPLOYMENT',
-                          style: TextStyle(
-                            fontSize: AppTextSize.xxs,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        style: AppButtonStyle.primary,
+                        size: AppButtonSize.lg,
+                        label: 'FEATURED DEPLOYMENT',
                       ),
                     ],
                   ),
