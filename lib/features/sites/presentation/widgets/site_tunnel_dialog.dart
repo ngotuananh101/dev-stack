@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../../tunnels/data/tunnels_provider.dart';
 import '../../../tunnels/data/tunnel_manager_service.dart';
@@ -79,9 +80,12 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        IconButton(
-          icon: const Icon(LucideIcons.x, size: 18, color: AppColors.textSecondary),
+        AppIconButton(
+          icon: LucideIcons.x,
           onPressed: () => Navigator.of(context).pop(),
+          tooltip: 'Close',
+          color: AppColors.textSecondary,
+          size: AppIconButtonSize.sm,
         ),
       ],
     );
@@ -318,28 +322,22 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         if (isStopped || hasError)
-          FilledButton.icon(
+          AppButton(
+            label: 'Start Tunnel',
+            style: AppButtonStyle.primary,
+            size: AppButtonSize.md,
+            icon: const Icon(LucideIcons.play, size: 14),
             onPressed: () =>
                 ref.read(tunnelSessionsProvider.notifier).start(tunnel),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.success.withValues(alpha: 0.15),
-              foregroundColor: AppColors.success,
-              elevation: 0,
-            ),
-            icon: const Icon(LucideIcons.play, size: 14),
-            label: const Text('Start Tunnel'),
           )
         else if (!isConnecting)
-          FilledButton.icon(
+          AppButton(
+            label: 'Stop',
+            style: AppButtonStyle.danger,
+            size: AppButtonSize.md,
+            icon: const Icon(LucideIcons.square, size: 14),
             onPressed: () =>
                 ref.read(tunnelSessionsProvider.notifier).stop(tunnel.id),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error.withValues(alpha: 0.15),
-              foregroundColor: AppColors.error,
-              elevation: 0,
-            ),
-            icon: const Icon(LucideIcons.square, size: 14),
-            label: const Text('Stop'),
           ),
       ],
     );
@@ -350,18 +348,12 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
     required String tooltip,
     required VoidCallback onPressed,
   }) {
-    return Tooltip(
-      message: tooltip,
-      child: SizedBox(
-        width: 32,
-        height: 32,
-        child: IconButton(
-          icon: Icon(icon, size: 14, color: AppColors.textSecondary),
-          onPressed: onPressed,
-          padding: EdgeInsets.zero,
-          visualDensity: VisualDensity.compact,
-        ),
-      ),
+    return AppIconButton(
+      icon: icon,
+      onPressed: onPressed,
+      tooltip: tooltip,
+      color: AppColors.textSecondary,
+      size: AppIconButtonSize.sm,
     );
   }
 
