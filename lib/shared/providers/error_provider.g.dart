@@ -19,7 +19,7 @@ final class AppErrorProvider extends $NotifierProvider<AppError, String?> {
         argument: null,
         retry: null,
         name: r'appErrorProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -40,7 +40,7 @@ final class AppErrorProvider extends $NotifierProvider<AppError, String?> {
   }
 }
 
-String _$appErrorHash() => r'82c1d49533a66feced646952d6a2a0a297f9f7cb';
+String _$appErrorHash() => r'35e5ea8cf14a6886068ec135fcfdc1270952e6ac';
 
 abstract class _$AppError extends $Notifier<String?> {
   String? build();

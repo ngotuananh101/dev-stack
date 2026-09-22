@@ -18,13 +18,13 @@ import 'package:dev_stack/core/services/log_service.dart';
 
 part 'apps_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<AppsRepository> appsRepository(Ref ref) async {
   final isar = await ref.watch(isarProvider.future);
   return AppsRepository(isar);
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class Apps extends _$Apps {
   /// Remote catalog source, refreshed via [updateCatalog] / the manual
   /// "Update list" button and on app startup when online. The filename

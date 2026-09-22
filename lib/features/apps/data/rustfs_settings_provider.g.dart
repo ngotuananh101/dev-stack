@@ -20,7 +20,7 @@ final class RustFSSettingsProvider
         argument: null,
         retry: null,
         name: r'rustFSSettingsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -41,7 +41,7 @@ final class RustFSSettingsProvider
   }
 }
 
-String _$rustFSSettingsHash() => r'4c9e52b88583ccb6b481992f01745ca518102a7a';
+String _$rustFSSettingsHash() => r'c865671d6ed10db28f315f37bbae85fd54ed4ac6';
 
 abstract class _$RustFSSettings extends $Notifier<void> {
   void build();

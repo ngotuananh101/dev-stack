@@ -6,7 +6,7 @@ import '../../../core/config/app_config.dart';
 
 part 'rustfs_settings_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class RustFSSettings extends _$RustFSSettings {
   @override
   void build() {}

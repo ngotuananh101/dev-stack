@@ -24,7 +24,7 @@ class SslService extends _$SslService {
     return settings.isSslInstalled;
   }
 
-  bool get isInstalled => state.value ?? false;
+  bool get _isInstalled => state.value ?? false;
 
   /// Bundled mkcert asset name for the host platform. Windows keeps the
   /// legacy unversioned `mkcert.exe`; Linux picks the versioned binary whose
@@ -42,7 +42,7 @@ class SslService extends _$SslService {
     return 'mkcert-v1.4.4-linux-amd64';
   }
 
-  String get mkcertPath {
+  String get _mkcertPath {
     final binCopy = p.join(AppConfig.binDir, 'mkcert');
     final assetName = mkcertAssetBasename();
 
@@ -108,7 +108,7 @@ class SslService extends _$SslService {
       // `mkcert -CAROOT` prints the configured path even before a CA has been
       // created, so checking its output alone would make this method create a
       // CA as a side effect of the certificate-generation probe below.
-      final carootResult = await BackgroundProcess.run(mkcertPath, ['-CAROOT']);
+      final carootResult = await BackgroundProcess.run(_mkcertPath, ['-CAROOT']);
       final carootPath = carootResult.stdout.toString().trim();
       final rootCaPath = p.join(carootPath, 'rootCA.pem');
       if (carootResult.exitCode != 0 ||
@@ -126,7 +126,7 @@ class SslService extends _$SslService {
       // We do this by attempting to generate a test certificate and checking
       // if mkcert warns about the CA not being installed
       final nullDevice = Platform.isWindows ? 'nul' : '/dev/null';
-      final testResult = await BackgroundProcess.run(mkcertPath, [
+      final testResult = await BackgroundProcess.run(_mkcertPath, [
         '-cert-file',
         nullDevice,
         '-key-file',
@@ -197,7 +197,7 @@ class SslService extends _$SslService {
       p.join(getSiteCertDir(domain), 'key.pem');
 
   Future<void> generateSiteCert(String domain, {bool force = false}) async {
-    if (!isInstalled) return;
+    if (!_isInstalled) return;
 
     final certPath = getSiteCertPath(domain);
     final keyPath = getSiteKeyPath(domain);
@@ -215,7 +215,7 @@ class SslService extends _$SslService {
     }
 
     try {
-      await BackgroundProcess.run(mkcertPath, [
+      await BackgroundProcess.run(_mkcertPath, [
         '-cert-file',
         'cert.pem',
         '-key-file',
@@ -233,7 +233,7 @@ class SslService extends _$SslService {
 
   Future<String> _resolveCaroot() async {
     try {
-      final res = await BackgroundProcess.run(mkcertPath, const ['-CAROOT']);
+      final res = await BackgroundProcess.run(_mkcertPath, const ['-CAROOT']);
       final out = res.stdout.toString().trim();
       if (out.isNotEmpty) return out;
     } catch (_) {}
@@ -314,8 +314,8 @@ class SslService extends _$SslService {
     }
 
     try {
-      if (!File(mkcertPath).existsSync()) {
-        AppLogger.info('mkcert binary not found at $mkcertPath');
+      if (!File(_mkcertPath).existsSync()) {
+        AppLogger.info('mkcert binary not found at $_mkcertPath');
         return;
       }
 
@@ -326,7 +326,7 @@ class SslService extends _$SslService {
         // Run as user first to create CA in user's CAROOT and install to user browser NSS stores
         try {
           final userInit =
-              await BackgroundProcess.run(mkcertPath, const ['-install']);
+              await BackgroundProcess.run(_mkcertPath, const ['-install']);
           if (userInit.stdout.toString().contains('certutil') ||
               userInit.stderr.toString().contains('certutil')) {
             AppLogger.warning(
@@ -342,7 +342,7 @@ class SslService extends _$SslService {
           '';
 
       final elevatedCmd = buildElevatedMkcertArgs(
-        mkcertPath: mkcertPath,
+        mkcertPath: _mkcertPath,
         carootPath: userCaroot,
         action: '-install',
         username: username,
@@ -388,7 +388,7 @@ class SslService extends _$SslService {
 
   Future<void> uninstallRootCA() async {
     try {
-      if (!File(mkcertPath).existsSync()) return;
+      if (!File(_mkcertPath).existsSync()) return;
 
       AppLogger.info('Uninstalling SSL Root CA...');
 
@@ -398,7 +398,7 @@ class SslService extends _$SslService {
           '';
 
       final elevatedCmd = buildElevatedMkcertArgs(
-        mkcertPath: mkcertPath,
+        mkcertPath: _mkcertPath,
         carootPath: userCaroot,
         action: '-uninstall',
         username: username,
@@ -427,7 +427,7 @@ class SslService extends _$SslService {
       if (Platform.isLinux) {
         // Also uninstall from user browser stores
         try {
-          await BackgroundProcess.run(mkcertPath, const ['-uninstall']);
+          await BackgroundProcess.run(_mkcertPath, const ['-uninstall']);
         } catch (_) {}
       }
 

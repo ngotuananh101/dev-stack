@@ -20,7 +20,7 @@ final class MeilisearchSettingsProvider
         argument: null,
         retry: null,
         name: r'meilisearchSettingsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -42,7 +42,7 @@ final class MeilisearchSettingsProvider
 }
 
 String _$meilisearchSettingsHash() =>
-    r'e7cbd1c253aa89535e0b77b14404fd61a8cdf3d6';
+    r'27a860ff09c6ac62890f049e49202dcf859ab132';
 
 abstract class _$MeilisearchSettings extends $Notifier<void> {
   void build();

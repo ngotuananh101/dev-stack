@@ -21,7 +21,7 @@ final class LogServiceProvider
         argument: null,
         retry: null,
         name: r'logServiceProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -48,4 +48,4 @@ final class LogServiceProvider
   }
 }
 
-String _$logServiceHash() => r'9d0779ba28c102b4f571bb367267ed734ea691e8';
+String _$logServiceHash() => r'5850be240dee2c58b09df2e0e601a011d4c9a465';

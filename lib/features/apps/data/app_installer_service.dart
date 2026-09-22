@@ -25,7 +25,7 @@ import 'apps_provider.dart';
 
 part 'app_installer_service.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 AppInstallerService appInstallerService(Ref ref) {
   final logger = ref.read(logServiceProvider);
   return AppInstallerService(logger, ref);

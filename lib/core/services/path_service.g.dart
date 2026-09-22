@@ -21,7 +21,7 @@ final class PathServiceProvider
         argument: null,
         retry: null,
         name: r'pathServiceProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -48,4 +48,4 @@ final class PathServiceProvider
   }
 }
 
-String _$pathServiceHash() => r'361905b8f9eb32e074735a15f146f1dc4eb13bbd';
+String _$pathServiceHash() => r'2277a0155497f6bb022e9e60b20a83e3b3fda333';

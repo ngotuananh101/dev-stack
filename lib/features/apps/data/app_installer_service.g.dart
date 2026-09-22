@@ -26,7 +26,7 @@ final class AppInstallerServiceProvider
         argument: null,
         retry: null,
         name: r'appInstallerServiceProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -55,4 +55,4 @@ final class AppInstallerServiceProvider
 }
 
 String _$appInstallerServiceHash() =>
-    r'0570e774d61995b57c3e7e61c0ee78e36eb9ca36';
+    r'903d2ab79f4d009d4423a42365850cfadfef7e4d';

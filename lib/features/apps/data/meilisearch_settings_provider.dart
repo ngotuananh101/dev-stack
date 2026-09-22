@@ -6,7 +6,7 @@ import '../../../core/config/app_config.dart';
 
 part 'meilisearch_settings_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class MeilisearchSettings extends _$MeilisearchSettings {
   @override
   void build() {}

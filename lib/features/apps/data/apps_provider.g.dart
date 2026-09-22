@@ -26,7 +26,7 @@ final class AppsRepositoryProvider
         argument: null,
         retry: null,
         name: r'appsRepositoryProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -46,7 +46,7 @@ final class AppsRepositoryProvider
   }
 }
 
-String _$appsRepositoryHash() => r'a8c9f29fef64b8e00c491d7f01238136458df61e';
+String _$appsRepositoryHash() => r'cf51f07648ee18ce26cf8c9d3b5b40349421ca69';
 
 @ProviderFor(Apps)
 final appsProvider = AppsProvider._();
@@ -58,7 +58,7 @@ final class AppsProvider extends $AsyncNotifierProvider<Apps, List<AppModel>> {
         argument: null,
         retry: null,
         name: r'appsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -71,7 +71,7 @@ final class AppsProvider extends $AsyncNotifierProvider<Apps, List<AppModel>> {
   Apps create() => Apps();
 }
 
-String _$appsHash() => r'c48d48c84dea6f02b75b7f374cb9ec673b463a98';
+String _$appsHash() => r'ae9246a9be34e0aa7dc194f30abc4ea295816cd7';
 
 abstract class _$Apps extends $AsyncNotifier<List<AppModel>> {
   FutureOr<List<AppModel>> build();
