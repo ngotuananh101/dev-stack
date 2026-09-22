@@ -14,12 +14,25 @@ class NgrokDriver implements TunnelDriver {
     TunnelModel tunnel, {
     String? defaultToken,
   }) {
+    // Site tunnels must hit the webserver's HTTP port (80) and carry the
+    // site's domain as the Host header, otherwise nginx falls through to the
+    // default vhost and serves the wrong site. Use a LITERAL hostname here
+    // (not 'rewrite', which would send 'localhost' and still hit the default).
+    // Port-target tunnels keep their configured port and no Host override.
+    final siteDomain = tunnel.targetSiteDomain?.trim();
+    final isSite = siteDomain != null && siteDomain.isNotEmpty;
+    final port = isSite ? 80 : tunnel.targetPort;
+
     final args = <String>[
       'http',
-      tunnel.targetPort.toString(),
+      port.toString(),
       '--log=stdout',
       '--log-format=json',
     ];
+
+    if (isSite) {
+      args.add('--host-header=$siteDomain');
+    }
 
     final token = tunnel.authToken ?? defaultToken;
     if (token != null && token.trim().isNotEmpty) {

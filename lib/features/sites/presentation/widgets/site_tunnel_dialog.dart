@@ -363,7 +363,9 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
       provider: 'cloudflare',
       targetType: 'site',
       targetSiteDomain: widget.site.domain,
-      targetPort: widget.site.phpPort ?? 80,
+      // Drivers route site tunnels to the webserver HTTP port (80) with the
+      // site's Host header; the cached FastCGI phpPort must not be used here.
+      targetPort: 80,
       createdAt: DateTime.now(),
     );
 
@@ -391,7 +393,7 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
             provider: 'cloudflare',
             targetType: 'site',
             targetSiteDomain: widget.site.domain,
-            targetPort: widget.site.phpPort ?? 80,
+            targetPort: 80,
           ),
         ),
       ),

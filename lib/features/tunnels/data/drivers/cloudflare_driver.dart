@@ -15,6 +15,10 @@ class CloudflareDriver implements TunnelDriver {
     final token = tunnel.authToken ?? defaultToken;
 
     if (token != null && token.trim().isNotEmpty) {
+      // Named/token tunnels read their origin (and Host header) from the
+      // Cloudflare dashboard ingress config; the local --http-host-header flag
+      // only applies to quick (--url) tunnels. Site routing for token tunnels
+      // must therefore be configured there (httpHostHeader).
       return [
         'tunnel',
         'run',
@@ -23,12 +27,27 @@ class CloudflareDriver implements TunnelDriver {
       ];
     }
 
-    return [
+    // Site tunnels must hit the webserver's HTTP port (80) and carry the
+    // site's domain as the Host header, otherwise nginx falls through to the
+    // default vhost and serves the wrong site. Port-target tunnels keep their
+    // configured port and no Host override. The cached phpPort stored on some
+    // site tunnels is intentionally ignored for site targets.
+    final siteDomain = tunnel.targetSiteDomain?.trim();
+    final isSite = siteDomain != null && siteDomain.isNotEmpty;
+    final port = isSite ? 80 : tunnel.targetPort;
+
+    final args = [
       'tunnel',
       '--url',
-      'http://127.0.0.1:${tunnel.targetPort}',
+      'http://127.0.0.1:$port',
       '--no-tls-verify',
     ];
+
+    if (isSite) {
+      args.add('--http-host-header=$siteDomain');
+    }
+
+    return args;
   }
 
   @override

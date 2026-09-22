@@ -20,6 +20,24 @@ void main() {
       expect(args, contains('token_abc'));
       expect(args, contains('--log=stdout'));
       expect(args, contains('--log-format=json'));
+      // Port targets must not get a Host-header override.
+      expect(args, isNot(contains('--host-header=3000')));
+    });
+
+    test('site tunnel targets port 80 with the literal site Host header', () {
+      final tunnel = TunnelModel(
+        name: 'Ngrok Site',
+        targetType: 'site',
+        targetSiteDomain: 'myproject.test',
+        // Stale cached FastCGI port must be ignored for site targets.
+        targetPort: 9082,
+      );
+
+      final args = driver.buildStartArguments(tunnel);
+      expect(args, contains('http'));
+      expect(args, contains('80'));
+      expect(args, contains('--host-header=myproject.test'));
+      expect(args, isNot(contains('9082')));
     });
 
     test('builds start arguments with custom domain', () {

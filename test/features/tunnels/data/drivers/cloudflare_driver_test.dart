@@ -21,6 +21,25 @@ void main() {
       ]));
     });
 
+    test('site tunnel targets port 80 with the site Host header', () {
+      final tunnel = TunnelModel(
+        name: 'Site Tunnel',
+        targetType: 'site',
+        targetSiteDomain: 'myproject.test',
+        // A stale cached FastCGI port must be ignored for site targets.
+        targetPort: 9082,
+      );
+
+      final args = driver.buildStartArguments(tunnel);
+      expect(args, equals([
+        'tunnel',
+        '--url',
+        'http://127.0.0.1:80',
+        '--no-tls-verify',
+        '--http-host-header=myproject.test',
+      ]));
+    });
+
     test('builds arguments for named tunnel with token', () {
       final tunnel = TunnelModel(
         name: 'Named Tunnel',

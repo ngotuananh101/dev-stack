@@ -325,8 +325,17 @@ Tunnels in DevStack can target either a **DevStack-managed site** or an **arbitr
 When **Target Type** is set to **Site**:
 
 - A dropdown lists all configured DevStack sites by domain (e.g., `myshop.test`).
-- The tunnel forwards traffic to `http://127.0.0.1:<site-php-port>`.
-- The site's PHP port (e.g., 9000) is resolved automatically from the site configuration.
+- The tunnel forwards traffic to the webserver's HTTP port (**80**) and sets the
+  request **Host header to the site's domain** (e.g. `myshop.test`), so the webserver
+  serves the *selected* site instead of the default homepage.
+- Cloudflare quick tunnels pass `--http-host-header=<domain>`; ngrok passes
+  `--host-header=<domain>`.
+- **Cloudflare named/token tunnels** (`tunnel run --token`) configure their origin
+  (including the Host header) in the Cloudflare dashboard, so the local
+  `--http-host-header` flag does not apply. For a named tunnel to reach a specific
+  site, set the route's ingress `httpHostHeader` to the site domain (or add the
+  site domain as a server name). The 1-click quick-share path uses a **quick**
+  tunnel and works out of the box.
 - This is the recommended mode when sharing a DevStack site.
 
 ### Exposing a Custom Port (Target Type: Port)
@@ -340,16 +349,22 @@ When **Target Type** is set to **Port**:
   - Databases or APIs running locally.
   - Any service listening on a localhost port.
 
-### Cloudflare Quick Tunnel Behavior
+### Cloudflare Tunnel Behavior
 
-- **Quick Tunnels** (no token) use `--url http://127.0.0.1:<port>` — the port comes from `targetPort`.
-- **Named Tunnels** (with token) establish a persistent reverse tunnel; the target is the local service the tunnel is configured to reach.
+- **Quick Tunnels** (no token) use `--url http://127.0.0.1:<port>`. For **site**
+  targets the port is the webserver HTTP port (80) and `--http-host-header=<domain>`
+  selects the site. For **port** targets the port comes from `targetPort`.
+- **Named Tunnels** (with token) establish a persistent reverse tunnel whose origin
+  (including the Host header) is configured in the Cloudflare dashboard, not via the
+  local `--http-host-header` flag.
 
 ### ngrok Behavior
 
 - ngrok always uses `http <port>` to determine which local port to forward.
-- For DevStack PHP sites, the target port is the site's `phpPort` (e.g., 9000).
-- For custom port targets, you specify the port directly (e.g., 3000).
+- For **site** targets the port is the webserver HTTP port (80) and
+  `--host-header=<domain>` (a literal hostname) selects the site. Do **not** use
+  the `rewrite` value, which would send `localhost` and still hit the default vhost.
+- For **port** targets you specify the port directly (e.g., 3000).
 
 ### Recommendations
 
