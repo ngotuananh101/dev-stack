@@ -14,121 +14,68 @@ class Sidebar extends ConsumerWidget {
 
     return Container(
       width: 240,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.background,
         border: Border(right: BorderSide(color: AppColors.border)),
       ),
-      child: Column(
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
-          const SizedBox(height: 24),
-          _buildLogo(),
-          const SizedBox(height: 32),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildNavItem(
-                  LucideIcons.layoutGrid,
-                  'Apps',
-                  isActive: currentTab == NavigationTab.apps,
-                  onTap: () => ref
-                      .read(navigationProvider.notifier)
-                      .setTab(NavigationTab.apps),
-                ),
-                _buildNavItem(
-                  LucideIcons.globe,
-                  'Sites',
-                  isActive: currentTab == NavigationTab.sites,
-                  onTap: () => ref
-                      .read(navigationProvider.notifier)
-                      .setTab(NavigationTab.sites),
-                ),
-                _buildNavItem(
-                  LucideIcons.database,
-                  'Databases',
-                  isActive: currentTab == NavigationTab.databases,
-                  onTap: () => ref
-                      .read(navigationProvider.notifier)
-                      .setTab(NavigationTab.databases),
-                ),
-                _buildNavItem(
-                  LucideIcons.radio,
-                  'Tunnels',
-                  isActive: currentTab == NavigationTab.tunnels,
-                  onTap: () => ref
-                      .read(navigationProvider.notifier)
-                      .setTab(NavigationTab.tunnels),
-                ),
-                _buildNavItem(
-                  LucideIcons.terminal,
-                  'Logs',
-                  isActive: currentTab == NavigationTab.logs,
-                  onTap: () => ref
-                      .read(navigationProvider.notifier)
-                      .setTab(NavigationTab.logs),
-                ),
-                _buildNavItem(
-                  LucideIcons.fileText,
-                  'Hosts',
-                  isActive: currentTab == NavigationTab.hosts,
-                  onTap: () => ref
-                      .read(navigationProvider.notifier)
-                      .setTab(NavigationTab.hosts),
-                ),
-                _buildNavItem(
-                  LucideIcons.settings,
-                  'Settings',
-                  isActive: currentTab == NavigationTab.settings,
-                  onTap: () => ref
-                      .read(navigationProvider.notifier)
-                      .setTab(NavigationTab.settings),
-                ),
-              ],
-            ),
+          _buildNavItem(
+            LucideIcons.layoutGrid,
+            'Apps',
+            isActive: currentTab == NavigationTab.apps,
+            onTap: () => ref
+                .read(navigationProvider.notifier)
+                .setTab(NavigationTab.apps),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Image.asset('assets/images/icon.png', width: 24, height: 24),
+          _buildNavItem(
+            LucideIcons.globe,
+            'Sites',
+            isActive: currentTab == NavigationTab.sites,
+            onTap: () => ref
+                .read(navigationProvider.notifier)
+                .setTab(NavigationTab.sites),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'DevStack',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: AppTextSize.lg,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  'LOCAL NODE',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: AppTextSize.xxs,
-                    color: AppColors.textSecondary.withValues(alpha: 0.7),
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
-            ),
+          _buildNavItem(
+            LucideIcons.database,
+            'Databases',
+            isActive: currentTab == NavigationTab.databases,
+            onTap: () => ref
+                .read(navigationProvider.notifier)
+                .setTab(NavigationTab.databases),
+          ),
+          _buildNavItem(
+            LucideIcons.radio,
+            'Tunnels',
+            isActive: currentTab == NavigationTab.tunnels,
+            onTap: () => ref
+                .read(navigationProvider.notifier)
+                .setTab(NavigationTab.tunnels),
+          ),
+          _buildNavItem(
+            LucideIcons.terminal,
+            'Logs',
+            isActive: currentTab == NavigationTab.logs,
+            onTap: () => ref
+                .read(navigationProvider.notifier)
+                .setTab(NavigationTab.logs),
+          ),
+          _buildNavItem(
+            LucideIcons.fileText,
+            'Hosts',
+            isActive: currentTab == NavigationTab.hosts,
+            onTap: () => ref
+                .read(navigationProvider.notifier)
+                .setTab(NavigationTab.hosts),
+          ),
+          _buildNavItem(
+            LucideIcons.settings,
+            'Settings',
+            isActive: currentTab == NavigationTab.settings,
+            onTap: () => ref
+                .read(navigationProvider.notifier)
+                .setTab(NavigationTab.settings),
           ),
         ],
       ),
