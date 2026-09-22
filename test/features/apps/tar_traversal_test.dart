@@ -3,7 +3,7 @@ import 'package:archive/archive.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/features/apps/data/app_installer_service.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../helpers/test_ref.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -109,7 +109,7 @@ void main() {
       final tarBytes = TarEncoder().encode(archive);
       final tarFile = File('${tempDir.path}/evil.tar')..writeAsBytesSync(tarBytes);
 
-      final service = AppInstallerService(LogService(), _FakeRef());
+      final service = AppInstallerService(LogService(), testRef());
       final app = AppModel(
         appId: 'test_node',
         name: 'NodeJS Test',
@@ -138,8 +138,4 @@ void main() {
   });
 }
 
-class _FakeRef implements Ref {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
-}
 

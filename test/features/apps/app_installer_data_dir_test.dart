@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dev_stack/core/config/app_config.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/features/apps/data/app_installer_service.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../helpers/test_ref.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -17,7 +17,7 @@ void main() {
   setUp(() {
     tempRoot = Directory.systemTemp.createTempSync('ponta_datadir_test_');
     AppConfig.initialize(baseDir: tempRoot.path);
-    installer = AppInstallerService(LogService(), _FakeRef());
+    installer = AppInstallerService(LogService(), testRef());
     logs.clear();
     AppInstallerService.debugRenameFailure = null;
     AppInstallerService.debugCopyFailure = null;
@@ -303,8 +303,3 @@ void main() {
   );
 }
 
-/// `carryOverDataDir` and `delete` never touch the Ref, so a stub is enough.
-class _FakeRef implements Ref {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
-}

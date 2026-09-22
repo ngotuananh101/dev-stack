@@ -6,22 +6,58 @@ part of 'meilisearch_settings_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(MeilisearchSettings)
+final meilisearchSettingsProvider = MeilisearchSettingsProvider._();
+
+final class MeilisearchSettingsProvider
+    extends $NotifierProvider<MeilisearchSettings, void> {
+  MeilisearchSettingsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'meilisearchSettingsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$meilisearchSettingsHash();
+
+  @$internal
+  @override
+  MeilisearchSettings create() => MeilisearchSettings();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(void value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<void>(value),
+    );
+  }
+}
+
 String _$meilisearchSettingsHash() =>
     r'e7cbd1c253aa89535e0b77b14404fd61a8cdf3d6';
 
-/// See also [MeilisearchSettings].
-@ProviderFor(MeilisearchSettings)
-final meilisearchSettingsProvider =
-    AutoDisposeNotifierProvider<MeilisearchSettings, void>.internal(
-  MeilisearchSettings.new,
-  name: r'meilisearchSettingsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$meilisearchSettingsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$MeilisearchSettings = AutoDisposeNotifier<void>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+abstract class _$MeilisearchSettings extends $Notifier<void> {
+  void build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<void, void>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<void, void>,
+              void,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

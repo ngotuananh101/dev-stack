@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart' show visibleForTesting;
-import 'package:isar/isar.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:isar_plus/isar_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
 import '../../../core/config/app_config.dart';
@@ -46,8 +45,8 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     state = const AsyncValue.loading();
     try {
       final isar = await ref.read(isarProvider.future);
-      final records = await isar.databaseRecords
-          .filter()
+      final records = isar.databaseRecords
+          .where()
           .engineAppIdEqualTo(engineAppId)
           .findAll();
 
@@ -80,14 +79,14 @@ class DatabasesNotifier extends _$DatabasesNotifier {
     }
 
     final isar = await ref.read(isarProvider.future);
-    final existingRecords = await isar.databaseRecords
-        .filter()
+    final existingRecords = isar.databaseRecords
+        .where()
         .engineAppIdEqualTo(app.appId)
         .findAll();
 
     final existingNames = existingRecords.map((e) => e.name).toSet();
 
-    await isar.writeTxn(() async {
+    isar.write((_) {
       for (final name in actualNames) {
         if (!existingNames.contains(name)) {
           // Set default username based on engine
@@ -103,7 +102,7 @@ class DatabasesNotifier extends _$DatabasesNotifier {
             ..engineAppId = app.appId
             ..note = 'Synced from system'
             ..createdAt = DateTime.now();
-          await isar.databaseRecords.put(record);
+          isar.databaseRecords.put(record);
         }
       }
     });
@@ -207,7 +206,7 @@ class DatabasesNotifier extends _$DatabasesNotifier {
       ..note = note
       ..createdAt = DateTime.now();
 
-    await isar.writeTxn(() => isar.databaseRecords.put(record));
+    isar.write((_) => isar.databaseRecords.put(record));
     await fetchByEngine(app.appId);
   }
 
@@ -264,7 +263,7 @@ class DatabasesNotifier extends _$DatabasesNotifier {
       // password). A rename preserves the password, so the existing stored
       // password stays correct.
       record.username = newUser;
-      await isar.writeTxn(() => isar.databaseRecords.put(record));
+      isar.write((_) => isar.databaseRecords.put(record));
     }
 
     // Update user password if changed and engine supports it
@@ -300,7 +299,7 @@ class DatabasesNotifier extends _$DatabasesNotifier {
       record.password = vault.encrypt(newPassword);
     }
     record.note = newNote;
-    await isar.writeTxn(() => isar.databaseRecords.put(record));
+    isar.write((_) => isar.databaseRecords.put(record));
     await fetchByEngine(app.appId);
   }
 
@@ -391,7 +390,7 @@ class DatabasesNotifier extends _$DatabasesNotifier {
 
     // 2. Remove from Isar
     final isar = await ref.read(isarProvider.future);
-    await isar.writeTxn(() => isar.databaseRecords.delete(record.id));
+    isar.write((_) => isar.databaseRecords.delete(record.id));
     await fetchByEngine(app.appId);
   }
 

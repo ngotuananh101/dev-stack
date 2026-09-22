@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
 import '../../../core/config/app_config.dart';
@@ -83,7 +82,7 @@ class AppsNotifier extends _$AppsNotifier {
     }
     _lastUpdate = now;
 
-    final currentData = state.valueOrNull;
+    final currentData = state.value;
     if (currentData != null) {
       state = AsyncValue.data([...currentData]);
     }
@@ -102,7 +101,7 @@ class AppsNotifier extends _$AppsNotifier {
 
         // Rules for phpMyAdmin
         if (app.appId == 'phpMyAdmin') {
-          final allApps = state.valueOrNull ?? [];
+          final allApps = state.value ?? [];
           final hasWebServer = allApps.any(
             (a) => a.isInstalled && a.categories.contains('webserver'),
           );
@@ -157,7 +156,7 @@ class AppsNotifier extends _$AppsNotifier {
 
         // Auto set default PHP if it's the first one
         if (app.groupName == 'php') {
-          final allApps = state.valueOrNull ?? [];
+          final allApps = state.value ?? [];
           final otherPhp = allApps.where(
             (a) =>
                 a.isInstalled && a.groupName == 'php' && a.appId != app.appId,
@@ -169,7 +168,7 @@ class AppsNotifier extends _$AppsNotifier {
         }
 
         // Post-install orchestration
-        final allApps = state.valueOrNull ?? [];
+        final allApps = state.value ?? [];
         await installer.syncInterAppConfigs(
           app,
           allApps,
@@ -299,7 +298,7 @@ class AppsNotifier extends _$AppsNotifier {
           dataCarried = false;
 
           // Post-install orchestration
-          final allApps = state.valueOrNull ?? [];
+          final allApps = state.value ?? [];
           await installer.syncInterAppConfigs(
             app,
             allApps,
@@ -383,7 +382,7 @@ class AppsNotifier extends _$AppsNotifier {
 
   Future<void> uninstall(AppModel app) async {
     final repository = await ref.read(appsRepositoryProvider.future);
-    final allApps = state.valueOrNull ?? [];
+    final allApps = state.value ?? [];
     try {
       final wasDefault = app.isDefault;
 
@@ -545,7 +544,7 @@ class AppsNotifier extends _$AppsNotifier {
       // Sync configs if it's a webserver starting
       if (app.categories.contains('webserver')) {
         final installer = ref.read(appInstallerServiceProvider);
-        final allApps = state.valueOrNull ?? [];
+        final allApps = state.value ?? [];
         await installer.syncInterAppConfigs(app, allApps);
       }
 
@@ -576,7 +575,7 @@ class AppsNotifier extends _$AppsNotifier {
 
   Future<void> stopAllServicesQuietly() async {
     final manager = ref.read(appServiceManagerProvider);
-    final apps = state.valueOrNull ?? [];
+    final apps = state.value ?? [];
 
     for (final app in apps) {
       if (manager.isRunning(app.appId)) {
@@ -587,7 +586,7 @@ class AppsNotifier extends _$AppsNotifier {
   }
 
   Future<void> reconfigureWebservers({bool restartRunning = true}) async {
-    final apps = state.valueOrNull ?? [];
+    final apps = state.value ?? [];
     final installer = ref.read(appInstallerServiceProvider);
 
     await installer.reconfigureWebservers(
@@ -603,7 +602,7 @@ class AppsNotifier extends _$AppsNotifier {
   }
 
   Future<void> restartRunningWebservers() async {
-    final apps = state.valueOrNull ?? [];
+    final apps = state.value ?? [];
     final manager = ref.read(appServiceManagerProvider);
 
     for (final app in apps.where(
@@ -646,7 +645,7 @@ class AppsNotifier extends _$AppsNotifier {
   Future<void> changeDefaultPhp(String appId) async {
     try {
       final repository = await ref.read(appsRepositoryProvider.future);
-      final allApps = state.valueOrNull ?? [];
+      final allApps = state.value ?? [];
 
       // 1. Update DB
       await repository.setDefaultPhp(appId);
@@ -764,7 +763,7 @@ class AppsNotifier extends _$AppsNotifier {
   }
 
   Future<void> stopAllServices() async {
-    final apps = state.valueOrNull ?? [];
+    final apps = state.value ?? [];
     final manager = ref.read(appServiceManagerProvider);
 
     // Lọc ra các app đang chạy

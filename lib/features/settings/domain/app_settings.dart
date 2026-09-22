@@ -1,10 +1,10 @@
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 
 part 'app_settings.g.dart';
 
 @collection
 class AppSettings {
-  Id id = 0;
+  int id = 0; // isar_plus: 0 signals auto-increment
 
   // Base Directory
   String baseDir = 'C:\\Ponta';

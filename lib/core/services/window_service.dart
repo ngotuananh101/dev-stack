@@ -56,7 +56,7 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
     });
 
     // Khởi tạo menu và auto-start lần đầu
-    final initialApps = ref.read(appsNotifierProvider).valueOrNull;
+    final initialApps = ref.read(appsNotifierProvider).value;
     if (initialApps != null) {
       _updateTrayMenu(initialApps);
     }
@@ -92,13 +92,13 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
       ref.read(appsNotifierProvider.notifier).stopAllServices();
     } else if (key.startsWith('stop:')) {
       final appId = key.substring(5);
-      final apps = ref.read(appsNotifierProvider).valueOrNull ?? [];
+      final apps = ref.read(appsNotifierProvider).value ?? [];
       final app = apps.where((a) => a.appId == appId).firstOrNull;
       if (app == null) return;
       ref.read(appsNotifierProvider.notifier).stopService(app);
     } else if (key.startsWith('restart:')) {
       final appId = key.substring(8);
-      final apps = ref.read(appsNotifierProvider).valueOrNull ?? [];
+      final apps = ref.read(appsNotifierProvider).value ?? [];
       final app = apps.where((a) => a.appId == appId).firstOrNull;
       if (app == null) return;
       ref.read(appsNotifierProvider.notifier).restartService(app);

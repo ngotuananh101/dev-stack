@@ -6,7 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/database/isar_provider.dart';
 import '../domain/site_model.dart';
 import '../domain/batch_models.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 import '../../apps/data/apps_provider.dart';
 import '../../apps/data/app_installer_service.dart';
 import '../../../core/services/ssl_service.dart';
@@ -214,7 +214,7 @@ class SitesNotifier extends _$SitesNotifier {
   Future<List<SiteModel>> build() async {
     final isar = await ref.watch(isarProvider.future);
     final sites =
-        await isar.siteModels.where().sortByCreatedAtDesc().findAll();
+        isar.siteModels.where().sortByCreatedAtDesc().findAll();
 
     // Auto-start CLI sites that were persisted with autoStart == true. This
     // runs after the DB load completes (via microtask) so it does not delay the
@@ -299,8 +299,8 @@ class SitesNotifier extends _$SitesNotifier {
       createdAt: DateTime.now(),
     );
 
-    await isar.writeTxn(() async {
-      await isar.siteModels.put(site);
+    isar.write((_) {
+      isar.siteModels.put(site);
     });
 
     try {
@@ -315,7 +315,7 @@ class SitesNotifier extends _$SitesNotifier {
       // failed — rolling back the row keeps the DB in sync with the
       // filesystem so the user can retry cleanly instead of being left with
       // an orphaned record that has no vhost file.
-      await isar.writeTxn(() => isar.siteModels.delete(site.id));
+      isar.write((_) => isar.siteModels.delete(site.id));
       rethrow;
     }
 
@@ -363,8 +363,8 @@ class SitesNotifier extends _$SitesNotifier {
     if (!certPresent()) {
       logger.error('Failed to generate SSL for ${site.domain}, disabling SSL');
       site.useSsl = false;
-      await isar.writeTxn(() async {
-        await isar.siteModels.put(site);
+      isar.write((_) {
+        isar.siteModels.put(site);
       });
     }
   }
@@ -382,7 +382,7 @@ class SitesNotifier extends _$SitesNotifier {
     final logger = ref.read(logServiceProvider);
 
     // Determine which specs are new (skip duplicates by domain).
-    final existingDomains = (await isar.siteModels.where().findAll())
+    final existingDomains = (isar.siteModels.where().findAll())
         .map((s) => s.domain)
         .toSet();
     final seen = <String>{};
@@ -438,8 +438,8 @@ class SitesNotifier extends _$SitesNotifier {
 
     // Persist all new sites in one transaction.
     if (toCreate.isNotEmpty) {
-      await isar.writeTxn(() async {
-        await isar.siteModels.putAll(toCreate);
+      isar.write((_) {
+        isar.siteModels.putAll(toCreate);
       });
     }
 
@@ -502,7 +502,7 @@ class SitesNotifier extends _$SitesNotifier {
     required bool useSsl,
   }) async {
     final isar = await ref.read(isarProvider.future);
-    final oldSite = await isar.siteModels.get(id);
+    final oldSite = isar.siteModels.get(id);
     if (oldSite == null) return;
 
     if (siteType == 'proxy') {
@@ -549,8 +549,8 @@ class SitesNotifier extends _$SitesNotifier {
       createdAt: oldSite.createdAt,
     );
 
-    await isar.writeTxn(() async {
-      await isar.siteModels.put(updatedSite);
+    isar.write((_) {
+      isar.siteModels.put(updatedSite);
     });
 
     if (useSsl) {
@@ -594,7 +594,7 @@ class SitesNotifier extends _$SitesNotifier {
 
   Future<void> deleteSite(int id, {bool restartWebserver = true}) async {
     final isar = await ref.read(isarProvider.future);
-    final site = await isar.siteModels.get(id);
+    final site = isar.siteModels.get(id);
 
     if (site != null) {
       // Stop the CLI process before tearing down files/DB so its open log file
@@ -609,8 +609,8 @@ class SitesNotifier extends _$SitesNotifier {
       // file is benign (cleared on a later regen or manually). The previous
       // order (files → DB) could leave the site fully in place — row +
       // routing hosts entry — when a file delete threw.
-      await isar.writeTxn(() async {
-        await isar.siteModels.delete(id);
+      isar.write((_) {
+        isar.siteModels.delete(id);
       });
 
       try {
@@ -641,7 +641,7 @@ class SitesNotifier extends _$SitesNotifier {
 
     final sites = <SiteModel>[];
     for (final id in ids) {
-      final site = await isar.siteModels.get(id);
+      final site = isar.siteModels.get(id);
       if (site != null) sites.add(site);
     }
 
@@ -678,8 +678,8 @@ class SitesNotifier extends _$SitesNotifier {
 
     // Delete DB rows for successfully removed sites in one transaction.
     if (removedIds.isNotEmpty) {
-      await isar.writeTxn(() async {
-        await isar.siteModels.deleteAll(removedIds);
+      isar.write((_) {
+        isar.siteModels.deleteAll(removedIds);
       });
     }
 
@@ -796,7 +796,7 @@ class SitesNotifier extends _$SitesNotifier {
           );
     }
     state = AsyncValue.data(
-      await isar.siteModels.where().sortByCreatedAtDesc().findAll(),
+      isar.siteModels.where().sortByCreatedAtDesc().findAll(),
     );
     if (restartWebserver) {
       await restartWebservers();
@@ -805,7 +805,7 @@ class SitesNotifier extends _$SitesNotifier {
 
   Future<bool> _updateHostsFile() async {
     final isar = await ref.read(isarProvider.future);
-    final allSites = await isar.siteModels.where().findAll();
+    final allSites = isar.siteModels.where().findAll();
 
     String hostsContent = await _hostsRepo.readHostsRaw();
     const startMarker = '# [PONTA-START]';
@@ -1099,7 +1099,7 @@ class SitesNotifier extends _$SitesNotifier {
   Future<void> regenerateAllVhosts({bool restartWebserver = true}) async {
     final isar = await ref.read(isarProvider.future);
     final logger = ref.read(logServiceProvider);
-    final sites = await isar.siteModels.where().findAll();
+    final sites = isar.siteModels.where().findAll();
 
     // One bad site (e.g. a stale proxy target that no longer passes
     // validateProxyTarget) must not abort regeneration for every other site.

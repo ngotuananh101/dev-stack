@@ -6,21 +6,49 @@ part of 'window_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$windowServiceHash() => r'c5bf498bd84581a1020ed2bc7019a2084c09639a';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [WindowService].
 @ProviderFor(WindowService)
-final windowServiceProvider =
-    AsyncNotifierProvider<WindowService, void>.internal(
-  WindowService.new,
-  name: r'windowServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$windowServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final windowServiceProvider = WindowServiceProvider._();
 
-typedef _$WindowService = AsyncNotifier<void>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+final class WindowServiceProvider
+    extends $AsyncNotifierProvider<WindowService, void> {
+  WindowServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'windowServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$windowServiceHash();
+
+  @$internal
+  @override
+  WindowService create() => WindowService();
+}
+
+String _$windowServiceHash() => r'399e8255134aa6cf297ba98997f48dbeffd22aa5';
+
+abstract class _$WindowService extends $AsyncNotifier<void> {
+  FutureOr<void> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<void>, void>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<void>, void>,
+              AsyncValue<void>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

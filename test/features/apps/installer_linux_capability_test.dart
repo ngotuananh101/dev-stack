@@ -3,21 +3,17 @@ import 'dart:io';
 import 'package:dev_stack/core/config/app_config.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/features/apps/data/app_installer_service.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../helpers/test_ref.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
-class _FakeRef implements Ref {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
-}
 
 void main() {
   late AppInstallerService installerService;
   late Directory tempAppsDir;
 
   setUp(() {
-    installerService = AppInstallerService(LogService(), _FakeRef());
+    installerService = AppInstallerService(LogService(), testRef());
     tempAppsDir = Directory.systemTemp.createTempSync('ponta_test_apps_');
     AppConfig.initialize(baseDir: tempAppsDir.path);
   });

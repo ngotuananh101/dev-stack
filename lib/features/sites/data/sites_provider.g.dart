@@ -6,21 +6,49 @@ part of 'sites_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sitesNotifierHash() => r'7de7f64548584b5398997de45764a63d7fa6ee05';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [SitesNotifier].
 @ProviderFor(SitesNotifier)
-final sitesNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<SitesNotifier, List<SiteModel>>.internal(
-  SitesNotifier.new,
-  name: r'sitesNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$sitesNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final sitesNotifierProvider = SitesNotifierProvider._();
 
-typedef _$SitesNotifier = AutoDisposeAsyncNotifier<List<SiteModel>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+final class SitesNotifierProvider
+    extends $AsyncNotifierProvider<SitesNotifier, List<SiteModel>> {
+  SitesNotifierProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'sitesNotifierProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$sitesNotifierHash();
+
+  @$internal
+  @override
+  SitesNotifier create() => SitesNotifier();
+}
+
+String _$sitesNotifierHash() => r'390dfecb8c85f5c2c09930084df9642b9a9a3ade';
+
+abstract class _$SitesNotifier extends $AsyncNotifier<List<SiteModel>> {
+  FutureOr<List<SiteModel>> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<List<SiteModel>>, List<SiteModel>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<List<SiteModel>>, List<SiteModel>>,
+              AsyncValue<List<SiteModel>>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

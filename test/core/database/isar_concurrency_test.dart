@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 import 'package:dev_stack/core/database/isar_provider.dart';
 
 class _FakeIsar extends Fake implements Isar {
@@ -9,7 +9,7 @@ class _FakeIsar extends Fake implements Isar {
   bool isOpen;
 
   @override
-  Future<bool> close({bool deleteFromDisk = false}) async {
+  bool close({bool deleteFromDisk = false}) {
     isOpen = false;
     return true;
   }

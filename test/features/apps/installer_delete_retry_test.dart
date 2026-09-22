@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/features/apps/data/app_installer_service.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../helpers/test_ref.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -23,7 +23,7 @@ void main() {
 
     setUp(() {
       tempRoot = Directory.systemTemp.createTempSync('dev_stack_delete_test_');
-      installer = AppInstallerService(LogService(), _FakeRef());
+      installer = AppInstallerService(LogService(), testRef());
     });
 
     tearDown(() {
@@ -134,7 +134,3 @@ void main() {
   });
 }
 
-class _FakeRef implements Ref {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
-}

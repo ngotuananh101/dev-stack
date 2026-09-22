@@ -51,7 +51,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
         ? null
         : AppConflictPolicy.firstInstalledConflict(
             widget.app,
-            appsAsync.valueOrNull ?? const <AppModel>[],
+            appsAsync.value ?? const <AppModel>[],
           );
 
     // Show progress if installing OR if just finished installing

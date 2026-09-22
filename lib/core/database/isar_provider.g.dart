@@ -6,19 +6,38 @@ part of 'isar_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$isarHash() => r'ead9da961d9db5d57433f885f690704108ac86fb';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [isar].
 @ProviderFor(isar)
-final isarProvider = FutureProvider<Isar>.internal(
-  isar,
-  name: r'isarProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$isarHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final isarProvider = IsarProvider._();
 
-typedef IsarRef = FutureProviderRef<Isar>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+final class IsarProvider
+    extends $FunctionalProvider<AsyncValue<Isar>, Isar, FutureOr<Isar>>
+    with $FutureModifier<Isar>, $FutureProvider<Isar> {
+  IsarProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'isarProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$isarHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Isar> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Isar> create(Ref ref) {
+    return isar(ref);
+  }
+}
+
+String _$isarHash() => r'ef00f13241064567f2554f67859543066aecc3aa';

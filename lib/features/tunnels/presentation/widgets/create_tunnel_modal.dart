@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:isar/isar.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_text_size.dart';
@@ -65,7 +64,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
 
     final isEditing = widget.initialTunnel != null;
     final tunnel = TunnelModel(
-      id: isEditing ? widget.initialTunnel!.id : Isar.autoIncrement,
+      id: isEditing ? widget.initialTunnel!.id : 0, // isar_plus: 0 signals auto-increment
       name: _nameController.text.trim(),
       provider: _provider,
       targetType: _targetType,

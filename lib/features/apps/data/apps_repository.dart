@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
@@ -144,7 +144,7 @@ class AppsRepository {
       final List appsJson = data['apps'];
 
       // 2. Load installed apps from Isar
-      final installedApps = await isar.installedApps.where().findAll();
+      final installedApps = isar.installedApps.where().findAll();
       final installedMap = {for (var a in installedApps) a.appId: a};
 
       // 3. Merge definitions with installation state
@@ -172,7 +172,7 @@ class AppsRepository {
   }
 
   Future<void> save(AppModel app) async {
-    await isar.writeTxn(() async {
+    isar.write((_) {
       final installed = InstalledApp(
         appId: app.appId,
         appName: app.name,
@@ -188,42 +188,42 @@ class AppsRepository {
         isDefault: app.isDefault,
         extraInfoJson: app.extraInfoJson,
       );
-      await isar.installedApps.put(installed);
+      isar.installedApps.put(installed);
     });
   }
 
   Future<void> setDefaultPhp(String appId) async {
-    await isar.writeTxn(() async {
+    isar.write((_) {
       // 1. Find the target app
-      final target = await isar.installedApps
-          .filter()
+      final target = isar.installedApps
+          .where()
           .appIdEqualTo(appId)
           .findFirst();
       if (target == null) return;
 
       // 2. Unset all other apps in the same group (e.g., PHP versions)
       if (target.groupName != null) {
-        final groupApps = await isar.installedApps
-            .filter()
+        final groupApps = isar.installedApps
+            .where()
             .groupNameEqualTo(target.groupName)
             .findAll();
         for (final app in groupApps) {
           if (app.appId != appId && app.isDefault) {
             app.isDefault = false;
-            await isar.installedApps.put(app);
+            isar.installedApps.put(app);
           }
         }
       }
 
       // 3. Set target as default
       target.isDefault = true;
-      await isar.installedApps.put(target);
+      isar.installedApps.put(target);
     });
   }
 
   Future<void> delete(String appId) async {
-    await isar.writeTxn(() async {
-      await isar.installedApps.filter().appIdEqualTo(appId).deleteAll();
+    isar.write((_) {
+      isar.installedApps.where().appIdEqualTo(appId).deleteAll();
     });
   }
 

@@ -1,12 +1,12 @@
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 
 part 'database_record.g.dart';
 
 @collection
 class DatabaseRecord {
-  Id id = Isar.autoIncrement;
+  int id = 0; // isar_plus: 0 signals auto-increment
 
-  @Index(unique: true, replace: true)
+  @Index(unique: true)
   late String name;
 
   late String username;

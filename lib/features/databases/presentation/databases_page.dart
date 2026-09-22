@@ -78,7 +78,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     final enginesAsync = ref.watch(installedDatabaseEnginesProvider);
     final databasesAsync = ref.watch(databasesNotifierProvider);
     final appsState = ref.watch(appsNotifierProvider);
-    final allApps = appsState.valueOrNull ?? [];
+    final allApps = appsState.value ?? [];
     final heidiSql = allApps.firstWhere(
       (a) => a.appId == 'heidisql' && a.isInstalled,
       orElse: () => AppModel(appId: '', name: '', categories: []),

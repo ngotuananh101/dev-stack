@@ -262,7 +262,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
 
   Future<void> _handleBatchCreateSites() async {
     final settingsAsync = ref.read(settingsNotifierProvider);
-    final settings = settingsAsync.valueOrNull;
+    final settings = settingsAsync.value;
     if (settings == null) return;
 
     final path = await FilePicker.getDirectoryPath();

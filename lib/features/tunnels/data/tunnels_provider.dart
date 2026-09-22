@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
+// Riverpod 3 moved `StateNotifier` / `StateNotifierProvider` out of the main
+// export into `legacy.dart` (they now live in the `state_notifier` package).
+// This file is the only remaining consumer in the codebase.
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:isar_plus/isar_plus.dart';
 import '../../../core/database/isar_provider.dart';
 import '../domain/tunnel_model.dart';
 import '../domain/tunnel_session.dart';

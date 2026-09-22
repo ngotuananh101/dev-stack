@@ -11,7 +11,7 @@ part 'log_service.g.dart';
 final AppLogger = LogService();
 
 @riverpod
-LogService logService(LogServiceRef ref) {
+LogService logService(Ref ref) {
   return AppLogger;
 }
 

@@ -428,7 +428,7 @@ class SiteTable extends ConsumerWidget {
     final phpApps =
         ref
             .read(appsNotifierProvider)
-            .valueOrNull
+            .value
             ?.where((a) => a.isInstalled && a.groupName == 'php') ??
         [];
     String? phpDir;

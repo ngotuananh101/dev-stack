@@ -7,7 +7,6 @@ import 'package:archive/archive.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
 import '../../../core/services/log_service.dart';
@@ -1760,7 +1759,7 @@ security:
   /// to the default PHP-FPM so https://localhost/*.php is served.
   int? _resolveDefaultPhpPort() {
     try {
-      final apps = _ref.read(appsNotifierProvider).valueOrNull;
+      final apps = _ref.read(appsNotifierProvider).value;
       if (apps == null) return null;
       final phpApps = apps
           .where((a) => a.isInstalled && a.groupName == 'php')

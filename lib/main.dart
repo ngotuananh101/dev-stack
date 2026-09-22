@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/config/app_config.dart';
 import 'core/database/isar_provider.dart';
@@ -37,7 +37,7 @@ void main(List<String> args) async {
 
   // Load persisted baseDir from Isar before anything else
   final isar = await IsarInstance.getInstance();
-  final settings = await isar.appSettings.where().findFirst();
+  final settings = isar.appSettings.where().findFirst();
   if (settings != null) {
     AppConfig.initialize(baseDir: settings.baseDir);
   }
@@ -110,7 +110,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       // Auto-start tunnels with autoStart == true
       final isar = await IsarInstance.getInstance();
       final autoTunnels =
-          await isar.tunnelModels.filter().autoStartEqualTo(true).findAll();
+          isar.tunnelModels.where().autoStartEqualTo(true).findAll();
       for (final tunnel in autoTunnels) {
         ref.read(tunnelSessionsProvider.notifier).start(tunnel);
       }

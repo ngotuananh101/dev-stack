@@ -36,7 +36,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       body: settingsAsync.when(
         data: (settings) {
           final installedPhps =
-              appsAsync.valueOrNull
+              appsAsync.value
                   ?.where((a) => a.isInstalled && a.groupName == 'php')
                   .toList() ??
               [];
@@ -180,8 +180,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         loading: () => 'Checking...',
                         error: (e, s) => 'Error',
                       ),
-                      isSuccess: sslAsync.valueOrNull == true,
-                      actions: sslAsync.valueOrNull == true
+                      isSuccess: sslAsync.value == true,
+                      actions: sslAsync.value == true
                           ? [
                               _StatusAction(
                                 label: 'Reinstall',

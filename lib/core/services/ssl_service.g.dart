@@ -6,19 +6,49 @@ part of 'ssl_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(SslService)
+final sslServiceProvider = SslServiceProvider._();
+
+final class SslServiceProvider
+    extends $AsyncNotifierProvider<SslService, bool> {
+  SslServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'sslServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$sslServiceHash();
+
+  @$internal
+  @override
+  SslService create() => SslService();
+}
+
 String _$sslServiceHash() => r'409e180650c57510246deb867333b910dd177c62';
 
-/// See also [SslService].
-@ProviderFor(SslService)
-final sslServiceProvider = AsyncNotifierProvider<SslService, bool>.internal(
-  SslService.new,
-  name: r'sslServiceProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$sslServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$SslService = AsyncNotifier<bool>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+abstract class _$SslService extends $AsyncNotifier<bool> {
+  FutureOr<bool> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<bool>, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<bool>, bool>,
+              AsyncValue<bool>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

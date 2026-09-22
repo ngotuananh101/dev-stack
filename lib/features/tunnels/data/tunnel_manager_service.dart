@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 import '../../../core/services/background_process.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/database/isar_provider.dart';
@@ -118,7 +118,7 @@ class TunnelManagerService {
     final isar = _isar;
     if (tunnel.authToken == null || tunnel.authToken!.trim().isEmpty) {
       if (resolvedDefaultToken == null && isar != null) {
-        final settings = await isar.appSettings.where().findFirst();
+        final settings = isar.appSettings.where().findFirst();
         if (tunnel.provider.toLowerCase() == 'ngrok') {
           resolvedDefaultToken = settings?.ngrokDefaultToken;
         } else if (tunnel.provider.toLowerCase() == 'cloudflare') {
@@ -304,8 +304,8 @@ class TunnelManagerService {
   Future<TunnelModel> saveTunnel(TunnelModel tunnel) async {
     final isar = _isar;
     if (isar != null) {
-      await isar.writeTxn(() async {
-        await isar.tunnelModels.put(tunnel);
+      isar.write((_) {
+        isar.tunnelModels.put(tunnel);
       });
     }
     return tunnel;
@@ -315,8 +315,8 @@ class TunnelManagerService {
     await stopTunnel(id);
     final isar = _isar;
     if (isar != null) {
-      await isar.writeTxn(() async {
-        await isar.tunnelModels.delete(id);
+      isar.write((_) {
+        isar.tunnelModels.delete(id);
       });
     }
     _sessions.remove(id);
