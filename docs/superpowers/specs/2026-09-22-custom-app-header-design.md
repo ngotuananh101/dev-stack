@@ -105,7 +105,7 @@ with hover state held in `AppHeader`'s own state:
 | Button | Icon | Action |
 | --- | --- | --- |
 | Minimize | `LucideIcons.minus` | `windowManager.minimize()` |
-| Maximize / Restore | `LucideIcons.square` / `LucideIcons.maximize` | `windowManager.maximize()` / `unmaximize()` |
+| Maximize / Restore | `LucideIcons.square` (not maximized) / `LucideIcons.copy` (maximized) | `windowManager.maximize()` / `unmaximize()` |
 | Close | `LucideIcons.x` | `windowManager.close()` |
 
 - Idle: icon `AppColors.textSecondary` on transparent.
@@ -113,7 +113,9 @@ with hover state held in `AppHeader`'s own state:
 - Close hover: background `AppColors.error`, icon `AppColors.textOnColor`.
 - The maximize icon is driven by `WindowListener.onWindowMaximize` /
   `onWindowUnmaximize`; `WindowListener` is also registered and unregistered in
-  `initState` / `dispose`.
+  `initState` / `dispose`. `LucideIcons.copy` is used for the restore state
+  because it is the closest match to the standard overlapping-squares restore
+  glyph; `LucideIcons.maximize` is reserved and not used.
 - Colors come from tokens only. No literal `Color(...)` values, keeping the
   app-wide token discipline established in the UI standardization work.
 
