@@ -4,7 +4,7 @@ import 'hosts_repository.dart';
 part 'hosts_provider.g.dart';
 
 @riverpod
-class HostsNotifier extends _$HostsNotifier {
+class Hosts extends _$Hosts {
   final _repository = HostsRepository();
 
   @override

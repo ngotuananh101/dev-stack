@@ -31,7 +31,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_didAutoRefreshCatalog) return;
       _didAutoRefreshCatalog = true;
-      ref.read(appsNotifierProvider.notifier).autoUpdateCatalog();
+      ref.read(appsProvider.notifier).autoUpdateCatalog();
     });
   }
 
@@ -72,13 +72,13 @@ class _AppsPageState extends ConsumerState<AppsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final appsAsync = ref.watch(appsNotifierProvider);
+    final appsAsync = ref.watch(appsProvider);
 
     // Listen for global errors
-    ref.listen(errorNotifierProvider, (previous, next) {
+    ref.listen(appErrorProvider, (previous, next) {
       if (next != null) {
         AppDialogs.showError(context, title: 'Error', message: next);
-        ref.read(errorNotifierProvider.notifier).clearError();
+        ref.read(appErrorProvider.notifier).clearError();
       }
     });
 
@@ -129,7 +129,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                         onToggleInstall: (app) async {
                           try {
                             await ref
-                                .read(appsNotifierProvider.notifier)
+                                .read(appsProvider.notifier)
                                 .toggleInstallation(app);
                           } catch (e) {
                             if (!context.mounted) return;
@@ -145,7 +145,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                         },
                         onTogglePath: (app) async {
                           await ref
-                              .read(appsNotifierProvider.notifier)
+                              .read(appsProvider.notifier)
                               .togglePath(app);
 
                           if (!context.mounted) return;
@@ -159,22 +159,22 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                         },
                         onStartService: (app) async {
                           await ref
-                              .read(appsNotifierProvider.notifier)
+                              .read(appsProvider.notifier)
                               .startService(app);
                         },
                         onStopService: (app) async {
                           await ref
-                              .read(appsNotifierProvider.notifier)
+                              .read(appsProvider.notifier)
                               .stopService(app);
                         },
                         onRestartService: (app) async {
                           await ref
-                              .read(appsNotifierProvider.notifier)
+                              .read(appsProvider.notifier)
                               .restartService(app);
                         },
                         onChangeDefault: (appId) async {
                           await ref
-                              .read(appsNotifierProvider.notifier)
+                              .read(appsProvider.notifier)
                               .changeDefaultPhp(appId);
 
                           if (!context.mounted) return;
@@ -185,7 +185,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                         },
                         onOpen: (app) async {
                           await ref
-                              .read(appsNotifierProvider.notifier)
+                              .read(appsProvider.notifier)
                               .openApp(app);
                         },
                       ),
@@ -218,8 +218,8 @@ class _AppsPageState extends ConsumerState<AppsPage> {
 
   Future<void> _handleUpdateList() async {
     try {
-      final notifier = ref.read(appsNotifierProvider.notifier);
-      await notifier.updateCatalog(AppsNotifier.catalogUrl);
+      final notifier = ref.read(appsProvider.notifier);
+      await notifier.updateCatalog(Apps.catalogUrl);
 
       if (!mounted) return;
 

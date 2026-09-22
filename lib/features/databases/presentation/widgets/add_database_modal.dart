@@ -82,7 +82,7 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
 
       if (isEdit) {
         await ref
-            .read(databasesNotifierProvider.notifier)
+            .read(databasesProvider.notifier)
             .updateDatabase(
               app: widget.engine,
               record: widget.initialData!,
@@ -92,7 +92,7 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
             );
       } else {
         await ref
-            .read(databasesNotifierProvider.notifier)
+            .read(databasesProvider.notifier)
             .addDatabase(
               app: widget.engine,
               name: dbName,

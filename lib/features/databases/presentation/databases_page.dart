@@ -56,11 +56,11 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     if (selectedEngine != null) {
       if (selectedEngine!.appId.contains('redis')) {
         ref
-            .read(redisNotifierProvider.notifier)
+            .read(redisProvider.notifier)
             .fetchKeys(selectedEngine!, _selectedRedisDb, query: _searchQuery);
       } else {
         ref
-            .read(databasesNotifierProvider.notifier)
+            .read(databasesProvider.notifier)
             .fetchByEngine(selectedEngine!.appId);
       }
     }
@@ -76,8 +76,8 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
   @override
   Widget build(BuildContext context) {
     final enginesAsync = ref.watch(installedDatabaseEnginesProvider);
-    final databasesAsync = ref.watch(databasesNotifierProvider);
-    final appsState = ref.watch(appsNotifierProvider);
+    final databasesAsync = ref.watch(databasesProvider);
+    final appsState = ref.watch(appsProvider);
     final allApps = appsState.value ?? [];
     final heidiSql = allApps.firstWhere(
       (a) => a.appId == 'heidisql' && a.isInstalled,
@@ -231,7 +231,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       confirmBtnText: 'DELETE',
       onConfirm: () async {
         await ref
-            .read(databasesNotifierProvider.notifier)
+            .read(databasesProvider.notifier)
             .deleteDatabase(selectedEngine!, record);
       },
     );
@@ -288,7 +288,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                   AppButton(
                     label: 'Open MongoDB Compass',
                     onPressed: () =>
-                        ref.read(appsNotifierProvider.notifier).openApp(mongoCompass),
+                        ref.read(appsProvider.notifier).openApp(mongoCompass),
                     icon: const Icon(LucideIcons.externalLink, size: 18),
                     style: AppButtonStyle.primary,
                     size: AppButtonSize.lg,
@@ -429,7 +429,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
             LucideIcons.externalLink,
             color: const Color(0xFFE26B0A),
             onTap: () =>
-                ref.read(appsNotifierProvider.notifier).openApp(heidiSql),
+                ref.read(appsProvider.notifier).openApp(heidiSql),
           ),
           const SizedBox(width: 12),
         ],
@@ -440,7 +440,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
             LucideIcons.externalLink,
             color: const Color(0xFF13AA52),
             onTap: () =>
-                ref.read(appsNotifierProvider.notifier).openApp(mongoCompass),
+                ref.read(appsProvider.notifier).openApp(mongoCompass),
           ),
           const SizedBox(width: 12),
         ],
@@ -453,14 +453,14 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
               if (selectedEngine != null) {
                 if (isRedis) {
                   ref.invalidate(redisDbStatsProvider(selectedEngine!));
-                  ref.read(redisNotifierProvider.notifier).fetchKeys(
+                  ref.read(redisProvider.notifier).fetchKeys(
                         selectedEngine!,
                         _selectedRedisDb,
                         query: _searchQuery,
                       );
                 } else {
                   ref
-                      .read(databasesNotifierProvider.notifier)
+                      .read(databasesProvider.notifier)
                       .syncDatabases(selectedEngine!);
                 }
               }
@@ -489,15 +489,15 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       onSelected: (value) async {
         if (value == 'start') {
           await ref
-              .read(appsNotifierProvider.notifier)
+              .read(appsProvider.notifier)
               .startService(selectedEngine!);
         } else if (value == 'stop') {
           await ref
-              .read(appsNotifierProvider.notifier)
+              .read(appsProvider.notifier)
               .stopService(selectedEngine!);
         } else if (value == 'restart') {
           await ref
-              .read(appsNotifierProvider.notifier)
+              .read(appsProvider.notifier)
               .restartService(selectedEngine!);
         }
       },

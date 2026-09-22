@@ -6,7 +6,7 @@ import '../../apps/domain/app_model.dart';
 part 'redis_provider.g.dart';
 
 @riverpod
-class RedisNotifier extends _$RedisNotifier {
+class Redis extends _$Redis {
   bool _isDisposed = false;
   bool _isFetching = false;
 

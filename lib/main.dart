@@ -123,7 +123,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     ref.watch(windowServiceProvider);
 
     // Eagerly initialize apps provider for background services auto-start
-    ref.watch(appsNotifierProvider.future);
+    ref.watch(appsProvider.future);
 
     // Listen to SSL changes to reconfigure web servers
     ref.listen(sslServiceProvider, (previous, next) async {
@@ -131,7 +131,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       final prevValue = previous?.asData?.value;
 
       if (nextValue != null && prevValue != null && nextValue != prevValue) {
-        final apps = await ref.read(appsNotifierProvider.future);
+        final apps = await ref.read(appsProvider.future);
         final installer = ref.read(appInstallerServiceProvider);
         await installer.reconfigureWebservers(
           apps,

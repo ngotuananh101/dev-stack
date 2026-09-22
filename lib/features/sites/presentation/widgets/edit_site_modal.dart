@@ -212,7 +212,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
     setState(() => _isSaving = true);
     try {
       await ref
-          .read(sitesNotifierProvider.notifier)
+          .read(sitesProvider.notifier)
           .updateSite(
             id: widget.site.id,
             domain: _domainController.text.trim(),
@@ -254,7 +254,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
 
   @override
   Widget build(BuildContext context) {
-    final appsAsync = ref.watch(appsNotifierProvider);
+    final appsAsync = ref.watch(appsProvider);
 
     return appsAsync.when(
       data: (apps) {
@@ -402,7 +402,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                         return 'Please enter a target URL';
                       }
                       try {
-                        SitesNotifier.validateProxyTarget(value);
+                        Sites.validateProxyTarget(value);
                       } on ArgumentError catch (e) {
                         return e.message.toString();
                       }
@@ -636,7 +636,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
   Future<void> _loadConfig() async {
     setState(() => _isLoading = true);
     final configs = await ref
-        .read(sitesNotifierProvider.notifier)
+        .read(sitesProvider.notifier)
         .getConfigs(widget.site);
     _controller.text = configs[_selectedType] ?? '';
     setState(() => _isLoading = false);
@@ -644,7 +644,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
 
   Future<void> _saveConfig() async {
     await ref
-        .read(sitesNotifierProvider.notifier)
+        .read(sitesProvider.notifier)
         .saveConfig(widget.site, _selectedType, _controller.text);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -767,7 +767,7 @@ class _SslTabState extends ConsumerState<_SslTab> {
   Future<void> _loadSslFiles() async {
     setState(() => _isLoading = true);
     final files = await ref
-        .read(sitesNotifierProvider.notifier)
+        .read(sitesProvider.notifier)
         .getSslFiles(widget.site);
     _controller.text = files[_selectedFile] ?? '';
     setState(() => _isLoading = false);
@@ -775,7 +775,7 @@ class _SslTabState extends ConsumerState<_SslTab> {
 
   Future<void> _saveSslFile() async {
     await ref
-        .read(sitesNotifierProvider.notifier)
+        .read(sitesProvider.notifier)
         .saveSslFile(widget.site, _selectedFile, _controller.text);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -785,7 +785,7 @@ class _SslTabState extends ConsumerState<_SslTab> {
   }
 
   Future<void> _regenerate() async {
-    await ref.read(sitesNotifierProvider.notifier).regenerateSsl(widget.site);
+    await ref.read(sitesProvider.notifier).regenerateSsl(widget.site);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('SSL certificate regenerated')),
@@ -913,7 +913,7 @@ class _LogTabState extends ConsumerState<_LogTab> {
   Future<void> _refreshLogs() async {
     setState(() => _isLoading = true);
     final logs = await ref
-        .read(sitesNotifierProvider.notifier)
+        .read(sitesProvider.notifier)
         .getLogs(widget.site);
     setState(() {
       _logs = logs;

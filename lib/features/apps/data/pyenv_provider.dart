@@ -16,7 +16,7 @@ class PyenvState {
 }
 
 @riverpod
-class PyenvNotifier extends _$PyenvNotifier {
+class Pyenv extends _$Pyenv {
   @override
   Future<PyenvState> build() async {
     final installed = await _getInstalledVersions();
@@ -158,7 +158,7 @@ class PyenvNotifier extends _$PyenvNotifier {
   }
 
   Future<AppModel?> _getPyenvApp() async {
-    final apps = await ref.read(appsNotifierProvider.future);
+    final apps = await ref.read(appsProvider.future);
     return apps.where((a) => a.appId == 'pyenv').firstOrNull;
   }
 

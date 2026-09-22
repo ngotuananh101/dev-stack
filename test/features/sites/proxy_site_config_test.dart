@@ -57,15 +57,15 @@ void main() {
 
     test('Proxy target validation accepts valid URLs and rejects malicious input', () {
       expect(
-        SitesNotifier.validateProxyTarget('http://localhost:5000'),
+        Sites.validateProxyTarget('http://localhost:5000'),
         'http://localhost:5000',
       );
       expect(
-        () => SitesNotifier.validateProxyTarget(''),
+        () => Sites.validateProxyTarget(''),
         throwsA(isA<ArgumentError>()),
       );
       expect(
-        () => SitesNotifier.validateProxyTarget('http://localhost:5000;\nrm -rf /'),
+        () => Sites.validateProxyTarget('http://localhost:5000;\nrm -rf /'),
         throwsA(isA<ArgumentError>()),
       );
     });
@@ -73,11 +73,11 @@ void main() {
     test('Non-empty rootDir validation prevents directive injection if provided', () {
       // If a proxy site supplies a rootDir, unsafe characters are still caught
       expect(
-        () => SitesNotifier.validateRootDir('C:\\path"with"quotes'),
+        () => Sites.validateRootDir('C:\\path"with"quotes'),
         throwsA(isA<ArgumentError>()),
       );
       expect(
-        () => SitesNotifier.validateRootDir('C:\\path\nwith\nnewlines'),
+        () => Sites.validateRootDir('C:\\path\nwith\nnewlines'),
         throwsA(isA<ArgumentError>()),
       );
     });

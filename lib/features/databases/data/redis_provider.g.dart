@@ -9,33 +9,33 @@ part of 'redis_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(RedisNotifier)
-final redisNotifierProvider = RedisNotifierProvider._();
+@ProviderFor(Redis)
+final redisProvider = RedisProvider._();
 
-final class RedisNotifierProvider
-    extends $AsyncNotifierProvider<RedisNotifier, List<RedisKey>> {
-  RedisNotifierProvider._()
+final class RedisProvider
+    extends $AsyncNotifierProvider<Redis, List<RedisKey>> {
+  RedisProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'redisNotifierProvider',
+        name: r'redisProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$redisNotifierHash();
+  String debugGetCreateSourceHash() => _$redisHash();
 
   @$internal
   @override
-  RedisNotifier create() => RedisNotifier();
+  Redis create() => Redis();
 }
 
-String _$redisNotifierHash() => r'4d323a8212dbbd985a249092e030ed6dcd9d40ac';
+String _$redisHash() => r'932cacef34446d7e0442a9ddfc2083ce58d95fe8';
 
-abstract class _$RedisNotifier extends $AsyncNotifier<List<RedisKey>> {
+abstract class _$Redis extends $AsyncNotifier<List<RedisKey>> {
   FutureOr<List<RedisKey>> build();
   @$mustCallSuper
   @override

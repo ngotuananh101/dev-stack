@@ -115,7 +115,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
 
   @override
   Widget build(BuildContext context) {
-    final sitesAsync = ref.watch(sitesNotifierProvider);
+    final sitesAsync = ref.watch(sitesProvider);
 
     return Dialog(
       backgroundColor: AppColors.surface,

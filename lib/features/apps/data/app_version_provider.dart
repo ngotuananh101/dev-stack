@@ -144,7 +144,7 @@ class AppVersions extends _$AppVersions {
   }
 
   Future<AppVersionInfo> _loadVersions(String appId) async {
-    final appsAsync = await ref.read(appsNotifierProvider.future);
+    final appsAsync = await ref.read(appsProvider.future);
     final app = appsAsync.firstWhere(
       (a) => a.appId == appId,
       orElse: () => throw Exception('App not found'),

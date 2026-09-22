@@ -7,7 +7,7 @@ void main() {
   group('collectPlatformInfo', () {
     test('labels Windows and requests systeminfo', () async {
       String? ran;
-      final r = await SystemInfoNotifier.collectPlatformInfo(
+      final r = await SystemInfoState.collectPlatformInfo(
         isWindows: true,
         run: (exe, args) async {
           ran = exe;
@@ -21,7 +21,7 @@ void main() {
 
     test('falls back to uname -a on Linux', () async {
       String? ran;
-      final r = await SystemInfoNotifier.collectPlatformInfo(
+      final r = await SystemInfoState.collectPlatformInfo(
         isWindows: false,
         run: (exe, args) async {
           ran = exe;

@@ -25,7 +25,7 @@ Future<AppsRepository> appsRepository(Ref ref) async {
 }
 
 @riverpod
-class AppsNotifier extends _$AppsNotifier {
+class Apps extends _$Apps {
   /// Remote catalog source, refreshed via [updateCatalog] / the manual
   /// "Update list" button and on app startup when online. The filename
   /// segment always matches the OS-specific catalog file, so a Linux
@@ -188,7 +188,7 @@ class AppsNotifier extends _$AppsNotifier {
         app.installStatus = null;
 
         // Notify UI of error
-        ref.read(errorNotifierProvider.notifier).setError(e.toString());
+        ref.read(appErrorProvider.notifier).setError(e.toString());
 
         notifyUpdate(force: true);
       }
@@ -368,7 +368,7 @@ class AppsNotifier extends _$AppsNotifier {
           app.installedVersion = oldVersion;
           app.selectedVersion = null;
 
-          ref.read(errorNotifierProvider.notifier).setError(userMessage);
+          ref.read(appErrorProvider.notifier).setError(userMessage);
 
           notifyUpdate(force: true);
         }
@@ -474,7 +474,7 @@ class AppsNotifier extends _$AppsNotifier {
       notifyUpdate(force: true);
     } catch (e) {
       AppLogger.error('Uninstallation failed: $e');
-      ref.read(errorNotifierProvider.notifier).setError(e.toString());
+      ref.read(appErrorProvider.notifier).setError(e.toString());
     }
   }
 
@@ -495,7 +495,7 @@ class AppsNotifier extends _$AppsNotifier {
   /// UI keeps showing the current list and offline startups are a no-op.
   Future<void> autoUpdateCatalog() async {
     try {
-      await ref.read(appsNotifierProvider.future);
+      await ref.read(appsProvider.future);
       final repository = await ref.read(appsRepositoryProvider.future);
       await repository.updateAppListFromUrl(catalogUrl);
       await refresh();
@@ -636,7 +636,7 @@ class AppsNotifier extends _$AppsNotifier {
       // By default this is fire-and-forget from UI buttons, so we don't
       // surface the failure. Callers that must know whether the restart
       // actually succeeded (e.g. the webserver restart coalescer in
-      // SitesNotifier) pass [rethrowOnError: true] so a silent "success"
+      // Sites) pass [rethrowOnError: true] so a silent "success"
       // can't mask a failed reload of config changes.
       if (rethrowOnError) rethrow;
     }
@@ -681,7 +681,7 @@ class AppsNotifier extends _$AppsNotifier {
     } catch (e) {
       AppLogger.error('Error changing default PHP: $e');
       ref
-          .read(errorNotifierProvider.notifier)
+          .read(appErrorProvider.notifier)
           .setError('Failed to change default PHP: $e');
     }
   }
@@ -708,7 +708,7 @@ class AppsNotifier extends _$AppsNotifier {
       } catch (e) {
         AppLogger.error('Error opening RustFS dashboard: $e');
         ref
-            .read(errorNotifierProvider.notifier)
+            .read(appErrorProvider.notifier)
             .setError('Failed to open RustFS Dashboard: $e');
         return;
       }
@@ -739,7 +739,7 @@ class AppsNotifier extends _$AppsNotifier {
       } catch (e) {
         AppLogger.error('Error opening Meilisearch dashboard: $e');
         ref
-            .read(errorNotifierProvider.notifier)
+            .read(appErrorProvider.notifier)
             .setError('Failed to open Meilisearch Dashboard: $e');
         return;
       }
@@ -757,7 +757,7 @@ class AppsNotifier extends _$AppsNotifier {
     } catch (e) {
       AppLogger.error('Error opening app: $e');
       ref
-          .read(errorNotifierProvider.notifier)
+          .read(appErrorProvider.notifier)
           .setError('Failed to open ${app.name}: $e');
     }
   }

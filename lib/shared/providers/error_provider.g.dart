@@ -9,28 +9,27 @@ part of 'error_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(ErrorNotifier)
-final errorNotifierProvider = ErrorNotifierProvider._();
+@ProviderFor(AppError)
+final appErrorProvider = AppErrorProvider._();
 
-final class ErrorNotifierProvider
-    extends $NotifierProvider<ErrorNotifier, String?> {
-  ErrorNotifierProvider._()
+final class AppErrorProvider extends $NotifierProvider<AppError, String?> {
+  AppErrorProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'errorNotifierProvider',
+        name: r'appErrorProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$errorNotifierHash();
+  String debugGetCreateSourceHash() => _$appErrorHash();
 
   @$internal
   @override
-  ErrorNotifier create() => ErrorNotifier();
+  AppError create() => AppError();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(String? value) {
@@ -41,9 +40,9 @@ final class ErrorNotifierProvider
   }
 }
 
-String _$errorNotifierHash() => r'a24b0313800d9741ae1e7ac6afb582e1ffb8c56a';
+String _$appErrorHash() => r'82c1d49533a66feced646952d6a2a0a297f9f7cb';
 
-abstract class _$ErrorNotifier extends $Notifier<String?> {
+abstract class _$AppError extends $Notifier<String?> {
   String? build();
   @$mustCallSuper
   @override

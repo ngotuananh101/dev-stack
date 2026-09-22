@@ -20,7 +20,7 @@ class _HostsPageState extends ConsumerState<HostsPage> {
   final String _hostsPath = HostsRepository.hostsPath;
 
   Future<bool> _save(String content) async {
-    final notifier = ref.read(hostsNotifierProvider.notifier);
+    final notifier = ref.read(hostsProvider.notifier);
     notifier.updateText(content);
     final ok = await notifier.save();
     return ok;
@@ -32,7 +32,7 @@ class _HostsPageState extends ConsumerState<HostsPage> {
       bindings: {
         // Ctrl+E reloads; Ctrl+S is handled inside the editor's Save button.
         const SingleActivator(LogicalKeyboardKey.keyE, control: true): () {
-          ref.invalidate(hostsNotifierProvider);
+          ref.invalidate(hostsProvider);
         },
       },
       child: Focus(

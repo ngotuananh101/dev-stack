@@ -1230,7 +1230,7 @@ class AppInstallerService {
 
         // Configure network binding based on allowLanAccess setting
         try {
-          final settings = _ref.read(settingsNotifierProvider).value;
+          final settings = _ref.read(settingsProvider).value;
           final allowLan = settings?.allowLanAccess ?? false;
           final listenAddress = allowLan ? '*' : '127.0.0.1';
 
@@ -1441,7 +1441,7 @@ class AppInstallerService {
 
     final isSslInstalled = _ref.read(sslServiceProvider).value ?? false;
     final sslNotifier = _ref.read(sslServiceProvider.notifier);
-    final settings = await _ref.read(settingsNotifierProvider.future);
+    final settings = await _ref.read(settingsProvider.future);
     final allowLanAccess = settings.allowLanAccess;
     final bindAddress = WebserverBindPolicy.address(
       allowLanAccess: allowLanAccess,
@@ -1759,7 +1759,7 @@ security:
   /// to the default PHP-FPM so https://localhost/*.php is served.
   int? _resolveDefaultPhpPort() {
     try {
-      final apps = _ref.read(appsNotifierProvider).value;
+      final apps = _ref.read(appsProvider).value;
       if (apps == null) return null;
       final phpApps = apps
           .where((a) => a.isInstalled && a.groupName == 'php')

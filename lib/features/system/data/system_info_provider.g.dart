@@ -9,34 +9,33 @@ part of 'system_info_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(SystemInfoNotifier)
-final systemInfoNotifierProvider = SystemInfoNotifierProvider._();
+@ProviderFor(SystemInfoState)
+final systemInfoStateProvider = SystemInfoStateProvider._();
 
-final class SystemInfoNotifierProvider
-    extends $AsyncNotifierProvider<SystemInfoNotifier, SystemInfo> {
-  SystemInfoNotifierProvider._()
+final class SystemInfoStateProvider
+    extends $AsyncNotifierProvider<SystemInfoState, SystemInfo> {
+  SystemInfoStateProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'systemInfoNotifierProvider',
+        name: r'systemInfoStateProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$systemInfoNotifierHash();
+  String debugGetCreateSourceHash() => _$systemInfoStateHash();
 
   @$internal
   @override
-  SystemInfoNotifier create() => SystemInfoNotifier();
+  SystemInfoState create() => SystemInfoState();
 }
 
-String _$systemInfoNotifierHash() =>
-    r'494ac9e0ad9d5e29e67f41d73984d713513c414d';
+String _$systemInfoStateHash() => r'a9b8c42e2a5b6dca184ea11728b7fb809e5f1d1d';
 
-abstract class _$SystemInfoNotifier extends $AsyncNotifier<SystemInfo> {
+abstract class _$SystemInfoState extends $AsyncNotifier<SystemInfo> {
   FutureOr<SystemInfo> build();
   @$mustCallSuper
   @override

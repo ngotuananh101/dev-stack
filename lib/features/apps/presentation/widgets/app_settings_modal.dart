@@ -362,10 +362,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               padding: const EdgeInsets.only(right: 8),
               child: AppButton(
                 onPressed: () async {
-                  // Route through AppsNotifier so service status changes
+                  // Route through Apps so service status changes
                   // notify the apps table/provider, not only AppServiceManager.
                   await ref
-                      .read(appsNotifierProvider.notifier)
+                      .read(appsProvider.notifier)
                       .restartService(widget.app);
                   if (mounted) {
                     setState(() {});
@@ -552,7 +552,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                   widget.app.extraInfo = newInfo;
                   final repo = await ref.read(appsRepositoryProvider.future);
                   await repo.save(widget.app);
-                  ref.invalidate(appsNotifierProvider);
+                  ref.invalidate(appsProvider);
                 },
               ),
               _buildSettingField(
@@ -567,7 +567,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                   widget.app.extraInfo = newInfo;
                   final repo = await ref.read(appsRepositoryProvider.future);
                   await repo.save(widget.app);
-                  ref.invalidate(appsNotifierProvider);
+                  ref.invalidate(appsProvider);
                 },
               ),
               const Padding(

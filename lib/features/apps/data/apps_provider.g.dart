@@ -48,33 +48,32 @@ final class AppsRepositoryProvider
 
 String _$appsRepositoryHash() => r'a8c9f29fef64b8e00c491d7f01238136458df61e';
 
-@ProviderFor(AppsNotifier)
-final appsNotifierProvider = AppsNotifierProvider._();
+@ProviderFor(Apps)
+final appsProvider = AppsProvider._();
 
-final class AppsNotifierProvider
-    extends $AsyncNotifierProvider<AppsNotifier, List<AppModel>> {
-  AppsNotifierProvider._()
+final class AppsProvider extends $AsyncNotifierProvider<Apps, List<AppModel>> {
+  AppsProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'appsNotifierProvider',
+        name: r'appsProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$appsNotifierHash();
+  String debugGetCreateSourceHash() => _$appsHash();
 
   @$internal
   @override
-  AppsNotifier create() => AppsNotifier();
+  Apps create() => Apps();
 }
 
-String _$appsNotifierHash() => r'5dd8a544f142764fe1b451f53b3cf191747f5a3e';
+String _$appsHash() => r'c48d48c84dea6f02b75b7f374cb9ec673b463a98';
 
-abstract class _$AppsNotifier extends $AsyncNotifier<List<AppModel>> {
+abstract class _$Apps extends $AsyncNotifier<List<AppModel>> {
   FutureOr<List<AppModel>> build();
   @$mustCallSuper
   @override

@@ -9,34 +9,33 @@ part of 'databases_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(DatabasesNotifier)
-final databasesNotifierProvider = DatabasesNotifierProvider._();
+@ProviderFor(Databases)
+final databasesProvider = DatabasesProvider._();
 
-final class DatabasesNotifierProvider
-    extends $AsyncNotifierProvider<DatabasesNotifier, List<DatabaseRecord>> {
-  DatabasesNotifierProvider._()
+final class DatabasesProvider
+    extends $AsyncNotifierProvider<Databases, List<DatabaseRecord>> {
+  DatabasesProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'databasesNotifierProvider',
+        name: r'databasesProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$databasesNotifierHash();
+  String debugGetCreateSourceHash() => _$databasesHash();
 
   @$internal
   @override
-  DatabasesNotifier create() => DatabasesNotifier();
+  Databases create() => Databases();
 }
 
-String _$databasesNotifierHash() => r'3dc1fea7378efbe450b18e71e88a426169b482b0';
+String _$databasesHash() => r'c776b7bae1d2def85ec01229202d11ccf3837374';
 
-abstract class _$DatabasesNotifier
-    extends $AsyncNotifier<List<DatabaseRecord>> {
+abstract class _$Databases extends $AsyncNotifier<List<DatabaseRecord>> {
   FutureOr<List<DatabaseRecord>> build();
   @$mustCallSuper
   @override
@@ -97,4 +96,4 @@ final class InstalledDatabaseEnginesProvider
 }
 
 String _$installedDatabaseEnginesHash() =>
-    r'b9b184affeb1907dd3b118b0fced721a00533522';
+    r'10c29d527ba19907fd713b21f5556286796fb8ef';

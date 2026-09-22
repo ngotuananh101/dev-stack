@@ -50,7 +50,7 @@ final class AppVersionsProvider
   }
 }
 
-String _$appVersionsHash() => r'3f562005c57d6296f89ffad586a8b9c178219ad9';
+String _$appVersionsHash() => r'362fad6356dc36b4f610337347b95325dd8c7fb8';
 
 final class AppVersionsFamily extends $Family
     with

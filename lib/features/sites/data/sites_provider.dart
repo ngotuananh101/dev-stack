@@ -47,7 +47,7 @@ String validateCliCommand(String? command) {
 }
 
 @riverpod
-class SitesNotifier extends _$SitesNotifier {
+class Sites extends _$Sites {
   final _hostsRepo = HostsRepository();
 
   /// Coalesces overlapping webserver restarts. Without this, a batch create or
@@ -838,7 +838,7 @@ class SitesNotifier extends _$SitesNotifier {
     }
     final rootDirUnix = site.rootDir.replaceAll('\\', '/');
     final sslNotifier = ref.read(sslServiceProvider.notifier);
-    final settings = await ref.read(settingsNotifierProvider.future);
+    final settings = await ref.read(settingsProvider.future);
     final allowLanAccess = settings.allowLanAccess;
 
     // Ensure directories exist
@@ -1136,8 +1136,8 @@ class SitesNotifier extends _$SitesNotifier {
     }
     final completer = _restartCompleter = Completer<void>();
     try {
-      final appsNotifier = ref.read(appsNotifierProvider.notifier);
-      final apps = ref.read(appsNotifierProvider).value ?? [];
+      final appsNotifier = ref.read(appsProvider.notifier);
+      final apps = ref.read(appsProvider).value ?? [];
 
       final webservers = apps
           .where(

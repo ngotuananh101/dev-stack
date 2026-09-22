@@ -9,33 +9,32 @@ part of 'hosts_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(HostsNotifier)
-final hostsNotifierProvider = HostsNotifierProvider._();
+@ProviderFor(Hosts)
+final hostsProvider = HostsProvider._();
 
-final class HostsNotifierProvider
-    extends $AsyncNotifierProvider<HostsNotifier, String> {
-  HostsNotifierProvider._()
+final class HostsProvider extends $AsyncNotifierProvider<Hosts, String> {
+  HostsProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'hostsNotifierProvider',
+        name: r'hostsProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$hostsNotifierHash();
+  String debugGetCreateSourceHash() => _$hostsHash();
 
   @$internal
   @override
-  HostsNotifier create() => HostsNotifier();
+  Hosts create() => Hosts();
 }
 
-String _$hostsNotifierHash() => r'88fbfc736231694a3170e337802b8c19471e3b3d';
+String _$hostsHash() => r'0061757b65c423bc7ae0c3a48f62ea6e3b2b6322';
 
-abstract class _$HostsNotifier extends $AsyncNotifier<String> {
+abstract class _$Hosts extends $AsyncNotifier<String> {
   FutureOr<String> build();
   @$mustCallSuper
   @override

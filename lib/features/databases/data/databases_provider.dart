@@ -13,7 +13,7 @@ import '../domain/database_record.dart';
 part 'databases_provider.g.dart';
 
 @riverpod
-class DatabasesNotifier extends _$DatabasesNotifier {
+class Databases extends _$Databases {
   @override
   FutureOr<List<DatabaseRecord>> build() {
     return [];
@@ -730,7 +730,7 @@ class DatabasesNotifier extends _$DatabasesNotifier {
 
 @riverpod
 Future<List<AppModel>> installedDatabaseEngines(Ref ref) async {
-  final apps = await ref.watch(appsNotifierProvider.future);
+  final apps = await ref.watch(appsProvider.future);
   return apps
       .where(
         (app) =>

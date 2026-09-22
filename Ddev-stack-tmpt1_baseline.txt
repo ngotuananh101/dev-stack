@@ -1,0 +1,17 @@
+Analyzing dev-stack...
+
+warning - lib\core\services\window_service.dart:45:5 - KeepAliveLink can only be used inside providers that are kept alive. Either stop marking this provider as `keepAlive` or remove `keepAlive` from the used provider. - only_use_keep_alive_inside_keep_alive
+warning - lib\core\services\window_service.dart:59:25 - KeepAliveLink can only be used inside providers that are kept alive. Either stop marking this provider as `keepAlive` or remove `keepAlive` from the used provider. - only_use_keep_alive_inside_keep_alive
+warning - lib\core\services\window_service.dart:87:13 - KeepAliveLink can only be used inside providers that are kept alive. Either stop marking this provider as `keepAlive` or remove `keepAlive` from the used provider. - only_use_keep_alive_inside_keep_alive
+warning - lib\core\services\window_service.dart:92:7 - KeepAliveLink can only be used inside providers that are kept alive. Either stop marking this provider as `keepAlive` or remove `keepAlive` from the used provider. - only_use_keep_alive_inside_keep_alive
+warning - lib\core\services\window_service.dart:95:20 - KeepAliveLink can only be used inside providers that are kept alive. Either stop marking this provider as `keepAlive` or remove `keepAlive` from the used provider. - only_use_keep_alive_inside_keep_alive
+warning - lib\core\services\window_service.dart:98:7 - KeepAliveLink can only be used inside providers that are kept alive. Either stop marking this provider as `keepAlive` or remove `keepAlive` from the used provider. - only_use_keep_alive_inside_keep_alive
+warning - lib\core\services\window_service.dart:101:20 - KeepAliveLink can only be used inside providers that are kept alive. Either stop marking this provider as `keepAlive` or remove `keepAlive` from the used provider. - only_use_keep_alive_inside_keep_alive
+warning - lib\core\services\window_service.dart:104:7 - KeepAliveLink can only be used inside providers that are kept alive. Either stop marking this provider as `keepAlive` or remove `keepAlive` from the used provider. - only_use_keep_alive_inside_keep_alive
+warning - lib\core\services\window_service.dart:221:13 - KeepAliveLink can only be used inside providers that are kept alive. Either stop marking this provider as `keepAlive` or remove `keepAlive` from the used provider. - only_use_keep_alive_inside_keep_alive
+warning - lib\features\apps\data\app_service_manager.dart:18:18 - KeepAliveLink can only be used inside providers that are kept alive. Either stop marking this provider as `keepAlive` or remove `keepAlive` from the used provider. - only_use_keep_alive_inside_keep_alive
+   info - lib\core\services\ssl_service.dart:27:3 - Notifiers should not have public properties/getters. Instead, all their public API should be exposed through the `state` property. - avoid_public_notifier_properties
+   info - lib\core\services\ssl_service.dart:45:3 - Notifiers should not have public properties/getters. Instead, all their public API should be exposed through the `state` property. - avoid_public_notifier_properties
+
+12 issues found.
+exit=2

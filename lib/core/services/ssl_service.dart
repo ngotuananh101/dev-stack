@@ -14,13 +14,13 @@ class SslService extends _$SslService {
   @override
   Future<bool> build() async {
     // Safely listen to settings changes and update state manually
-    ref.listen(settingsNotifierProvider, (previous, next) {
+    ref.listen(settingsProvider, (previous, next) {
       next.whenData((settings) {
         state = AsyncValue.data(settings.isSslInstalled);
       });
     });
 
-    final settings = await ref.read(settingsNotifierProvider.future);
+    final settings = await ref.read(settingsProvider.future);
     return settings.isSslInstalled;
   }
 
@@ -298,7 +298,7 @@ class SslService extends _$SslService {
           'SSL is already installed in system, updating database status...',
         );
         await ref
-            .read(settingsNotifierProvider.notifier)
+            .read(settingsProvider.notifier)
             .updateField(isSslInstalled: true);
         state = const AsyncValue.data(true);
       }
@@ -370,7 +370,7 @@ class SslService extends _$SslService {
 
       final isInstalledNow = await checkStatus();
       if (isInstalledNow) {
-        final settingsNotifier = ref.read(settingsNotifierProvider.notifier);
+        final settingsNotifier = ref.read(settingsProvider.notifier);
         await settingsNotifier.updateField(isSslInstalled: true);
         await generateSiteCert('localhost');
         AppLogger.info('SSL Root CA successfully installed and trusted');
@@ -432,7 +432,7 @@ class SslService extends _$SslService {
       }
 
       await ref
-          .read(settingsNotifierProvider.notifier)
+          .read(settingsProvider.notifier)
           .updateField(isSslInstalled: false);
       state = const AsyncValue.data(false);
       AppLogger.info('SSL Root CA successfully uninstalled');

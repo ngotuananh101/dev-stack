@@ -15,7 +15,7 @@ import 'package:dev_stack/core/services/log_service.dart';
 part 'settings_provider.g.dart';
 
 @Riverpod(keepAlive: true)
-class SettingsNotifier extends _$SettingsNotifier {
+class Settings extends _$Settings {
   /// Replaces [oldDir] with [newDir] inside [value], but only where [oldDir]
   /// appears as a complete path-segment prefix — i.e. followed by a path
   /// separator (`/` or `\`) or the end of the string. This avoids the

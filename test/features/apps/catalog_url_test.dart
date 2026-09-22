@@ -9,7 +9,7 @@ void main() {
     test('filename segment matches catalogFileNameFor', () {
       final expected =
           AppsRepository.catalogFileNameFor(isLinux: Platform.isLinux);
-      expect(AppsNotifier.catalogUrl, endsWith('/$expected'));
+      expect(Apps.catalogUrl, endsWith('/$expected'));
     });
 
     test('filename segment matches catalogFileNameFor with isLinux toggle', () {
@@ -22,7 +22,7 @@ void main() {
 
     test('points at the shared gist raw base', () {
       expect(
-        AppsNotifier.catalogUrl,
+        Apps.catalogUrl,
         startsWith(
           'https://gist.githubusercontent.com/ngotuananh101/'
           'd2e69956bc2030b0bcf27707aef9e9cd/raw/',

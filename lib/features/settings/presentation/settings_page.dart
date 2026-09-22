@@ -27,8 +27,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final settingsAsync = ref.watch(settingsNotifierProvider);
-    final appsAsync = ref.watch(appsNotifierProvider);
+    final settingsAsync = ref.watch(settingsProvider);
+    final appsAsync = ref.watch(appsProvider);
     final sslAsync = ref.watch(sslServiceProvider);
 
     return Scaffold(
@@ -80,7 +80,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onChanged: (val) {
                         if (val != null) {
                           ref
-                              .read(appsNotifierProvider.notifier)
+                              .read(appsProvider.notifier)
                               .changeDefaultPhp(val);
                         }
                       },
@@ -92,7 +92,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       subtitle: 'Template for new site domain names',
                       value: settings.siteTemplate,
                       onChanged: (val) => ref
-                          .read(settingsNotifierProvider.notifier)
+                          .read(settingsProvider.notifier)
                           .updateField(siteTemplate: val),
                     ),
                   ],
@@ -107,7 +107,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       subtitle: 'Keep app running in background when closed',
                       value: settings.minimizeToTray,
                       onChanged: (val) => ref
-                          .read(settingsNotifierProvider.notifier)
+                          .read(settingsProvider.notifier)
                           .updateField(minimizeToTray: val),
                     ),
                     const Divider(color: AppColors.border, height: 32),
@@ -117,7 +117,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           'Launch DevStack automatically when you sign in',
                       value: settings.autoStartWithWindows,
                       onChanged: (val) => ref
-                          .read(settingsNotifierProvider.notifier)
+                          .read(settingsProvider.notifier)
                           .updateField(autoStartWithWindows: val),
                     ),
                   ],
@@ -137,22 +137,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       value: settings.allowLanAccess,
                       onChanged: (val) async {
                         await ref
-                            .read(settingsNotifierProvider.notifier)
+                            .read(settingsProvider.notifier)
                             .updateField(allowLanAccess: val);
                         if (!mounted) return;
 
                         // Rewrite global and per-site configs first, then restart
                         // installed webservers once with the new bind address.
                         await ref
-                            .read(appsNotifierProvider.notifier)
+                            .read(appsProvider.notifier)
                             .reconfigureWebservers(restartRunning: false);
                         if (!mounted) return;
                         await ref
-                            .read(sitesNotifierProvider.notifier)
+                            .read(sitesProvider.notifier)
                             .regenerateAllVhosts(restartWebserver: false);
                         if (!mounted) return;
                         await ref
-                            .read(appsNotifierProvider.notifier)
+                            .read(appsProvider.notifier)
                             .restartRunningWebservers();
                       },
                     ),
@@ -365,7 +365,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     setState(() => _isMigrating = true);
 
     try {
-      final notifier = ref.read(settingsNotifierProvider.notifier);
+      final notifier = ref.read(settingsProvider.notifier);
 
       // Migrate data
       final sourceExists = Directory(oldDir).existsSync();
@@ -437,7 +437,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 // the next launch.
                 try {
                   await ref
-                      .read(appsNotifierProvider.notifier)
+                      .read(appsProvider.notifier)
                       .stopAllServicesQuietly();
                 } catch (_) {}
                 if (ctx.mounted) Navigator.of(ctx).pop();

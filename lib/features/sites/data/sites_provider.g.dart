@@ -9,33 +9,33 @@ part of 'sites_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(SitesNotifier)
-final sitesNotifierProvider = SitesNotifierProvider._();
+@ProviderFor(Sites)
+final sitesProvider = SitesProvider._();
 
-final class SitesNotifierProvider
-    extends $AsyncNotifierProvider<SitesNotifier, List<SiteModel>> {
-  SitesNotifierProvider._()
+final class SitesProvider
+    extends $AsyncNotifierProvider<Sites, List<SiteModel>> {
+  SitesProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'sitesNotifierProvider',
+        name: r'sitesProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$sitesNotifierHash();
+  String debugGetCreateSourceHash() => _$sitesHash();
 
   @$internal
   @override
-  SitesNotifier create() => SitesNotifier();
+  Sites create() => Sites();
 }
 
-String _$sitesNotifierHash() => r'390dfecb8c85f5c2c09930084df9642b9a9a3ade';
+String _$sitesHash() => r'8a2ae773d56e0894ca6c06770349948f195ccf16';
 
-abstract class _$SitesNotifier extends $AsyncNotifier<List<SiteModel>> {
+abstract class _$Sites extends $AsyncNotifier<List<SiteModel>> {
   FutureOr<List<SiteModel>> build();
   @$mustCallSuper
   @override

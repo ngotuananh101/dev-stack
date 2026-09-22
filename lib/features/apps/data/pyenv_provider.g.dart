@@ -9,33 +9,32 @@ part of 'pyenv_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(PyenvNotifier)
-final pyenvNotifierProvider = PyenvNotifierProvider._();
+@ProviderFor(Pyenv)
+final pyenvProvider = PyenvProvider._();
 
-final class PyenvNotifierProvider
-    extends $AsyncNotifierProvider<PyenvNotifier, PyenvState> {
-  PyenvNotifierProvider._()
+final class PyenvProvider extends $AsyncNotifierProvider<Pyenv, PyenvState> {
+  PyenvProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'pyenvNotifierProvider',
+        name: r'pyenvProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$pyenvNotifierHash();
+  String debugGetCreateSourceHash() => _$pyenvHash();
 
   @$internal
   @override
-  PyenvNotifier create() => PyenvNotifier();
+  Pyenv create() => Pyenv();
 }
 
-String _$pyenvNotifierHash() => r'1c656cfd5d6a75d20a37265bdc703c20c7a943d4';
+String _$pyenvHash() => r'0a9ea730425c9d04c9bdbd336ac3158c040c44ff';
 
-abstract class _$PyenvNotifier extends $AsyncNotifier<PyenvState> {
+abstract class _$Pyenv extends $AsyncNotifier<PyenvState> {
   FutureOr<PyenvState> build();
   @$mustCallSuper
   @override

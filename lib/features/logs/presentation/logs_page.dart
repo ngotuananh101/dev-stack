@@ -82,7 +82,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final appsAsync = ref.watch(appsNotifierProvider);
+    final appsAsync = ref.watch(appsProvider);
     final logFilesAsync = ref.watch(logFilesProvider);
 
     return Scaffold(

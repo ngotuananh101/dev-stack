@@ -9,33 +9,33 @@ part of 'settings_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(SettingsNotifier)
-final settingsNotifierProvider = SettingsNotifierProvider._();
+@ProviderFor(Settings)
+final settingsProvider = SettingsProvider._();
 
-final class SettingsNotifierProvider
-    extends $AsyncNotifierProvider<SettingsNotifier, AppSettings> {
-  SettingsNotifierProvider._()
+final class SettingsProvider
+    extends $AsyncNotifierProvider<Settings, AppSettings> {
+  SettingsProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'settingsNotifierProvider',
+        name: r'settingsProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$settingsNotifierHash();
+  String debugGetCreateSourceHash() => _$settingsHash();
 
   @$internal
   @override
-  SettingsNotifier create() => SettingsNotifier();
+  Settings create() => Settings();
 }
 
-String _$settingsNotifierHash() => r'743252d3823147b97485fb89381fa9e51098ed3e';
+String _$settingsHash() => r'9176ec0cc41d9bff530fc9edcd73585bdd311ca0';
 
-abstract class _$SettingsNotifier extends $AsyncNotifier<AppSettings> {
+abstract class _$Settings extends $AsyncNotifier<AppSettings> {
   FutureOr<AppSettings> build();
   @$mustCallSuper
   @override

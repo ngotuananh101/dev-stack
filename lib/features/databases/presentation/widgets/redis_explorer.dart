@@ -56,7 +56,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
       if (!mounted) return;
       final query = widget.searchQuery ?? '';
       ref
-          .read(redisNotifierProvider.notifier)
+          .read(redisProvider.notifier)
           .fetchKeys(
             widget.app,
             widget.selectedDb,
@@ -67,7 +67,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
 
   @override
   Widget build(BuildContext context) {
-    final keysAsync = ref.watch(redisNotifierProvider);
+    final keysAsync = ref.watch(redisProvider);
     final statsAsync = ref.watch(redisDbStatsProvider(widget.app));
 
     return Column(
@@ -343,7 +343,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
       confirmBtnText: 'DELETE',
       onConfirm: () async {
         await ref
-            .read(redisNotifierProvider.notifier)
+            .read(redisProvider.notifier)
             .deleteKey(widget.app, widget.selectedDb, key);
       },
     );

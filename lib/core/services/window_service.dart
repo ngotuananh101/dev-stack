@@ -42,21 +42,21 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
     await _initAutoStart();
 
     // Lắng nghe thay đổi của apps để cập nhật Menu Tray
-    ref.listen(appsNotifierProvider, (previous, next) {
+    ref.listen(appsProvider, (previous, next) {
       if (next.hasValue) {
         _updateTrayMenu(next.value!);
       }
     });
 
     // Lắng nghe thay đổi của settings để cập nhật Auto-start
-    ref.listen(settingsNotifierProvider, (previous, next) {
+    ref.listen(settingsProvider, (previous, next) {
       if (next.hasValue) {
         _initAutoStart();
       }
     });
 
     // Khởi tạo menu và auto-start lần đầu
-    final initialApps = ref.read(appsNotifierProvider).value;
+    final initialApps = ref.read(appsProvider).value;
     if (initialApps != null) {
       _updateTrayMenu(initialApps);
     }
@@ -84,24 +84,24 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
       windowManager.show();
     } else if (key == 'quit_app') {
       // Dừng tất cả dịch vụ nhưng không lưu trạng thái (giữ nguyên auto-start)
-      await ref.read(appsNotifierProvider.notifier).stopAllServicesQuietly();
+      await ref.read(appsProvider.notifier).stopAllServicesQuietly();
       // Stop all CLI site processes so spawned dev servers are reaped on quit.
       await ref.read(cliProcessManagerProvider).stopAll();
       await windowManager.destroy();
     } else if (key == 'stop_all') {
-      ref.read(appsNotifierProvider.notifier).stopAllServices();
+      ref.read(appsProvider.notifier).stopAllServices();
     } else if (key.startsWith('stop:')) {
       final appId = key.substring(5);
-      final apps = ref.read(appsNotifierProvider).value ?? [];
+      final apps = ref.read(appsProvider).value ?? [];
       final app = apps.where((a) => a.appId == appId).firstOrNull;
       if (app == null) return;
-      ref.read(appsNotifierProvider.notifier).stopService(app);
+      ref.read(appsProvider.notifier).stopService(app);
     } else if (key.startsWith('restart:')) {
       final appId = key.substring(8);
-      final apps = ref.read(appsNotifierProvider).value ?? [];
+      final apps = ref.read(appsProvider).value ?? [];
       final app = apps.where((a) => a.appId == appId).firstOrNull;
       if (app == null) return;
-      ref.read(appsNotifierProvider.notifier).restartService(app);
+      ref.read(appsProvider.notifier).restartService(app);
     }
   }
 
@@ -196,7 +196,7 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
         args: ['--minimized'],
       );
 
-      final settings = await ref.read(settingsNotifierProvider.future);
+      final settings = await ref.read(settingsProvider.future);
       if (settings.autoStartWithWindows) {
         await launchAtStartup.enable();
         AppLogger.info('Auto-start enabled with --minimized');
@@ -213,12 +213,12 @@ class WindowService extends _$WindowService with WindowListener, TrayListener {
 
   @override
   void onWindowClose() async {
-    final settings = await ref.read(settingsNotifierProvider.future);
+    final settings = await ref.read(settingsProvider.future);
     if (settings.minimizeToTray) {
       await windowManager.hide();
     } else {
       // Dừng tất cả dịch vụ nhưng không lưu trạng thái (giữ nguyên auto-start)
-      await ref.read(appsNotifierProvider.notifier).stopAllServicesQuietly();
+      await ref.read(appsProvider.notifier).stopAllServicesQuietly();
       // Stop all CLI site processes so spawned dev servers are reaped on exit.
       await ref.read(cliProcessManagerProvider).stopAll();
       await windowManager.destroy();
