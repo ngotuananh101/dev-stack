@@ -10,6 +10,7 @@ import 'core/theme/app_theme.dart';
 
 import 'shared/providers/navigation_provider.dart';
 import 'shared/layouts/sidebar.dart';
+import 'shared/layouts/app_header.dart';
 import 'features/apps/presentation/apps_page.dart';
 import 'features/apps/data/apps_provider.dart';
 import 'features/logs/presentation/logs_page.dart';
@@ -50,7 +51,8 @@ void main(List<String> args) async {
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.normal,
+    titleBarStyle: TitleBarStyle.hidden,
+    windowButtonVisibility: false,
     title: 'Ponta DevStack v$appVersion',
   );
 
@@ -84,6 +86,7 @@ class MyApp extends StatelessWidget {
       title: 'Ponta DevStack v$appVersion',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
+      builder: VirtualWindowFrameInit(),
       home: const MainScreen(),
     );
   }
@@ -140,10 +143,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final currentTab = ref.watch(navigationProvider);
 
     return Scaffold(
-      body: Row(
+      body: Column(
         children: [
-          Sidebar(),
-          Expanded(child: _buildPage(currentTab)),
+          const AppHeader(),
+          Expanded(
+            child: Row(
+              children: [
+                const Sidebar(),
+                Expanded(child: _buildPage(currentTab)),
+              ],
+            ),
+          ),
         ],
       ),
     );
