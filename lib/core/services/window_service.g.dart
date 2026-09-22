@@ -33,7 +33,7 @@ final class WindowServiceProvider
   WindowService create() => WindowService();
 }
 
-String _$windowServiceHash() => r'28f706e611392845f2aec34dece0e605c728db62';
+String _$windowServiceHash() => r'dbf10341e3a49984eeb0ccf12cdc79b2cae4e3b8';
 
 abstract class _$WindowService extends $AsyncNotifier<void> {
   FutureOr<void> build();
