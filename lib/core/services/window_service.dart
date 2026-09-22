@@ -2,7 +2,13 @@ import 'dart:io';
 import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:tray_manager/tray_manager.dart';
+// tray_manager 0.7.x moved the classic `trayManager` / `TrayListener` /
+// `Menu` / `MenuItem` API to `legacy.dart`. This is the documented one-line
+// migration path. The native replacement is a low-level FFI API
+// (`package:nativeapi`) requiring a full rewrite of the tray wiring below,
+// so we stay on the supported bridge for now. See TRAY_MIGRATION_TODO.
+// ignore_for_file: deprecated_member_use
+import 'package:tray_manager/legacy.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../features/apps/domain/app_model.dart';
