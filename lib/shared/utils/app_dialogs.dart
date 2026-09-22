@@ -31,7 +31,7 @@ class AppDialogs {
       confirmBtnColor: type == QuickAlertType.warning ? AppColors.error : AppColors.primary,
       width: 420,
       confirmBtnTextStyle: const TextStyle(
-        color: Colors.white,
+        color: AppColors.textOnColor,
         fontSize: AppTextSize.xs,
         fontWeight: FontWeight.w700,
       ),
@@ -60,7 +60,7 @@ class AppDialogs {
       textColor: AppColors.textSecondary,
       width: 420,
       confirmBtnTextStyle: const TextStyle(
-        color: Colors.white,
+        color: AppColors.textOnColor,
         fontSize: AppTextSize.xs,
         fontWeight: FontWeight.w700,
       ),
@@ -84,7 +84,7 @@ class AppDialogs {
       textColor: AppColors.textSecondary,
       width: 420,
       confirmBtnTextStyle: const TextStyle(
-        color: Colors.white,
+        color: AppColors.textOnColor,
         fontSize: AppTextSize.xs,
         fontWeight: FontWeight.w700,
       ),
@@ -108,7 +108,7 @@ class AppDialogs {
       textColor: AppColors.textSecondary,
       width: 420,
       confirmBtnTextStyle: const TextStyle(
-        color: Colors.white,
+        color: AppColors.textOnColor,
         fontSize: AppTextSize.xs,
         fontWeight: FontWeight.w700,
       ),
@@ -124,7 +124,7 @@ class AppDialogs {
           style: const TextStyle(
             fontSize: AppTextSize.xs,
             fontWeight: FontWeight.w500,
-            color: Colors.white,
+            color: AppColors.textOnColor,
           ),
         ),
         backgroundColor: isError ? AppColors.error : AppColors.primary,

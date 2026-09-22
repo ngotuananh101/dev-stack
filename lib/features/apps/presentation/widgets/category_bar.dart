@@ -92,9 +92,9 @@ class CategoryBar extends StatelessWidget {
                 child: Text(
                   '$count',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: AppTextSize.xxs,
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : AppColors.textMuted,
+                    color: isSelected ? AppColors.textOnColor : AppColors.textMuted,
                   ),
                 ),
               ),

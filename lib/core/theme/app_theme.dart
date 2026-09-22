@@ -15,8 +15,8 @@ class AppTheme {
         secondary: AppColors.secondary,
         surface: AppColors.surface,
         error: AppColors.error,
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
+        onPrimary: AppColors.textOnColor,
+        onSecondary: AppColors.textOnColor,
         onSurface: AppColors.textPrimary,
       ),
       textTheme: GoogleFonts.interTextTheme(
@@ -87,7 +87,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           elevation: 0,
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.textOnColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.sm),
           ),
@@ -120,11 +120,33 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.textOnColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.sm),
           ),
         ),
+      ),
+      // Material 3's default switch track is 52x32 inside a 52x48 box, which
+      // towers over the ~40px inputs and 36px buttons. Shrink it app-wide.
+      switchTheme: SwitchThemeData(
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return AppColors.textMuted;
+          if (states.contains(WidgetState.selected)) return AppColors.accent;
+          return AppColors.textSecondary;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.accent.withValues(alpha: 0.35);
+          }
+          return AppColors.surfaceLight;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.accent.withValues(alpha: 0.6);
+          }
+          return AppColors.border;
+        }),
       ),
     );
   }

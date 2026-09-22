@@ -412,16 +412,15 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                         children: [
                           Text(
                             'Auto-start on launch',
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: AppColors.textSecondary,
-                              fontSize: 12,
+                              fontSize: AppTextSize.xs,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          Switch.adaptive(
+                          Switch(
                             value: _autoStart,
                             onChanged: (v) => setState(() => _autoStart = v),
-                            activeThumbColor: AppColors.success,
                           ),
                         ],
                       ),
@@ -482,7 +481,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                                           child: Text(
                                             app.name,
                                             style: const TextStyle(
-                                              fontSize: 14,
+                                              fontSize: AppTextSize.sm,
                                               color: AppColors.textPrimary,
                                             ),
                                           ),
@@ -539,7 +538,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                                     Text(
                                       'Apply SSL',
                                       style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: AppTextSize.sm,
                                         color: _useSsl
                                             ? AppColors.success
                                             : AppColors.textSecondary,
@@ -644,7 +643,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: AppTextSize.sm,
                 fontWeight:
                     isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected
@@ -665,7 +664,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
         label,
         style: const TextStyle(
           color: AppColors.textSecondary,
-          fontSize: 12,
+          fontSize: AppTextSize.xs,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -685,7 +684,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
         child: DropdownButton<String>(
           value: _selectedPreset,
           isExpanded: true,
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+          style: const TextStyle(fontSize: AppTextSize.sm, color: AppColors.textPrimary),
           dropdownColor: AppColors.surface,
           borderRadius: BorderRadius.circular(8),
           icon: const Icon(LucideIcons.chevronDown, size: 16, color: AppColors.textMuted),
@@ -695,7 +694,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
               child: Text(
                 entry.value.name,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: AppTextSize.sm,
                   color: AppColors.textPrimary,
                 ),
               ),

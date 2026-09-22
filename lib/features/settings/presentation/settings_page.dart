@@ -772,7 +772,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           : const Text(
                               'Browse',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: AppTextSize.xxs,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.accent,
                               ),
@@ -871,7 +871,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               style: AppButtonStyle.primary,
               size: AppButtonSize.sm,
               backgroundColor: AppColors.accent,
-              textColor: Colors.white,
+              textColor: AppColors.textOnColor,
             ),
           ],
         ),
@@ -964,7 +964,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           child: Text(
             status,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTextSize.xs,
               fontWeight: FontWeight.w600,
               color: isSuccess ? AppColors.success : AppColors.error,
             ),
@@ -981,7 +981,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onPressed: action.onTap,
                       style: AppButtonStyle.danger,
                       size: AppButtonSize.sm,
-                      textColor: Colors.white,
+                      textColor: AppColors.textOnColor,
                     )
                   : AppButton(
                       label: action.label,
@@ -989,7 +989,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       style: AppButtonStyle.primary,
                       size: AppButtonSize.sm,
                       backgroundColor: action.color,
-                      textColor: Colors.white,
+                      textColor: AppColors.textOnColor,
                     ),
             ),
           ),

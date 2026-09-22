@@ -5,6 +5,7 @@ import '../../domain/redis_key.dart';
 import '../../../apps/domain/app_model.dart';
 import '../../data/redis_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_size.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'add_redis_key_modal.dart';
 
@@ -145,7 +146,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
                         color: isSelected
                             ? AppColors.textPrimary
                             : AppColors.textSecondary,
-                        fontSize: 12,
+                        fontSize: AppTextSize.xs,
                         fontWeight: isSelected
                             ? FontWeight.bold
                             : FontWeight.normal,
@@ -221,7 +222,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
       label,
       textAlign: alignment,
       style: TextStyle(
-        fontSize: 10,
+        fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -243,7 +244,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             flex: 3,
             child: Text(
               item.key,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 12),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: AppTextSize.xs),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -252,7 +253,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             flex: 4,
             child: Text(
               item.value,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -261,7 +262,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             flex: 1,
             child: Text(
               item.type,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
             ),
           ),
           const SizedBox(width: 12),
@@ -269,7 +270,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             flex: 1,
             child: Text(
               item.length.toString(),
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
             ),
           ),
           const SizedBox(width: 12),
@@ -277,7 +278,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             flex: 2,
             child: Text(
               item.ttl,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
             ),
           ),
           const SizedBox(width: 12),

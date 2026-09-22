@@ -168,7 +168,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF0D1117), // GitHub Dark
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.border),
             ),
@@ -183,8 +183,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                     log,
                     style: const TextStyle(
                       fontFamily: 'monospace',
-                      fontSize: 10,
-                      color: Color(0xFFC9D1D9),
+                      fontSize: AppTextSize.xxs,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 );
@@ -520,7 +520,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                     },
               style: AppButtonStyle.primary,
               backgroundColor: AppColors.success,
-              textColor: Colors.white,
+              textColor: AppColors.textOnColor,
               label: widget.isUpdate
                   ? 'Update to ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}'
                   : 'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
@@ -532,7 +532,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
               backgroundColor: appState.status == 'installed'
                   ? AppColors.success
                   : AppColors.textMuted,
-              textColor: Colors.white,
+              textColor: AppColors.textOnColor,
               label: appState.status == 'installed'
                   ? 'Finish'
                   : (widget.isUpdate ? 'Updating...' : 'Installing...'),

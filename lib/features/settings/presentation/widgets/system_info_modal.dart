@@ -23,7 +23,7 @@ class SystemInfoModal extends ConsumerWidget {
         width: 800,
         height: 600,
         decoration: BoxDecoration(
-          color: const Color(0xFF0D1117), // Deeper dark for terminal feel
+          color: AppColors.background,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
           boxShadow: [
@@ -47,7 +47,7 @@ class SystemInfoModal extends ConsumerWidget {
                 error: (err, stack) => Center(
                   child: Text(
                     'Error: $err',
-                    style: const TextStyle(color: Colors.red),
+                    style: const TextStyle(color: AppColors.error),
                   ),
                 ),
               ),
@@ -63,7 +63,7 @@ class SystemInfoModal extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: const BoxDecoration(
-        color: Color(0xFF161B22),
+        color: AppColors.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(12),
           topRight: Radius.circular(12),
@@ -96,7 +96,7 @@ class SystemInfoModal extends ConsumerWidget {
             onPressed: () => Navigator.pop(context),
             icon: const Icon(LucideIcons.x, size: 18),
             color: AppColors.textSecondary,
-            hoverColor: Colors.red.withValues(alpha: 0.2),
+            hoverColor: AppColors.error.withValues(alpha: 0.2),
           ),
         ],
       ),
@@ -110,15 +110,15 @@ class SystemInfoModal extends ConsumerWidget {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF010409),
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
       ),
       child: SelectableText(
         formattedText,
         style: GoogleFonts.jetBrainsMono(
-          fontSize: 12,
-          color: const Color(0xFFE6EDF3),
+          fontSize: AppTextSize.xs,
+          color: AppColors.textPrimary,
           height: 1.5,
         ),
       ),
@@ -129,7 +129,7 @@ class SystemInfoModal extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
-        color: Color(0xFF161B22),
+        color: AppColors.surface,
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(12),
           bottomRight: Radius.circular(12),
@@ -165,7 +165,7 @@ class SystemInfoModal extends ConsumerWidget {
             style: AppButtonStyle.primary,
             size: AppButtonSize.md,
             backgroundColor: AppColors.accent,
-            textColor: Colors.white,
+            textColor: AppColors.textOnColor,
           ),
         ],
       ),

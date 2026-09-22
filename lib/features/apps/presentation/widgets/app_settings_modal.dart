@@ -815,7 +815,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                 Text(
                   ext.isZend ? 'Zend Extension' : 'Standard extension',
                   style: const TextStyle(
-                    fontSize: 10,
+                    fontSize: AppTextSize.xxs,
                     color: AppColors.textMuted,
                   ),
                 ),
@@ -906,7 +906,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               Text(
                 displayValue,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTextSize.xs,
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                   fontFamily: 'JetBrainsMono',

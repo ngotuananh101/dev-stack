@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_size.dart';
 import '../../domain/site_model.dart';
 import '../../../apps/data/apps_provider.dart';
 import '../../data/sites_provider.dart';
@@ -79,7 +80,7 @@ class _EditSiteModalState extends ConsumerState<EditSiteModal> {
             'Site Settings: ${widget.site.domain}',
             style: const TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 16,
+              fontSize: AppTextSize.base,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -346,16 +347,15 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                     children: [
                       Text(
                         'Auto-start on launch',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: 12,
+                          fontSize: AppTextSize.xs,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Switch.adaptive(
+                      Switch(
                         value: _autoStart,
                         onChanged: (v) => setState(() => _autoStart = v),
-                        activeThumbColor: AppColors.success,
                       ),
                     ],
                   ),
@@ -452,7 +452,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                                           child: Text(
                                             a.name,
                                             style: const TextStyle(
-                                              fontSize: 14,
+                                              fontSize: AppTextSize.sm,
                                               color: AppColors.textPrimary,
                                             ),
                                           ),
@@ -477,7 +477,6 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                         Switch(
                           value: _useSsl,
                           onChanged: (v) => setState(() => _useSsl = v),
-                          activeThumbColor: AppColors.success,
                         ),
                       ],
                     ),
@@ -535,7 +534,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: AppTextSize.sm,
                 fontWeight:
                     isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected
@@ -562,7 +561,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
         child: DropdownButton<String>(
           value: _selectedPreset,
           isExpanded: true,
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+          style: const TextStyle(fontSize: AppTextSize.sm, color: AppColors.textPrimary),
           dropdownColor: AppColors.surface,
           borderRadius: BorderRadius.circular(8),
           icon: const Icon(
@@ -576,7 +575,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
               child: Text(
                 entry.value.name,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: AppTextSize.sm,
                   color: AppColors.textPrimary,
                 ),
               ),
@@ -606,7 +605,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
       label,
       style: const TextStyle(
         color: AppColors.textSecondary,
-        fontSize: 12,
+        fontSize: AppTextSize.xs,
         fontWeight: FontWeight.bold,
       ),
     ),
@@ -687,7 +686,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
                 : Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0C0C0C),
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppColors.border),
                     ),
@@ -696,9 +695,9 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
                       expands: true,
                       maxLines: null,
                       style: const TextStyle(
-                        color: Color(0xFFD4D4D4),
+                        color: AppColors.textPrimary,
                         fontFamily: 'monospace',
-                        fontSize: 12,
+                        fontSize: AppTextSize.xs,
                       ),
                       decoration: const InputDecoration(
                         contentPadding: EdgeInsets.all(16),
@@ -720,7 +719,8 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
         _loadConfig();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.accent.withValues(alpha: 0.1)
@@ -730,11 +730,14 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
             color: isSelected ? AppColors.accent : AppColors.border,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? AppColors.accent : AppColors.textSecondary,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: AppTextSize.sm,
+              color: isSelected ? AppColors.accent : AppColors.textSecondary,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
         ),
       ),
@@ -829,7 +832,7 @@ class _SslTabState extends ConsumerState<_SslTab> {
                 : Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0C0C0C),
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppColors.border),
                     ),
@@ -838,9 +841,9 @@ class _SslTabState extends ConsumerState<_SslTab> {
                       expands: true,
                       maxLines: null,
                       style: const TextStyle(
-                        color: Color(0xFFD4D4D4),
+                        color: AppColors.textPrimary,
                         fontFamily: 'monospace',
-                        fontSize: 12,
+                        fontSize: AppTextSize.xs,
                       ),
                       decoration: const InputDecoration(
                         contentPadding: EdgeInsets.all(16),
@@ -862,7 +865,8 @@ class _SslTabState extends ConsumerState<_SslTab> {
         _loadSslFiles();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.accent.withValues(alpha: 0.1)
@@ -872,11 +876,14 @@ class _SslTabState extends ConsumerState<_SslTab> {
             color: isSelected ? AppColors.accent : AppColors.border,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? AppColors.accent : AppColors.textSecondary,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: AppTextSize.sm,
+              color: isSelected ? AppColors.accent : AppColors.textSecondary,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
         ),
       ),
@@ -941,7 +948,7 @@ class _LogTabState extends ConsumerState<_LogTab> {
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFF0C0C0C),
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppColors.border),
               ),
@@ -950,9 +957,9 @@ class _LogTabState extends ConsumerState<_LogTab> {
                 child: Text(
                   _logs[_selectedLog] ?? 'No log data',
                   style: const TextStyle(
-                    color: Color(0xFF00FF00),
+                    color: AppColors.success,
                     fontFamily: 'monospace',
-                    fontSize: 12,
+                    fontSize: AppTextSize.xs,
                   ),
                 ),
               ),
@@ -980,7 +987,7 @@ class _LogTabState extends ConsumerState<_LogTab> {
               selectedColor: AppColors.accent.withValues(alpha: 0.2),
               labelStyle: TextStyle(
                 color: isSelected ? AppColors.accent : AppColors.textSecondary,
-                fontSize: 12,
+                fontSize: AppTextSize.xs,
               ),
             ),
           );

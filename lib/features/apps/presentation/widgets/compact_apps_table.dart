@@ -308,7 +308,7 @@ class CompactAppsTable extends StatelessWidget {
               Text(
                 app.serviceStatus.toUpperCase(),
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: AppTextSize.xxs,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primary,
                 ),
@@ -460,7 +460,7 @@ class CompactAppsTable extends StatelessWidget {
             AppIconButton(
               icon: Icons.star_border_rounded,
               onPressed: () => onChangeDefault(app.appId),
-              color: Colors.amber,
+              color: AppColors.warning,
               tooltip: 'Set as Default PHP',
             ),
             const SizedBox(width: 8),

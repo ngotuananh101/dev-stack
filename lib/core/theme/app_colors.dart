@@ -21,6 +21,8 @@ class AppColors {
   static const Color textPrimary = Color(0xFFC9D1D9);
   static const Color textSecondary = Color(0xFF8B949E);
   static const Color textMuted = Color(0xFF484F58);
+  // Text drawn on a saturated fill (primary, accent, success, error).
+  static const Color textOnColor = Color(0xFFFFFFFF);
   
   // Borders
   static const Color border = Color(0xFF30363D);

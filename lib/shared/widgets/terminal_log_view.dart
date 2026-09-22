@@ -86,14 +86,14 @@ class _TerminalLogViewState extends State<TerminalLogView> {
 
     if (!widget.isModal) {
       return Container(
-        color: const Color(0xFF1E1E1E),
+        color: AppColors.background,
         child: body,
       );
     }
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.border),
         boxShadow: [
@@ -112,14 +112,14 @@ class _TerminalLogViewState extends State<TerminalLogView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF252526),
+        color: AppColors.surface,
         borderRadius: widget.isModal
             ? BorderRadius.vertical(
                 top: Radius.circular(AppRadius.md),
               )
             : BorderRadius.zero,
         border: const Border(
-          bottom: BorderSide(color: Color(0xFF333333)),
+          bottom: BorderSide(color: AppColors.border),
         ),
       ),
       child: Row(
@@ -128,8 +128,8 @@ class _TerminalLogViewState extends State<TerminalLogView> {
           const SizedBox(width: 8),
           Text(
             widget.title,
-            style: TextStyle(
-              color: Colors.white,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
               fontSize: AppTextSize.sm,
               fontWeight: FontWeight.w600,
             ),
@@ -183,7 +183,10 @@ class _TerminalLogViewState extends State<TerminalLogView> {
       return Center(
         child: Text(
           widget.emptyMessage,
-          style: const TextStyle(color: Color(0xFF888888), fontSize: 13),
+          style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: AppTextSize.sm,
+          ),
         ),
       );
     }
@@ -198,9 +201,9 @@ class _TerminalLogViewState extends State<TerminalLogView> {
         final isWarning = line.contains('[WARN]') || line.contains('Warning:');
         final isInfo = line.contains('[INFO]') || line.contains('Service started');
 
-        Color textColor = const Color(0xFFCCCCCC);
+        Color textColor = AppColors.textPrimary;
         if (isError) {
-          textColor = const Color(0xFFF48771);
+          textColor = AppColors.error;
         } else if (isWarning) {
           textColor = AppColors.warning;
         } else if (isInfo) {
@@ -211,7 +214,7 @@ class _TerminalLogViewState extends State<TerminalLogView> {
           line,
           style: TextStyle(
             fontFamily: 'monospace',
-            fontSize: 12,
+            fontSize: AppTextSize.xs,
             color: textColor,
             height: 1.4,
           ),

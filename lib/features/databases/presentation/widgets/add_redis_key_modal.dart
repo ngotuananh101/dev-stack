@@ -437,7 +437,7 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
         label,
         style: const TextStyle(
           color: AppColors.textSecondary,
-          fontSize: 12,
+          fontSize: AppTextSize.xs,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -458,11 +458,14 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
       validator: validator,
       style: TextStyle(
         color: enabled ? AppColors.textPrimary : AppColors.textMuted,
-        fontSize: 14,
+        fontSize: AppTextSize.sm,
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        hintStyle: const TextStyle(
+          color: AppColors.textMuted,
+          fontSize: AppTextSize.sm,
+        ),
         filled: true,
         fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(
@@ -481,7 +484,10 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.primary),
         ),
-        errorStyle: const TextStyle(color: AppColors.error, fontSize: 11),
+        errorStyle: const TextStyle(
+          color: AppColors.error,
+          fontSize: AppTextSize.xxs,
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:dev_stack/core/theme/app_colors.dart';
+import 'package:dev_stack/core/theme/app_text_size.dart';
 import 'package:dev_stack/features/databases/data/databases_provider.dart';
 import 'package:dev_stack/features/apps/data/apps_provider.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
@@ -266,7 +267,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 18,
+                    fontSize: AppTextSize.lg,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -278,7 +279,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 14,
+                    fontSize: AppTextSize.sm,
                     height: 1.5,
                   ),
                 ),
@@ -292,7 +293,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                     style: AppButtonStyle.primary,
                     size: AppButtonSize.lg,
                     backgroundColor: const Color(0xFF13AA52),
-                    textColor: Colors.white,
+                    textColor: AppColors.textOnColor,
                   )
                 else
                   AppButton(
@@ -323,7 +324,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           const SizedBox(height: 16),
           const Text(
             'No database engines installed',
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 18),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: AppTextSize.lg),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -505,7 +506,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           enabled: false,
           child: Text(
             'Version: $version',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: AppTextSize.xs, fontWeight: FontWeight.bold),
           ),
         ),
         const PopupMenuDivider(),
@@ -566,7 +567,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
               version,
               style: const TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 12,
+                fontSize: AppTextSize.xs,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -596,7 +597,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
         style: AppButtonStyle.primary,
         size: AppButtonSize.md,
         backgroundColor: color,
-        textColor: Colors.white,
+        textColor: AppColors.textOnColor,
       );
     }
     return AppButton(
@@ -614,10 +615,16 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       height: 36,
       child: TextField(
         controller: _searchController,
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: AppTextSize.sm,
+        ),
         decoration: InputDecoration(
           hintText: isRedis ? 'Search key' : 'Database search',
-          hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: AppTextSize.xs,
+          ),
           prefixIcon: const Icon(
             LucideIcons.search,
             size: 14,

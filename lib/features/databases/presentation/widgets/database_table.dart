@@ -131,7 +131,7 @@ class DatabaseTable extends StatelessWidget {
                 ),
                 child: const Text(
                   'Active',
-                  style: TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppColors.success, fontSize: AppTextSize.xxs, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

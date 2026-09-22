@@ -153,7 +153,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
           child: Text(
             'INSTALLED VERSIONS',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: AppTextSize.xxs,
               fontWeight: FontWeight.bold,
               color: AppColors.textMuted,
               letterSpacing: 1,
@@ -201,7 +201,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
               const Text(
                 'AVAILABLE TO INSTALL',
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: AppTextSize.xxs,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textMuted,
                   letterSpacing: 1,

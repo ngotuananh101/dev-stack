@@ -51,7 +51,10 @@ class AppTextField extends StatelessWidget {
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        hintStyle: const TextStyle(
+          color: AppColors.textMuted,
+          fontSize: AppTextSize.sm,
+        ),
         prefixIcon: prefixIcon != null
             ? Icon(prefixIcon, size: 16, color: AppColors.textMuted)
             : null,
@@ -82,7 +85,10 @@ class AppTextField extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.sm),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        errorStyle: const TextStyle(color: AppColors.error, fontSize: 11),
+        errorStyle: const TextStyle(
+          color: AppColors.error,
+          fontSize: AppTextSize.xxs,
+        ),
       ),
     );
   }

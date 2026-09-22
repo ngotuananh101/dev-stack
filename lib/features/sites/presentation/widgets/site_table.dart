@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_size.dart';
 import '../../../../core/services/log_service.dart';
 import '../../../apps/data/apps_provider.dart';
 import '../../../apps/domain/app_model.dart';
@@ -113,7 +114,7 @@ class SiteTable extends ConsumerWidget {
       label,
       textAlign: alignment,
       style: const TextStyle(
-        fontSize: 10,
+        fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -160,7 +161,7 @@ class SiteTable extends ConsumerWidget {
                     site.domain,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: 13,
+                      fontSize: AppTextSize.sm,
                       fontWeight: FontWeight.w500,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -194,7 +195,7 @@ class SiteTable extends ConsumerWidget {
                     : site.rootDir,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 12,
+                  fontSize: AppTextSize.xs,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -217,7 +218,7 @@ class SiteTable extends ConsumerWidget {
                           'CLI :${site.port ?? 3000}',
                           style: const TextStyle(
                             color: AppColors.accent,
-                            fontSize: 12,
+                            fontSize: AppTextSize.xs,
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -231,7 +232,7 @@ class SiteTable extends ConsumerWidget {
                         : site.siteType.toUpperCase(),
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 12,
+                      fontSize: AppTextSize.xs,
                     ),
                   ),
           ),

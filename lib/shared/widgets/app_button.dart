@@ -46,7 +46,7 @@ class AppButton extends StatelessWidget {
       case AppButtonSize.sm:
         return AppTextSize.xs; // 12
       case AppButtonSize.md:
-        return 13.0;
+        return AppTextSize.sm; // 14
       case AppButtonSize.lg:
         return AppTextSize.sm; // 14
     }
@@ -82,31 +82,44 @@ class AppButton extends StatelessWidget {
               border: _getBorder(isEnabled),
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (isLoading) ...[
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(_getTextColor(isEnabled)),
-                    ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final labelWidget = Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: _getTextColor(isEnabled),
+                    fontWeight: FontWeight.w600,
+                    fontSize: _fontSize,
                   ),
-                ] else ...[
-                  if (icon != null) ...[icon!, const SizedBox(width: 8)],
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: _getTextColor(isEnabled),
-                      fontWeight: FontWeight.w600,
-                      fontSize: _fontSize,
-                    ),
-                  ),
-                ],
-              ],
+                );
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isLoading)
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _getTextColor(isEnabled),
+                          ),
+                        ),
+                      )
+                    else ...[
+                      if (icon != null) ...[icon!, const SizedBox(width: 8)],
+                      // A flex child is only legal when this button has a
+                      // bounded width. Inside an unbounded row it must size to
+                      // its text instead.
+                      constraints.hasBoundedWidth
+                          ? Flexible(child: labelWidget)
+                          : labelWidget,
+                    ],
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -145,7 +158,7 @@ class AppButton extends StatelessWidget {
     }
     switch (style) {
       case AppButtonStyle.primary:
-        return Colors.white;
+        return AppColors.textOnColor;
       case AppButtonStyle.secondary:
       case AppButtonStyle.outline:
       case AppButtonStyle.ghost:

@@ -73,7 +73,7 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
           child: Text(
             'Share ${widget.site.domain}',
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: AppTextSize.lg,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
@@ -133,7 +133,7 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
         AppButton(
           label: 'Start Quick Tunnel (Cloudflare)',
           onPressed: _startQuickTunnel,
-          icon: const Icon(LucideIcons.cloud, size: 16, color: Colors.black),
+          icon: const Icon(LucideIcons.cloud, size: 16, color: AppColors.textOnColor),
         ),
         const SizedBox(height: 12),
         AppButton(

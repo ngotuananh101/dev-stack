@@ -313,7 +313,7 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
         label,
         style: const TextStyle(
           color: AppColors.textSecondary,
-          fontSize: 12,
+          fontSize: AppTextSize.xs,
           fontWeight: FontWeight.w600,
         ),
       ),

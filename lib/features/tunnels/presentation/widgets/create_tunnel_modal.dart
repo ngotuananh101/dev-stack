@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:isar/isar.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../domain/tunnel_model.dart';
@@ -96,6 +98,8 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
       hintStyle: const TextStyle(color: AppColors.textMuted),
       filled: true,
       fillColor: AppColors.surfaceLight,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: AppColors.border),
@@ -135,7 +139,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                       ? 'Create Tunnel'
                       : 'Edit Tunnel: ${widget.initialTunnel!.name}',
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: AppTextSize.lg,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
@@ -171,7 +175,8 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                           children: [
                             const Text('Target',
                                 style: TextStyle(
-                                    color: AppColors.textSecondary, fontSize: 13)),
+                                    color: AppColors.textSecondary,
+                                    fontSize: AppTextSize.xs)),
                             const SizedBox(height: 6),
                             _buildTargetTypeToggle(),
                           ],
@@ -184,7 +189,8 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                           children: [
                             const Text('Provider',
                                 style: TextStyle(
-                                    color: AppColors.textSecondary, fontSize: 13)),
+                                    color: AppColors.textSecondary,
+                                    fontSize: AppTextSize.xs)),
                             const SizedBox(height: 6),
                             _buildProviderDropdown(),
                           ],
@@ -214,15 +220,22 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                   const SizedBox(height: 16),
 
                   // Auto start toggle
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Auto start on app launch',
-                      style: TextStyle(color: AppColors.textPrimary),
-                    ),
-                    value: _autoStart,
-                    activeThumbColor: AppColors.secondary,
-                    onChanged: (v) => setState(() => _autoStart = v),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Auto start on app launch',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: AppTextSize.sm,
+                          ),
+                        ),
+                      ),
+                      Switch(
+                        value: _autoStart,
+                        onChanged: (v) => setState(() => _autoStart = v),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -260,12 +273,12 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
         child: GestureDetector(
           onTap: () => setState(() => _targetType = value),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            height: 40,
             decoration: BoxDecoration(
               color: selected
                   ? AppColors.primary.withValues(alpha: 0.15)
                   : null,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
               border: Border.all(
                   color: selected ? AppColors.primary : AppColors.border),
             ),
@@ -278,7 +291,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                       : AppColors.textSecondary,
                   fontWeight:
                       selected ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: 13,
+                  fontSize: AppTextSize.sm,
                 ),
               ),
             ),

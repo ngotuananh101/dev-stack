@@ -212,7 +212,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                               child: Text(
                                 'LIVE SERVICES',
                                 style: TextStyle(
-                                  fontSize: 10, // Slightly larger header
+                                  fontSize: AppTextSize.xxs, // Slightly larger header
                                   fontWeight: FontWeight.w900,
                                   color: AppColors.textMuted,
                                 ),
@@ -254,7 +254,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                               child: Text(
                                 'SYSTEM LOG FILES',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: AppTextSize.xxs,
                                   fontWeight: FontWeight.w900,
                                   color: AppColors.textMuted,
                                 ),

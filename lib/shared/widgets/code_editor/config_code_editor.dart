@@ -10,6 +10,7 @@ import 'package:re_highlight/styles/atom-one-dark.dart';
 
 import '../../../core/services/log_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_size.dart';
 import '../../../shared/widgets/app_button.dart';
 import 'language_for_config.dart';
 
@@ -247,7 +248,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFF252830),
+          color: AppColors.surface,
           border: Border(bottom: BorderSide(color: AppColors.border)),
         ),
         child: Column(
@@ -263,7 +264,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                       controller: controller.findInputController,
                       focusNode: controller.findInputFocusNode,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: AppTextSize.sm,
                         color: AppColors.textPrimary,
                       ),
                       decoration: InputDecoration(
@@ -275,7 +276,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                         hintText: 'Find',
                         hintStyle: const TextStyle(color: AppColors.textMuted),
                         filled: true,
-                        fillColor: const Color(0xFF1E2127),
+                        fillColor: AppColors.background,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(6),
                           borderSide: BorderSide(color: AppColors.border),
@@ -302,7 +303,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                 Text(
                   counter,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTextSize.xs,
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -336,7 +337,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                         controller: controller.replaceInputController,
                         focusNode: controller.replaceInputFocusNode,
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: AppTextSize.sm,
                           color: AppColors.textPrimary,
                         ),
                         decoration: InputDecoration(
@@ -350,7 +351,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                             color: AppColors.textMuted,
                           ),
                           filled: true,
-                          fillColor: const Color(0xFF1E2127),
+                          fillColor: AppColors.background,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(color: AppColors.border),
@@ -390,7 +391,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: active ? AppColors.accent : const Color(0xFF1E2127),
+        color: active ? AppColors.accent : AppColors.background,
         borderRadius: BorderRadius.circular(4),
         child: InkWell(
           onTap: onTap,
@@ -400,9 +401,9 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: AppTextSize.xs,
                 fontWeight: FontWeight.bold,
-                color: active ? Colors.black : AppColors.textSecondary,
+                color: active ? AppColors.textOnColor : AppColors.textSecondary,
               ),
             ),
           ),
@@ -461,7 +462,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                 child: Text(
                   widget.filePath,
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: AppTextSize.xxs,
                     fontFamily: 'monospace',
                     color: AppColors.textMuted,
                   ),
@@ -511,7 +512,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                   size: AppButtonSize.sm,
                   isLoading: _isSaving,
                   backgroundColor: AppColors.success,
-                  textColor: Colors.white,
+                  textColor: AppColors.textOnColor,
                 ),
               ],
             ],
@@ -521,7 +522,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF1E2127),
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.border),
             ),
@@ -533,9 +534,9 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
               shortcutsActivatorsBuilder: const _EditorShortcutsActivators(),
               readOnly: widget.readOnly,
               style: CodeEditorStyle(
-                fontSize: 13,
+                fontSize: AppTextSize.sm,
                 fontFamily: 'monospace',
-                backgroundColor: const Color(0xFF1E2127),
+                backgroundColor: AppColors.background,
                 codeTheme: buildHighlightTheme(widget.filePath),
               ),
               indicatorBuilder:

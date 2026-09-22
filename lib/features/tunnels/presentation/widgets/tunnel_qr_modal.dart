@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 
 class TunnelQrModal extends StatelessWidget {
@@ -36,7 +37,7 @@ class TunnelQrModal extends StatelessWidget {
                   child: Text(
                     '$tunnelName - QR Code',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: AppTextSize.base,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
@@ -67,7 +68,7 @@ class TunnelQrModal extends StatelessWidget {
               publicUrl,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: AppTextSize.sm,
                 color: AppColors.primary,
                 fontWeight: FontWeight.w500,
               ),
@@ -78,7 +79,7 @@ class TunnelQrModal extends StatelessWidget {
               children: [
                 AppButton(
                   label: 'Copy Link',
-                  icon: const Icon(LucideIcons.copy, size: 16, color: Colors.black),
+                  icon: const Icon(LucideIcons.copy, size: 16, color: AppColors.textOnColor),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: publicUrl));
                     ScaffoldMessenger.of(context).showSnackBar(

@@ -117,7 +117,7 @@ class CompactPagination extends StatelessWidget {
           '$page',
           style: TextStyle(
             fontSize: AppTextSize.xxs,
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+            color: isSelected ? AppColors.textOnColor : AppColors.textSecondary,
           ),
         ),
       ),

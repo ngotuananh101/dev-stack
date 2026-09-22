@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import '../../../shared/widgets/app_button.dart';
 import 'widgets/site_table.dart';
@@ -125,10 +126,16 @@ class _SitesPageState extends ConsumerState<SitesPage> {
       height: 36,
       child: TextField(
         controller: _searchController,
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: AppTextSize.sm,
+        ),
         decoration: InputDecoration(
           hintText: 'Search sites...',
-          hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: AppTextSize.xs,
+          ),
           prefixIcon: const Icon(
             LucideIcons.search,
             size: 14,
