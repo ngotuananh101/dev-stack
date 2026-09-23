@@ -79,6 +79,23 @@ class Settings extends _$Settings {
     }
   }
 
+  /// Riverpod 3 compares the previous and new state with `==` and drops the
+  /// update when they are equal (a breaking change from Riverpod 2, whose
+  /// async notifiers always notified). [updateField] mutates the Isar-managed
+  /// [AppSettings] instance in place and re-emits that very same object, so
+  /// `previous == next` holds by identity and every toggle would be silently
+  /// discarded — the settings screen only caught up once it was remounted.
+  /// [AppSettings] is a mutable Isar entity without value equality, so
+  /// restoring the always-notify behaviour is the correct fix here rather than
+  /// relying on the default comparison.
+  @override
+  bool updateShouldNotify(
+    AsyncValue<AppSettings> previous,
+    AsyncValue<AppSettings> next,
+  ) {
+    return true;
+  }
+
   Future<void> updateSettings(AppSettings newSettings) async {
     final isar = await ref.read(isarProvider.future);
     isar.write((_) {
