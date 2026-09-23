@@ -4,7 +4,7 @@ part 'database_record.g.dart';
 
 @collection
 class DatabaseRecord {
-  int id = 0; // isar_plus: 0 signals auto-increment
+  int id = 0; // Primary key. Set via collection.autoIncrement() on insert.
 
   @Index(unique: true)
   late String name;

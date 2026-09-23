@@ -305,6 +305,12 @@ class TunnelManagerService {
     final isar = _isar;
     if (isar != null) {
       isar.write((_) {
+        // isar_plus: 0 is not an auto-increment sentinel. If this tunnel was
+        // constructed without an id (defaulting to 0), allocate a fresh id so
+        // it doesn't overwrite other tunnels.
+        if (tunnel.id == 0) {
+          tunnel.id = isar.tunnelModels.autoIncrement();
+        }
         isar.tunnelModels.put(tunnel);
       });
     }

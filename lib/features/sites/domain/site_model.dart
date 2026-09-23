@@ -4,7 +4,7 @@ part 'site_model.g.dart';
 
 @collection
 class SiteModel {
-  int id = 0; // isar_plus: 0 signals auto-increment
+  int id = 0; // Primary key. Set via collection.autoIncrement() on insert.
 
   @Index(unique: true)
   late String domain; // Site name/domain (e.g. example.test)
@@ -28,7 +28,7 @@ class SiteModel {
   DateTime? createdAt;
 
   SiteModel({
-    this.id = 0, // isar_plus: 0 signals auto-increment
+    this.id = 0, // Set to collection.autoIncrement() for new records.
     required this.domain,
     required this.rootDir,
     this.siteType = 'php',

@@ -60,6 +60,14 @@ class Apps extends _$Apps {
     return apps;
   }
 
+  @override
+  bool updateShouldNotify(
+    AsyncValue<List<AppModel>> previous,
+    AsyncValue<List<AppModel>> next,
+  ) {
+    return true;
+  }
+
   Future<void> refresh() async {
     final repository = await ref.read(appsRepositoryProvider.future);
     final list = await repository.getAll();
@@ -489,11 +497,17 @@ class Apps extends _$Apps {
     }
   }
 
+  bool _didAutoUpdateCatalog = false;
+
   /// Silent startup catalog refresh: waits for the initial load, then
   /// re-downloads the catalog if the network allows it. Unlike
   /// [updateCatalog] it never flips the state to loading or error, so the
   /// UI keeps showing the current list and offline startups are a no-op.
+  /// Guarded so it runs at most once per application run, even when the
+  /// apps screen unmounts and remounts across navigation tab switches.
   Future<void> autoUpdateCatalog() async {
+    if (_didAutoUpdateCatalog) return;
+    _didAutoUpdateCatalog = true;
     try {
       await ref.read(appsProvider.future);
       final repository = await ref.read(appsRepositoryProvider.future);
