@@ -4,7 +4,7 @@ part 'tunnel_model.g.dart';
 
 @collection
 class TunnelModel {
-  int id = 0; // isar_plus: 0 signals auto-increment
+  int id = 0; // Primary key. Set via collection.autoIncrement() on insert.
 
   late String name;
 
@@ -25,7 +25,7 @@ class TunnelModel {
   DateTime? lastActiveAt;
 
   TunnelModel({
-    this.id = 0, // isar_plus: 0 signals auto-increment
+    this.id = 0, // Set to collection.autoIncrement() on insert.
     required this.name,
     this.provider = 'cloudflare',
     this.targetType = 'site',

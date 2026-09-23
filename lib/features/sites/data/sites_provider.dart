@@ -286,6 +286,10 @@ class Sites extends _$Sites {
     }
 
     final site = SiteModel(
+      // isar_plus has no `Isar.autoIncrement` sentinel — id 0 is a real
+      // primary key, so a new site must claim a fresh id or it would
+      // overwrite whichever site already owns id 0.
+      id: isar.siteModels.autoIncrement(),
       domain: domain,
       rootDir: rootDir,
       siteType: siteType,
@@ -425,6 +429,9 @@ class Sites extends _$Sites {
 
       toCreate.add(
         SiteModel(
+          // Reserve a distinct id per site up front; `putAll` below must not
+          // collapse every new row onto the same default id 0.
+          id: isar.siteModels.autoIncrement(),
           domain: spec.domain,
           rootDir: spec.rootDir,
           siteType: spec.siteType,

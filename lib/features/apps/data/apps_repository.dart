@@ -173,6 +173,17 @@ class AppsRepository {
 
   Future<void> save(AppModel app) async {
     isar.write((_) {
+      // isar_plus has no `Isar.autoIncrement` sentinel: id `0` is a real
+      // primary key, so putting a fresh InstalledApp without an id would
+      // overwrite the row with id 0 on every install — leaving the database
+      // holding only the most recently installed app. Reuse the existing
+      // row's id when this app is already stored, otherwise ask the
+      // collection for a fresh auto-increment id.
+      final existing = isar.installedApps
+          .where()
+          .appIdEqualTo(app.appId)
+          .findFirst();
+
       final installed = InstalledApp(
         appId: app.appId,
         appName: app.name,
@@ -187,7 +198,8 @@ class AppsRepository {
         groupName: app.groupName,
         isDefault: app.isDefault,
         extraInfoJson: app.extraInfoJson,
-      );
+      )..id = existing?.id ?? isar.installedApps.autoIncrement();
+
       isar.installedApps.put(installed);
     });
   }

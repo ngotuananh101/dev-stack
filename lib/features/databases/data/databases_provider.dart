@@ -96,6 +96,7 @@ class Databases extends _$Databases {
           }
 
           final record = DatabaseRecord()
+            ..id = isar.databaseRecords.autoIncrement()
             ..name = name
             ..username = defaultUser
             ..password = ''
@@ -199,6 +200,7 @@ class Databases extends _$Databases {
     final encryptedPassword = vault.encrypt(password);
 
     final record = DatabaseRecord()
+      ..id = isar.databaseRecords.autoIncrement()
       ..name = name
       ..username = user
       ..password = encryptedPassword

@@ -4,7 +4,8 @@ part 'app_settings.g.dart';
 
 @collection
 class AppSettings {
-  int id = 0; // isar_plus: 0 signals auto-increment
+  // Single-row table: every settings record intentionally reuses id 0.
+  int id = 0;
 
   // Base Directory
   String baseDir = 'C:\\Ponta';
