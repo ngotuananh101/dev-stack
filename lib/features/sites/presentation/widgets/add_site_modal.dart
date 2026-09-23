@@ -118,7 +118,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
     try {
       if (isEdit) {
         await ref
-            .read(sitesNotifierProvider.notifier)
+            .read(sitesProvider.notifier)
             .updateSite(
               id: widget.initialData!.id,
               domain: _domainController.text.trim(),
@@ -141,7 +141,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
             );
       } else {
         await ref
-            .read(sitesNotifierProvider.notifier)
+            .read(sitesProvider.notifier)
             .addSite(
               domain: _domainController.text.trim(),
               rootDir: _siteType == 'proxy'
@@ -179,7 +179,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
 
   @override
   Widget build(BuildContext context) {
-    final appsAsync = ref.watch(appsNotifierProvider);
+    final appsAsync = ref.watch(appsProvider);
 
     return appsAsync.when(
       data: (apps) {
@@ -438,7 +438,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                             return 'Please enter a target URL';
                           }
                           try {
-                            SitesNotifier.validateProxyTarget(value);
+                            Sites.validateProxyTarget(value);
                           } on ArgumentError catch (e) {
                             return e.message.toString();
                           }

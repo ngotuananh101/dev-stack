@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/redis_key.dart';
 import '../../apps/domain/app_model.dart';
@@ -7,7 +6,7 @@ import '../../apps/domain/app_model.dart';
 part 'redis_provider.g.dart';
 
 @riverpod
-class RedisNotifier extends _$RedisNotifier {
+class Redis extends _$Redis {
   bool _isDisposed = false;
   bool _isFetching = false;
 

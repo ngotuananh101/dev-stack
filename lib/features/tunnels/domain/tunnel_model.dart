@@ -1,10 +1,10 @@
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 
 part 'tunnel_model.g.dart';
 
 @collection
 class TunnelModel {
-  Id id = Isar.autoIncrement;
+  int id = 0; // isar_plus: 0 signals auto-increment
 
   late String name;
 
@@ -25,7 +25,7 @@ class TunnelModel {
   DateTime? lastActiveAt;
 
   TunnelModel({
-    this.id = Isar.autoIncrement,
+    this.id = 0, // isar_plus: 0 signals auto-increment
     required this.name,
     this.provider = 'cloudflare',
     this.targetType = 'site',

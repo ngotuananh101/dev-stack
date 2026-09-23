@@ -5,7 +5,7 @@ import 'package:dev_stack/features/apps/data/pyenv_provider.dart';
 void main() {
   group('Pyenv Environment Builder', () {
     test('builds Linux environment with PYENV_ROOT and PATH prepend', () {
-      final env = PyenvNotifier.buildPyenvEnvironment(
+      final env = Pyenv.buildPyenvEnvironment(
         installPath: '/home/user/.ponta/apps/pyenv',
         isWindows: false,
         currentEnv: {'PATH': '/usr/local/bin:/usr/bin'},
@@ -21,7 +21,7 @@ void main() {
     });
 
     test('builds Windows environment with pyenv-win directory', () {
-      final env = PyenvNotifier.buildPyenvEnvironment(
+      final env = Pyenv.buildPyenvEnvironment(
         installPath: r'C:\Ponta\apps\pyenv',
         isWindows: true,
         currentEnv: {'Path': r'C:\Windows\System32'},
@@ -53,7 +53,7 @@ void main() {
       final libexecDir = Directory('${tmpDir.path}/libexec')..createSync(recursive: true);
       File('${libexecDir.path}/pyenv').writeAsStringSync('#!/bin/sh\n');
 
-      final resolved = PyenvNotifier.resolvePyenvExecutable(
+      final resolved = Pyenv.resolvePyenvExecutable(
         installPath: tmpDir.path,
         isWindows: false,
       );
@@ -62,7 +62,7 @@ void main() {
     });
 
     test('resolves windows bat path on Windows', () {
-      final resolved = PyenvNotifier.resolvePyenvExecutable(
+      final resolved = Pyenv.resolvePyenvExecutable(
         installPath: r'C:\Ponta\apps\pyenv',
         isWindows: true,
       );
@@ -91,7 +91,7 @@ Available versions:
   stackless-3.7.5
 ''';
 
-      final versions = PyenvNotifier.parseInstallableVersions(mockLinuxOutput);
+      final versions = Pyenv.parseInstallableVersions(mockLinuxOutput);
 
       // Should only keep standard CPython versions, latest patch per line, sorted descending
       expect(versions, equals(['3.13.2', '3.12.9', '3.11.11', '3.10.16', '2.7.18']));
@@ -106,7 +106,7 @@ Available versions:
 3.12.9
 ''';
 
-      final versions = PyenvNotifier.parseInstallableVersions(mockWindowsOutput);
+      final versions = Pyenv.parseInstallableVersions(mockWindowsOutput);
       expect(versions, equals(['3.12.9', '3.11.11', '2.7.18']));
     });
   });
@@ -119,13 +119,13 @@ Available versions:
   3.12.9
 ''';
 
-      final installed = PyenvNotifier.parseInstalledVersions(mockLinuxVersions);
+      final installed = Pyenv.parseInstalledVersions(mockLinuxVersions);
       expect(installed, equals(['3.11.11', '3.12.9']));
     });
 
     test('handles empty versions output', () {
       const mockEmpty = '* system\n';
-      final installed = PyenvNotifier.parseInstalledVersions(mockEmpty);
+      final installed = Pyenv.parseInstalledVersions(mockEmpty);
       expect(installed, isEmpty);
     });
   });

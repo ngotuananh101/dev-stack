@@ -162,7 +162,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
   }
 
   Widget _buildContent() {
-    final sitesAsync = ref.watch(sitesNotifierProvider);
+    final sitesAsync = ref.watch(sitesProvider);
 
     return sitesAsync.when(
       data: (sites) {
@@ -212,7 +212,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
           'Are you sure you want to delete $count selected sites? This action cannot be undone.',
       confirmBtnText: 'DELETE ALL',
       onConfirm: () async {
-        final sitesNotifier = ref.read(sitesNotifierProvider.notifier);
+        final sitesNotifier = ref.read(sitesProvider.notifier);
         final idsToDelete = _selectedSiteIds.toList();
         final progress = ValueNotifier<BatchProgress>(
           BatchProgress(
@@ -261,8 +261,8 @@ class _SitesPageState extends ConsumerState<SitesPage> {
   }
 
   Future<void> _handleBatchCreateSites() async {
-    final settingsAsync = ref.read(settingsNotifierProvider);
-    final settings = settingsAsync.valueOrNull;
+    final settingsAsync = ref.read(settingsProvider);
+    final settings = settingsAsync.value;
     if (settings == null) return;
 
     final path = await FilePicker.getDirectoryPath();
@@ -293,8 +293,8 @@ class _SitesPageState extends ConsumerState<SitesPage> {
             'Found ${subdirs.length} folders. Do you want to create sites for all of them using template "${settings.siteTemplate}"?',
         confirmBtnText: 'CREATE ALL',
         onConfirm: () async {
-          final sitesNotifier = ref.read(sitesNotifierProvider.notifier);
-          final apps = ref.read(appsNotifierProvider).value ?? [];
+          final sitesNotifier = ref.read(sitesProvider.notifier);
+          final apps = ref.read(appsProvider).value ?? [];
 
           // Get default PHP version (prioritize isDefault, then installed).
           final defaultPhpApp = apps.firstWhere(

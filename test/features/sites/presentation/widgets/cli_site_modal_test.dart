@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// A no-op replacement for [AppsNotifier] that resolves instantly to an empty
+/// A no-op replacement for [Apps] that resolves instantly to an empty
 /// app list, so [AddSiteModal] / [EditSiteModal] can build without touching the
 /// real database.
-class _EmptyAppsNotifier extends AppsNotifier {
+class _EmptyAppsNotifier extends Apps {
   @override
   Future<List<AppModel>> build() => Future.value(<AppModel>[]);
 }
@@ -20,7 +20,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appsNotifierProvider.overrideWith(() => _EmptyAppsNotifier()),
+          appsProvider.overrideWith(() => _EmptyAppsNotifier()),
         ],
         child: const MaterialApp(
           home: Scaffold(
@@ -62,7 +62,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appsNotifierProvider.overrideWith(() => _EmptyAppsNotifier()),
+          appsProvider.overrideWith(() => _EmptyAppsNotifier()),
         ],
         child: MaterialApp(
           home: Scaffold(

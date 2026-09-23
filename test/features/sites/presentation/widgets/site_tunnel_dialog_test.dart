@@ -64,7 +64,7 @@ void main() {
         overrides: [
           tunnelsStreamProvider.overrideWith((ref) => Stream.value([])),
           tunnelSessionsProvider.overrideWith(
-            (ref) => TunnelSessionsNotifierMock({}),
+            () => TunnelSessionsNotifierMock({}),
           ),
         ],
         child: MaterialApp(
@@ -99,7 +99,7 @@ void main() {
         overrides: [
           tunnelsStreamProvider.overrideWith((ref) => Stream.value([tunnel])),
           tunnelSessionsProvider.overrideWith(
-            (ref) => TunnelSessionsNotifierMock({
+            () => TunnelSessionsNotifierMock({
               10: const TunnelSession(
                 tunnelId: 10,
                 status: TunnelStatus.running,
@@ -140,7 +140,7 @@ void main() {
         overrides: [
           tunnelsStreamProvider.overrideWith((ref) => Stream.value([tunnel])),
           tunnelSessionsProvider.overrideWith(
-            (ref) => TunnelSessionsNotifierMock({
+            () => TunnelSessionsNotifierMock({
               10: const TunnelSession(
                 tunnelId: 10,
                 status: TunnelStatus.stopped,
@@ -179,7 +179,7 @@ void main() {
         overrides: [
           tunnelsStreamProvider.overrideWith((ref) => Stream.value([tunnel])),
           tunnelSessionsProvider.overrideWith(
-            (ref) => TunnelSessionsNotifierMock({}),
+            () => TunnelSessionsNotifierMock({}),
           ),
         ],
         child: MaterialApp(
@@ -212,7 +212,7 @@ void main() {
           tunnelsStreamProvider.overrideWith((ref) => Stream.value([])),
           tunnelManagerServiceProvider.overrideWithValue(mockManager),
           tunnelSessionsProvider.overrideWith(
-            (ref) => TunnelSessionsNotifierMock({}, manager: mockManager),
+            () => TunnelSessionsNotifierMock({}, manager: mockManager),
           ),
         ],
         child: MaterialApp(
@@ -233,21 +233,31 @@ void main() {
   });
 }
 
-/// Minimal TunnelSessionsNotifier subclass for tests. The base class wires up a
-/// sessionsStream subscription on the provided TunnelManagerService, so we pass
-/// one configured with no-op process callbacks to avoid spawning subprocesses.
-/// The desired initial sessions are written to [state] after the super
-/// constructor installs the (idle) stream listener.
+/// Minimal TunnelSessionsNotifier subclass for tests.
+///
+/// [build] deliberately does not call `super.build()`, so no real
+/// [TunnelManagerService] is constructed here. The optional [manager] is what
+/// the three action overrides forward to, so a test can assert on the manager's
+/// own state after driving the dialog.
 class TunnelSessionsNotifierMock extends TunnelSessionsNotifier {
-  TunnelSessionsNotifierMock(
-    Map<int, TunnelSession> initial, {
-    TunnelManagerService? manager,
-  })  : super(manager ??
-            TunnelManagerService(
-              downloader: _FakeDownloader(),
-              startProcessFn: (exec, args) async => FakeManagedProcess(0),
-              stopProcessFn: (pid) async {},
-            )) {
-    state = initial;
-  }
+  TunnelSessionsNotifierMock(this._initial, {TunnelManagerService? manager})
+      : _manager = manager;
+
+  final Map<int, TunnelSession> _initial;
+  final TunnelManagerService? _manager;
+
+  @override
+  Map<int, TunnelSession> build() => _initial;
+
+  @override
+  Future<void> start(TunnelModel tunnel) =>
+      _manager?.startTunnel(tunnel) ?? Future<void>.value();
+
+  @override
+  Future<void> stop(int tunnelId) =>
+      _manager?.stopTunnel(tunnelId) ?? Future<void>.value();
+
+  @override
+  Future<void> delete(int tunnelId) =>
+      _manager?.deleteTunnel(tunnelId) ?? Future<void>.value();
 }

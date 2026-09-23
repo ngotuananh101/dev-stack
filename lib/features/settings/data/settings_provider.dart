@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../../core/services/background_process.dart';
 import 'package:path/path.dart' as p;
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import '../../../core/database/isar_provider.dart';
@@ -15,7 +15,7 @@ import 'package:dev_stack/core/services/log_service.dart';
 part 'settings_provider.g.dart';
 
 @Riverpod(keepAlive: true)
-class SettingsNotifier extends _$SettingsNotifier {
+class Settings extends _$Settings {
   /// Replaces [oldDir] with [newDir] inside [value], but only where [oldDir]
   /// appears as a complete path-segment prefix — i.e. followed by a path
   /// separator (`/` or `\`) or the end of the string. This avoids the
@@ -52,14 +52,14 @@ class SettingsNotifier extends _$SettingsNotifier {
     final isar = await ref.watch(isarProvider.future);
 
     try {
-      final settings = await isar.appSettings.where().findFirst();
+      final settings = isar.appSettings.where().findFirst();
 
       if (settings == null) {
         // Initialize default settings with platform-aware base directory
         final defaultSettings = AppSettings()
           ..baseDir = AppConfig.defaultBaseDir;
-        await isar.writeTxn(() async {
-          await isar.appSettings.put(defaultSettings);
+        isar.write((_) {
+          isar.appSettings.put(defaultSettings);
         });
         return defaultSettings;
       }
@@ -68,21 +68,38 @@ class SettingsNotifier extends _$SettingsNotifier {
     } catch (e) {
       AppLogger.error('Error reading AppSettings, resetting to default: $e');
       // If reading fails (e.g. RangeError due to schema mismatch), clear and reset
-      await isar.writeTxn(() async {
-        await isar.appSettings.clear();
+      isar.write((_) {
+        isar.appSettings.clear();
         final defaultSettings = AppSettings()
           ..baseDir = AppConfig.defaultBaseDir;
-        await isar.appSettings.put(defaultSettings);
+        isar.appSettings.put(defaultSettings);
         return defaultSettings;
       });
       return AppSettings()..baseDir = AppConfig.defaultBaseDir;
     }
   }
 
+  /// Riverpod 3 compares the previous and new state with `==` and drops the
+  /// update when they are equal (a breaking change from Riverpod 2, whose
+  /// async notifiers always notified). [updateField] mutates the Isar-managed
+  /// [AppSettings] instance in place and re-emits that very same object, so
+  /// `previous == next` holds by identity and every toggle would be silently
+  /// discarded — the settings screen only caught up once it was remounted.
+  /// [AppSettings] is a mutable Isar entity without value equality, so
+  /// restoring the always-notify behaviour is the correct fix here rather than
+  /// relying on the default comparison.
+  @override
+  bool updateShouldNotify(
+    AsyncValue<AppSettings> previous,
+    AsyncValue<AppSettings> next,
+  ) {
+    return true;
+  }
+
   Future<void> updateSettings(AppSettings newSettings) async {
     final isar = await ref.read(isarProvider.future);
-    await isar.writeTxn(() async {
-      await isar.appSettings.put(newSettings);
+    isar.write((_) {
+      isar.appSettings.put(newSettings);
     });
     state = AsyncData(newSettings);
   }
@@ -214,9 +231,9 @@ class SettingsNotifier extends _$SettingsNotifier {
     final isar = await ref.read(isarProvider.future);
 
     // Update InstalledApp records
-    final apps = await isar.installedApps.where().findAll();
+    final apps = isar.installedApps.where().findAll();
     if (apps.isNotEmpty) {
-      await isar.writeTxn(() async {
+      isar.write((_) {
         for (final app in apps) {
           bool modified = false;
 
@@ -249,7 +266,7 @@ class SettingsNotifier extends _$SettingsNotifier {
           }
 
           if (modified) {
-            await isar.installedApps.put(app);
+            isar.installedApps.put(app);
             AppLogger.info('Updated DB paths for app: ${app.appId}');
           }
         }
@@ -257,14 +274,14 @@ class SettingsNotifier extends _$SettingsNotifier {
     }
 
     // Update SiteModel records
-    final sites = await isar.siteModels.where().findAll();
+    final sites = isar.siteModels.where().findAll();
     if (sites.isNotEmpty) {
-      await isar.writeTxn(() async {
+      isar.write((_) {
         for (final site in sites) {
           final newRoot = replacePathPrefix(site.rootDir, oldDir, newDir);
           if (newRoot != site.rootDir) {
             site.rootDir = newRoot;
-            await isar.siteModels.put(site);
+            isar.siteModels.put(site);
             AppLogger.info('Updated DB paths for site: ${site.domain}');
           }
         }

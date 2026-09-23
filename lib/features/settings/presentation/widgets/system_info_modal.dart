@@ -14,7 +14,7 @@ class SystemInfoModal extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final systemInfoAsync = ref.watch(systemInfoNotifierProvider);
+    final systemInfoAsync = ref.watch(systemInfoStateProvider);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -85,7 +85,7 @@ class SystemInfoModal extends ConsumerWidget {
           ),
           const Spacer(),
           IconButton(
-            onPressed: () => ref.read(systemInfoNotifierProvider.notifier).refresh(),
+            onPressed: () => ref.read(systemInfoStateProvider.notifier).refresh(),
             icon: const Icon(LucideIcons.refreshCw, size: 16),
             color: AppColors.textSecondary,
             hoverColor: AppColors.surfaceLight,
@@ -142,7 +142,7 @@ class SystemInfoModal extends ConsumerWidget {
           AppButton(
             label: 'Copy to Clipboard',
             onPressed: () {
-              final info = ref.read(systemInfoNotifierProvider).value;
+              final info = ref.read(systemInfoStateProvider).value;
               if (info != null) {
                 Clipboard.setData(ClipboardData(text: info.toFormattedString()));
                 ScaffoldMessenger.of(context).showSnackBar(

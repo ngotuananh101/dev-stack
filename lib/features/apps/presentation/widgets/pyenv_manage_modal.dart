@@ -30,7 +30,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
     setState(() => _isLoadingVersions = true);
     try {
       final versions =
-          await ref.read(pyenvNotifierProvider.notifier).getInstallableVersions();
+          await ref.read(pyenvProvider.notifier).getInstallableVersions();
       if (mounted) {
         setState(() {
           _installableVersions = versions;
@@ -44,7 +44,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
 
   @override
   Widget build(BuildContext context) {
-    final stateAsync = ref.watch(pyenvNotifierProvider);
+    final stateAsync = ref.watch(pyenvProvider);
 
     return Container(
       width: 700,
@@ -318,7 +318,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
   Future<void> _install(String version) async {
     setState(() => _installingVersion = version);
     try {
-      await ref.read(pyenvNotifierProvider.notifier).installVersion(version);
+      await ref.read(pyenvProvider.notifier).installVersion(version);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Python $version installed successfully')),
@@ -337,7 +337,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
 
   Future<void> _uninstall(String version) async {
     try {
-      await ref.read(pyenvNotifierProvider.notifier).uninstallVersion(version);
+      await ref.read(pyenvProvider.notifier).uninstallVersion(version);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -349,7 +349,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
 
   Future<void> _setGlobal(String version) async {
     try {
-      await ref.read(pyenvNotifierProvider.notifier).globalVersion(version);
+      await ref.read(pyenvProvider.notifier).globalVersion(version);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Set Python $version as global')),

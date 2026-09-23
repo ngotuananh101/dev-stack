@@ -2,10 +2,10 @@ import 'package:dev_stack/features/settings/data/settings_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('SettingsNotifier.replacePathPrefix', () {
+  group('Settings.replacePathPrefix', () {
     test('replaces the old prefix when followed by a separator or end', () {
       expect(
-        SettingsNotifier.replacePathPrefix(
+        Settings.replacePathPrefix(
           r'C:\Dev\apps\mysql',
           r'C:\Dev',
           r'C:\DevStack',
@@ -13,7 +13,7 @@ void main() {
         r'C:\DevStack\apps\mysql',
       );
       expect(
-        SettingsNotifier.replacePathPrefix(
+        Settings.replacePathPrefix(
           r'C:/Dev/apps/mysql',
           r'C:/Dev',
           r'C:/DevStack',
@@ -24,7 +24,7 @@ void main() {
 
     test('replaces when the path equals the prefix exactly', () {
       expect(
-        SettingsNotifier.replacePathPrefix(
+        Settings.replacePathPrefix(
           r'C:\Dev',
           r'C:\Dev',
           r'C:\DevStack',
@@ -37,7 +37,7 @@ void main() {
       // A path that already contains the NEW dir must not have its prefix
       // re-matched and turned into C:\DevStackStack.
       expect(
-        SettingsNotifier.replacePathPrefix(
+        Settings.replacePathPrefix(
           r'C:\DevStack\apps',
           r'C:\Dev',
           r'C:\DevStack',
@@ -49,7 +49,7 @@ void main() {
     test('does NOT touch a sibling path that merely starts with oldDir', () {
       // C:\DevTools is NOT C:\Dev + separator, so it must be left alone.
       expect(
-        SettingsNotifier.replacePathPrefix(
+        Settings.replacePathPrefix(
           r'C:\DevTools\bin',
           r'C:\Dev',
           r'C:\DevStack',
@@ -60,7 +60,7 @@ void main() {
 
     test('replaces multiple occurrences in one string', () {
       expect(
-        SettingsNotifier.replacePathPrefix(
+        Settings.replacePathPrefix(
           r'root "C:\Dev\site"; alias "C:\Dev\site2";',
           r'C:\Dev',
           r'C:\DevStack',

@@ -335,7 +335,7 @@ class SiteTable extends ConsumerWidget {
                           confirmBtnText: 'DELETE',
                           onConfirm: () {
                             ref
-                                .read(sitesNotifierProvider.notifier)
+                                .read(sitesProvider.notifier)
                                 .deleteSite(site.id);
                           },
                         );
@@ -427,8 +427,8 @@ class SiteTable extends ConsumerWidget {
   Future<void> _openTerminal(SiteModel site, WidgetRef ref) async {
     final phpApps =
         ref
-            .read(appsNotifierProvider)
-            .valueOrNull
+            .read(appsProvider)
+            .value
             ?.where((a) => a.isInstalled && a.groupName == 'php') ??
         [];
     String? phpDir;

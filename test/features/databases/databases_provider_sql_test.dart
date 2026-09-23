@@ -4,14 +4,14 @@ import 'package:dev_stack/features/databases/data/databases_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('DatabasesNotifier.validateIdentifier', () {
+  group('Databases.validateIdentifier', () {
     test('accepts portable identifiers', () {
       expect(
-        DatabasesNotifier.validateIdentifier('my_db', field: 'Database name'),
+        Databases.validateIdentifier('my_db', field: 'Database name'),
         'my_db',
       );
       expect(
-        DatabasesNotifier.validateIdentifier('shop42', field: 'Username'),
+        Databases.validateIdentifier('shop42', field: 'Username'),
         'shop42',
       );
     });
@@ -19,55 +19,55 @@ void main() {
     test('rejects injection payloads', () {
       expect(
         () =>
-            DatabasesNotifier.validateIdentifier("x'; DROP DATABASE mysql; --"),
+            Databases.validateIdentifier("x'; DROP DATABASE mysql; --"),
         throwsA(isA<ArgumentError>()),
       );
       expect(
-        () => DatabasesNotifier.validateIdentifier('alice" --'),
+        () => Databases.validateIdentifier('alice" --'),
         throwsA(isA<ArgumentError>()),
       );
       expect(
-        () => DatabasesNotifier.validateIdentifier('a;rm -rf'),
+        () => Databases.validateIdentifier('a;rm -rf'),
         throwsA(isA<ArgumentError>()),
       );
       expect(
-        () => DatabasesNotifier.validateIdentifier(''),
+        () => Databases.validateIdentifier(''),
         throwsA(isA<ArgumentError>()),
       );
     });
 
     test('rejects identifiers not starting with a letter', () {
       expect(
-        () => DatabasesNotifier.validateIdentifier('1db'),
+        () => Databases.validateIdentifier('1db'),
         throwsA(isA<ArgumentError>()),
       );
       expect(
-        () => DatabasesNotifier.validateIdentifier('_db'),
+        () => Databases.validateIdentifier('_db'),
         throwsA(isA<ArgumentError>()),
       );
     });
 
     test('rejects overlong identifiers', () {
       expect(
-        () => DatabasesNotifier.validateIdentifier('a' * 64),
+        () => Databases.validateIdentifier('a' * 64),
         throwsA(isA<ArgumentError>()),
       );
     });
   });
 
-  group('DatabasesNotifier.escapeSqlPassword', () {
+  group('Databases.escapeSqlPassword', () {
     test('escapes single quotes by doubling them', () {
-      expect(DatabasesNotifier.escapeSqlPassword("x'y"), "x''y");
+      expect(Databases.escapeSqlPassword("x'y"), "x''y");
     });
 
     test('escapes backslashes to avoid MySQL escape sequences', () {
-      expect(DatabasesNotifier.escapeSqlPassword(r'a\b'), r'a\\b');
+      expect(Databases.escapeSqlPassword(r'a\b'), r'a\\b');
     });
 
     test('escapes a quote-termination injection payload', () {
       // A password meant to close the literal and inject a statement.
       final payload = "x'; DROP DATABASE mysql; --";
-      final escaped = DatabasesNotifier.escapeSqlPassword(payload);
+      final escaped = Databases.escapeSqlPassword(payload);
       // The single quote that would terminate the literal is now doubled,
       // so the value stays inside the string literal.
       expect(escaped, "x''; DROP DATABASE mysql; --");
@@ -78,9 +78,9 @@ void main() {
     });
   });
 
-  group('DatabasesNotifier.postgresCliArgs', () {
+  group('Databases.postgresCliArgs', () {
     test('prepends -h /tmp on Linux', () {
-      final args = DatabasesNotifier.postgresCliArgs(
+      final args = Databases.postgresCliArgs(
         ['-U', 'postgres', '-l'],
         isLinux: true,
       );
@@ -88,7 +88,7 @@ void main() {
     });
 
     test('preserves arguments as-is on non-Linux', () {
-      final args = DatabasesNotifier.postgresCliArgs(
+      final args = Databases.postgresCliArgs(
         ['-U', 'postgres', '-l'],
         isLinux: false,
       );
@@ -97,7 +97,7 @@ void main() {
   });
 
 
-  group('DatabasesNotifier.readPostgresPassword', () {
+  group('Databases.readPostgresPassword', () {
     test('reads password from a sibling postgres-password.txt', () async {
       final tmp = await Directory.systemTemp.createTemp('pg-pw-');
       final binDir = Directory('${tmp.path}/install/bin')..createSync(recursive: true);
@@ -106,7 +106,7 @@ void main() {
           .writeAsStringSync('s3cr3t\n');
 
       final app = AppModel(appId: 'postgresql', name: 'PostgreSQL', categories: ['database'], installedVersion: '16.4');
-      final pwd = await DatabasesNotifier.readPostgresPassword(cliPath, app);
+      final pwd = await Databases.readPostgresPassword(cliPath, app);
       expect(pwd, 's3cr3t');
       await tmp.delete(recursive: true);
     });
@@ -115,7 +115,7 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('pg-pw-none-');
       final cliPath = '${tmp.path}/psql';
       final app = AppModel(appId: 'postgresql', name: 'PostgreSQL', categories: ['database'], installedVersion: '16.4');
-      final pwd = await DatabasesNotifier.readPostgresPassword(cliPath, app);
+      final pwd = await Databases.readPostgresPassword(cliPath, app);
       expect(pwd, '');
       await tmp.delete(recursive: true);
     });

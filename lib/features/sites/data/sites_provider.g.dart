@@ -6,21 +6,49 @@ part of 'sites_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sitesNotifierHash() => r'd4c7b15e10efc7c1cbb0ce3fb44c035049013584';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [SitesNotifier].
-@ProviderFor(SitesNotifier)
-final sitesNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<SitesNotifier, List<SiteModel>>.internal(
-  SitesNotifier.new,
-  name: r'sitesNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$sitesNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(Sites)
+final sitesProvider = SitesProvider._();
 
-typedef _$SitesNotifier = AutoDisposeAsyncNotifier<List<SiteModel>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+final class SitesProvider
+    extends $AsyncNotifierProvider<Sites, List<SiteModel>> {
+  SitesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'sitesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$sitesHash();
+
+  @$internal
+  @override
+  Sites create() => Sites();
+}
+
+String _$sitesHash() => r'8a2ae773d56e0894ca6c06770349948f195ccf16';
+
+abstract class _$Sites extends $AsyncNotifier<List<SiteModel>> {
+  FutureOr<List<SiteModel>> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<List<SiteModel>>, List<SiteModel>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<List<SiteModel>>, List<SiteModel>>,
+              AsyncValue<List<SiteModel>>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

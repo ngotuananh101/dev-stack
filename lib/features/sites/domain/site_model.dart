@@ -1,10 +1,10 @@
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 
 part 'site_model.g.dart';
 
 @collection
 class SiteModel {
-  Id id = Isar.autoIncrement;
+  int id = 0; // isar_plus: 0 signals auto-increment
 
   @Index(unique: true)
   late String domain; // Site name/domain (e.g. example.test)
@@ -28,7 +28,7 @@ class SiteModel {
   DateTime? createdAt;
 
   SiteModel({
-    this.id = Isar.autoIncrement,
+    this.id = 0, // isar_plus: 0 signals auto-increment
     required this.domain,
     required this.rootDir,
     this.siteType = 'php',

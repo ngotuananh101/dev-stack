@@ -226,7 +226,7 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
       // Check if key exists only when adding new key
       if (!isEdit) {
         final exists = await ref
-            .read(redisNotifierProvider.notifier)
+            .read(redisProvider.notifier)
             .checkKeyExists(widget.engine, widget.dbIndex, key);
 
         if (exists) {
@@ -244,7 +244,7 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
       }
 
       await ref
-          .read(redisNotifierProvider.notifier)
+          .read(redisProvider.notifier)
           .setKey(
             widget.engine,
             widget.dbIndex,

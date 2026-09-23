@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 import '../../../core/database/isar_provider.dart';
 import '../domain/tunnel_model.dart';
 import '../domain/tunnel_session.dart';
@@ -18,31 +18,33 @@ final tunnelsStreamProvider = StreamProvider<List<TunnelModel>>((ref) async* {
 });
 
 final tunnelSessionsProvider =
-    StateNotifierProvider<TunnelSessionsNotifier, Map<int, TunnelSession>>((ref) {
-  final manager = ref.watch(tunnelManagerServiceProvider);
-  final notifier = TunnelSessionsNotifier(manager);
-  ref.onDispose(() => notifier.dispose());
-  return notifier;
-});
+    NotifierProvider<TunnelSessionsNotifier, Map<int, TunnelSession>>(
+  TunnelSessionsNotifier.new,
+);
 
-class TunnelSessionsNotifier extends StateNotifier<Map<int, TunnelSession>> {
-  final TunnelManagerService _manager;
+class TunnelSessionsNotifier extends Notifier<Map<int, TunnelSession>> {
+  late TunnelManagerService _manager;
   StreamSubscription<Map<int, TunnelSession>>? _subscription;
 
-  TunnelSessionsNotifier(this._manager) : super(_manager.currentSessions) {
+  @override
+  Map<int, TunnelSession> build() {
+    _manager = ref.watch(tunnelManagerServiceProvider);
+
+    // sessionsStream is a broadcast stream, so it replays nothing on listen:
+    // seed from the manager's current map and follow it from here.
     _subscription = _manager.sessionsStream.listen((sessions) {
       state = sessions;
     });
+
+    ref.onDispose(() {
+      _subscription?.cancel();
+      _subscription = null;
+    });
+
+    return _manager.currentSessions;
   }
 
   Future<void> start(TunnelModel tunnel) => _manager.startTunnel(tunnel);
   Future<void> stop(int tunnelId) => _manager.stopTunnel(tunnelId);
   Future<void> delete(int tunnelId) => _manager.deleteTunnel(tunnelId);
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    _subscription = null;
-    super.dispose();
-  }
 }

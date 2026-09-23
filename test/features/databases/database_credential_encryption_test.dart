@@ -15,7 +15,7 @@ void main() {
         ..engineAppId = 'mysql'
         ..createdAt = DateTime.now();
 
-      DatabasesNotifier.encryptRecordPassword(record, vault: vault);
+      Databases.encryptRecordPassword(record, vault: vault);
 
       expect(record.password, startsWith('ENC:'));
       expect(record.password, isNot(contains('plaintext_pass_123')));
@@ -29,7 +29,7 @@ void main() {
         ..engineAppId = 'mysql'
         ..createdAt = DateTime.now();
 
-      DatabasesNotifier.encryptRecordPassword(record, vault: vault);
+      Databases.encryptRecordPassword(record, vault: vault);
       expect(record.password, '');
     });
 
@@ -42,7 +42,7 @@ void main() {
         ..engineAppId = 'mysql'
         ..createdAt = DateTime.now();
 
-      DatabasesNotifier.decryptRecordPassword(record, vault: vault);
+      Databases.decryptRecordPassword(record, vault: vault);
       expect(record.password, 'my_secret_pass');
     });
 
@@ -54,7 +54,7 @@ void main() {
         ..engineAppId = 'mysql'
         ..createdAt = DateTime.now();
 
-      DatabasesNotifier.decryptRecordPassword(record, vault: vault);
+      Databases.decryptRecordPassword(record, vault: vault);
       expect(record.password, 'legacy_unencrypted_password');
     });
   });

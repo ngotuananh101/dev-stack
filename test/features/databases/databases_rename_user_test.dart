@@ -2,9 +2,9 @@ import 'package:dev_stack/features/databases/data/databases_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('DatabasesNotifier.renameUserSql', () {
+  group('Databases.renameUserSql', () {
     test('MySQL/MariaDB: emits RENAME USER with quoted identifiers', () {
-      final sql = DatabasesNotifier.renameUserSql(
+      final sql = Databases.renameUserSql(
         oldUser: 'alice',
         newUser: 'bob',
         isPostgres: false,
@@ -13,7 +13,7 @@ void main() {
     });
 
     test('Postgres: emits ALTER ROLE RENAME TO', () {
-      final sql = DatabasesNotifier.renameUserSql(
+      final sql = Databases.renameUserSql(
         oldUser: 'alice',
         newUser: 'bob',
         isPostgres: true,
@@ -23,7 +23,7 @@ void main() {
 
     test('rejects empty or non-identifier names', () {
       expect(
-        () => DatabasesNotifier.renameUserSql(
+        () => Databases.renameUserSql(
           oldUser: '',
           newUser: 'bob',
           isPostgres: false,
@@ -31,7 +31,7 @@ void main() {
         throwsA(isA<ArgumentError>()),
       );
       expect(
-        () => DatabasesNotifier.renameUserSql(
+        () => Databases.renameUserSql(
           oldUser: 'alice',
           newUser: "x'; DROP USER root",
           isPostgres: false,
@@ -43,7 +43,7 @@ void main() {
     test('returns null sentinel when old == new (no rename needed)', () {
       // When the username is unchanged there is nothing to rename; callers
       // must skip the RENAME statement. We express that as a null return.
-      final sql = DatabasesNotifier.renameUserSql(
+      final sql = Databases.renameUserSql(
         oldUser: 'alice',
         newUser: 'alice',
         isPostgres: false,

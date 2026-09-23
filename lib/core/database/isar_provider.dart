@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_plus/isar_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/apps/domain/installed_app.dart';
@@ -47,13 +47,20 @@ class IsarInstance {
     final dir = await getApplicationSupportDirectory();
 
     try {
-      return await Isar.open([
-        InstalledAppSchema,
-        DatabaseRecordSchema,
-        AppSettingsSchema,
-        SiteModelSchema,
-        TunnelModelSchema,
-      ], directory: dir.path);
+      // isar_plus made `Isar.open` synchronous (isar 3 returned a Future).
+      // This runs once during startup, before `runApp`, so the brief block is
+      // not user-visible. `openAsync` exists but opens the database inside a
+      // throwaway isolate, which buys nothing here.
+      return Isar.open(
+        schemas: [
+          InstalledAppSchema,
+          DatabaseRecordSchema,
+          AppSettingsSchema,
+          SiteModelSchema,
+          TunnelModelSchema,
+        ],
+        directory: dir.path,
+      );
     } catch (e) {
       // Only reset for schema mismatch or corruption errors.
       // Other errors (file lock, disk full, etc.) should propagate.
@@ -87,24 +94,27 @@ class IsarInstance {
       // ignore: avoid_print
       print('[Isar] Database reset due to schema/corruption error: $e');
 
-      return await Isar.open([
-        InstalledAppSchema,
-        DatabaseRecordSchema,
-        AppSettingsSchema,
-        SiteModelSchema,
-        TunnelModelSchema,
-      ], directory: dir.path);
+      return Isar.open(
+        schemas: [
+          InstalledAppSchema,
+          DatabaseRecordSchema,
+          AppSettingsSchema,
+          SiteModelSchema,
+          TunnelModelSchema,
+        ],
+        directory: dir.path,
+      );
     }
   }
 
   static Future<void> close() async {
-    await _instance?.close();
+    _instance?.close();
     _instance = null;
     _openCompleter = null;
   }
 }
 
 @Riverpod(keepAlive: true)
-Future<Isar> isar(IsarRef ref) async {
+Future<Isar> isar(Ref ref) async {
   return await IsarInstance.getInstance();
 }

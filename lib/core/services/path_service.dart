@@ -9,8 +9,8 @@ import '../config/app_config.dart';
 
 part 'path_service.g.dart';
 
-@riverpod
-PathService pathService(PathServiceRef ref) {
+@Riverpod(keepAlive: true)
+PathService pathService(Ref ref) {
   final logger = ref.read(logServiceProvider);
   return PathService(logger);
 }

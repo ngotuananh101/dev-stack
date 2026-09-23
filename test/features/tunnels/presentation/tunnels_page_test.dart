@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dev_stack/features/tunnels/presentation/tunnels_page.dart';
 import 'package:dev_stack/features/tunnels/data/tunnels_provider.dart';
-import 'package:dev_stack/features/tunnels/data/tunnel_manager_service.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_model.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_session.dart';
 
@@ -14,7 +13,7 @@ void main() {
         overrides: [
           tunnelsStreamProvider.overrideWith((ref) => Stream.value([])),
           tunnelSessionsProvider.overrideWith(
-            (ref) => TunnelSessionsNotifierMock({}),
+            () => TunnelSessionsNotifierMock({}),
           ),
         ],
         child: const MaterialApp(
@@ -42,7 +41,7 @@ void main() {
         overrides: [
           tunnelsStreamProvider.overrideWith((ref) => Stream.value([mockTunnel])),
           tunnelSessionsProvider.overrideWith(
-            (ref) => TunnelSessionsNotifierMock({
+            () => TunnelSessionsNotifierMock({
               10: const TunnelSession(
                 tunnelId: 10,
                 status: TunnelStatus.running,
@@ -63,19 +62,28 @@ void main() {
   });
 }
 
-/// Minimal TunnelSessionsNotifier subclass for tests. The base class wires up a
-/// sessionsStream subscription on the provided TunnelManagerService, so we pass
-/// one configured with no-op process callbacks to avoid spawning subprocesses.
-/// The desired initial sessions are written to [state] after the super
-/// constructor installs the (idle) stream listener.
+/// Minimal TunnelSessionsNotifier subclass for tests.
+///
+/// [build] deliberately does not call `super.build()`, so no real
+/// [TunnelManagerService] is constructed — these tests only render, and
+/// constructing the real manager would drag in the tunnel downloader, the log
+/// service, and a real database. The base class's `_manager` is library-private
+/// and assigned only inside `build()`, so a subclass in `test/` cannot read or
+/// set it; the three actions are overridden instead.
 class TunnelSessionsNotifierMock extends TunnelSessionsNotifier {
-  TunnelSessionsNotifierMock(Map<int, TunnelSession> initial)
-      : super(
-          TunnelManagerService(
-            startProcessFn: (exec, args) async => FakeManagedProcess(0),
-            stopProcessFn: (pid) async {},
-          ),
-        ) {
-    state = initial;
-  }
+  TunnelSessionsNotifierMock(this._initial);
+
+  final Map<int, TunnelSession> _initial;
+
+  @override
+  Map<int, TunnelSession> build() => _initial;
+
+  @override
+  Future<void> start(TunnelModel tunnel) => Future<void>.value();
+
+  @override
+  Future<void> stop(int tunnelId) => Future<void>.value();
+
+  @override
+  Future<void> delete(int tunnelId) => Future<void>.value();
 }

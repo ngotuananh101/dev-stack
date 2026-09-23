@@ -34,7 +34,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
   @override
   Widget build(BuildContext context) {
     final versionsAsync = ref.watch(appVersionsProvider(widget.app.appId));
-    final appsAsync = ref.watch(appsNotifierProvider);
+    final appsAsync = ref.watch(appsProvider);
 
     // Find current app state in notifier list
     final appState = appsAsync.when(
@@ -51,7 +51,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
         ? null
         : AppConflictPolicy.firstInstalledConflict(
             widget.app,
-            appsAsync.valueOrNull ?? const <AppModel>[],
+            appsAsync.value ?? const <AppModel>[],
           );
 
     // Show progress if installing OR if just finished installing

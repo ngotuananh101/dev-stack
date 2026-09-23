@@ -6,21 +6,48 @@ part of 'pyenv_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pyenvNotifierHash() => r'1c656cfd5d6a75d20a37265bdc703c20c7a943d4';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [PyenvNotifier].
-@ProviderFor(PyenvNotifier)
-final pyenvNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<PyenvNotifier, PyenvState>.internal(
-  PyenvNotifier.new,
-  name: r'pyenvNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$pyenvNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(Pyenv)
+final pyenvProvider = PyenvProvider._();
 
-typedef _$PyenvNotifier = AutoDisposeAsyncNotifier<PyenvState>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+final class PyenvProvider extends $AsyncNotifierProvider<Pyenv, PyenvState> {
+  PyenvProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'pyenvProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$pyenvHash();
+
+  @$internal
+  @override
+  Pyenv create() => Pyenv();
+}
+
+String _$pyenvHash() => r'0a9ea730425c9d04c9bdbd336ac3158c040c44ff';
+
+abstract class _$Pyenv extends $AsyncNotifier<PyenvState> {
+  FutureOr<PyenvState> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<PyenvState>, PyenvState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<PyenvState>, PyenvState>,
+              AsyncValue<PyenvState>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

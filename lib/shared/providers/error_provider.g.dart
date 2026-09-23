@@ -6,21 +6,56 @@ part of 'error_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$errorNotifierHash() => r'a24b0313800d9741ae1e7ac6afb582e1ffb8c56a';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [ErrorNotifier].
-@ProviderFor(ErrorNotifier)
-final errorNotifierProvider =
-    AutoDisposeNotifierProvider<ErrorNotifier, String?>.internal(
-  ErrorNotifier.new,
-  name: r'errorNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$errorNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(AppError)
+final appErrorProvider = AppErrorProvider._();
 
-typedef _$ErrorNotifier = AutoDisposeNotifier<String?>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+final class AppErrorProvider extends $NotifierProvider<AppError, String?> {
+  AppErrorProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appErrorProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appErrorHash();
+
+  @$internal
+  @override
+  AppError create() => AppError();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String?>(value),
+    );
+  }
+}
+
+String _$appErrorHash() => r'35e5ea8cf14a6886068ec135fcfdc1270952e6ac';
+
+abstract class _$AppError extends $Notifier<String?> {
+  String? build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<String?, String?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<String?, String?>,
+              String?,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

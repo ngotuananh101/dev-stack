@@ -8,7 +8,7 @@ import '../domain/system_info.dart';
 part 'system_info_provider.g.dart';
 
 @riverpod
-class SystemInfoNotifier extends _$SystemInfoNotifier {
+class SystemInfoState extends _$SystemInfoState {
   @override
   Future<SystemInfo> build() async {
     return _fetchSystemInfo();
