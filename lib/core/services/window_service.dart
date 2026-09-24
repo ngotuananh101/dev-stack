@@ -110,12 +110,15 @@ class WindowService extends _$WindowService with WindowListener {
       // nativeapi reports whole clicks. The legacy bridge replayed each click as
       // mouseDown + mouseUp, and only the "down" half was ever implemented here,
       // so handling the click event directly preserves the old behaviour.
+      //
+      // Each handler goes through `Timer.run` for the same trampoline reason
+      // documented on `_TrayMenu.addAction`.
       _trayListenerId = icon.addListener((event) {
         switch (event) {
           case TrayIconClickedEvent():
-            windowManager.show();
+            Timer.run(windowManager.show);
           case TrayIconRightClickedEvent():
-            icon.openContextMenu();
+            Timer.run(icon.openContextMenu);
           case TrayIconDoubleClickedEvent():
             break; // legacy was a no-op too
         }
@@ -299,7 +302,21 @@ class _TrayMenu {
     _listeners.add((
       item,
       item.addListener((event) {
-        if (event is MenuItemClickedEvent) action();
+        if (event is MenuItemClickedEvent) {
+          // `isolateLocal` runs this listener synchronously inside the native
+          // trampoline, on the platform thread. The trampoline returns to
+          // native the instant `action` suspends at its first `await`, and the
+          // continuation is queued as a *microtask*. Flutter only drains that
+          // queue after a task runs on the UI task runner (or after a frame),
+          // so with nothing else scheduled the action simply stops — and while
+          // the window is hidden there are no frames to flush it either. That
+          // is why Quit did nothing until the window was shown again.
+          //
+          // Starting the work from the event loop instead makes the first
+          // suspension happen inside a real task, so the microtask queue is
+          // drained the moment that task returns.
+          Timer.run(action);
+        }
       }),
     ));
     root.addItem(item);
