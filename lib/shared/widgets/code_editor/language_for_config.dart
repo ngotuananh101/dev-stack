@@ -20,13 +20,19 @@ import 'package:re_highlight/languages/yaml.dart';
 Mode languageForConfigPath(String path) {
   // Normalize backslashes to forward slashes so Windows paths resolve their
   // basename correctly on Linux/macOS runners.
-  final normalized = path.replaceAll(r'\', '/');
-  final name = p.basename(normalized).toLowerCase();
+  final normalized = path.replaceAll(r'\', '/').toLowerCase();
+  final name = p.basename(normalized);
 
-  // File-name based mapping (extension alone is ambiguous).
-  if (name == 'nginx.conf') return langNginx;
-  if (name == 'httpd.conf' || name == 'apache.conf') return langApache;
-  if (name == 'caddyfile') return langPlaintext;
+  // Path or file-name based webserver mapping (including vhosts).
+  if (name == 'nginx.conf' || normalized.contains('/nginx/') || name.startsWith('nginx_')) {
+    return langNginx;
+  }
+  if (name == 'httpd.conf' || name == 'apache.conf' || normalized.contains('/apache/') || name.startsWith('apache_')) {
+    return langApache;
+  }
+  if (name == 'caddyfile' || normalized.contains('/caddy/') || name.startsWith('caddy_')) {
+    return langPlaintext;
+  }
   if (name == 'hosts') return langPlaintext;
   if (name.endsWith('.php') || name.endsWith('.inc.php')) return langPhp;
 

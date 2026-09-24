@@ -214,7 +214,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
     return Material(
       color: Colors.transparent,
       child: Container(
-        width: 500,
+        width: 620,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
@@ -457,7 +457,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                               children: [
                                 _buildLabel('PHP Version'),
                                 Container(
-                                  height: 48,
+                                  height: 36,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
                                   ),
@@ -470,6 +470,8 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                                     child: DropdownButton<String>(
                                       value: _selectedPhpAppId,
                                       isExpanded: true,
+                                      dropdownColor: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(8),
                                       icon: const Icon(
                                         LucideIcons.chevronDown,
                                         size: 16,
@@ -506,9 +508,9 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                               onTap: () => setState(() => _useSsl = !_useSsl),
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
-                                height: 48,
+                                height: 36,
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
+                                  horizontal: 12,
                                 ),
                                 decoration: BoxDecoration(
                                   color: _useSsl
@@ -615,8 +617,8 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
       onTap: () => setState(() => _siteType = value),
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.1)
@@ -670,7 +672,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
 
   Widget _buildPresetDropdown() {
     return Container(
-      height: 48,
+      height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,

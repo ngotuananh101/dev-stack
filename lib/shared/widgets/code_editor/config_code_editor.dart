@@ -50,24 +50,41 @@ class ConfigCodeEditor extends StatefulWidget {
   const ConfigCodeEditor({
     super.key,
     required this.filePath,
-    required this.onSave,
+    this.onSave,
+    this.content,
+    this.onReload,
     this.readOnly = false,
     this.saveLabel = 'Save Changes',
+    this.showToolbar = true,
+    this.createIfMissing = false,
     this.encoding = utf8,
     this.decodeFallback,
   });
 
-  /// Absolute path of the file to edit.
+  /// Absolute or virtual path of the file to edit.
   final String filePath;
+
+  /// Optional in-memory content to display. If provided, file reading is skipped.
+  final String? content;
+
+  /// Optional callback invoked when the user taps Reload.
+  /// If omitted, defaults to reloading from [filePath].
+  final VoidCallback? onReload;
 
   /// Persists [content] to the file. Returns true on success. The caller owns
   /// the write semantics (e.g. hosts-file elevation, domain re-validation).
-  final Future<bool> Function(String content) onSave;
+  final Future<bool> Function(String content)? onSave;
 
   /// When true, the editor is read-only (no Save button).
   final bool readOnly;
 
   final String saveLabel;
+
+  /// Whether to display the top toolbar (path, Find, Reload, Save).
+  final bool showToolbar;
+
+  /// When true, automatically creates an empty file if [filePath] does not exist.
+  final bool createIfMissing;
 
   /// Encoding used to decode/encode the file content. Defaults to UTF-8.
   /// Pass [systemEncoding] for the Windows hosts file (non-ASCII hostnames).
@@ -94,10 +111,24 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   @override
   void initState() {
     super.initState();
-    _controller = CodeLineEditingController.fromText('');
+    _controller = CodeLineEditingController.fromText(widget.content ?? '');
     _findController = CodeFindController(_controller);
     _controller.addListener(_onChanged);
     _loadFile();
+  }
+
+  @override
+  void didUpdateWidget(ConfigCodeEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.content != null && widget.content != oldWidget.content) {
+      if (_controller.text != widget.content!) {
+        _controller.text = widget.content!;
+        _fileBytes = utf8.encode(widget.content!).length;
+        _dirty = false;
+      }
+    } else if (widget.filePath != oldWidget.filePath && widget.content == null) {
+      _loadFile();
+    }
   }
 
   @override
@@ -128,14 +159,27 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   }
 
   Future<void> _loadFile() async {
+    if (widget.content != null) {
+      _controller.text = widget.content!;
+      _fileBytes = utf8.encode(widget.content!).length;
+      _dirty = false;
+      setState(() => _isLoading = false);
+      return;
+    }
+
     try {
       final file = File(widget.filePath);
       if (!await file.exists()) {
-        setState(() {
-          _isLoading = false;
-          _loadError = 'File does not exist: ${widget.filePath}';
-        });
-        return;
+        if (widget.createIfMissing) {
+          await file.parent.create(recursive: true);
+          await file.writeAsString('');
+        } else {
+          setState(() {
+            _isLoading = false;
+            _loadError = 'File does not exist: ${widget.filePath}';
+          });
+          return;
+        }
       }
       final bytes = await file.readAsBytes();
       _fileBytes = bytes.length;
@@ -159,11 +203,19 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
     }
   }
 
+  void _handleReload() {
+    if (widget.onReload != null) {
+      widget.onReload!();
+    } else {
+      _loadFile();
+    }
+  }
+
   Future<void> _save() async {
-    if (widget.readOnly || _isSaving) return;
+    if (widget.readOnly || _isSaving || widget.onSave == null) return;
     setState(() => _isSaving = true);
     try {
-      final ok = await widget.onSave(_controller.text);
+      final ok = await widget.onSave!(_controller.text);
       if (ok) {
         _dirty = false;
         if (mounted) {
@@ -456,65 +508,66 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Toolbar
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.filePath,
-                  style: const TextStyle(
-                    fontSize: AppTextSize.xxs,
-                    fontFamily: 'monospace',
-                    color: AppColors.textMuted,
+        if (widget.showToolbar)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.filePath,
+                    style: const TextStyle(
+                      fontSize: AppTextSize.xxs,
+                      fontFamily: 'monospace',
+                      color: AppColors.textMuted,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              if (large)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Tooltip(
-                    message:
-                        'Large file (${(_fileBytes / 1024 / 1024).toStringAsFixed(1)} MB) — '
-                        'editor may be slower; highlighting is capped above 4 MB.',
-                    child: const Icon(
-                      Icons.warning_amber_rounded,
-                      size: 16,
-                      color: AppColors.warning,
+                if (large)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Tooltip(
+                      message:
+                          'Large file (${(_fileBytes / 1024 / 1024).toStringAsFixed(1)} MB) — '
+                          'editor may be slower; highlighting is capped above 4 MB.',
+                      child: const Icon(
+                        Icons.warning_amber_rounded,
+                        size: 16,
+                        color: AppColors.warning,
+                      ),
                     ),
                   ),
-                ),
-              const SizedBox(width: 8),
-              AppButton(
-                label: 'Find',
-                onPressed: () {
-                  _findController.findMode();
-                  _findController.focusOnFindInput();
-                },
-                icon: const Icon(Icons.search, size: 14),
-                style: AppButtonStyle.outline,
-              ),
-              const SizedBox(width: 8),
-              AppButton(
-                label: 'Reload',
-                onPressed: _loadFile,
-                icon: const Icon(Icons.refresh, size: 14),
-                style: AppButtonStyle.outline,
-              ),
-              if (!widget.readOnly) ...[
                 const SizedBox(width: 8),
                 AppButton(
-                  label: widget.saveLabel,
-                  onPressed: (_isSaving || !_dirty) ? null : _save,
-                  icon: const Icon(Icons.save, size: 14),
-                  style: AppButtonStyle.success,
-                  isLoading: _isSaving,
+                  label: 'Find',
+                  onPressed: () {
+                    _findController.findMode();
+                    _findController.focusOnFindInput();
+                  },
+                  icon: const Icon(Icons.search, size: 14),
+                  style: AppButtonStyle.outline,
                 ),
+                const SizedBox(width: 8),
+                AppButton(
+                  label: 'Reload',
+                  onPressed: _handleReload,
+                  icon: const Icon(Icons.refresh, size: 14),
+                  style: AppButtonStyle.outline,
+                ),
+                if (!widget.readOnly && widget.onSave != null) ...[
+                  const SizedBox(width: 8),
+                  AppButton(
+                    label: widget.saveLabel,
+                    onPressed: (_isSaving || !_dirty) ? null : _save,
+                    icon: const Icon(Icons.save, size: 14),
+                    style: AppButtonStyle.success,
+                    isLoading: _isSaving,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
         // Editor
         Expanded(
           child: Container(

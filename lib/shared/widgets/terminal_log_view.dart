@@ -93,7 +93,7 @@ class _TerminalLogViewState extends State<TerminalLogView> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.border),
         boxShadow: [

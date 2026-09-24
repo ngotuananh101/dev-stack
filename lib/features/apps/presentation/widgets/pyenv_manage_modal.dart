@@ -50,7 +50,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
       width: 700,
       height: 600,
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
         boxShadow: [

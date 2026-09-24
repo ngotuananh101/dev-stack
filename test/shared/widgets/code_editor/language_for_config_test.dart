@@ -15,8 +15,18 @@ void main() {
       expect(mode, same(langNginx));
     });
 
+    test('maps nginx site vhost conf to nginx mode', () {
+      final mode = languageForConfigPath(r'C:\dev-stack\vhosts\nginx\my-project.test.conf');
+      expect(mode, same(langNginx));
+    });
+
     test('maps apache config to the apache mode', () {
       final mode = languageForConfigPath(r'C:\apps\Apache24\conf\httpd.conf');
+      expect(mode, same(langApache));
+    });
+
+    test('maps apache site vhost conf to apache mode', () {
+      final mode = languageForConfigPath(r'C:\dev-stack\vhosts\apache\my-project.test.conf');
       expect(mode, same(langApache));
     });
 

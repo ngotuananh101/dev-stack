@@ -84,6 +84,8 @@ class AppButton extends StatelessWidget {
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
+                final hasExplicitWidth =
+                    width != null || constraints.minWidth == constraints.maxWidth;
                 final labelWidget = Text(
                   label,
                   overflow: TextOverflow.ellipsis,
@@ -95,6 +97,8 @@ class AppButton extends StatelessWidget {
                   ),
                 );
                 return Row(
+                  mainAxisSize:
+                      hasExplicitWidth ? MainAxisSize.max : MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (isLoading)
@@ -111,9 +115,9 @@ class AppButton extends StatelessWidget {
                     else ...[
                       if (icon != null) ...[icon!, const SizedBox(width: 8)],
                       // A flex child is only legal when this button has a
-                      // bounded width. Inside an unbounded row it must size to
-                      // its text instead.
-                      constraints.hasBoundedWidth
+                      // tight/explicit width constraint. In loose contexts
+                      // (Row, Wrap) it must size to its text instead.
+                      hasExplicitWidth
                           ? Flexible(child: labelWidget)
                           : labelWidget,
                     ],

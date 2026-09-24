@@ -11,6 +11,7 @@ import '../site_editor_options.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/code_editor/config_code_editor.dart';
 
 class EditSiteModal extends ConsumerStatefulWidget {
   final SiteModel site;
@@ -27,12 +28,14 @@ class _EditSiteModalState extends ConsumerState<EditSiteModal> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Container(
-        width: 1000,
-        height: 800,
+        width: 620,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
           boxShadow: [
@@ -74,17 +77,19 @@ class _EditSiteModalState extends ConsumerState<EditSiteModal> {
       ),
       child: Row(
         children: [
-          const Icon(LucideIcons.settings, color: AppColors.accent, size: 20),
+          const Icon(LucideIcons.globe, color: AppColors.primary, size: 20),
           const SizedBox(width: 12),
-          Text(
-            'Site Settings: ${widget.site.domain}',
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: AppTextSize.base,
-              fontWeight: FontWeight.bold,
+          Expanded(
+            child: Text(
+              'Site Settings: ${widget.site.domain}',
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.base,
+                fontWeight: FontWeight.bold,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const Spacer(),
           AppIconButton(
             onPressed: widget.onClose,
             icon: LucideIcons.x,
@@ -100,11 +105,15 @@ class _EditSiteModalState extends ConsumerState<EditSiteModal> {
   Widget _buildTabBar() {
     return Container(
       height: 48,
-      decoration: const BoxDecoration(color: AppColors.surface),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: const Align(
         alignment: Alignment.centerLeft,
         child: TabBar(
           isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: [
             Tab(text: 'General'),
             Tab(text: 'Config'),
@@ -412,6 +421,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                 ],
 
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (_siteType == 'php')
                       Expanded(
@@ -420,7 +430,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                           children: [
                             _buildLabel('PHP Version'),
                             Container(
-                              height: 48,
+                              height: 36,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                               ),
@@ -428,9 +438,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: AppColors.border.withValues(
-                                    alpha: 0.5,
-                                  ),
+                                  color: AppColors.border,
                                 ),
                               ),
                               child: DropdownButtonHideUnderline(
@@ -481,10 +489,12 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 24),
                 Align(
                   alignment: Alignment.bottomRight,
                   child: AppButton(
                     label: 'Save General Settings',
+                    icon: const Icon(LucideIcons.save, size: 14),
                     style: AppButtonStyle.success,
                     isLoading: _isSaving,
                     onPressed: _handleSave,
@@ -507,8 +517,8 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
       onTap: () => setState(() => _siteType = value),
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.1)
@@ -548,7 +558,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
 
   Widget _buildPresetDropdown() {
     return Container(
-      height: 48,
+      height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -622,37 +632,11 @@ class _ConfigTab extends ConsumerStatefulWidget {
 
 class _ConfigTabState extends ConsumerState<_ConfigTab> {
   String _selectedType = 'nginx';
-  final TextEditingController _controller = TextEditingController();
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadConfig();
-  }
-
-  Future<void> _loadConfig() async {
-    setState(() => _isLoading = true);
-    final configs = await ref
-        .read(sitesProvider.notifier)
-        .getConfigs(widget.site);
-    _controller.text = configs[_selectedType] ?? '';
-    setState(() => _isLoading = false);
-  }
-
-  Future<void> _saveConfig() async {
-    await ref
-        .read(sitesProvider.notifier)
-        .saveConfig(widget.site, _selectedType, _controller.text);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Config saved successfully')),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final configPath = Sites.vhostConfigPath(_selectedType, widget.site.domain);
+
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -667,41 +651,21 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
                   siteConfigEditorOptions[i].label,
                 ),
               ],
-              const Spacer(),
-              AppButton(
-                  style: AppButtonStyle.success,
-                  icon: const Icon(LucideIcons.save, size: 14),
-                  label: 'Save Changes',
-                  onPressed: _saveConfig,
-                ),
             ],
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: TextField(
-                      controller: _controller,
-                      expands: true,
-                      maxLines: null,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontFamily: 'monospace',
-                        fontSize: AppTextSize.xs,
-                      ),
-                      decoration: const InputDecoration(
-                        contentPadding: EdgeInsets.all(16),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
+            child: ConfigCodeEditor(
+              key: ValueKey('$_selectedType-${widget.site.domain}'),
+              filePath: configPath,
+              createIfMissing: true,
+              onSave: (newContent) async {
+                await ref
+                    .read(sitesProvider.notifier)
+                    .saveConfig(widget.site, _selectedType, newContent);
+                return true;
+              },
+            ),
           ),
         ],
       ),
@@ -713,21 +677,22 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
     return InkWell(
       onTap: () {
         setState(() => _selectedType = type);
-        _loadConfig();
       },
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.accent.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppColors.accent : AppColors.border,
           ),
         ),
         child: Center(
+          widthFactor: 1.0,
           child: Text(
             label,
             style: TextStyle(
@@ -800,24 +765,33 @@ class _SslTabState extends ConsumerState<_SslTab> {
         children: [
           Row(
             children: [
-              _buildTypeButton('cert', 'Certificate (cert.pem)'),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildTypeButton('cert', 'Certificate', tooltip: 'Certificate (cert.pem)'),
+                      const SizedBox(width: 8),
+                      _buildTypeButton('key', 'Private Key', tooltip: 'Private Key (key.pem)'),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
-              _buildTypeButton('key', 'Private Key (key.pem)'),
-              const Spacer(),
               AppButton(
-              style: AppButtonStyle.outline,
-              icon: const Icon(LucideIcons.refreshCcw, size: 14),
-              label: 'Regenerate SSL',
-              onPressed: _regenerate,
-              textColor: AppColors.accent,
-            ),
+                style: AppButtonStyle.outline,
+                icon: const Icon(LucideIcons.refreshCcw, size: 14),
+                label: 'Regenerate SSL',
+                onPressed: _regenerate,
+                textColor: AppColors.accent,
+              ),
               const SizedBox(width: 8),
               AppButton(
-              style: AppButtonStyle.success,
-              icon: const Icon(LucideIcons.save, size: 14),
-              label: 'Save Changes',
-              onPressed: _saveSslFile,
-            ),
+                style: AppButtonStyle.success,
+                icon: const Icon(LucideIcons.save, size: 14),
+                label: 'Save Changes',
+                onPressed: _saveSslFile,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -852,26 +826,28 @@ class _SslTabState extends ConsumerState<_SslTab> {
     );
   }
 
-  Widget _buildTypeButton(String type, String label) {
+  Widget _buildTypeButton(String type, String label, {String? tooltip}) {
     final isSelected = _selectedFile == type;
-    return InkWell(
+    final button = InkWell(
       onTap: () {
         setState(() => _selectedFile = type);
         _loadSslFiles();
       },
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.accent.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppColors.accent : AppColors.border,
           ),
         ),
         child: Center(
+          widthFactor: 1.0,
           child: Text(
             label,
             style: TextStyle(
@@ -883,6 +859,11 @@ class _SslTabState extends ConsumerState<_SslTab> {
         ),
       ),
     );
+
+    if (tooltip != null) {
+      return Tooltip(message: tooltip, child: button);
+    }
+    return button;
   }
 }
 
@@ -918,7 +899,23 @@ class _LogTabState extends ConsumerState<_LogTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    final apps = ref.watch(appsProvider).value ?? [];
+    final hasNginx = apps.any((a) => a.isInstalled && a.appId.toLowerCase().contains('nginx'));
+    final hasApache = apps.any((a) => a.isInstalled && a.appId.toLowerCase().contains('apache'));
+    final hasCaddy = apps.any((a) => a.isInstalled && a.appId.toLowerCase().contains('caddy'));
+
+    final availableOptions = (hasNginx || hasApache || hasCaddy)
+        ? siteLogOptions.where((opt) {
+            if (opt.id.startsWith('nginx_') && hasNginx) return true;
+            if (opt.id.startsWith('apache_') && hasApache) return true;
+            if (opt.id.startsWith('caddy_') && hasCaddy) return true;
+            return false;
+          }).toList()
+        : siteLogOptions;
+
+    final effectiveLog = availableOptions.any((opt) => opt.id == _selectedLog)
+        ? _selectedLog
+        : (availableOptions.isNotEmpty ? availableOptions.first.id : _selectedLog);
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -927,8 +924,8 @@ class _LogTabState extends ConsumerState<_LogTab> {
         children: [
           Row(
             children: [
-              _buildLogSelect(),
-              const Spacer(),
+              Expanded(child: _buildLogSelect(availableOptions, effectiveLog)),
+              const SizedBox(width: 8),
               AppIconButton(
                 icon: LucideIcons.refreshCw,
                 onPressed: _refreshLogs,
@@ -940,24 +937,15 @@ class _LogTabState extends ConsumerState<_LogTab> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  _logs[_selectedLog] ?? 'No log data',
-                  style: const TextStyle(
-                    color: AppColors.success,
-                    fontFamily: 'monospace',
-                    fontSize: AppTextSize.xs,
-                  ),
-                ),
-              ),
+            child: ConfigCodeEditor(
+              key: ValueKey('$effectiveLog-${widget.site.domain}'),
+              filePath: '$effectiveLog.log',
+              content: _isLoading && !_logs.containsKey(effectiveLog)
+                  ? 'Loading logs...'
+                  : (_logs[effectiveLog] ?? 'No log data'),
+              readOnly: true,
+              showToolbar: true,
+              onReload: _refreshLogs,
             ),
           ),
         ],
@@ -965,28 +953,53 @@ class _LogTabState extends ConsumerState<_LogTab> {
     );
   }
 
-  Widget _buildLogSelect() {
+  Widget _buildLogButton(String id, String label, bool isSelected) {
+    return InkWell(
+      onTap: () {
+        setState(() => _selectedLog = id);
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.accent.withValues(alpha: 0.1)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.accent : AppColors.border,
+          ),
+        ),
+        child: Center(
+          widthFactor: 1.0,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: AppTextSize.sm,
+              color: isSelected ? AppColors.accent : AppColors.textSecondary,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogSelect(List<({String id, String label})> options, String currentSelected) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: siteLogOptions.map((item) {
-          final isSelected = _selectedLog == item.id;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(item.label),
-              selected: isSelected,
-              onSelected: (value) {
-                if (value) setState(() => _selectedLog = item.id);
-              },
-              selectedColor: AppColors.accent.withValues(alpha: 0.2),
-              labelStyle: TextStyle(
-                color: isSelected ? AppColors.accent : AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
-              ),
+        children: [
+          for (var i = 0; i < options.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            _buildLogButton(
+              options[i].id,
+              options[i].label,
+              currentSelected == options[i].id,
             ),
-          );
-        }).toList(),
+          ],
+        ],
       ),
     );
   }

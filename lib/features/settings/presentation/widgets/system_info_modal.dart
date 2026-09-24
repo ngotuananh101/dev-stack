@@ -23,7 +23,7 @@ class SystemInfoModal extends ConsumerWidget {
         width: 800,
         height: 600,
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
           boxShadow: [
