@@ -94,11 +94,14 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textMuted),
+      hintStyle: const TextStyle(
+        color: AppColors.textMuted,
+        fontSize: AppTextSize.xs,
+      ),
       filled: true,
-      fillColor: AppColors.surfaceLight,
+      fillColor: AppColors.surface,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: AppColors.border),
@@ -107,11 +110,15 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: AppColors.border),
       ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.primary),
+      ),
     );
   }
 
   TextStyle get _inputStyle =>
-      const TextStyle(color: AppColors.textPrimary);
+      const TextStyle(color: AppColors.textPrimary, fontSize: AppTextSize.sm);
 
   @override
   Widget build(BuildContext context) {
@@ -247,14 +254,12 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                   label: 'Cancel',
                   onPressed: () => Navigator.of(context).pop(),
                   style: AppButtonStyle.ghost,
-                  size: AppButtonSize.md,
                 ),
                 const SizedBox(width: 12),
                 AppButton(
                   label: widget.initialTunnel == null ? 'Create' : 'Save',
                   onPressed: _save,
-                  style: AppButtonStyle.primary,
-                  size: AppButtonSize.md,
+                  style: AppButtonStyle.success,
                   icon: const Icon(LucideIcons.save, size: 16),
                 ),
               ],

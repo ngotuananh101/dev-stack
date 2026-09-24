@@ -28,7 +28,7 @@ class AppDialogs {
       backgroundColor: AppColors.surface,
       titleColor: AppColors.textPrimary,
       textColor: AppColors.textSecondary,
-      confirmBtnColor: type == QuickAlertType.warning ? AppColors.error : AppColors.primary,
+      confirmBtnColor: type == QuickAlertType.warning ? AppColors.errorStrong : AppColors.successStrong,
       width: 420,
       confirmBtnTextStyle: const TextStyle(
         color: AppColors.textOnColor,

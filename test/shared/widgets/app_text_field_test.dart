@@ -1,3 +1,6 @@
+import 'package:dev_stack/core/theme/app_colors.dart';
+import 'package:dev_stack/core/theme/app_radius.dart';
+import 'package:dev_stack/core/theme/app_text_size.dart';
 import 'package:dev_stack/shared/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,5 +50,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Port is required'), findsOneWidget);
+  });
+
+  testWidgets('AppTextField has standardized benchmark decoration', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AppTextField(
+            hint: 'Search...',
+            prefixIcon: Icons.search,
+          ),
+        ),
+      ),
+    );
+
+    final textField = tester.widget<TextField>(find.byType(TextField));
+    final decoration = textField.decoration!;
+
+    expect(decoration.isDense, true);
+    expect(decoration.fillColor, AppColors.surface);
+    expect(decoration.contentPadding, const EdgeInsets.symmetric(horizontal: 12, vertical: 8));
+    expect(decoration.hintStyle?.fontSize, AppTextSize.xs);
+
+    final border = decoration.border as OutlineInputBorder;
+    expect(border.borderRadius, BorderRadius.circular(AppRadius.md));
   });
 }

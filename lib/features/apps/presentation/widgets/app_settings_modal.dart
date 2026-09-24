@@ -714,39 +714,45 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       padding: const EdgeInsets.all(24.0),
       child: Column(
         children: [
-          TextField(
-            onChanged: (v) => setState(() => _searchQuery = v),
-            style: const TextStyle(
-              fontSize: AppTextSize.xs,
-              color: AppColors.textPrimary,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Search extensions (e.g. mbstring, curl, gd)...',
-              hintStyle: const TextStyle(color: AppColors.textMuted),
-              prefixIcon: const Icon(
-                Icons.search,
-                size: 20,
-                color: AppColors.textMuted,
+          SizedBox(
+            height: 36,
+            child: TextField(
+              onChanged: (v) => setState(() => _searchQuery = v),
+              style: const TextStyle(
+                fontSize: AppTextSize.sm,
+                color: AppColors.textPrimary,
               ),
-              filled: true,
-              fillColor: AppColors.surfaceLight,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 16,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 1,
+              decoration: InputDecoration(
+                hintText: 'Search extensions (e.g. mbstring, curl, gd)...',
+                hintStyle: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: AppTextSize.xs,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  size: 14,
+                  color: AppColors.textMuted,
+                ),
+                filled: true,
+                fillColor: AppColors.surface,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ),
@@ -952,32 +958,31 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             onChanged: onChanged,
             obscureText: obscureText,
             style: const TextStyle(
-              fontSize: AppTextSize.xs,
+              fontSize: AppTextSize.sm,
               color: AppColors.textPrimary,
             ),
             decoration: InputDecoration(
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
+                horizontal: 12,
+                vertical: 8,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.5),
+                borderSide: const BorderSide(
+                  color: AppColors.border,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.5),
+                borderSide: const BorderSide(
+                  color: AppColors.border,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(
                   color: AppColors.primary,
-                  width: 1.5,
                 ),
               ),
               filled: true,

@@ -291,8 +291,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                         ref.read(appsProvider.notifier).openApp(mongoCompass),
                     icon: const Icon(LucideIcons.externalLink, size: 18),
                     style: AppButtonStyle.primary,
-                    size: AppButtonSize.lg,
-                    backgroundColor: const Color(0xFF13AA52),
+                    backgroundColor: AppColors.successStrong,
                     textColor: AppColors.textOnColor,
                   )
                 else
@@ -305,7 +304,6 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                     },
                     icon: const Icon(LucideIcons.download, size: 18),
                     style: AppButtonStyle.outline,
-                    size: AppButtonSize.lg,
                   ),
               ],
             ),
@@ -397,9 +395,8 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
         if (!isRedis && !isMongo) ...[
           AppButton(
             label: 'Add DB',
-            icon: const Icon(LucideIcons.plus, size: 16),
-            style: AppButtonStyle.primary,
-            size: AppButtonSize.md,
+            icon: const Icon(LucideIcons.plus, size: 14),
+            style: AppButtonStyle.success,
             onPressed: _showAddDatabaseDialog,
           ),
           const SizedBox(width: 12),
@@ -416,7 +413,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           _buildActionButton(
             'Add Key',
             LucideIcons.plus,
-            color: AppColors.success,
+            color: AppColors.successStrong,
             onTap: _showAddRedisKeyDialog,
           ),
           const SizedBox(width: 12),
@@ -427,7 +424,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           _buildActionButton(
             'HeidiSQL',
             LucideIcons.externalLink,
-            color: const Color(0xFFE26B0A),
+            color: AppColors.warningStrong,
             onTap: () =>
                 ref.read(appsProvider.notifier).openApp(heidiSql),
           ),
@@ -438,7 +435,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           _buildActionButton(
             'Compass',
             LucideIcons.externalLink,
-            color: const Color(0xFF13AA52),
+            color: AppColors.successStrong,
             onTap: () =>
                 ref.read(appsProvider.notifier).openApp(mongoCompass),
           ),
@@ -448,7 +445,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           _buildActionButton(
             'Sync DB',
             LucideIcons.refreshCw,
-            color: AppColors.accent,
+            color: AppColors.accentStrong,
             onTap: () {
               if (selectedEngine != null) {
                 if (isRedis) {
@@ -583,29 +580,25 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     );
   }
 
+  /// An action button: solid in [color] with white text when a colour is
+  /// given, plain secondary otherwise.
+  ///
+  /// The `*Strong` (700-step) tokens are the ones that clear WCAG AA under
+  /// white — the 500 steps sit near 2:1 — and `sm` keeps the row shorter than
+  /// the 36px search field beside it.
   Widget _buildActionButton(
     String label,
     IconData icon, {
     Color? color,
     VoidCallback? onTap,
   }) {
-    if (color != null) {
-      return AppButton(
-        label: label,
-        onPressed: onTap,
-        icon: Icon(icon, size: 16),
-        style: AppButtonStyle.primary,
-        size: AppButtonSize.md,
-        backgroundColor: color,
-        textColor: AppColors.textOnColor,
-      );
-    }
     return AppButton(
       label: label,
       onPressed: onTap,
-      icon: Icon(icon, size: 16),
-      style: AppButtonStyle.secondary,
-      size: AppButtonSize.md,
+      icon: Icon(icon, size: 14),
+      style: color != null ? AppButtonStyle.primary : AppButtonStyle.secondary,
+      backgroundColor: color,
+      textColor: color != null ? AppColors.textOnColor : null,
     );
   }
 
@@ -640,6 +633,10 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppColors.primary),
           ),
           contentPadding: const EdgeInsets.symmetric(
             vertical: 8,

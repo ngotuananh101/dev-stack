@@ -3,7 +3,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text_size.dart';
 
-enum AppButtonStyle { primary, secondary, ghost, outline, danger }
+enum AppButtonStyle { primary, secondary, success, ghost, outline, danger }
 enum AppButtonSize { sm, md, lg }
 
 class AppButton extends StatelessWidget {
@@ -22,7 +22,7 @@ class AppButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.style = AppButtonStyle.primary,
-    this.size = AppButtonSize.md,
+    this.size = AppButtonSize.sm,
     this.icon,
     this.width,
     this.isLoading = false,
@@ -138,7 +138,11 @@ class AppButton extends StatelessWidget {
     }
     switch (style) {
       case AppButtonStyle.primary:
-        return AppColors.primary;
+        // The 500 step only reaches ~3.7:1 under white text at best (cyan is
+        // 2.4:1); the 700 step clears WCAG AA for every hue.
+        return AppColors.primaryStrong;
+      case AppButtonStyle.success:
+        return AppColors.successStrong;
       case AppButtonStyle.secondary:
         return AppColors.surfaceLight;
       case AppButtonStyle.outline:
@@ -158,6 +162,7 @@ class AppButton extends StatelessWidget {
     }
     switch (style) {
       case AppButtonStyle.primary:
+      case AppButtonStyle.success:
         return AppColors.textOnColor;
       case AppButtonStyle.secondary:
       case AppButtonStyle.outline:

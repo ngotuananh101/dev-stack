@@ -53,36 +53,37 @@ class AppTextField extends StatelessWidget {
         hintText: hint,
         hintStyle: const TextStyle(
           color: AppColors.textMuted,
-          fontSize: AppTextSize.sm,
+          fontSize: AppTextSize.xs,
         ),
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, size: 16, color: AppColors.textMuted)
+            ? Icon(prefixIcon, size: 14, color: AppColors.textMuted)
             : null,
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: AppColors.surface,
+        isDense: true,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 10,
+          horizontal: 12,
+          vertical: 8,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: const BorderSide(color: AppColors.primary),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: const BorderSide(color: AppColors.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: const BorderSide(color: AppColors.error),
         ),
         errorStyle: const TextStyle(

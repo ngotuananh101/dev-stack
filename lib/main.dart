@@ -47,7 +47,7 @@ void main(List<String> args) async {
   final appVersion = packageInfo.version;
 
   WindowOptions windowOptions = WindowOptions(
-    size: const Size(1200, 800),
+    size: const Size(1080, 720),
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,

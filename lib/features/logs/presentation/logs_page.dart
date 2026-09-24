@@ -308,7 +308,6 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                           icon: const Icon(Icons.refresh_rounded, size: 14),
                           onPressed: () => ref.invalidate(logFilesProvider),
                           style: AppButtonStyle.secondary,
-                          size: AppButtonSize.sm,
                         ),
                         const SizedBox(width: 8),
                         if (_isService) ...[
@@ -324,7 +323,6 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                               });
                             },
                             style: AppButtonStyle.danger,
-                            size: AppButtonSize.sm,
                           ),
                         ] else ...[
                           AppButton(
@@ -335,7 +333,6 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                             ),
                             onPressed: () => _deleteLogFile(_selectedId!),
                             style: AppButtonStyle.danger,
-                            size: AppButtonSize.sm,
                           ),
                         ],
                       ],

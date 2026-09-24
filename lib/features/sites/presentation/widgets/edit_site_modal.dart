@@ -378,7 +378,6 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                       const SizedBox(width: 12),
                       AppButton(
                         style: AppButtonStyle.secondary,
-                        size: AppButtonSize.md,
                         icon: const Icon(
                           LucideIcons.folderOpen,
                           size: 18,
@@ -486,8 +485,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                   alignment: Alignment.bottomRight,
                   child: AppButton(
                     label: 'Save General Settings',
-                    style: AppButtonStyle.primary,
-                    size: AppButtonSize.md,
+                    style: AppButtonStyle.success,
                     isLoading: _isSaving,
                     onPressed: _handleSave,
                   ),
@@ -671,8 +669,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
               ],
               const Spacer(),
               AppButton(
-                  style: AppButtonStyle.primary,
-                  size: AppButtonSize.md,
+                  style: AppButtonStyle.success,
                   icon: const Icon(LucideIcons.save, size: 14),
                   label: 'Save Changes',
                   onPressed: _saveConfig,
@@ -809,7 +806,6 @@ class _SslTabState extends ConsumerState<_SslTab> {
               const Spacer(),
               AppButton(
               style: AppButtonStyle.outline,
-              size: AppButtonSize.md,
               icon: const Icon(LucideIcons.refreshCcw, size: 14),
               label: 'Regenerate SSL',
               onPressed: _regenerate,
@@ -817,8 +813,7 @@ class _SslTabState extends ConsumerState<_SslTab> {
             ),
               const SizedBox(width: 8),
               AppButton(
-              style: AppButtonStyle.primary,
-              size: AppButtonSize.md,
+              style: AppButtonStyle.success,
               icon: const Icon(LucideIcons.save, size: 14),
               label: 'Save Changes',
               onPressed: _saveSslFile,

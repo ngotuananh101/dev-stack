@@ -490,7 +490,6 @@ class CompactAppsTable extends StatelessWidget {
           AppButton(
             onPressed: null,
             style: AppButtonStyle.outline,
-            size: AppButtonSize.sm,
             label: 'INSTALLING...',
           )
         else

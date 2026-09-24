@@ -185,7 +185,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           ? [
                               _StatusAction(
                                 label: 'Reinstall',
-                                color: AppColors.accent,
+                                color: AppColors.accentStrong,
                                 onTap: () => _handleSslAction(
                                   'Reinstall',
                                   () => ref
@@ -195,14 +195,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               ),
                               _StatusAction(
                                 label: 'Uninstall',
-                                color: AppColors.error,
+                                color: AppColors.errorStrong,
                                 onTap: () => _confirmUninstall(context),
                               ),
                             ]
                           : [
                               _StatusAction(
                                 label: 'Install',
-                                color: AppColors.accent,
+                                color: AppColors.successStrong,
                                 onTap: () => _handleSslAction(
                                   'Install',
                                   () => ref
@@ -348,13 +348,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             label: 'Cancel',
             onPressed: () => Navigator.of(ctx).pop(false),
             style: AppButtonStyle.ghost,
-            size: AppButtonSize.md,
           ),
           AppButton(
             label: 'Migrate & Change',
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: AppButtonStyle.primary,
-            size: AppButtonSize.md,
+            style: AppButtonStyle.success,
           ),
         ],
       ),
@@ -425,7 +423,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               label: 'Restart Later',
               onPressed: () => Navigator.of(ctx).pop(),
               style: AppButtonStyle.ghost,
-              size: AppButtonSize.md,
             ),
             AppButton(
               label: 'Restart Now',
@@ -444,7 +441,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 exit(0);
               },
               style: AppButtonStyle.primary,
-              size: AppButtonSize.md,
             ),
           ],
         ),
@@ -603,7 +599,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           width: 200,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.border),
           ),
@@ -625,7 +621,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   )
                   .toList(),
               onChanged: onChanged,
-              dropdownColor: AppColors.surfaceLight,
+              dropdownColor: AppColors.surface,
               icon: const Icon(LucideIcons.chevronDown, size: 16),
               hint: Text(
                 placeholder,
@@ -869,8 +865,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               label: actionLabel,
               onPressed: onTap,
               style: AppButtonStyle.primary,
-              size: AppButtonSize.sm,
-              backgroundColor: AppColors.accent,
+              backgroundColor: AppColors.accentStrong,
               textColor: AppColors.textOnColor,
             ),
           ],
@@ -975,19 +970,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ...actions.map(
             (action) => Padding(
               padding: const EdgeInsets.only(left: 8.0),
-              child: action.color == AppColors.error
+              child: action.color == AppColors.errorStrong
                   ? AppButton(
                       label: action.label,
                       onPressed: action.onTap,
                       style: AppButtonStyle.danger,
-                      size: AppButtonSize.sm,
                       textColor: AppColors.textOnColor,
                     )
                   : AppButton(
                       label: action.label,
                       onPressed: action.onTap,
                       style: AppButtonStyle.primary,
-                      size: AppButtonSize.sm,
                       backgroundColor: action.color,
                       textColor: AppColors.textOnColor,
                     ),
@@ -1120,15 +1113,16 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
       onChanged: _handleChange,
       style: const TextStyle(
         color: AppColors.textPrimary,
-        fontSize: AppTextSize.xs,
+        fontSize: AppTextSize.sm,
         fontFamily: 'JetBrainsMono',
       ),
       decoration: InputDecoration(
         filled: true,
-        fillColor: AppColors.surfaceLight,
+        fillColor: AppColors.surface,
+        isDense: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
-          vertical: 12,
+          vertical: 8,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -1140,7 +1134,7 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.accent),
+          borderSide: const BorderSide(color: AppColors.primary),
         ),
       ),
     );

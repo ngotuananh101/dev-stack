@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text_size.dart';
 
 const double kAppHeaderHeight = 36.0;
@@ -89,19 +88,10 @@ class _AppHeaderState extends State<AppHeader> with WindowListener {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 22,
-            height: 22,
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(AppRadius.xs),
-            ),
-            child: Image.asset(
-              'assets/images/icon.png',
-              width: 16,
-              height: 16,
-            ),
+          Image.asset(
+            'assets/images/icon.png',
+            width: 16,
+            height: 16,
           ),
           const SizedBox(width: 8),
           const Text(
@@ -109,7 +99,7 @@ class _AppHeaderState extends State<AppHeader> with WindowListener {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: AppTextSize.sm,
+              fontSize: AppTextSize.xs,
               color: AppColors.textPrimary,
               letterSpacing: 0.2,
             ),

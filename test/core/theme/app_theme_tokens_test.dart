@@ -18,6 +18,10 @@ void main() {
     expect(theme.brightness, Brightness.dark);
     expect(theme.inputDecorationTheme.filled, true);
     expect(theme.inputDecorationTheme.fillColor, AppColors.surface);
+    expect(theme.inputDecorationTheme.isDense, true);
+    expect(theme.inputDecorationTheme.contentPadding, const EdgeInsets.symmetric(horizontal: 12, vertical: 8));
+    final border = theme.inputDecorationTheme.border as OutlineInputBorder;
+    expect(border.borderRadius, BorderRadius.circular(AppRadius.md));
     expect(theme.cardTheme.shape, isA<RoundedRectangleBorder>());
   });
 }

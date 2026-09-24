@@ -99,4 +99,31 @@ void main() {
     final text = tester.widget<Text>(find.text('Disabled'));
     expect(text.style!.color, AppColors.textMuted);
   });
+
+  testWidgets('AppButton style success uses successStrong background and textOnColor', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppButton(
+            label: 'Add DB',
+            style: AppButtonStyle.success,
+            onPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Add DB'), findsOneWidget);
+
+    final material = tester.widget<Material>(find
+        .descendant(
+          of: find.byType(AppButton),
+          matching: find.byType(Material),
+        )
+        .first);
+    expect(material.color, AppColors.successStrong);
+
+    final text = tester.widget<Text>(find.text('Add DB'));
+    expect(text.style!.color, AppColors.textOnColor);
+  });
 }

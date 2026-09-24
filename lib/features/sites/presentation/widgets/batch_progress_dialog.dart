@@ -94,7 +94,6 @@ class _BatchProgressDialogState extends State<BatchProgressDialog> {
                       child: AppButton(
                         label: _cancelling ? 'Cancelling…' : 'Cancel',
                         style: AppButtonStyle.danger,
-                        size: AppButtonSize.sm,
                         isLoading: _cancelling,
                         onPressed: _cancelling
                             ? null

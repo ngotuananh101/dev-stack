@@ -46,7 +46,6 @@ class FeaturedBanner extends StatelessWidget {
                       AppButton(
                         onPressed: () {},
                         style: AppButtonStyle.primary,
-                        size: AppButtonSize.lg,
                         label: 'FEATURED DEPLOYMENT',
                       ),
                     ],

@@ -518,9 +518,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                       widget.app.selectedVersion = _selectedVersion;
                       widget.onInstall();
                     },
-              style: AppButtonStyle.primary,
-              backgroundColor: AppColors.success,
-              textColor: AppColors.textOnColor,
+              style: AppButtonStyle.success,
               label: widget.isUpdate
                   ? 'Update to ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}'
                   : 'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
@@ -530,7 +528,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             AppButton(
               onPressed: appState.status == 'installed' ? widget.onClose : null,
               backgroundColor: appState.status == 'installed'
-                  ? AppColors.success
+                  ? AppColors.successStrong
                   : AppColors.textMuted,
               textColor: AppColors.textOnColor,
               label: appState.status == 'installed'

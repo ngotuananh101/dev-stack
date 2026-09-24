@@ -353,7 +353,6 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                           AppButton(
                             label: '',
                             style: AppButtonStyle.secondary,
-                            size: AppButtonSize.md,
                             icon: const Icon(
                               LucideIcons.folderOpen,
                               size: 18,
@@ -592,14 +591,12 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                   AppButton(
                     label: 'Cancel',
                     style: AppButtonStyle.ghost,
-                    size: AppButtonSize.md,
                     onPressed: widget.onClose,
                   ),
                   const SizedBox(width: 12),
                   AppButton(
                     label: isEdit ? 'Update Site' : 'Add Site',
-                    style: AppButtonStyle.primary,
-                    size: AppButtonSize.md,
+                    style: AppButtonStyle.success,
                     isLoading: _isSaving,
                     onPressed: _handleSave,
                   ),

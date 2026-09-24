@@ -55,8 +55,7 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
         AppButton(
           label: 'New Tunnel',
           icon: const Icon(LucideIcons.plus, size: 16),
-          size: AppButtonSize.md,
-          style: AppButtonStyle.primary,
+          style: AppButtonStyle.success,
           onPressed: _showCreateModal,
         ),
         const Spacer(),
@@ -487,20 +486,14 @@ class _TunnelCard extends ConsumerWidget {
             label: 'Start',
             onPressed: () => _start(ref, context),
             icon: const Icon(LucideIcons.play, size: 14),
-            style: AppButtonStyle.primary,
-            size: AppButtonSize.md,
-            backgroundColor: AppColors.success.withValues(alpha: 0.15),
-            textColor: AppColors.success,
+            style: AppButtonStyle.success,
           )
         else if (!isConnecting)
           AppButton(
             label: 'Stop',
             onPressed: () => _stop(ref, context),
             icon: const Icon(LucideIcons.square, size: 14),
-            style: AppButtonStyle.primary,
-            size: AppButtonSize.md,
-            backgroundColor: AppColors.error.withValues(alpha: 0.15),
-            textColor: AppColors.error,
+            style: AppButtonStyle.danger,
           ),
         const SizedBox(width: 8),
         _actionIcon(

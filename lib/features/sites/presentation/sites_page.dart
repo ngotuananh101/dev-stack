@@ -92,15 +92,13 @@ class _SitesPageState extends ConsumerState<SitesPage> {
         AppButton(
           label: 'Add Site',
           icon: const Icon(LucideIcons.plus, size: 16),
-          size: AppButtonSize.md,
-          style: AppButtonStyle.primary,
+          style: AppButtonStyle.success,
           onPressed: () => _showSiteDialog(),
         ),
         const SizedBox(width: 12),
         AppButton(
           label: 'Batch Create',
           style: AppButtonStyle.outline,
-          size: AppButtonSize.md,
           icon: const Icon(LucideIcons.folderPlus, size: 16),
           onPressed: () => _handleBatchCreateSites(),
         ),
@@ -109,7 +107,6 @@ class _SitesPageState extends ConsumerState<SitesPage> {
           AppButton(
             label: 'Delete (${_selectedSiteIds.length})',
             style: AppButtonStyle.danger,
-            size: AppButtonSize.md,
             icon: const Icon(LucideIcons.trash2, size: 16),
             onPressed: () => _handleBulkDelete(),
           ),
@@ -151,6 +148,10 @@ class _SitesPageState extends ConsumerState<SitesPage> {
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppColors.primary),
           ),
           contentPadding: const EdgeInsets.symmetric(
             vertical: 8,

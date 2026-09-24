@@ -10,6 +10,7 @@ import '../../../apps/domain/app_model.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/shared/widgets/app_button.dart';
+import 'package:dev_stack/shared/widgets/app_text_field.dart';
 
 class AddRedisKeyModal extends ConsumerStatefulWidget {
   final AppModel engine;
@@ -347,7 +348,7 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildLabel('Key Name'),
-                    _buildTextField(
+                    AppTextField(
                       controller: _keyController,
                       hint: 'e.g. user:123:session',
                       enabled: !isEdit,
@@ -364,7 +365,7 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
                           ? 'Value (Read Only - $_type)'
                           : 'Value (String)',
                     ),
-                    _buildTextField(
+                    AppTextField(
                       controller: _valueController,
                       hint: 'Enter string value',
                       maxLines: 8,
@@ -378,7 +379,7 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
                     ),
                     const SizedBox(height: 20),
                     _buildLabel('Term of Validity (Seconds, Optional)'),
-                    _buildTextField(
+                    AppTextField(
                       controller: _ttlController,
                       hint: 'e.g. 3600 (empty for No limit)',
                       validator: (value) {
@@ -409,15 +410,13 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
                     label: 'Cancel',
                     onPressed: widget.onClose,
                     style: AppButtonStyle.ghost,
-                    size: AppButtonSize.md,
                   ),
                   const SizedBox(width: 12),
                   if (!_isReadOnly)
                     AppButton(
                       label: isEdit ? 'Update Key' : 'Add Key',
                       onPressed: _isAdding ? null : _handleSave,
-                      style: AppButtonStyle.primary,
-                      size: AppButtonSize.md,
+                      style: AppButtonStyle.success,
                       isLoading: _isAdding,
                       icon: const Icon(LucideIcons.save, size: 16),
                     ),
@@ -439,54 +438,6 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
           color: AppColors.textSecondary,
           fontSize: AppTextSize.xs,
           fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    int maxLines = 1,
-    bool enabled = true,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      enabled: enabled,
-      validator: validator,
-      style: TextStyle(
-        color: enabled ? AppColors.textPrimary : AppColors.textMuted,
-        fontSize: AppTextSize.sm,
-      ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(
-          color: AppColors.textMuted,
-          fontSize: AppTextSize.sm,
-        ),
-        filled: true,
-        fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primary),
-        ),
-        errorStyle: const TextStyle(
-          color: AppColors.error,
-          fontSize: AppTextSize.xxs,
         ),
       ),
     );

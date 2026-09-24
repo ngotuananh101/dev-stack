@@ -324,8 +324,7 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
         if (isStopped || hasError)
           AppButton(
             label: 'Start Tunnel',
-            style: AppButtonStyle.primary,
-            size: AppButtonSize.md,
+            style: AppButtonStyle.success,
             icon: const Icon(LucideIcons.play, size: 14),
             onPressed: () =>
                 ref.read(tunnelSessionsProvider.notifier).start(tunnel),
@@ -334,7 +333,6 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
           AppButton(
             label: 'Stop',
             style: AppButtonStyle.danger,
-            size: AppButtonSize.md,
             icon: const Icon(LucideIcons.square, size: 14),
             onPressed: () =>
                 ref.read(tunnelSessionsProvider.notifier).stop(tunnel.id),
