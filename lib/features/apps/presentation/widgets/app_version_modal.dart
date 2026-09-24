@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_modal_header.dart';
 import '../../domain/app_conflict_policy.dart';
 import '../../domain/app_brand_resolver.dart';
 import '../../domain/app_model.dart';
@@ -78,7 +79,6 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
         children: [
           // Header
           _buildHeader(isInProgress),
-          const Divider(color: AppColors.border, height: 1),
           // Content
           if (isInProgress)
             _buildProgressSection(appState)
@@ -197,55 +197,30 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
   }
 
   Widget _buildHeader(bool isInProgress) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 28,
-            height: 28,
-            child: Image.asset(
-              'assets/images/${AppBrandResolver.iconFileName(widget.app.appId, groupName: widget.app.groupName)}.png',
-              width: 28,
-              height: 28,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) =>
-                  Icon(AppBrandResolver.fallbackIcon(widget.app.appId), size: 18, color: AppBrandResolver.iconColor(widget.app.appId)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.isUpdate
-                      ? 'Update ${widget.app.name}'
-                      : 'Install ${widget.app.name}',
-                  style: const TextStyle(
-                    fontSize: AppTextSize.sm,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  isInProgress
-                      ? (widget.isUpdate
-                            ? 'Updating ${widget.app.name}...'
-                            : 'Installing ${widget.app.name}...')
-                      : (widget.isUpdate
-                            ? 'Updating to patch version'
-                            : 'Select version to install'),
-                  style: TextStyle(
-                    fontSize: AppTextSize.xxs,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    return AppModalHeader(
+      iconWidget: SizedBox(
+        width: 20,
+        height: 20,
+        child: Image.asset(
+          'assets/images/${AppBrandResolver.iconFileName(widget.app.appId, groupName: widget.app.groupName)}.png',
+          width: 20,
+          height: 20,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(AppBrandResolver.fallbackIcon(widget.app.appId), size: 20, color: AppBrandResolver.iconColor(widget.app.appId)),
+        ),
       ),
+      title: widget.isUpdate
+          ? 'Update ${widget.app.name}'
+          : 'Install ${widget.app.name}',
+      subtitle: isInProgress
+          ? (widget.isUpdate
+                ? 'Updating ${widget.app.name}...'
+                : 'Installing ${widget.app.name}...')
+          : (widget.isUpdate
+                ? 'Updating to patch version'
+                : 'Select version to install'),
+      onClose: isInProgress ? null : widget.onClose,
     );
   }
 

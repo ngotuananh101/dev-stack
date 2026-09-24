@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_modal_header.dart';
 
 class TunnelQrModal extends StatelessWidget {
   final String tunnelName;
@@ -24,70 +25,62 @@ class TunnelQrModal extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.border),
       ),
-      child: Container(
+      child: SizedBox(
         width: 360,
-        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    '$tunnelName - QR Code',
-                    style: const TextStyle(
-                      fontSize: AppTextSize.base,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+            AppModalHeader(
+              icon: LucideIcons.qrCode,
+              title: '$tunnelName - QR Code',
+              subtitle: 'Scan with mobile device to access',
+              onClose: () => Navigator.of(context).pop(),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    child: QrImageView(
+                      data: publicUrl,
+                      version: QrVersions.auto,
+                      size: 200.0,
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(LucideIcons.x, size: 18, color: AppColors.textSecondary),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: 16),
+                  SelectableText(
+                    publicUrl,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: AppTextSize.sm,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AppButton(
+                        label: 'Copy Link',
+                        icon: const Icon(LucideIcons.copy, size: 16, color: AppColors.textOnColor),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: publicUrl));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Public URL copied to clipboard')),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              child: QrImageView(
-                data: publicUrl,
-                version: QrVersions.auto,
-                size: 200.0,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SelectableText(
-              publicUrl,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: AppTextSize.sm,
-                color: AppColors.primary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AppButton(
-                  label: 'Copy Link',
-                  icon: const Icon(LucideIcons.copy, size: 16, color: AppColors.textOnColor),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: publicUrl));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Public URL copied to clipboard')),
-                    );
-                  },
-                ),
-              ],
             ),
           ],
         ),

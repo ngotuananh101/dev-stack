@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text_size.dart';
+import 'app_modal_header.dart';
 
 class TerminalLogView extends StatefulWidget {
   final String title;
@@ -109,72 +110,40 @@ class _TerminalLogViewState extends State<TerminalLogView> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: widget.isModal
-            ? BorderRadius.vertical(
-                top: Radius.circular(AppRadius.md),
-              )
-            : BorderRadius.zero,
-        border: const Border(
-          bottom: BorderSide(color: AppColors.border),
+    return AppModalHeader(
+      icon: widget.icon,
+      iconColor: AppColors.accent,
+      title: widget.title,
+      subtitleWidget: widget.statusWidget,
+      actions: [
+        IconButton(
+          icon: Icon(
+            _autoScroll ? LucideIcons.arrowDownCircle : LucideIcons.pauseCircle,
+            size: 16,
+            color: _autoScroll ? AppColors.success : AppColors.textMuted,
+          ),
+          tooltip: _autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF',
+          onPressed: () => setState(() => _autoScroll = !_autoScroll),
         ),
-      ),
-      child: Row(
-        children: [
-          Icon(widget.icon, size: 16, color: AppColors.accent),
-          const SizedBox(width: 8),
-          Text(
-            widget.title,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: AppTextSize.sm,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (widget.statusWidget != null) ...[
-            const SizedBox(width: 12),
-            widget.statusWidget!,
-          ],
-          const Spacer(),
+        if (widget.onClear != null)
           IconButton(
-            icon: Icon(
-              _autoScroll ? LucideIcons.arrowDownCircle : LucideIcons.pauseCircle,
-              size: 16,
-              color: _autoScroll ? AppColors.success : AppColors.textMuted,
-            ),
-            tooltip: _autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF',
-            onPressed: () => setState(() => _autoScroll = !_autoScroll),
+            icon: const Icon(Icons.clear_all, size: 16, color: AppColors.textSecondary),
+            tooltip: 'Clear',
+            onPressed: widget.onClear,
           ),
-          if (widget.onClear != null)
-            IconButton(
-              icon: const Icon(Icons.clear_all, size: 16, color: AppColors.textSecondary),
-              tooltip: 'Clear',
-              onPressed: widget.onClear,
-            ),
+        IconButton(
+          icon: const Icon(Icons.copy, size: 16, color: AppColors.textSecondary),
+          tooltip: 'Copy all',
+          onPressed: widget.onCopy ?? _defaultCopy,
+        ),
+        if (widget.onOpenFile != null)
           IconButton(
-            icon: const Icon(Icons.copy, size: 16, color: AppColors.textSecondary),
-            tooltip: 'Copy all',
-            onPressed: widget.onCopy ?? _defaultCopy,
+            icon: const Icon(LucideIcons.fileText, size: 16, color: AppColors.textSecondary),
+            tooltip: 'Open log file',
+            onPressed: widget.onOpenFile,
           ),
-          if (widget.onOpenFile != null)
-            IconButton(
-              icon: const Icon(LucideIcons.fileText, size: 16, color: AppColors.textSecondary),
-              tooltip: 'Open log file',
-              onPressed: widget.onOpenFile,
-            ),
-          if (widget.onClose != null) ...[
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(LucideIcons.x, size: 18, color: AppColors.textMuted),
-              tooltip: 'Close',
-              onPressed: widget.onClose,
-            ),
-          ],
-        ],
-      ),
+      ],
+      onClose: widget.onClose,
     );
   }
 

@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../domain/tunnel_model.dart';
 import '../../data/tunnel_manager_service.dart';
@@ -131,36 +132,29 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.border),
       ),
-      child: Container(
+      child: SizedBox(
         width: 520,
-        padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  widget.initialTunnel == null
-                      ? 'Create Tunnel'
-                      : 'Edit Tunnel: ${widget.initialTunnel!.name}',
-                  style: const TextStyle(
-                    fontSize: AppTextSize.lg,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(LucideIcons.x,
-                      size: 18, color: AppColors.textSecondary),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
+            AppModalHeader(
+              icon: LucideIcons.cloud,
+              title: widget.initialTunnel == null
+                  ? 'Create Tunnel'
+                  : 'Edit Tunnel: ${widget.initialTunnel!.name}',
+              subtitle: widget.initialTunnel == null
+                  ? 'Expose local services to the internet securely'
+                  : 'Update tunnel configuration and routing',
+              onClose: () => Navigator.of(context).pop(),
             ),
-            const SizedBox(height: 16),
-            Form(
-              key: _formKey,
+            Padding(
+              padding: const EdgeInsets.all(24),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Form(
+                    key: _formKey,
+                    child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Name
@@ -267,7 +261,10 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
           ],
         ),
       ),
-    );
+    ],
+  ),
+),
+);
   }
 
   Widget _buildTargetTypeToggle() {

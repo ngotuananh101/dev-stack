@@ -10,6 +10,7 @@ import '../../data/sites_provider.dart';
 import '../site_editor_options.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/code_editor/config_code_editor.dart';
 
@@ -70,35 +71,11 @@ class _EditSiteModalState extends ConsumerState<EditSiteModal> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.globe, color: AppColors.primary, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Site Settings: ${widget.site.domain}',
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.base,
-                fontWeight: FontWeight.bold,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          AppIconButton(
-            onPressed: widget.onClose,
-            icon: LucideIcons.x,
-            tooltip: 'Close',
-            color: AppColors.textMuted,
-            size: AppIconButtonSize.sm,
-          ),
-        ],
-      ),
+    return AppModalHeader(
+      icon: LucideIcons.globe,
+      title: 'Site Settings: ${widget.site.domain}',
+      subtitle: 'Manage configuration, SSL certificates, and logs',
+      onClose: widget.onClose,
     );
   }
 

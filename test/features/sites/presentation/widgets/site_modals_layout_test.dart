@@ -161,12 +161,15 @@ void main() {
     expect(find.text('Nginx Error'), findsOneWidget);
     expect(find.text('Apache Access'), findsNothing);
     expect(find.text('Caddy Access'), findsNothing);
+    expect(find.byType(ConfigCodeEditor), findsOneWidget);
+    expect(find.text('nginx_access.log'), findsOneWidget);
 
     // Switching between Nginx Access and Nginx Error works
     await tester.tap(find.text('Nginx Error'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(tester.takeException(), isNull);
+    expect(find.text('nginx_error.log'), findsOneWidget);
   });
 
   testWidgets('EditSiteModal Logs tab displays only Apache logs when only Apache is installed', (tester) async {
@@ -214,5 +217,62 @@ void main() {
     expect(find.text('Apache Error'), findsOneWidget);
     expect(find.text('Nginx Access'), findsNothing);
     expect(find.text('Caddy Access'), findsNothing);
+    expect(find.byType(ConfigCodeEditor), findsOneWidget);
+    expect(find.text('apache_access.log'), findsOneWidget);
+  });
+
+  testWidgets('EditSiteModal Config tab switches between webservers in CodeEditor', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1080, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+    final site = SiteModel(
+      id: 1,
+      domain: 'my-project.test',
+      rootDir: '/projects/my-project',
+      siteType: 'php',
+      phpVersion: '8.2',
+      useSsl: true,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appsProvider.overrideWith(() => _StaticAppsNotifier([])),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: EditSiteModal(site: site, onClose: () {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Switch to Config tab
+    await tester.tap(find.widgetWithText(Tab, 'Config'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(tester.takeException(), isNull);
+
+    // Initial is Nginx
+    expect(find.byType(ConfigCodeEditor), findsOneWidget);
+    final nginxEditor = tester.widget<ConfigCodeEditor>(find.byType(ConfigCodeEditor));
+    expect(nginxEditor.filePath.toLowerCase().contains('nginx'), isTrue);
+
+    // Switch to Apache
+    await tester.tap(find.text('Apache'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+    final apacheEditor = tester.widget<ConfigCodeEditor>(find.byType(ConfigCodeEditor));
+    expect(apacheEditor.filePath.toLowerCase().contains('apache'), isTrue);
+
+    // Switch to Caddy
+    await tester.tap(find.text('Caddy'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+    final caddyEditor = tester.widget<ConfigCodeEditor>(find.byType(ConfigCodeEditor));
+    expect(caddyEditor.filePath.toLowerCase().contains('caddy'), isTrue);
   });
 }

@@ -10,6 +10,7 @@ import '../../../apps/domain/app_model.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/shared/widgets/app_button.dart';
+import 'package:dev_stack/shared/widgets/app_modal_header.dart';
 import 'package:dev_stack/shared/widgets/app_text_field.dart';
 
 class AddRedisKeyModal extends ConsumerStatefulWidget {
@@ -290,54 +291,16 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 12.0,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isEdit
-                              ? 'Edit Redis Key (DB${widget.dbIndex})'
-                              : 'Add Redis Key (DB${widget.dbIndex})',
-                          style: TextStyle(
-                            fontSize: AppTextSize.sm,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          isEdit
-                              ? 'Update existing key-value pair'
-                              : 'Set a new key-value pair in Redis',
-                          style: TextStyle(
-                            fontSize: AppTextSize.xxs,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: widget.onClose,
-                    icon: const Icon(
-                      LucideIcons.x,
-                      size: 18,
-                      color: AppColors.textMuted,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    splashRadius: 20,
-                  ),
-                ],
-              ),
+            AppModalHeader(
+              icon: LucideIcons.key,
+              title: isEdit
+                  ? 'Edit Redis Key (DB${widget.dbIndex})'
+                  : 'Add Redis Key (DB${widget.dbIndex})',
+              subtitle: isEdit
+                  ? 'Update existing key-value pair'
+                  : 'Set a new key-value pair in Redis',
+              onClose: widget.onClose,
             ),
-            const Divider(color: AppColors.border, height: 1),
 
             // Content
             Padding(

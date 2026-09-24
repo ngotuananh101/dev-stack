@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../../tunnels/data/tunnels_provider.dart';
 import '../../../tunnels/data/tunnel_manager_service.dart';
@@ -50,44 +51,24 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.border),
       ),
-      child: Container(
+      child: SizedBox(
         width: 500,
-        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 20),
-            _buildContent(tunnelsAsync, sessions),
+            AppModalHeader(
+              icon: LucideIcons.share2,
+              title: 'Share ${widget.site.domain}',
+              subtitle: 'Expose your local site to the internet via tunnels',
+              onClose: () => Navigator.of(context).pop(),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: _buildContent(tunnelsAsync, sessions),
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            'Share ${widget.site.domain}',
-            style: const TextStyle(
-              fontSize: AppTextSize.lg,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        AppIconButton(
-          icon: LucideIcons.x,
-          onPressed: () => Navigator.of(context).pop(),
-          tooltip: 'Close',
-          color: AppColors.textSecondary,
-          size: AppIconButtonSize.sm,
-        ),
-      ],
     );
   }
 

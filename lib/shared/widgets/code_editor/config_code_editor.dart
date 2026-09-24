@@ -57,6 +57,8 @@ class ConfigCodeEditor extends StatefulWidget {
     this.saveLabel = 'Save Changes',
     this.showToolbar = true,
     this.createIfMissing = false,
+    this.autofocus = false,
+    this.focusNode,
     this.encoding = utf8,
     this.decodeFallback,
   });
@@ -86,6 +88,12 @@ class ConfigCodeEditor extends StatefulWidget {
   /// When true, automatically creates an empty file if [filePath] does not exist.
   final bool createIfMissing;
 
+  /// Whether the editor should request focus when mounted. Defaults to false.
+  final bool autofocus;
+
+  /// Optional external focus node for the editor.
+  final FocusNode? focusNode;
+
   /// Encoding used to decode/encode the file content. Defaults to UTF-8.
   /// Pass [systemEncoding] for the Windows hosts file (non-ASCII hostnames).
   final Encoding encoding;
@@ -101,6 +109,7 @@ class ConfigCodeEditor extends StatefulWidget {
 class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   late final CodeLineEditingController _controller;
   late final CodeFindController _findController;
+  late final FocusNode _focusNode;
   final _scrollController = CodeScrollController();
   bool _isLoading = true;
   bool _isSaving = false;
@@ -113,6 +122,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
     super.initState();
     _controller = CodeLineEditingController.fromText(widget.content ?? '');
     _findController = CodeFindController(_controller);
+    _focusNode = widget.focusNode ?? FocusNode();
     _controller.addListener(_onChanged);
     _loadFile();
   }
@@ -133,6 +143,10 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
 
   @override
   void dispose() {
+    _focusNode.unfocus();
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
     _controller.removeListener(_onChanged);
     _controller.dispose();
     _findController.dispose();
@@ -582,6 +596,8 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
               findController: _findController,
               findBuilder: _buildFindPanel,
               shortcutsActivatorsBuilder: const _EditorShortcutsActivators(),
+              autofocus: widget.autofocus,
+              focusNode: _focusNode,
               readOnly: widget.readOnly,
               style: CodeEditorStyle(
                 fontSize: AppTextSize.sm,

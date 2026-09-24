@@ -247,13 +247,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(LucideIcons.alertTriangle, color: AppColors.warning, size: 22),
+            Icon(LucideIcons.alertTriangle, color: AppColors.warning, size: 20),
             SizedBox(width: 12),
             Text(
               'Change Base Directory',
               style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: AppTextSize.md,
+                fontSize: AppTextSize.sm,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -398,13 +398,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           title: const Row(
             children: [
-              Icon(LucideIcons.refreshCw, color: AppColors.accent, size: 22),
+              Icon(LucideIcons.refreshCw, color: AppColors.accent, size: 20),
               SizedBox(width: 12),
               Text(
                 'Restart Required',
                 style: TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: AppTextSize.md,
+                  fontSize: AppTextSize.sm,
                   fontWeight: FontWeight.bold,
                 ),
               ),

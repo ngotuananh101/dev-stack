@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../../../shared/widgets/app_modal_header.dart';
 import '../../domain/app_model.dart';
 import '../../data/pyenv_provider.dart';
 
@@ -91,56 +93,11 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-        border: const Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.terminal_rounded,
-              color: AppColors.primary,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Python Version Management',
-                style: TextStyle(
-                  fontSize: AppTextSize.base,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                'Powered by pyenv-win',
-                style: TextStyle(
-                  fontSize: AppTextSize.xxs,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.close, size: 20),
-            onPressed: widget.onClose,
-            color: AppColors.textMuted,
-          ),
-        ],
-      ),
+    return AppModalHeader(
+      icon: LucideIcons.terminal,
+      title: 'Python Version Management',
+      subtitle: 'Powered by pyenv-win',
+      onClose: widget.onClose,
     );
   }
 

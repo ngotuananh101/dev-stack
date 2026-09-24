@@ -116,14 +116,12 @@ class Sites extends _$Sites {
     return domain;
   }
 
-  @visibleForTesting
   static const Set<String> editableWebserverTypes = {
     'nginx',
     'apache',
     'caddy',
   };
 
-  @visibleForTesting
   static String vhostConfigPath(String type, String domain) {
     validateDomain(domain);
     if (!editableWebserverTypes.contains(type)) {

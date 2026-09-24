@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../system/data/system_info_provider.dart';
 import '../../../system/domain/system_info.dart';
 
@@ -60,46 +62,21 @@ class SystemInfoModal extends ConsumerWidget {
   }
 
   Widget _buildHeader(BuildContext context, WidgetRef ref) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
+    return AppModalHeader(
+      icon: LucideIcons.terminal,
+      iconColor: AppColors.accent,
+      title: 'System Diagnostics',
+      subtitle: 'Hardware, operating system, and runtime details',
+      actions: [
+        AppIconButton(
+          onPressed: () => ref.read(systemInfoStateProvider.notifier).refresh(),
+          icon: LucideIcons.refreshCw,
+          tooltip: 'Refresh',
+          color: AppColors.textSecondary,
+          size: AppIconButtonSize.sm,
         ),
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.terminal, color: AppColors.accent, size: 18),
-          const SizedBox(width: 12),
-          const Text(
-            'System Diagnostics',
-            style: TextStyle(
-              fontSize: AppTextSize.sm,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            onPressed: () => ref.read(systemInfoStateProvider.notifier).refresh(),
-            icon: const Icon(LucideIcons.refreshCw, size: 16),
-            color: AppColors.textSecondary,
-            hoverColor: AppColors.surfaceLight,
-            tooltip: 'Refresh',
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(LucideIcons.x, size: 18),
-            color: AppColors.textSecondary,
-            hoverColor: AppColors.error.withValues(alpha: 0.2),
-          ),
-        ],
-      ),
+      ],
+      onClose: () => Navigator.pop(context),
     );
   }
 

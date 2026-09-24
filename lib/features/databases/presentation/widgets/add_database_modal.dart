@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/databases_provider.dart';
 import '../../domain/database_record.dart';
@@ -138,58 +139,14 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 12.0,
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    LucideIcons.database,
-                    size: 20,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isEdit ? 'Edit Database' : 'Create New Database',
-                          style: const TextStyle(
-                            fontSize: AppTextSize.sm,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          isEdit
-                              ? 'Update database configuration'
-                              : 'Configure your new database instance',
-                          style: const TextStyle(
-                            fontSize: AppTextSize.xxs,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: widget.onClose,
-                    icon: const Icon(
-                      LucideIcons.x,
-                      size: 18,
-                      color: AppColors.textMuted,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    splashRadius: 20,
-                  ),
-                ],
-              ),
+            AppModalHeader(
+              icon: LucideIcons.database,
+              title: isEdit ? 'Edit Database' : 'Create New Database',
+              subtitle: isEdit
+                  ? 'Update database configuration'
+                  : 'Configure your new database instance',
+              onClose: widget.onClose,
             ),
-            const Divider(color: AppColors.border, height: 1),
 
             // Content
             Padding(

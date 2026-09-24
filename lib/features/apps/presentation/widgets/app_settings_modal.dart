@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/services/background_process.dart';
 import '../../../../core/services/log_service.dart';
@@ -304,92 +305,44 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
 
   // ─── Header ───────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-        border: const Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.settings_outlined,
-              color: AppColors.primary,
-              size: 20,
-            ),
+    return AppModalHeader(
+      icon: LucideIcons.settings,
+      title: '${widget.app.name} Settings',
+      subtitle: 'Manage configuration and extensions',
+      actions: [
+        if (_hasConfigTab)
+          AppButton(
+            onPressed: () => _tabController.animateTo(1),
+            style: AppButtonStyle.ghost,
+            label: 'Edit Config',
+            icon: const Icon(Icons.edit_note, size: 14),
           ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${widget.app.name} Settings',
-                style: const TextStyle(
-                  fontSize: AppTextSize.base,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                'Manage configuration and extensions',
-                style: TextStyle(
-                  fontSize: AppTextSize.xxs,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          if (_hasConfigTab)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: AppButton(
-                onPressed: () => _tabController.animateTo(1),
-                style: AppButtonStyle.ghost,
-                label: 'Edit Config',
-                icon: const Icon(Icons.edit_note, size: 14),
-              ),
-            ),
-          if (widget.app.serviceStatus == 'running')
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: AppButton(
-                onPressed: () async {
-                  // Route through Apps so service status changes
-                  // notify the apps table/provider, not only AppServiceManager.
-                  await ref
-                      .read(appsProvider.notifier)
-                      .restartService(widget.app);
-                  if (mounted) {
-                    setState(() {});
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Service restarted successfully'),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
-                  }
-                },
-                style: AppButtonStyle.outline,
-                label: 'Restart',
-                icon: const Icon(Icons.refresh_rounded, size: 14),
-              ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 20),
-            onPressed: widget.onClose,
-            color: AppColors.textMuted,
-            hoverColor: AppColors.error.withValues(alpha: 0.1),
+        if (widget.app.serviceStatus == 'running') ...[
+          if (_hasConfigTab) const SizedBox(width: 8),
+          AppButton(
+            onPressed: () async {
+              // Route through Apps so service status changes
+              // notify the apps table/provider, not only AppServiceManager.
+              await ref
+                  .read(appsProvider.notifier)
+                  .restartService(widget.app);
+              if (mounted) {
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Service restarted successfully'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              }
+            },
+            style: AppButtonStyle.outline,
+            label: 'Restart',
+            icon: const Icon(Icons.refresh_rounded, size: 14),
           ),
         ],
-      ),
+      ],
+      onClose: widget.onClose,
     );
   }
 

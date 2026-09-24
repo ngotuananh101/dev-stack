@@ -10,7 +10,7 @@ import '../../../apps/data/apps_provider.dart';
 import '../../../apps/domain/app_model.dart';
 import '../../data/sites_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
-import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 
 class AddSiteModal extends ConsumerStatefulWidget {
@@ -234,52 +234,12 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 12.0,
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    LucideIcons.globe,
-                    size: 20,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isEdit ? 'Edit Site' : 'Add New Site',
-                          style: const TextStyle(
-                            fontSize: AppTextSize.sm,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const Text(
-                          'Configure a new virtual host for your project',
-                          style: TextStyle(
-                            fontSize: AppTextSize.xxs,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AppIconButton(
-                    onPressed: widget.onClose,
-                    icon: LucideIcons.x,
-                    tooltip: 'Close',
-                    color: AppColors.textMuted,
-                    size: AppIconButtonSize.sm,
-                  ),
-                ],
-              ),
+            AppModalHeader(
+              icon: LucideIcons.globe,
+              title: isEdit ? 'Edit Site' : 'Add New Site',
+              subtitle: 'Configure a new virtual host for your project',
+              onClose: widget.onClose,
             ),
-            const Divider(color: AppColors.border, height: 1),
 
             // Content (scrolls when the form is taller than the viewport,
             // e.g. on small screens or when the CLI options are shown).
