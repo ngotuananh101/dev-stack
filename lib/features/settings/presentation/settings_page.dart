@@ -596,7 +596,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         const SizedBox(width: 24),
         Container(
-          width: 200,
+          width: 320,
+          height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: AppColors.surface,
@@ -606,6 +607,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: items.contains(value) ? value : null,
+              isDense: true,
+              isExpanded: true,
               items: items
                   .map(
                     (item) => DropdownMenuItem(
@@ -614,7 +617,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         item,
                         style: const TextStyle(
                           color: AppColors.textPrimary,
-                          fontSize: AppTextSize.xs,
+                          fontSize: AppTextSize.sm,
                         ),
                       ),
                     ),
@@ -622,7 +625,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   .toList(),
               onChanged: onChanged,
               dropdownColor: AppColors.surface,
-              icon: const Icon(LucideIcons.chevronDown, size: 16),
+              icon: const Icon(LucideIcons.chevronDown, size: 14),
               hint: Text(
                 placeholder,
                 style: const TextStyle(
@@ -670,7 +673,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         const SizedBox(width: 24),
         SizedBox(
-          width: 200,
+          width: 320,
+          height: 36,
           child: _DebouncedTextField(value: value, onChanged: onChanged),
         ),
       ],
@@ -1114,9 +1118,18 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
       style: const TextStyle(
         color: AppColors.textPrimary,
         fontSize: AppTextSize.sm,
-        fontFamily: 'JetBrainsMono',
       ),
       decoration: InputDecoration(
+        prefixIcon: const Icon(
+          LucideIcons.globe,
+          size: 14,
+          color: AppColors.textMuted,
+        ),
+        hintText: '{name}.test',
+        hintStyle: const TextStyle(
+          color: AppColors.textMuted,
+          fontSize: AppTextSize.xs,
+        ),
         filled: true,
         fillColor: AppColors.surface,
         isDense: true,

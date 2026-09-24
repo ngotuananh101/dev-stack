@@ -498,6 +498,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                   await repo.save(widget.app);
                   ref.invalidate(appsProvider);
                 },
+                prefixIcon: LucideIcons.network,
               ),
               _buildSettingField(
                 'Port',
@@ -513,6 +514,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                   await repo.save(widget.app);
                   ref.invalidate(appsProvider);
                 },
+                prefixIcon: LucideIcons.hash,
               ),
               const Padding(
                 padding: EdgeInsets.only(top: 8.0),
@@ -929,6 +931,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     String value,
     Function(String) onChanged, {
     bool obscureText = false,
+    IconData? prefixIcon,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -938,47 +941,53 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           Text(
             label,
             style: const TextStyle(
-              fontSize: AppTextSize.xxs,
+              fontSize: AppTextSize.xs,
               color: AppColors.textSecondary,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            key: ValueKey('$key-$value'),
-            initialValue: value,
-            onChanged: onChanged,
-            obscureText: obscureText,
-            style: const TextStyle(
-              fontSize: AppTextSize.sm,
-              color: AppColors.textPrimary,
-            ),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
+          SizedBox(
+            height: 36,
+            child: TextFormField(
+              key: ValueKey('$key-$value'),
+              initialValue: value,
+              onChanged: onChanged,
+              obscureText: obscureText,
+              style: const TextStyle(
+                fontSize: AppTextSize.sm,
+                color: AppColors.textPrimary,
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(
-                  color: AppColors.border,
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(
-                  color: AppColors.border,
+                prefixIcon: prefixIcon != null
+                    ? Icon(prefixIcon, size: 14, color: AppColors.textMuted)
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: AppColors.border,
+                  ),
                 ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: AppColors.border,
+                  ),
                 ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                  ),
+                ),
+                filled: true,
+                fillColor: AppColors.surface,
               ),
-              filled: true,
-              fillColor: AppColors.surface,
             ),
           ),
         ],
