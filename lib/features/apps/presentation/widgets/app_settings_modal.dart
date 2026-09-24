@@ -310,15 +310,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       title: '${widget.app.name} Settings',
       subtitle: 'Manage configuration and extensions',
       actions: [
-        if (_hasConfigTab)
-          AppButton(
-            onPressed: () => _tabController.animateTo(1),
-            style: AppButtonStyle.ghost,
-            label: 'Edit Config',
-            icon: const Icon(Icons.edit_note, size: 14),
-          ),
-        if (widget.app.serviceStatus == 'running') ...[
-          if (_hasConfigTab) const SizedBox(width: 8),
+        if (widget.app.serviceStatus == 'running')
           AppButton(
             onPressed: () async {
               // Route through Apps so service status changes
@@ -340,7 +332,6 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             label: 'Restart',
             icon: const Icon(Icons.refresh_rounded, size: 14),
           ),
-        ],
       ],
       onClose: widget.onClose,
     );
@@ -667,50 +658,77 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       padding: const EdgeInsets.all(24.0),
       child: Column(
         children: [
-          SizedBox(
-            height: 36,
-            child: TextField(
-              onChanged: (v) => setState(() => _searchQuery = v),
-              style: const TextStyle(
-                fontSize: AppTextSize.sm,
-                color: AppColors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Search extensions (e.g. mbstring, curl, gd)...',
-                hintStyle: const TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: AppTextSize.xs,
-                ),
-                prefixIcon: const Icon(
-                  Icons.search,
-                  size: 14,
-                  color: AppColors.textMuted,
-                ),
-                filled: true,
-                fillColor: AppColors.surface,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: TextField(
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    style: const TextStyle(
+                      fontSize: AppTextSize.sm,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Search extensions (e.g. mbstring, curl, gd)...',
+                      hintStyle: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: AppTextSize.xs,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+              if (_extensions.isNotEmpty) ...[
+                const SizedBox(width: 12),
+                Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${_extensions.where((e) => e.isEnabled).length}/${_extensions.length} Active',
+                    style: const TextStyle(
+                      fontSize: AppTextSize.xs,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Expanded(
             child: _isExtensionsLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -718,11 +736,11 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                 ? _buildEmptyExtensions()
                 : GridView.builder(
                     gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 4,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 270,
+                          mainAxisExtent: 40,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
                         ),
                     itemCount: filteredExtensions.length,
                     itemBuilder: (context, index) {
@@ -737,57 +755,78 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
 
   Widget _buildExtensionCard(PhpExtension ext) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: ext.isEnabled
-              ? AppColors.primary.withValues(alpha: 0.5)
+              ? AppColors.primary.withValues(alpha: 0.4)
               : AppColors.border,
-          width: ext.isEnabled ? 1.5 : 1,
         ),
       ),
       child: Row(
         children: [
           Icon(
             ext.isZend ? Icons.bolt : Icons.extension_outlined,
-            size: 20,
+            size: 16,
             color: ext.isEnabled ? AppColors.primary : AppColors.textMuted,
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Row(
               children: [
-                Text(
-                  ext.name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: AppTextSize.xs,
-                    color: ext.isEnabled
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
+                Flexible(
+                  child: Text(
+                    ext.name,
+                    style: TextStyle(
+                      fontWeight:
+                          ext.isEnabled ? FontWeight.w600 : FontWeight.normal,
+                      fontSize: AppTextSize.xs,
+                      color: ext.isEnabled
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Text(
-                  ext.isZend ? 'Zend Extension' : 'Standard extension',
-                  style: const TextStyle(
-                    fontSize: AppTextSize.xxs,
-                    color: AppColors.textMuted,
+                if (ext.isZend) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'ZEND',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.accent,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
           Transform.scale(
-            scale: 0.8,
+            scale: 0.7,
+            alignment: Alignment.centerRight,
             child: Switch(
               value: ext.isEnabled,
               onChanged: (v) => _toggleExtension(ext, v),
-              activeThumbColor: AppColors.primary,
-              activeTrackColor: AppColors.primary.withValues(alpha: 0.2),
+              activeThumbColor: AppColors.success,
+              activeTrackColor: AppColors.success.withValues(alpha: 0.2),
+              inactiveThumbColor: AppColors.textMuted,
+              inactiveTrackColor: AppColors.border,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
         ],

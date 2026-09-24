@@ -5,6 +5,7 @@ import 'package:dev_stack/features/tunnels/presentation/tunnels_page.dart';
 import 'package:dev_stack/features/tunnels/data/tunnels_provider.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_model.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_session.dart';
+import 'package:dev_stack/shared/widgets/app_button.dart';
 
 void main() {
   testWidgets('TunnelsPage renders header and empty state', (tester) async {
@@ -26,6 +27,13 @@ void main() {
     expect(find.text('Tunnels'), findsOneWidget);
     expect(find.text('New Tunnel'), findsOneWidget);
     expect(find.text('No tunnels configured yet'), findsOneWidget);
+
+    // New Tunnel button is placed on the right side on the same row with the title
+    final tunnelsPos = tester.getTopLeft(find.text('Tunnels'));
+    final newTunnelPos = tester.getTopLeft(find.widgetWithText(AppButton, 'New Tunnel'));
+    expect(newTunnelPos.dx, greaterThan(500.0));
+    expect(newTunnelPos.dx, greaterThan(tunnelsPos.dx));
+    expect((newTunnelPos.dy - tunnelsPos.dy).abs(), lessThan(35.0));
   });
 
   testWidgets('TunnelsPage displays tunnel card with actions', (tester) async {
