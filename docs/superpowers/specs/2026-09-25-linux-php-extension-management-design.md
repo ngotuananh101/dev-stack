@@ -254,8 +254,10 @@ Then reload. The package is never removed.
 ```dart
 @visibleForTesting
 static ({String executable, List<String> arguments}) buildLinuxReloadArgs(int pid) =>
-    (executable: 'kill', arguments: ['-USR2', '--', '-$pid']);
+    (executable: 'kill', arguments: ['-USR2', '--', '$pid']);
 ```
+
+Notice: **no negative PID**. Unlike `buildLinuxKillArgs(pid)` which targets the process group (`-$pid`) to tear down workers alongside the master, `SIGUSR2` must target the **master PID only** (`$pid`). In php-fpm, worker processes reset `SIGUSR2` to `SIG_DFL` (default action: abnormal termination) via `fpm_signals_init_child()`. Sending `SIGUSR2` to the entire process group would instantly kill every active worker instead of letting the master perform a graceful reload. This matches the upstream systemd service definition (`ExecReload=/bin/kill -USR2 $MAINPID`).
 
 The PID comes from `app.servicePid` (set in `AppServiceManager.start`). If the app is not running, reload is skipped silently. If the signal fails, the toggle still succeeded — the user is told a restart is needed.
 
@@ -313,7 +315,7 @@ The `_loadExtensions` / `_toggleExtension` methods keep their shape; only the pr
 | Enable/disable commands | Exact argv produced per driver per family, including `isZend` → `zend_extension`. |
 | Injection guard | Malicious names (`mbstring; rm -rf /`, `a$(id)`, backtick) are rejected. |
 | `PackageCommandValidator` | New binaries accepted; existing rejections still hold. |
-| `buildLinuxReloadArgs` | Emits `kill -USR2 -- -<pid>`. |
+| `buildLinuxReloadArgs` | Emits `kill -USR2 -- <pid>` (master only, not process group). |
 | `app_settings_modal` widget | Renders "Not installed" for an uninstalled extension; toggling calls install+enable; spinner while in flight. |
 | Regression | All existing Windows extension tests still pass unchanged. |
 
