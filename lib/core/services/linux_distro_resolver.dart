@@ -167,9 +167,15 @@ class LinuxDistroResolver {
 
   /// Maps `/etc/os-release` ID/ID_LIKE to the package-manager family used by
   /// `package_manager_commands` keys in the catalog: `ubuntu`, `debian`, `centos`,
-  /// or `fedora`. Unknown distros fall back to `ubuntu` (the largest derivative
-  /// family). Returns `unknown` only when detection is impossible (non-Linux
-  /// or unreadable os-release) — callers decide their own fallback.
+  /// `fedora`, or `arch`. Distros that match no known family fall back to
+  /// `ubuntu` (the largest derivative family). Returns `unknown` only when
+  /// detection is impossible (non-Linux or unreadable os-release) — callers
+  /// decide their own fallback.
+  ///
+  /// Note: `arch` is returned even though the bundled catalog defines no
+  /// `package_manager_commands` entry for it, so that package-manager callers
+  /// fail with an explicit "unsupported distribution" message instead of
+  /// silently running apt-get on a system that has no apt.
   static String detectFamily({String? osReleaseContent, bool? isLinux}) {
     final linux = isLinux ?? Platform.isLinux;
     if (!linux) return 'unknown';
@@ -207,6 +213,14 @@ class LinuxDistroResolver {
       // Fedora family (upstream of RHEL; uses native dnf packages without EPEL or EL9 RPMs)
       if (id == 'fedora' || idLike.contains('fedora')) {
         return 'fedora';
+      }
+      // Arch family (arch itself, plus derivatives such as manjaro and endeavour
+      // that declare ID_LIKE="arch"). Arch has no `package_manager_commands`
+      // entry in the catalog, so callers must handle it explicitly rather than
+      // letting it fall through to the ubuntu default below — which would run
+      // apt-get on a system that has no apt.
+      if (id == 'arch' || idLike.contains('arch')) {
+        return 'arch';
       }
 
       // ID_LIKE with multiple values (e.g. "debian ubuntu") — first match wins

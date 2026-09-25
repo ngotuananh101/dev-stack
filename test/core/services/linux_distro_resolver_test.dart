@@ -228,10 +228,27 @@ VERSION_CODENAME=bookworm
       );
     });
 
+    test('maps arch and its derivatives to arch family', () {
+      expect(
+        LinuxDistroResolver.detectFamily(
+          osReleaseContent: 'ID=arch',
+          isLinux: true,
+        ),
+        equals('arch'),
+      );
+      expect(
+        LinuxDistroResolver.detectFamily(
+          osReleaseContent: 'ID=manjaro\nID_LIKE=arch',
+          isLinux: true,
+        ),
+        equals('arch'),
+      );
+    });
+
     test('unknown distro falls back to ubuntu family', () {
       expect(
         LinuxDistroResolver.detectFamily(
-          osReleaseContent: 'ID=arch\nID_LIKE=arch',
+          osReleaseContent: 'ID=nixos\nID_LIKE=nixos',
           isLinux: true,
         ),
         equals('ubuntu'),
