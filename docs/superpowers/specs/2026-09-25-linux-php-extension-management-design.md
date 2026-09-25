@@ -62,8 +62,13 @@ Labels it prints (stable from PHP 7.4 through 8.5), with `=>` separator:
 | `Configuration File (php.ini) Path` | e.g. `/etc/php/8.2/fpm` |
 | `Loaded Configuration File` | path, or `(none)` |
 | `Scan this dir for additional .ini files` | path, or `(none)` |
-| `Additional .ini files parsed` | space-separated list, or `(none)` |
-| `extension_dir` | two-column `Local Value => Master Value` |
+| `Additional .ini files parsed` | paths joined by `,\n`, or `(none)` |
+| `extension_dir` | three-column `extension_dir => <path> => <path>` (Directive / Local Value / Master Value) |
+
+Two formatting details matter to the parser and were verified in php-src:
+
+- Text mode uses `" => "` as the column separator (`ext/standard/info.c`, `php_info_print_table_row`), so every row is `Label => Value`; the three-column INI rows (`main/php_ini.c`, `display_ini_entries`) are `Name => LocalValue => MasterValue`.
+- `Additional .ini files parsed` is **not** space-separated: `main/php_ini.c` joins scanned paths with `",\n"` and terminates with `"\n"`. Split on commas/newlines, not spaces.
 
 `php-fpm -m` prints `[PHP Modules]` / `[Zend Modules]` sections, one module name per line, alphabetically. It likewise exits before `fpm_init()` and needs neither root nor `-y`.
 
