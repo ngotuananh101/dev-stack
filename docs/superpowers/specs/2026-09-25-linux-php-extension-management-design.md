@@ -99,6 +99,17 @@ php-fpm's installed signal handlers are `SIGTERM`, `SIGINT`, `SIGUSR1`, `SIGUSR2
 
 Both are distro-neutral. Duplicate loads are non-fatal: a regular extension emits `E_CORE_WARNING: Module "X" is already loaded`; a zend extension prints `Cannot load X - it was already loaded` to stderr. The first load wins.
 
+**Two consequences that shape the design.**
+
+1. *`isInstalled` is not the same as "the package is installed".* Some extensions are compiled statically into the FPM binary and have no `.so` at all. `opcache` is the concrete case: verified against all three families for PHP 8.5 —
+   - Debian/sury `trixie`: there is **no `php8.5-opcache` package at all** (the series stops at `php8.4-opcache`); `opcache.so` appears nowhere under `usr/lib/php/20250925/`.
+   - Remi `enterprise/9/php85`: `php-common` ships `/etc/php.d/10-opcache.ini`, but no `opcache.so` under `/usr/lib64/php/modules/`.
+   - Arch `extra`: the `php` package ships 22 `.so` files under `/usr/lib/php/modules/` and none of them is `opcache.so`.
+
+   So `opcache` is **enabled but has no package to install**. It must still be listed (it is one of the most commonly toggled extensions) and its switch must work by writing/commenting an ini line. This is why the state assembly merges two sources instead of deriving everything from packages.
+
+2. *A module can be enabled by a file we did not write.* On RHEL/Remi the package ships `/etc/php.d/20-<ext>.ini` already active, so installing auto-enables. Disabling therefore has to neutralise the distro's own file, not only ours. `php-fpm -i`'s `Additional .ini files parsed` list tells us exactly which files were read, and those files are world-readable.
+
 ### 2.6 Per-distro enabling differs in kind
 
 | | Debian/Ubuntu | RHEL/Fedora (incl. Remi) | Arch |
@@ -114,28 +125,47 @@ On Arch, extension packages are named `php-<ext>` and bundled ones (`php-gd`, `p
 
 Files written into any of these directories survive package upgrades: dpkg/rpm/pacman only remove or replace files in their own manifests, and our files are unowned. Load order is alphabetical, so a `99-` prefix loads last.
 
-### 2.7 Package → extension name mapping is many-to-many
+### 2.7 Package → extension mapping is read from the package's own file list
 
-Debian packages that do **not** map 1:1:
+An earlier revision of this design assumed the extension name could be recovered by stripping a version prefix off the package name (`php8.5-mbstring` → `mbstring`, `php85-php-mbstring` → `mbstring`) and consulting a small exception table. **Real repository data refutes that.** Measured for PHP 8.5 against the actual indices the package managers download:
 
-| Package | Ships |
-|---|---|
-| `php8.5-mysql` | `mysqlnd`, `mysqli`, `pdo_mysql` |
-| `php8.5-xml` | `dom`, `simplexml`, `xml`, `xmlreader`, `xmlwriter`, `xsl` |
-| `php8.5-common` | 17 extensions incl. `ctype`, `fileinfo`, `iconv`, `phar`, `posix`, `sockets`, `tokenizer` |
-| `php8.5-opcache` | `opcache` (a **zend** extension) |
+| Family | Repository | Packages | Shipping ≥1 `.so` | Package name ≠ extension name |
+|---|---|---|---|---|
+| Debian | sury `trixie` | 84 | 77 | 4 |
+| RHEL/Fedora | Remi `enterprise/9/php85` | 341 | 194 | **162** |
+| Arch | `extra` | 16 | 13 | 5 |
 
-Packages that are **not** extensions and must be excluded from discovery: `php8.5-cli`, `php8.5-fpm`, `php8.5-dev`, `php8.5-dbg`, `php8.5-phpdbg`, `php8.5-cgi`, `php8.5-apache2`. (`php8.5-common` is **not** excluded — it ships 17 real extensions.)
+Two independent reasons the prefix heuristic cannot work:
 
-A package is offered if, after stripping the version prefix, its suffix resolves through the driver's mapping table to at least one extension name and is not on the exclusion list. The `.so` existence check is used **only** to compute `isInstalled` — never to decide whether to list, since a not-yet-installed extension has no `.so` by definition.
+1. **The name is often unrelated.** Remi's `php-common` ships `bz2`, `calendar`, `ctype`, `curl`, `exif`, `fileinfo`, `ftp`, `gettext`, `iconv`, `phar`, `tokenizer`; `php-pdo` ships `pdo`, `pdo_sqlite`, `sqlite3`; `php-process` ships `posix`, `shmop`, `sysvmsg`, `sysvsem`, `sysvshm`; `php-pecl-redis6` → `redis`; `php-pecl-xdebug3` → `xdebug`; `php-pecl-trie` → `php_trie`; `php-libvirt` → `libvirt-php`. On Debian, `php8.5-interbase` → `pdo_firebird` and `php8.5-sybase` → `pdo_dblib`.
+2. **There is no `php85-php-*` naming.** That pattern does not exist in `enterprise/9/php85`, `fedora/41/php85`, or `fedora/41/modular`; every one of them uses `php-<ext>`. The catalog's `php85-php-*` entries are phantom.
+
+The correct rule needs no mapping table and no exclusion list:
+
+> **An extension is a `.so` file whose immediate parent directory is the binary's `extension_dir`** (read from `php-fpm -i`, §2.1).
+
+This is correct by construction. Junk is excluded automatically because it lives elsewhere: Remi's `php-embedded` ships `/usr/lib64/libphp.so`, `uwsgi-plugin-php` ships `/usr/lib64/uwsgi/php_plugin.so`, Arch's `php-apache` ships `/usr/lib/httpd/modules/libphp.so` and `php-embed` ships `/usr/lib/libphp.so` — all outside `/usr/lib64/php/modules` and `/usr/lib/php/modules` respectively. Debian's `php8.5-dev` ships build files *under* the ABI directory but no top-level `.so`. A package that is not an extension (or is one, like `php-common`) needs no special-casing either way.
+
+`opcache` is the one extension this rule cannot reach, because it has no `.so` on any family (§2.5). It is supplied from the `php-fpm -m` side instead, which is also how a statically compiled extension is found.
 
 ### 2.8 Discovery commands
 
-| Distro | List installable | Notes |
+Two queries are needed: **which packages exist**, and **what files each ships**. The second is what produces extension names (§2.7).
+
+| Distro | Packages | File lists |
 |---|---|---|
-| Debian/Ubuntu | `apt-cache search --names-only php8.5-` | one `name - description` per line |
-| RHEL/Fedora | `dnf list available 'php85-php-*'` (Remi SCL) / `'php-*'` (modular) | |
-| Arch | `pacman -Ss php-` | `repo/name version` then indented description |
+| Debian/Ubuntu | `apt-cache search --names-only php8.5-` — one `name - description` per line | `apt-file list <pkg>…` — requires a one-time `apt-file update` |
+| RHEL/Fedora | `dnf repoquery --qf '[%{=NAME}\n]' 'php-*'` | `dnf repoquery -l --qf '[%{=NAME}|%{FILENAMES}\n]' 'php-*'` — the documented "annotated file list" form |
+| Arch | `pacman -Ss php-` — `repo/name version` then an indented description | `pacman -Fl <pkg>…` — requires a one-time `pacman -Fy` |
+
+All six commands are read-only and none needs root. The two bootstrap steps are the cost of exactness and are the reason this design depends on external tooling:
+
+- `apt-file update` builds an index from the `Contents-<arch>` files. For sury's own repository that file is **133 KB** (`trixie`) / 134 KB (`bookworm`); the Debian archive's own is 11.6 MB. Debian ships `apt-file` separately from `apt`.
+- `pacman -Fy` downloads the per-repository `.files` databases: `core.files` is 1.5 MB and `extra.files` is 51 MB, cached afterwards. **`pacman -Fy` does not require root.**
+
+`dnf` needs no bootstrap because repositories already publish `filelists.xml` (Remi's is 88 KB) and `dnf repoquery` reads it directly.
+
+If a bootstrap tool is absent (`apt-file` not installed), the driver reports discovery as unavailable rather than silently degrading to a name heuristic — a wrong list is worse than an honest error.
 
 ### 2.9 `detectFamily()` originally did not recognise Arch — **already fixed**
 
@@ -163,12 +193,12 @@ LinuxPhpExtensionManager                 (orchestration + state assembly)
 │     php-fpm -m   → set of ENABLED module names
 │
 └── LinuxPhpExtensionDriver              (abstract; one implementation per family)
-      DebianPhpExtensionDriver    apt-cache / apt-get / phpenmod / phpdismod
-      RhelPhpExtensionDriver      dnf list / dnf install / write conf.d
-      ArchPhpExtensionDriver      pacman -Ss / pacman -S / write conf.d
+      DebianPhpExtensionDriver    apt-cache / apt-file / apt-get / phpenmod / phpdismod
+      RhelPhpExtensionDriver      dnf repoquery (names + file lists) / dnf install
+      ArchPhpExtensionDriver      pacman -Ss / pacman -Fl / pacman -S
 ```
 
-The three drivers share one base class holding the logic that is identical everywhere (writing `99-ponta-<ext>.ini`, building the install+enable script, parsing `php-fpm -m`). Each subclass supplies only: the discovery command, the package-name↔extension-name mapping, the enable/disable commands, and the install command.
+The three drivers share one base class holding the logic that is identical everywhere (writing `99-ponta-<ext>.ini`, building the install+enable script, deciding which file lists to accept as extensions). Each subclass supplies only: the two discovery commands, the parsing of their output, the enable/disable commands, and the install command.
 
 `LinuxPhpIntrospector` is instantiated with the **resolved php-fpm binary path** (`app.execFilePath`) and an injectable `runProcess`, so every code path is unit-testable without Linux or root.
 
@@ -176,26 +206,44 @@ The three drivers share one base class holding the logic that is identical every
 
 ```dart
 // 1. ask the binary
-final info = await introspector.readInfo(binaryPath);   // scanDir, extensionDir
-final enabled = await introspector.readModules(binaryPath); // Set<String>
+final info = await introspector.readInfo(binaryPath);        // scanDir, extensionDir
+final enabled = await introspector.readModules(binaryPath);  // Set<String>
 
 // 2. ask the package manager
-final available = await driver.listAvailable(phpVersion);   // List<PackageCandidate>
+final available = await driver.listAvailable(phpVersion);    // List<PackageCandidate>
+//    each candidate carries the .so names its package ships (already filtered to
+//    extensionDir by the driver), plus the description from the search command
 
-// 3. merge
+// 3. index every extension any package can provide
+final byExtension = <String, PackageCandidate>{};
 for (final pkg in available) {
-  for (final extName in driver.extensionNamesFor(pkg)) {
-    PhpExtension(
-      name: extName,
-      isEnabled:   enabled.contains(extName),
-      isInstalled: File('${info.extensionDir}/$extName.so').existsSync(),
-      packageName: pkg.name,
-      description: pkg.description,
-      isZend:      driver.isZendExtension(extName),
-    );
+  for (final extName in pkg.extensionNames) {
+    byExtension.putIfAbsent(extName, () => pkg);
   }
 }
+
+// 4. every enabled module the packages do not cover is still a real extension
+//    (statically compiled, e.g. opcache) — synthesise a package-less entry
+for (final extName in enabled) {
+  byExtension.putIfAbsent(extName, () => PackageCandidate.none(extName));
+}
+
+// 5. build the list
+for (final entry in byExtension.entries) {
+  final extName = entry.key;
+  final pkg = entry.value;
+  PhpExtension(
+    name: extName,
+    isEnabled:   enabled.contains(extName),
+    isInstalled: File('${info.extensionDir}/$extName.so').existsSync(),
+    packageName: pkg.name,          // null for a synthesised entry
+    description: pkg.description,   // null for a synthesised entry
+    isZend:      driver.isZendExtension(extName),
+  );
+}
 ```
+
+Steps 3–4 are why the two sources are merged rather than one being derived from the other. A package-only list would drop `opcache` and every other statically compiled module; a module-only list would drop everything not yet installed, which is precisely what the user needs to install.
 
 `isFoundInIni` is retained for the Windows path; on Linux it is derived from `isEnabled || isInstalled`.
 
@@ -207,7 +255,14 @@ The current Windows implementation explicitly skips both:
 if (lowerName == 'opcache' || lowerName == 'xdebug') continue;
 ```
 
-On Linux they are ordinary installable packages (`php8.5-opcache`, `php8.5-xdebug` from sury/Remi) and are among the most commonly toggled extensions, so the Linux path **must list them**. `opcache` is shipped by a dedicated package and is a **zend** extension, so its enable line is `zend_extension=opcache` and its mapping entry must set `isZend: true`. The Windows skip is left untouched.
+On Linux both must be listed: they are among the most commonly toggled extensions. They are reached by different routes, which is why §3.1 merges two sources:
+
+- `xdebug` is an ordinary extension package on every family (`php8.5-xdebug` on Debian, `php-pecl-xdebug3` → `xdebug.so` on Remi), so it arrives through the package list.
+- `opcache` has **no `.so` on any family for PHP 8.5** (§2.5). It is compiled into the FPM binary and is already in `php-fpm -m`, so it arrives through the module list as a package-less entry. Toggling it writes or comments an ini line; there is nothing to install.
+
+Because `opcache` is a **zend** extension, its enable line is `zend_extension=opcache` and `isZendExtension('opcache')` must return true so the card renders the `ZEND` badge. The Windows skip is left untouched.
+
+
 
 ---
 
@@ -236,19 +291,27 @@ The existing `PhpSettings.getExtensions` / `toggleExtension` keep their signatur
 
 ### 5.1 Enabling
 
-1. If `!isInstalled` → install the package (elevated).
-2. Enable the extension:
+1. **Install**, if there is a package and it is not already installed. A package-less entry (§3.1, e.g. `opcache`) skips this step entirely.
+2. **Enable**:
    - Debian: `phpenmod -v <phpVersion> -s fpm <name>`
-   - RHEL/Arch: write `<scanDir>/99-ponta-<name>.ini` containing `extension=<name>` (or `zend_extension=<name>` when `isZend`).
-3. Reload the running PHP-FPM master with `SIGUSR2` (no-op if not running).
-4. Re-introspect. If `<name>` is **not** in `php-fpm -m` afterwards, surface a failure with the captured log — never report a false success.
+   - RHEL/Arch: write `<scanDir>/99-ponta-<name>.ini` containing `extension=<name>` (or `zend_extension=<name>` when `isZend`). Because the distro's own ini may already be active (§2.6), the manager first checks whether the extension is already loaded — if `php-fpm -m` already lists it, only the reload is needed.
+3. **Reload** the running PHP-FPM master with `SIGUSR2` (no-op if not running) — §5.3.
+4. **Re-introspect.** If `<name>` is **not** in `php-fpm -m` afterwards, surface a failure with the captured log — never report a false success.
 
 Steps 1 and 2 are written into **one temporary shell script executed through a single `pkexec` invocation**, so the user sees exactly one authorization prompt. This mirrors `AppInstallerService.executePackageManagerCommands`, which already does this for app installation.
 
 ### 5.2 Disabling
 
 - Debian: `phpdismod -v <phpVersion> -s fpm <name>`
-- RHEL/Arch: delete `<scanDir>/99-ponta-<name>.ini` if we wrote it; otherwise comment the `extension=` line in the owning distro file.
+- RHEL/Arch: remove `<scanDir>/99-ponta-<name>.ini` if we wrote it, **and** neutralise any distro-owned ini that loads the same extension.
+
+The second half is what makes disable actually work on RHEL. Remi ships `/etc/php.d/20-<ext>.ini` already active, so deleting only our own file would leave the extension loaded and the switch would spring back on the next refresh. The manager already knows which files were read, from `php-fpm -i`'s `Additional .ini files parsed` (§2.1), and those files are world-readable, so it can find the owning file without guessing. Each matching line is commented out in place rather than deleted, so the change is reversible and the package's own manifest stays consistent:
+
+```
+extension=mbstring.so   →   ;extension=mbstring.so
+```
+
+This is a `sed -i` invocation inside the generated script. `sed` is already on the validator's allowlist, and the generated wrapper script is exempt from validation (§6.3), so no new allowance is needed.
 
 Then reload. The package is never removed.
 
@@ -266,19 +329,19 @@ Notice: **no negative PID**. Unlike `buildLinuxKillArgs(pid)` which targets the 
 
 The PID comes from `app.servicePid` (set in `AppServiceManager.start`). If the app is not running, reload is skipped silently. If the signal fails, the toggle still succeeded — the user is told a restart is needed.
 
----
-
 ## 6. Security
 
 ### 6.1 Allowlist additions
 
 `PackageCommandValidator._allowedBinaries` gains:
 
-- `apt-cache` (read-only discovery)
-- `pacman` (read-only discovery; `pacman -Ss`)
+- `apt-cache`, `apt-file` (read-only discovery; `apt-file` supplies the package file lists of §2.7)
+- `pacman` (read-only discovery: `pacman -Ss`, `pacman -Fl`, and the `pacman -Fy` index refresh)
 - `phpenmod`, `phpdismod` (enable/disable on Debian)
 
 `dnf`, `rpm`, `ln`, `systemctl`, `apt-get` are already present. The forbidden-substring list (`` ` ``, `$(`, `;`, `&&`, `||`, `>`, `<`, …) is unchanged and still fail-closed.
+
+Note that `dnf repoquery`'s query format uses `%{...}` and `[` `]` braces, none of which are forbidden substrings, and it contains no `>`/`<`/`;`/`$(`/backtick. The exact command strings are asserted against the validator in each driver's test so this stays true.
 
 ### 6.2 Injection defence
 
@@ -316,8 +379,10 @@ The `_loadExtensions` / `_toggleExtension` methods keep their shape; only the pr
 |---|---|
 | `LinuxPhpIntrospector` | Parses real `php-fpm -i` text fixtures → `scanDir`, `extensionDir`, ini list. Parses `-m` → module set. Handles `(none)`. |
 | Each driver | Given a fake `runProcess` returning captured distro output, produces the correct `List<PackageCandidate>` and the correct extension names. |
-| Package→extension mapping | Every exception in §2.7, as a table-driven test. Non-extension packages are excluded. `opcache` is included and marked `isZend`. |
+| Package→extension mapping | A file list yields exactly the `.so` names whose parent directory is `extensionDir` (§2.7). Table-driven cases: Remi `php-common` → its 11 extensions; `php-pdo` → `pdo`, `pdo_sqlite`, `sqlite3`; `php-pecl-redis6` → `redis`; `php-pecl-trie` → `php_trie`; Debian `php8.5-interbase` → `pdo_firebird`; Debian `php8.5-common` → its 17. Junk outside `extensionDir` is rejected: Remi `php-embedded`'s `libphp.so`, `uwsgi-plugin-php`'s `php_plugin.so`, Arch `php-apache`'s `libphp.so`. |
+| Statically compiled extension | `opcache` (in `php-fpm -m`, in no file list, no `.so`) is listed, marked `isZend`, and its toggle writes `zend_extension=opcache`. |
 | Enable/disable commands | Exact argv produced per driver per family, including `isZend` → `zend_extension`. |
+| Disable neutralises a distro-owned ini | Given a fixture ini in the parsed-ini list, disabling comments out the matching `extension=` line rather than deleting it. |
 | Injection guard | Malicious names (`mbstring; rm -rf /`, `a$(id)`, backtick) are rejected. |
 | `PackageCommandValidator` | New binaries accepted; existing rejections still hold. |
 | `buildLinuxReloadArgs` | Emits `kill -USR2 -- <pid>` (master only, not process group). |
@@ -344,7 +409,7 @@ Tests run on Windows CI; every Linux code path is exercised through the injectab
 
 - `lib/core/services/linux_distro_resolver.dart` — **already done** (separate commit, ahead of this work): `arch` branch added to `detectFamily()`, doc comment updated, `test/core/services/linux_distro_resolver_test.dart` covers `ID=arch`, `ID_LIKE=arch`, and the unknown-distro fallback (§2.9)
 - `lib/features/apps/data/php_settings_provider.dart` — Linux branch delegates; `PhpExtension` re-exported from its new home
-- `lib/features/apps/data/package_command_validator.dart` — four new allowed binaries
+- `lib/features/apps/data/package_command_validator.dart` — five new allowed binaries (`apt-cache`, `apt-file`, `pacman`, `phpenmod`, `phpdismod`)
 - `lib/core/services/background_process.dart` — `buildLinuxReloadArgs`
 - `lib/features/apps/presentation/widgets/app_settings_modal.dart` — badge + "Not installed" chip + busy state
 
