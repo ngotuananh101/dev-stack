@@ -132,14 +132,19 @@ A package is offered if, after stripping the version prefix, its suffix resolves
 | RHEL/Fedora | `dnf list available 'php85-php-*'` (Remi SCL) / `'php-*'` (modular) | |
 | Arch | `pacman -Ss php-` | `repo/name version` then indented description |
 
-### 2.9 `detectFamily()` does not recognise Arch — must be fixed
+### 2.9 `detectFamily()` originally did not recognise Arch — **already fixed**
 
-`LinuxDistroResolver.detectFamily()` currently returns only `ubuntu`, `debian`, `centos`, `fedora`, or `unknown`. An Arch host has `ID=arch` and no `ID_LIKE` matching any known family, so it falls through to the final `return 'ubuntu'` — Arch is **silently misidentified as Ubuntu**. The same fallback applies to any unrecognised distro.
+`LinuxDistroResolver.detectFamily()` used to return only `ubuntu`, `debian`, `centos`, `fedora`, or `unknown`. An Arch host has `ID=arch` and no `ID_LIKE` matching any known family, so it fell through to the final `return 'ubuntu'` — Arch was **silently misidentified as Ubuntu**, and `_installViaPackageManager` ran `apt-get` on a system that has no apt.
 
-Two changes are therefore required before the Arch driver can ever be reached:
+The Arch branch has since been added to `detectFamily()` (committed separately, ahead of this design's implementation):
 
-1. Add an explicit Arch branch: `if (id == 'arch' || idLike.contains('arch')) return 'arch';`
-2. The driver factory must treat `ubuntu`/`debian` as Debian-family, `centos`/`fedora` as RHEL-family, `arch` as Arch, and **`unknown` as unsupported** (show a message rather than guessing). The silent `ubuntu` fallback in `detectFamily()` is left as-is for the existing installer path, but the extension manager must not rely on it.
+```dart
+if (id == 'arch' || idLike.contains('arch')) return 'arch';
+```
+
+It is placed after the Fedora branch and before the final `return 'ubuntu'`, so Arch derivatives declaring `ID_LIKE="arch"` (manjaro, endeavour) also resolve to `arch`. The `arch` value is documented in the method's doc comment as a deliberate return even though the bundled catalog defines no `package_manager_commands` entry for it: callers now fail with an explicit *"Unsupported Linux distribution: arch"* message instead of silently invoking apt-get.
+
+The silent `ubuntu` fallback for genuinely unknown distros (`ID=nixos`, …) is left as-is for the existing installer path. The extension manager must not rely on it: its driver factory treats `ubuntu`/`debian` as Debian-family, `centos`/`fedora` as RHEL-family, `arch` as Arch, and **`unknown` as unsupported** (show a message rather than guessing).
 
 ---
 
@@ -330,7 +335,7 @@ Tests run on Windows CI; every Linux code path is exercised through the injectab
 
 **Modified**
 
-- `lib/core/services/linux_distro_resolver.dart` — add the `arch` branch to `detectFamily()` (§2.9)
+- `lib/core/services/linux_distro_resolver.dart` — **already done** (separate commit, ahead of this work): `arch` branch added to `detectFamily()`, doc comment updated, `test/core/services/linux_distro_resolver_test.dart` covers `ID=arch`, `ID_LIKE=arch`, and the unknown-distro fallback (§2.9)
 - `lib/features/apps/data/php_settings_provider.dart` — Linux branch delegates; `PhpExtension` re-exported from its new home
 - `lib/features/apps/data/package_command_validator.dart` — four new allowed binaries
 - `lib/core/services/background_process.dart` — `buildLinuxReloadArgs`
