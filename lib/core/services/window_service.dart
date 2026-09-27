@@ -105,6 +105,18 @@ class WindowService extends _$WindowService with WindowListener {
       if (Platform.isWindows) {
         icon.setTooltip('DevStack');
       }
+
+      // Linux renders the tray through StatusNotifierItem over D-Bus, where
+      // there is no manual popup: OpenContextMenu() is a no-op returning
+      // false, and the host only shows an exported menu when a trigger is
+      // set. With the default (none) the icon reports Menu "/NO_DBUSMENU",
+      // so GNOME shows nothing on click and never calls back (it never
+      // invokes ContextMenu). RightClicked keeps the legacy KDE split: left
+      // click emits ClickedEvent (show window below), while the host shows
+      // the exported menu itself on menu click.
+      if (Platform.isLinux) {
+        icon.setContextMenuTrigger(ContextMenuTrigger.rightClicked);
+      }
       icon.setVisible(true);
 
       // nativeapi reports whole clicks. The legacy bridge replayed each click as
