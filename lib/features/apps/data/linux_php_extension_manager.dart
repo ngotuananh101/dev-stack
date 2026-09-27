@@ -51,11 +51,11 @@ class LinuxPhpExtensionManager {
        _runProcess = runProcess,
        _runElevated =
            runElevated ??
-           ({
-             required List<String> commands,
-             required void Function(String) logInfo,
-             required void Function(String) logError,
-           }) => AppInstallerService.executePackageManagerCommands(
+           // Untyped parameters: the annotated `required List<String> ...`
+           // form fails to parse in this inline position, so types and
+           // requiredness are inferred from the `_ElevatedRunner` context.
+           ({commands, logInfo, logError}) =>
+               AppInstallerService.executePackageManagerCommands(
              commands: commands,
              logInfo: logInfo,
              logError: logError,
