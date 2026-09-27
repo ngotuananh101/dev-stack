@@ -116,7 +116,7 @@ Both are distro-neutral. Duplicate loads are non-fatal: a regular extension emit
 |---|---|---|---|
 | Mechanism | `mods-available/*.ini` + per-SAPI `conf.d/` **symlinks** | regular files in `/etc/php.d/*.ini` | regular files in `/etc/php/conf.d/*.ini` |
 | Enable | `phpenmod -v <v> -s fpm <mod>` | write `<scanDir>/99-ponta-<ext>.ini` | write `<scanDir>/99-ponta-<ext>.ini` |
-| Disable | `phpdismod -v <v> -s fpm <mod>` | comment/remove our file | comment/remove our file |
+| Disable | `phpdismod -v <v> -s fpm <mod>` | comment the loader line in every parsed ini | comment the loader line in every parsed ini |
 | Auto-enabled on install | **Yes** — `postinst` runs `php_invoke enmod` for every installed SAPI | **Yes** — the rpm ships `20-<ext>.ini` | **No** for bundled exts (gd, pgsql, …) — the package ships only the `.so`; PECL exts ship a commented `.ini` |
 
 The Debian auto-enable has one hole: `php8.5-mbstring` does not depend on `php8.5-fpm`, and `enmod` skips SAPIs whose `conf.d` directory does not exist yet. If the extension is installed before the FPM SAPI, it is not enabled for FPM and `phpenmod` must be run afterwards. The design always runs the enable step explicitly rather than relying on `postinst`.
@@ -138,7 +138,9 @@ An earlier revision of this design assumed the extension name could be recovered
 Two independent reasons the prefix heuristic cannot work:
 
 1. **The name is often unrelated.** Remi's `php-common` ships `bz2`, `calendar`, `ctype`, `curl`, `exif`, `fileinfo`, `ftp`, `gettext`, `iconv`, `phar`, `tokenizer`; `php-pdo` ships `pdo`, `pdo_sqlite`, `sqlite3`; `php-process` ships `posix`, `shmop`, `sysvmsg`, `sysvsem`, `sysvshm`; `php-pecl-redis6` → `redis`; `php-pecl-xdebug3` → `xdebug`; `php-pecl-trie` → `php_trie`; `php-libvirt` → `libvirt-php`. On Debian, `php8.5-interbase` → `pdo_firebird` and `php8.5-sybase` → `pdo_dblib`.
-2. **There is no `php85-php-*` naming.** That pattern does not exist in `enterprise/9/php85`, `fedora/41/php85`, or `fedora/41/modular`; every one of them uses `php-<ext>`. The catalog's `php85-php-*` entries are phantom.
+2. **Two package naming schemes exist side-by-side in RHEL/Fedora.** Remi publishes two distinct repository layouts:
+   - **Modular / base** (`enterprise/9/php85`, `fedora/41/modular`): packages are named `php-<ext>` (`php-common`, `php-pdo`, `php-pecl-redis6`), INIs live in `/etc/php.d/`, and `.so` modules live in `/usr/lib64/php/modules/`. This layout is used by the catalog's CentOS entry (`dnf module enable -y php:remi-8.5`).
+   - **Software Collections (SCL)** (`enterprise/9/remi`, `fedora/41/remi`): packages are version-prefixed `php<N>-php-*` (`php85-php-common`, `php85-php-pecl-redis6`), INIs live in `/etc/opt/remi/php<N>/php.d/`, `.so` modules live in `/opt/remi/php<N>/root/usr/lib64/php/modules/`, and the binary lives at `/opt/remi/php<N>/root/usr/sbin/php-fpm`. This layout is used by the catalog's Fedora entry (`--enablerepo=remi php85-php-*`). Measured for PHP 8.5: the SCL repo ships **354** `php85-php-*` packages on EL9 and **267** on Fedora 41. Stripping `php85-php-` still fails on `php85-php-common` (which supplies 11 extensions) and `php85-php-pecl-redis6` (which supplies `redis`).
 
 The correct rule needs no mapping table and no exclusion list:
 
@@ -154,9 +156,17 @@ Two queries are needed: **which packages exist**, and **what files each ships**.
 
 | Distro | Packages | File lists |
 |---|---|---|
-| Debian/Ubuntu | `apt-cache search --names-only php8.5-` — one `name - description` per line | `apt-file list <pkg>…` — requires a one-time `apt-file update` |
-| RHEL/Fedora | `dnf repoquery --qf '[%{=NAME}\n]' 'php-*'` | `dnf repoquery -l --qf '[%{=NAME}|%{FILENAMES}\n]' 'php-*'` — the documented "annotated file list" form |
+| Debian/Ubuntu | `apt-cache search --names-only php8.5-` — one `name - description` per line | `apt-file list -x '^php8\.5-'` — requires a one-time `apt-file update` |
+| RHEL/Fedora | `dnf repoquery --qf '[%{=NAME}\n]' 'php-*' 'php85-php-*'` | `dnf repoquery -l --qf '[%{=NAME} %{FILENAMES}\n]' 'php-*' 'php85-php-*'` — covers both modular and SCL layouts |
 | Arch | `pacman -Ss php-` — `repo/name version` then an indented description | `pacman -Fl <pkg>…` — requires a one-time `pacman -Fy` |
+
+Output formats, verified against each tool's own source or test suite:
+
+- `apt-file list -x <regex>` prints `pkg: /path`, one line per file, sorted and de-duplicated (`lib/apt_file.pl`, `print_winners` → `print "$key: $_\n"`; the bundled test `list_regex1` expects `bash-debug: /usr/debug/bin/bash`). The leading `/` is present.
+- `dnf repoquery -l --qf '[%{=NAME} %{FILENAMES}\n]'` prints `pkg /path` per line, with the leading `/` (rpm's documented "annotated file list", `rpm-queryformat.7`).
+- `pacman -Fl <pkg>` prints `pkg /path` per line, **without** a leading `/` (`src/pacman/files.c`, `dump_file_list`: `printf("%s ", pkgname); printf("%s\n", file->name)` where `file->name` is relative to the root). The Arch driver must prepend `/` before comparing against `extension_dir`.
+
+The separator is deliberately a **space, not a pipe**. An earlier draft used `%{=NAME}|%{FILENAMES}`, which `PackageCommandValidator` rejects: it splits every command on `|` to validate each pipeline segment separately, so a query format containing `|` becomes two segments and the second has no allowed leading binary. A space cannot appear in an rpm package name, so splitting on the first space is unambiguous.
 
 All six commands are read-only and none needs root. The two bootstrap steps are the cost of exactness and are the reason this design depends on external tooling:
 
@@ -166,6 +176,8 @@ All six commands are read-only and none needs root. The two bootstrap steps are 
 `dnf` needs no bootstrap because repositories already publish `filelists.xml` (Remi's is 88 KB) and `dnf repoquery` reads it directly.
 
 If a bootstrap tool is absent (`apt-file` not installed), the driver reports discovery as unavailable rather than silently degrading to a name heuristic — a wrong list is worse than an honest error.
+
+The mechanism matters and is easy to get wrong: discovery runs through `Process.run` (direct argv, **no shell**), so a missing executable makes Dart throw `ProcessException` — there is never an exit code 127 to inspect. The manager's `_runDiscovery` therefore has to catch `ProcessException` and rethrow it as the discovery-unavailable error; relying on an exit-127 check alone would let the exception fall into the generic catch, return `null`, and show the user a silently empty extension list. The exit-127 arm is retained only for fake runners that model the shell convention.
 
 ### 2.9 `detectFamily()` originally did not recognise Arch — **already fixed**
 
@@ -260,7 +272,7 @@ On Linux both must be listed: they are among the most commonly toggled extension
 - `xdebug` is an ordinary extension package on every family (`php8.5-xdebug` on Debian, `php-pecl-xdebug3` → `xdebug.so` on Remi), so it arrives through the package list.
 - `opcache` has **no `.so` on any family for PHP 8.5** (§2.5). It is compiled into the FPM binary and is already in `php-fpm -m`, so it arrives through the module list as a package-less entry. Toggling it writes or comments an ini line; there is nothing to install.
 
-Because `opcache` is a **zend** extension, its enable line is `zend_extension=opcache` and `isZendExtension('opcache')` must return true so the card renders the `ZEND` badge. The Windows skip is left untouched.
+Because `opcache` is a **zend** extension, `isZendExtension('opcache')` must return true so the card renders the `ZEND` badge. Its *toggle* line is nevertheless **not** `zend_extension=opcache`: on a static build there is no `opcache.so` to load, and that line would only emit `Failed loading Zend extension` warnings. The real on/off switch is the INI boolean `opcache.enable=1` / `opcache.enable=0` (§2.5, §5.1). The Windows skip is left untouched.
 
 
 
@@ -283,7 +295,7 @@ class PhpExtension {
 }
 ```
 
-The existing `PhpSettings.getExtensions` / `toggleExtension` keep their signatures so the Windows call sites in `app_settings_modal.dart` are untouched; on Linux they delegate to the new subsystem.
+`PhpSettings.getExtensions` keeps its signature and gains a Linux branch that delegates to the new subsystem. `toggleExtension` widens from `Future<void>` to `Future<String?>`: the Linux path returns the manager's message (which may carry the "PHP-FPM is not running — restart it to apply the change" note of §5.3), the Windows path returns `null`. This is source-compatible for every existing caller — they all just `await` and discard — and the modal only shows a snackbar when a non-empty message comes back, so the Windows UI is unchanged.
 
 ---
 
@@ -294,24 +306,45 @@ The existing `PhpSettings.getExtensions` / `toggleExtension` keep their signatur
 1. **Install**, if there is a package and it is not already installed. A package-less entry (§3.1, e.g. `opcache`) skips this step entirely.
 2. **Enable**:
    - Debian: `phpenmod -v <phpVersion> -s fpm <name>`
-   - RHEL/Arch: write `<scanDir>/99-ponta-<name>.ini` containing `extension=<name>` (or `zend_extension=<name>` when `isZend`). Because the distro's own ini may already be active (§2.6), the manager first checks whether the extension is already loaded — if `php-fpm -m` already lists it, only the reload is needed.
+   - RHEL/Arch: write `<scanDir>/99-ponta-<name>.ini` containing `extension=<name>` (or `zend_extension=<name>` when `isZend`). The write is `echo '<line>' | tee <file>` rather than a shell redirection, because `>` is a forbidden substring in `PackageCommandValidator` (§6.1) while `echo` and `tee` are both allowlisted. The target is left **unquoted** so the widened `_allowedTeeTargets` regex — which admits only `[\w.-]+\.ini` — is the thing that decides whether the write is legal.
+   - Both enable steps are idempotent (`phpenmod` re-creates its symlink; `tee` overwrites our own file), so no "is it already loaded?" pre-check is needed. A distro-owned active ini for the same extension (§2.6) is harmless here: our file loads last (`99-` sorts after `20-`) and loading an already-loaded extension is a no-op.
 3. **Reload** the running PHP-FPM master with `SIGUSR2` (no-op if not running) — §5.3.
-4. **Re-introspect.** If `<name>` is **not** in `php-fpm -m` afterwards, surface a failure with the captured log — never report a false success.
+4. **Re-introspect.** If `<name>` is **not** in `php-fpm -m` afterwards, surface a failure with the captured log — never report a false success. (Skipped for a static `opcache`, where `opcache.enable=0` leaves the module listed in `-m`; see §8.)
 
 Steps 1 and 2 are written into **one temporary shell script executed through a single `pkexec` invocation**, so the user sees exactly one authorization prompt. This mirrors `AppInstallerService.executePackageManagerCommands`, which already does this for app installation.
 
 ### 5.2 Disabling
 
 - Debian: `phpdismod -v <phpVersion> -s fpm <name>`
-- RHEL/Arch: remove `<scanDir>/99-ponta-<name>.ini` if we wrote it, **and** neutralise any distro-owned ini that loads the same extension.
+- RHEL/Arch: comment out the loader line in **every** ini the binary parsed — our own `99-ponta-<name>.ini` *and* any distro-owned ini that loads the same extension.
 
-The second half is what makes disable actually work on RHEL. Remi ships `/etc/php.d/20-<ext>.ini` already active, so deleting only our own file would leave the extension loaded and the switch would spring back on the next refresh. The manager already knows which files were read, from `php-fpm -i`'s `Additional .ini files parsed` (§2.1), and those files are world-readable, so it can find the owning file without guessing. Each matching line is commented out in place rather than deleted, so the change is reversible and the package's own manifest stays consistent:
+The second half is what makes disable actually work on RHEL. Remi ships `/etc/php.d/20-<ext>.ini` already active, so neutralising only our own file would leave the extension loaded and the switch would spring back on the next refresh. The manager already knows which files were read, from `php-fpm -i`'s `Additional .ini files parsed` (§2.1), and those files are world-readable, so it can find the owning file without guessing. Our own file is in that list too (it lives in `scanDir`, so a freshly spawned `php-fpm -i` reports it), which is why **one** code path covers both cases and no `rm` is needed — `rm` is not on the validator's allowlist.
+
+Each matching line is commented out in place rather than deleted, so the change is reversible and the package's own manifest stays consistent:
 
 ```
 extension=mbstring.so   →   ;extension=mbstring.so
 ```
 
-This is a `sed -i` invocation inside the generated script. `sed` is already on the validator's allowlist, and the generated wrapper script is exempt from validation (§6.3), so no new allowance is needed.
+This is a `sed -E -i 's,<pattern>,\x3b&,' <file>` invocation. Three details are load-bearing:
+
+- The replacement is the **escape `\x3b`** (GNU sed), not a literal `;`: the validator forbids `;` anywhere in a command. PHP's ini scanner treats only `;` as a comment — `#` is *not* one — so this is not cosmetic.
+- `,` is the **delimiter** rather than `/`, because the pattern itself contains `/` (the optional absolute-path group `(.*/)?`).
+- The pattern is **anchored on the extension name**, so disabling `pdo` can never knock out `pdo_mysql`. `opcache` gets its own alternative (`^\s*opcache\.enable\s*=.*$`), because its line form is an assignment, not a loader line. Whitespace is matched with `\s`, not `[[:space:]]`: Dart's `RegExp` is ECMAScript, where `[[:space:]]` is not a POSIX class but the literal set `{[, :, s, p, a, c, e}` — so `^[[:space:]]*$` matches `":"` while *failing* to match a line of spaces. Every `\s` must sit in a **raw** Dart string literal; in a non-raw one, `'\s'` collapses to `s` and the anchor silently becomes `...s*$`.
+
+`sed` is already on the validator's allowlist, so no new allowance is needed. But the allowlist does **not** constrain `sed`'s *target* — only its leading binary — so the file path must be gated by the manager itself. A bare `startsWith('/')` check is not enough, because the path is attacker-reachable (it is whatever `php-fpm -i` printed for `Additional .ini files parsed`, and a poisoned ini in a world-writable scan dir would appear there). Two failure modes, both verified by probe:
+
+- `sed -i` would happily rewrite `/etc/shadow`, `/etc/sudoers`, or `/etc/systemd/system/*.service` — all of which pass `startsWith('/')`.
+- The path is interpolated **inside single quotes**, so a filename containing `'` closes the quote early: `/etc/php.d/x.ini' -e 's,.*,PWNED,w /tmp/p' -e '` becomes extra `sed` expressions, and it contains none of the validator's forbidden substrings (`;`, `&&`, `` ` ``, `$(`, `>`, `<`), so `validate` returns null.
+
+The gate is therefore structural — the file must be a **plain child of the scan dir the binary itself reported**, with a name that survives `isSafeName` (§6.2), which excludes `'`, `/`, spaces, and every other metacharacter:
+
+```dart
+if (p.posix.dirname(ini) != scanDir) continue;
+if (!LinuxPhpExtensionDriver.isSafeName(p.posix.basename(ini))) continue;
+```
+
+Probed against a corpus: this blocks 10/10 hostile paths (`/etc/passwd`, `/etc/shadow`, `/etc/sudoers`, `/root/.ssh/authorized_keys`, `..` traversal, quoted-name injection, nested subdirs, uppercase) and drops 0/6 legitimate ones (`/etc/php.d/…`, `/etc/php/conf.d/…`, `/etc/php/8.5/fpm/conf.d/…`).
 
 Then reload. The package is never removed.
 
@@ -339,9 +372,30 @@ The PID comes from `app.servicePid` (set in `AppServiceManager.start`). If the a
 - `pacman` (read-only discovery: `pacman -Ss`, `pacman -Fl`, and the `pacman -Fy` index refresh)
 - `phpenmod`, `phpdismod` (enable/disable on Debian)
 
-`dnf`, `rpm`, `ln`, `systemctl`, `apt-get` are already present. The forbidden-substring list (`` ` ``, `$(`, `;`, `&&`, `||`, `>`, `<`, …) is unchanged and still fail-closed.
+`PackageCommandValidator._allowedTeeTargets` is widened from `/etc/apt/sources.list.d/*.list` to also admit the ini files this feature writes:
 
-Note that `dnf repoquery`'s query format uses `%{...}` and `[` `]` braces, none of which are forbidden substrings, and it contains no `>`/`<`/`;`/`$(`/backtick. The exact command strings are asserted against the validator in each driver's test so this stays true.
+```dart
+RegExp(
+  r'^(?:'
+  r'/etc/apt/sources\.list\.d/[a-zA-Z0-9_.-]+\.list'
+  r'|/etc/php\.d/[a-zA-Z0-9_.-]+\.ini'
+  r'|/etc/php/conf\.d/[a-zA-Z0-9_.-]+\.ini'
+  r'|/etc/php/\d+\.\d+/[a-z0-9_.-]+/conf\.d/[a-zA-Z0-9_.-]+\.ini'
+  r'|/etc/opt/remi/php\d+/php\.d/[a-zA-Z0-9_.-]+\.ini'
+  r')$',
+);
+```
+
+This is a **tightening as much as a widening**: it covers RHEL/Remi modular (`/etc/php.d/`), Arch (`/etc/php/conf.d/`), Debian's versioned layout (`/etc/php/8.5/fpm/conf.d/`), and Remi's Software Collections layout on Fedora/RHEL (`/etc/opt/remi/php85/php.d/`). Each branch terminates in a single filename segment (`[a-zA-Z0-9_.-]+\.ini`) with no slash, and every path component explicitly disallows `..` directory traversal. It rejects `/etc/passwd`, `/root/.ssh/authorized_keys`, any `..` traversal (including `/etc/php/../../etc/evil.d/x.ini`), any non-`.ini` suffix, and arbitrary nested subdirectories. A tee target containing whitespace cannot match, which is why the write commands leave the path unquoted (§5.1).
+
+`dnf`, `rpm`, `ln`, `systemctl`, `apt-get` are already present. `rm` is deliberately **not** added (§5.2). The forbidden-substring list (`` ` ``, `$(`, `;`, `&&`, `||`, `>`, `<`, …) is unchanged and still fail-closed.
+
+Two constraints the query formats must respect, both checked by the validator:
+
+- `%{...}` and `[` `]` are not forbidden substrings, so they are fine.
+- **`|` is not usable as a separator** — the validator splits on `|` to check each pipeline segment, so a format containing it is rejected. This is why the RHEL file-list format separates package from path with a space (§2.8).
+
+The exact command strings are asserted against the validator in each driver's test so this stays true.
 
 ### 6.2 Injection defence
 
@@ -363,13 +417,16 @@ Unchanged from the existing app-install path: prefer passwordless `sudo -n true`
 
 `_buildExtensionCard` in `app_settings_modal.dart` gains:
 
-- A package-name badge (e.g. `php8.5-mbstring`) next to the existing `ZEND` badge.
-- A muted "Not installed" chip when `!isInstalled`, so the user understands the switch will trigger a download.
-- The existing switch drives install+enable in one action; while running, the card shows a spinner and the switch is disabled.
+- A package-name label (e.g. `php8.5-mbstring`) next to the existing `ZEND` badge, rendered muted and small so it reads as metadata rather than a second title.
+- A "Not installed" chip when `!isInstalled`, so the user understands the switch will trigger a download.
+- The existing switch drives install+enable in one action; while running, the card shows a spinner **in place of** the switch (the switch is removed, not merely disabled, so a second tap is impossible).
 
 The search field filters on extension name and package name. The `x/y Active` counter continues to count `isEnabled`.
 
-The `_loadExtensions` / `_toggleExtension` methods keep their shape; only the provider implementation behind them changes.
+Two supporting changes make the UI honest about Linux failures:
+
+- `_loadExtensions` catches `UnsupportedError` (an unsupported distro family, or a missing `apt-file`) and renders a message with a Retry button. Without the catch, an unsupported host would leave the tab spinning forever and the exception would escape the widget tree.
+- `_toggleExtension` tracks the in-flight extension in a `Set<String>` so the card can show a spinner in place of the switch, and surfaces the provider's message in a snackbar — success-coloured for the manager's note, error-coloured for a thrown failure.
 
 ---
 
@@ -380,7 +437,7 @@ The `_loadExtensions` / `_toggleExtension` methods keep their shape; only the pr
 | `LinuxPhpIntrospector` | Parses real `php-fpm -i` text fixtures → `scanDir`, `extensionDir`, ini list. Parses `-m` → module set. Handles `(none)`. |
 | Each driver | Given a fake `runProcess` returning captured distro output, produces the correct `List<PackageCandidate>` and the correct extension names. |
 | Package→extension mapping | A file list yields exactly the `.so` names whose parent directory is `extensionDir` (§2.7). Table-driven cases: Remi `php-common` → its 11 extensions; `php-pdo` → `pdo`, `pdo_sqlite`, `sqlite3`; `php-pecl-redis6` → `redis`; `php-pecl-trie` → `php_trie`; Debian `php8.5-interbase` → `pdo_firebird`; Debian `php8.5-common` → its 17. Junk outside `extensionDir` is rejected: Remi `php-embedded`'s `libphp.so`, `uwsgi-plugin-php`'s `php_plugin.so`, Arch `php-apache`'s `libphp.so`. |
-| Statically compiled extension | `opcache` (in `php-fpm -m`, in no file list, no `.so`) is listed, marked `isZend`, and its toggle writes `zend_extension=opcache`. |
+| Statically compiled extension | `opcache` (in `php-fpm -m`, in no file list, no `.so`) is listed, marked `isZend`, and its toggle writes `opcache.enable=1` — not `zend_extension=opcache`. |
 | Enable/disable commands | Exact argv produced per driver per family, including `isZend` → `zend_extension`. |
 | Disable neutralises a distro-owned ini | Given a fixture ini in the parsed-ini list, disabling comments out the matching `extension=` line rather than deleting it. |
 | Injection guard | Malicious names (`mbstring; rm -rf /`, `a$(id)`, backtick) are rejected. |
