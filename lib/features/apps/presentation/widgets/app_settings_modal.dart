@@ -36,6 +36,8 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   // ─── State ────────────────────────────────────────────────────────────────────
   List<PhpExtension> _extensions = [];
   String _searchQuery = '';
+  final Set<String> _togglingExtensions = {};
+  String? _extensionsError;
 
   // Lazy loading flags
   bool _isConfigLoaded = false;
@@ -156,17 +158,25 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (_isExtensionsLoading) return;
     setState(() => _isExtensionsLoading = true);
 
-    final exts = await ref
-        .read(phpSettingsProvider.notifier)
-        .getExtensions(widget.app);
-
-    if (mounted) {
-      setState(() {
-        _extensions = exts;
-        _isExtensionsLoaded = true;
-        _isExtensionsLoading = false;
-      });
+    List<PhpExtension> exts = const [];
+    String? error;
+    try {
+      exts = await ref
+          .read(phpSettingsProvider.notifier)
+          .getExtensions(widget.app);
+    } on UnsupportedError catch (e) {
+      error = e.message;
+    } catch (e) {
+      error = 'Could not read PHP extensions: $e';
     }
+
+    if (!mounted) return;
+    setState(() {
+      _extensions = exts;
+      _extensionsError = error;
+      _isExtensionsLoaded = true;
+      _isExtensionsLoading = false;
+    });
   }
 
   // ─── Config file path resolution ──────────────────────────────────────────────
@@ -259,11 +269,35 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
 
   // ─── Toggle extension ─────────────────────────────────────────────────────────
   Future<void> _toggleExtension(PhpExtension ext, bool value) async {
-    await ref
-        .read(phpSettingsProvider.notifier)
-        .toggleExtension(widget.app, ext, value);
-    _isExtensionsLoaded = false;
-    await _loadExtensions();
+    if (_togglingExtensions.contains(ext.name)) return;
+    setState(() => _togglingExtensions.add(ext.name));
+
+    try {
+      final note = await ref
+          .read(phpSettingsProvider.notifier)
+          .toggleExtension(widget.app, ext, value);
+      _isExtensionsLoaded = false;
+      await _loadExtensions();
+
+      if (mounted && note != null && note.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(note), backgroundColor: AppColors.success),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to ${value ? 'enable' : 'disable'} ${ext.name}: $e',
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _togglingExtensions.remove(ext.name));
+    }
   }
 
   // ─── Build ────────────────────────────────────────────────────────────────────
@@ -652,8 +686,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
 
   // ─── Extensions tab ───────────────────────────────────────────────────────────
   Widget _buildExtensionsTab() {
+    final query = _searchQuery.toLowerCase();
     final filteredExtensions = _extensions.where((ext) {
-      return ext.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      return ext.name.toLowerCase().contains(query) ||
+          (ext.packageName?.toLowerCase().contains(query) ?? false);
     }).toList();
 
     return Padding(
@@ -666,13 +702,15 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                 child: SizedBox(
                   height: 36,
                   child: TextField(
+                    key: const ValueKey('extensions-search'),
                     onChanged: (v) => setState(() => _searchQuery = v),
                     style: const TextStyle(
                       fontSize: AppTextSize.sm,
                       color: AppColors.textPrimary,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Search extensions (e.g. mbstring, curl, gd)...',
+                      hintText:
+                          'Search by extension or package (e.g. mbstring, php8.5-curl)...',
                       hintStyle: const TextStyle(
                         color: AppColors.textMuted,
                         fontSize: AppTextSize.xs,
@@ -734,13 +772,15 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
           Expanded(
             child: _isExtensionsLoading
                 ? const Center(child: CircularProgressIndicator())
+                : _extensionsError != null
+                ? _buildExtensionsError()
                 : filteredExtensions.isEmpty
                 ? _buildEmptyExtensions()
                 : GridView.builder(
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 270,
-                          mainAxisExtent: 40,
+                          maxCrossAxisExtent: 300,
+                          mainAxisExtent: 46,
                           crossAxisSpacing: 8,
                           mainAxisSpacing: 8,
                         ),
@@ -755,8 +795,29 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     );
   }
 
-  Widget _buildExtensionCard(PhpExtension ext) {
+  Widget _buildExtensionBadge(String label, Color color) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+          color: color,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExtensionCard(PhpExtension ext) {
+    final isBusy = _togglingExtensions.contains(ext.name);
+    return Container(
+      key: ValueKey('ext-card-${ext.name}'),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.surfaceLight,
@@ -795,43 +856,88 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                 ),
                 if (ext.isZend) ...[
                   const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'ZEND',
-                      style: TextStyle(
+                  _buildExtensionBadge('ZEND', AppColors.accent),
+                ],
+                if (!ext.isInstalled) ...[
+                  const SizedBox(width: 4),
+                  _buildExtensionBadge('Not installed', AppColors.warning),
+                ],
+                if (ext.packageName != null) ...[
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      ext.packageName!,
+                      style: const TextStyle(
                         fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.accent,
-                        letterSpacing: 0.5,
+                        color: AppColors.textMuted,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ],
             ),
           ),
-          Transform.scale(
-            scale: 0.7,
-            alignment: Alignment.centerRight,
-            child: Switch(
-              value: ext.isEnabled,
-              onChanged: (v) => _toggleExtension(ext, v),
-              activeThumbColor: AppColors.success,
-              activeTrackColor: AppColors.success.withValues(alpha: 0.2),
-              inactiveThumbColor: AppColors.textMuted,
-              inactiveTrackColor: AppColors.border,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          if (isBusy)
+            Padding(
+              key: ValueKey('ext-spinner-${ext.name}'),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            Transform.scale(
+              scale: 0.7,
+              alignment: Alignment.centerRight,
+              child: Switch(
+                key: ValueKey('ext-switch-${ext.name}'),
+                value: ext.isEnabled,
+                onChanged: (v) => _toggleExtension(ext, v),
+                activeThumbColor: AppColors.success,
+                activeTrackColor: AppColors.success.withValues(alpha: 0.2),
+                inactiveThumbColor: AppColors.textMuted,
+                inactiveTrackColor: AppColors.border,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
-          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildExtensionsError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: AppColors.warning,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _extensionsError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            AppButton(
+              onPressed: () {
+                _isExtensionsLoaded = false;
+                _loadExtensions();
+              },
+              style: AppButtonStyle.outline,
+              label: 'Retry',
+            ),
+          ],
+        ),
       ),
     );
   }

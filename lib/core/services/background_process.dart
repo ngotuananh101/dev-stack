@@ -70,6 +70,18 @@ abstract final class BackgroundProcess {
     return (executable: 'kill', arguments: ['-TERM', '--', '-$pid']);
   }
 
+  /// Builds the argv that asks a running php-fpm master to reload in place.
+  ///
+  /// Unlike [buildLinuxKillArgs], the PID is **not** negated. `SIGUSR2` must be
+  /// delivered to the master process only: php-fpm workers reset `SIGUSR2` to
+  /// `SIG_DFL` in `fpm_signals_init_child()`, so signalling the whole process
+  /// group would terminate every worker instead of triggering a graceful
+  /// reload. Upstream systemd uses `ExecReload=/bin/kill -USR2 $MAINPID`.
+  @visibleForTesting
+  static ({String executable, List<String> arguments}) buildLinuxReloadArgs(int pid) {
+    return (executable: 'kill', arguments: ['-USR2', '--', '$pid']);
+  }
+
   static Future<void> stopManaged(
     ManagedBackgroundProcess process, {
     bool? isWindows,

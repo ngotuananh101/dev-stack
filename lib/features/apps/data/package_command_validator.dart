@@ -21,13 +21,20 @@ class PackageCommandValidator {
     // Debian/Ubuntu package management
     'apt-get',
     'apt',
+    'apt-cache',
+    'apt-file',
     'dpkg',
     'add-apt-repository',
     'apt-key',
+    // Debian/Ubuntu PHP extension enable/disable (mods-available + conf.d symlinks)
+    'phpenmod',
+    'phpdismod',
     // RHEL/CentOS package management
     'dnf',
     'yum',
     'rpm',
+    // Arch package management
+    'pacman',
     // Repo keys, sources, downloads
     'gpg',
     'tee',
@@ -78,9 +85,21 @@ class PackageCommandValidator {
     '/sbin/',
   ];
 
-  /// Targets that tee is allowed to write to.
+  /// Targets that tee is allowed to write to: apt source lists (pre-existing)
+  /// and the single PHP ini file the extension manager owns across supported
+  /// layouts: RHEL modular (/etc/php.d/), Arch (/etc/php/conf.d/), Debian
+  /// versioned (/etc/php/<v>/<sapi>/conf.d/), and Remi SCL on Fedora/RHEL
+  /// (/etc/opt/remi/php<N>/php.d/). Each alternative ends in one plain path
+  /// component — no `/`, so `..` cannot escape the directory, and `sed`/`tee`
+  /// cannot be turned into a write-anywhere primitive for catalog commands.
   static final RegExp _allowedTeeTargets = RegExp(
-    r'^/etc/apt/sources\.list\.d/[\w.-]+\.list$',
+    r'^(?:'
+    r'/etc/apt/sources\.list\.d/[a-zA-Z0-9_.-]+\.list'
+    r'|/etc/php\.d/[a-zA-Z0-9_.-]+\.ini'
+    r'|/etc/php/conf\.d/[a-zA-Z0-9_.-]+\.ini'
+    r'|/etc/php/\d+\.\d+/[a-z0-9_.-]+/conf\.d/[a-zA-Z0-9_.-]+\.ini'
+    r'|/etc/opt/remi/php\d+/php\.d/[a-zA-Z0-9_.-]+\.ini'
+    r')$',
   );
 
   /// Validates a single shell command (one pipeline) from the catalog.

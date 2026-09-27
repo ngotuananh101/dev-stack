@@ -49,6 +49,118 @@ void main() {
       });
     });
 
+    group('extension management binaries', () {
+      test('accepts read-only discovery commands', () {
+        expect(PackageCommandValidator.validate('apt-cache search --names-only php8.5-'), isNull);
+        expect(PackageCommandValidator.validate('apt-file list -x ^php8\\.5-'), isNull);
+        expect(PackageCommandValidator.validate('pacman -Ss php-'), isNull);
+        expect(PackageCommandValidator.validate('pacman -Fy'), isNull);
+        expect(PackageCommandValidator.validate('pacman -Fl php-gd'), isNull);
+        expect(PackageCommandValidator.validate("dnf repoquery --qf '[%{=NAME}\\n]' 'php-*'"), isNull);
+      });
+
+      test('accepts the RHEL annotated file list query format', () {
+        // The separator is a space, never a pipe: the validator splits every
+        // command on '|' to validate pipeline segments separately.
+        expect(
+          PackageCommandValidator.validate(
+            "dnf repoquery -l --qf '[%{=NAME} %{FILENAMES}\\n]' 'php-*'",
+          ),
+          isNull,
+        );
+      });
+
+      test('rejects a query format that smuggles in a pipe', () {
+        expect(
+          PackageCommandValidator.validate(
+            "dnf repoquery -l --qf '[%{=NAME}|%{FILENAMES}\\n]' 'php-*'",
+          ),
+          isNotNull,
+        );
+      });
+
+      test('accepts Debian module enable/disable commands', () {
+        expect(PackageCommandValidator.validate('phpenmod -v 8.5 -s fpm mbstring'), isNull);
+        expect(PackageCommandValidator.validate('phpdismod -v 8.5 -s fpm mbstring'), isNull);
+      });
+
+      test('accepts the manager writing an ini line into the PHP scan dir', () {
+        // The enable/disable step on RHEL and Arch pipes one ini line into
+        // <scanDir>/99-ponta-<ext>.ini. `echo` and `tee` are already on the
+        // allowlist; the target regex is what keeps this narrow.
+        expect(
+          PackageCommandValidator.validate(
+            "echo 'extension=redis' | tee /etc/php.d/99-ponta-redis.ini",
+          ),
+          isNull,
+        );
+        expect(
+          PackageCommandValidator.validate(
+            "echo 'opcache.enable=0' | tee /etc/php/conf.d/99-ponta-opcache.ini",
+          ),
+          isNull,
+        );
+        expect(
+          PackageCommandValidator.validate(
+            "echo 'zend_extension=xdebug' | tee /etc/php/8.5/fpm/conf.d/99-ponta-xdebug.ini",
+          ),
+          isNull,
+        );
+        expect(
+          PackageCommandValidator.validate(
+            "echo 'extension=redis' | tee /etc/opt/remi/php85/php.d/99-ponta-redis.ini",
+          ),
+          isNull,
+        );
+      });
+
+      test('rejects the disable comment line, which carries a semicolon', () {
+        // The disable path never writes a comment — it rewrites the ini in
+        // place with `sed` (Task 8). If it ever tried to `echo '; disabled…'`
+        // the validator would reject it outright: `;` is a forbidden
+        // substring, because it chains commands. Pinned here so nobody
+        // "fixes" a failing disable test by reintroducing that line.
+        expect(
+          PackageCommandValidator.validate(
+            "echo '; disabled by Ponta' | tee /etc/php/8.5/fpm/conf.d/99-ponta-redis.ini",
+          ),
+          contains('Forbidden pattern'),
+        );
+      });
+
+      test('still rejects a tee write outside the allowed targets', () {
+        // Widening tee for the PHP ini dirs must not turn it into a
+        // write-anywhere primitive for catalog commands.
+        expect(
+          PackageCommandValidator.validate("echo 'x' | tee /etc/passwd"),
+          contains('not allowed'),
+        );
+        expect(
+          PackageCommandValidator.validate(
+            "echo 'x' | tee /root/.ssh/authorized_keys",
+          ),
+          contains('not allowed'),
+        );
+        expect(
+          PackageCommandValidator.validate(
+            "echo 'x' | tee /etc/php.d/../../shadow",
+          ),
+          contains('not allowed'),
+        );
+      });
+
+      test('still rejects chaining smuggled through the new binaries', () {
+        expect(
+          PackageCommandValidator.validate('phpenmod -v 8.5 -s fpm mbstring; rm -rf /'),
+          contains('Forbidden pattern'),
+        );
+        expect(
+          PackageCommandValidator.validate('pacman -Ss php- && rm -rf /'),
+          contains('Forbidden pattern'),
+        );
+      });
+    });
+
     group('rejected commands (negative cases)', () {
       test('rejects unknown leading binary', () {
         expect(

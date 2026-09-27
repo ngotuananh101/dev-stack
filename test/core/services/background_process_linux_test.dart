@@ -34,6 +34,14 @@ void main() {
       expect(cmd.executable, equals('kill'));
       expect(cmd.arguments, equals(['-TERM', '--', '-12345']));
     });
+
+    test('builds Linux reload command targeting the master PID, not the group', () {
+      final cmd = BackgroundProcess.buildLinuxReloadArgs(12345);
+      expect(cmd.executable, equals('kill'));
+      // No leading '-' on the PID: SIGUSR2 must reach only the php-fpm master.
+      // Workers reset SIGUSR2 to SIG_DFL, so a group signal would kill them.
+      expect(cmd.arguments, equals(['-USR2', '--', '12345']));
+    });
   });
 
   group('BackgroundProcess.stopManaged (non-Windows)', () {
