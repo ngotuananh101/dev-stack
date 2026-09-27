@@ -49,18 +49,7 @@ class LinuxPhpExtensionManager {
   }) : _introspector = introspector,
        _driver = driver,
        _runProcess = runProcess,
-       _runElevated =
-           runElevated ??
-           // Untyped parameters: the annotated `required List<String> ...`
-           // form fails to parse in this inline position, so types and
-           // requiredness are inferred from the `_ElevatedRunner` context.
-           ({commands, logInfo, logError}) =>
-               AppInstallerService.executePackageManagerCommands(
-             commands: commands,
-             logInfo: logInfo,
-             logError: logError,
-             runProcess: runProcess,
-           ),
+       _runElevated = runElevated ?? _buildDefaultElevatedRunner(runProcess),
        _reloader =
            reloader ??
            ((pid) async {
@@ -76,6 +65,21 @@ class LinuxPhpExtensionManager {
              }
            }),
        _fileExists = fileExists ?? ((path) => File(path).existsSync());
+
+  static _ElevatedRunner _buildDefaultElevatedRunner(
+    Future<ProcessResult> Function(String, List<String>) runProcess,
+  ) {
+    return ({
+      required List<String> commands,
+      required void Function(String) logInfo,
+      required void Function(String) logError,
+    }) => AppInstallerService.executePackageManagerCommands(
+      commands: commands,
+      logInfo: logInfo,
+      logError: logError,
+      runProcess: runProcess,
+    );
+  }
 
   factory LinuxPhpExtensionManager.forApp({
     required AppModel app,
