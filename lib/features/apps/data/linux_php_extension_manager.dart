@@ -127,9 +127,10 @@ class LinuxPhpExtensionManager {
       final pkg = entry.value;
       final isEnabled = enabled.contains(extName);
       // A synthetic entry has no .so by construction; it is manageable, so it
-      // must not render "Not installed".
+      // must not render "Not installed". Every other entry — including one
+      // whose owner package is not yet named (dnf4) — is judged by its .so.
       final isInstalled =
-          !pkg.hasPackage || _fileExists('$extensionDir/$extName.so');
+          pkg.isSynthetic || _fileExists('$extensionDir/$extName.so');
       result.add(
         PhpExtension(
           name: extName,
@@ -159,24 +160,27 @@ class LinuxPhpExtensionManager {
     return out;
   }
 
+  /// Reads the package→extension map, trying the driver's file-list commands in
+  /// order and keeping the first that parses to something. The order matters on
+  /// the dnf family: dnf5's attributed `--qf '%{name} %{files}'` form prints a
+  /// block per package, while dnf4 rejects it with exit 2 or prints the literal
+  /// `%{files}` — so the driver offers both and the first usable one wins.
   Future<Map<String, List<String>>> _listFiles(
     String phpVersion,
     List<PackageCandidate> packages,
     String extensionDir,
   ) async {
-    final merged = <String, List<String>>{};
     for (final cmd in _driver.fileListCommands(phpVersion, packages)) {
       final stdout = await _runDiscovery(cmd);
       if (stdout == null) continue;
       final parsed = _driver.parseFileList(stdout, extensionDir);
-      for (final entry in parsed.entries) {
-        merged.putIfAbsent(entry.key, () => <String>[]).addAll(entry.value);
+      if (parsed.isEmpty) continue;
+      for (final names in parsed.values) {
+        names.sort();
       }
+      return parsed;
     }
-    for (final names in merged.values) {
-      names.sort();
-    }
-    return merged;
+    return <String, List<String>>{};
   }
 
   /// Runs one discovery command. Returns null when the command failed but the
@@ -290,9 +294,25 @@ class LinuxPhpExtensionManager {
       throw discoveryError;
     }
 
+    // A dnf4 file list names no package, so the owner arrives as a
+    // `PackageCandidate.unknownOwner`. Name it now — only when the .so is
+    // missing and an install would actually run — via `-f <path>`, which is the
+    // one form that combines with `--qf` on both dnf4 and dnf5.
+    String? ownerPackage =
+        owner != null && owner.hasPackage ? owner.name : null;
+    if (owner != null &&
+        owner.ownerUnknown &&
+        !alreadyInstalled &&
+        extensionDir.isNotEmpty) {
+      final resolved = await _resolveOwner(extensionDir, extName);
+      if (resolved != null) ownerPackage = resolved;
+    }
+
     final commands = <String>[];
-    if (owner != null && owner.hasPackage && !alreadyInstalled) {
-      commands.addAll(_driver.installCommands(owner, phpVersion));
+    if (ownerPackage != null && !alreadyInstalled) {
+      commands.addAll(
+        _driver.installCommands(PackageCandidate(name: ownerPackage), phpVersion),
+      );
     }
     if (_driver.iniStrategy == PhpIniStrategy.externalTool) {
       commands.addAll(_driver.enableCommands(phpVersion, extName));
@@ -318,6 +338,19 @@ class LinuxPhpExtensionManager {
     final reloadNote = await _reload(servicePid);
     await _verifyEnabled(binaryPath, extName, isSynthetic, logs.toString());
     return 'Extension $extName enabled.$reloadNote';
+  }
+
+  /// Names the package owning `<extensionDir>/<extName>.so`, or null when the
+  /// family offers no owner query or the query yields no safe name. Best-effort:
+  /// a failed query leaves the extension enableable, just without an install.
+  Future<String?> _resolveOwner(String extensionDir, String extName) async {
+    for (final cmd in _driver.resolveOwnerCommands(extensionDir, extName)) {
+      final stdout = await _runDiscovery(cmd);
+      if (stdout == null) continue;
+      final owner = _driver.parseOwner(stdout);
+      if (owner != null) return owner;
+    }
+    return null;
   }
 
   /// The command that turns an extension on for `ownIniFile` families.

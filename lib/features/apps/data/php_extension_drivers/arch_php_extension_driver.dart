@@ -56,7 +56,7 @@ class ArchPhpExtensionDriver extends LinuxPhpExtensionDriver {
   }
 
   @override
-  ({String package, String path})? parseFileListLine(String line) {
+  ({String? package, String path})? parseFileListLine(String line) {
     final sep = line.indexOf(' ');
     if (sep <= 0) return null;
     var path = line.substring(sep + 1).trim();

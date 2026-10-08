@@ -73,7 +73,17 @@ const _zip = PhpExtension(
   description: 'ZIP module for PHP',
 );
 
-Future<void> _openExtensionsTab(WidgetTester tester, PhpSettings settings) async {
+/// Opens the Extensions tab with [build] as the settings notifier.
+///
+/// [build] is a factory, not a ready instance: Riverpod's `overrideWith`
+/// requires the override to produce a *new* notifier each time the provider is
+/// built. Returning one pre-constructed instance makes the second build reuse
+/// a notifier Riverpod treats as fresh, and the switch silently stops
+/// responding (the toggle never reaches the notifier).
+Future<void> _openExtensionsTab(
+  WidgetTester tester,
+  PhpSettings Function() build,
+) async {
   await tester.binding.setSurfaceSize(const Size(1200, 800));
   addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -81,7 +91,7 @@ Future<void> _openExtensionsTab(WidgetTester tester, PhpSettings settings) async
     ProviderScope(
       overrides: [
         appsProvider.overrideWith(() => _StaticAppsNotifier()),
-        phpSettingsProvider.overrideWith(() => settings),
+        phpSettingsProvider.overrideWith(build),
       ],
       child: MaterialApp(
         home: Scaffold(
@@ -103,7 +113,7 @@ void main() {
   });
 
   testWidgets('renders the package badge and the Not installed chip', (tester) async {
-    await _openExtensionsTab(tester, _MockPhpSettings([_curl, _zip]));
+    await _openExtensionsTab(tester, () => _MockPhpSettings([_curl, _zip]));
 
     expect(find.text('curl'), findsOneWidget);
     expect(find.text('zip'), findsOneWidget);
@@ -122,7 +132,7 @@ void main() {
   });
 
   testWidgets('filters by package name, not only extension name', (tester) async {
-    await _openExtensionsTab(tester, _MockPhpSettings([_curl, _zip]));
+    await _openExtensionsTab(tester, () => _MockPhpSettings([_curl, _zip]));
 
     await tester.enterText(
       find.byKey(const ValueKey('extensions-search')),
@@ -138,7 +148,7 @@ void main() {
     final gate = Completer<void>();
     await _openExtensionsTab(
       tester,
-      _MockPhpSettings([_curl, _zip], toggleGate: gate),
+      () => _MockPhpSettings([_curl, _zip], toggleGate: gate),
     );
 
     await tester.tap(find.byKey(const ValueKey('ext-switch-zip')));
@@ -155,7 +165,7 @@ void main() {
   });
 
   testWidgets('surfaces an unsupported distribution instead of spinning forever', (tester) async {
-    await _openExtensionsTab(tester, _FailingPhpSettings());
+    await _openExtensionsTab(tester, () => _FailingPhpSettings());
 
     expect(find.textContaining('not supported'), findsOneWidget);
   });

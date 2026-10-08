@@ -10,10 +10,17 @@ class PackageCandidate {
   final String description;
   final List<String> extensionNames;
 
+  /// True when the extension's owning package is not yet known: the family's
+  /// file-list output could not attribute it (dnf4's bare `-l` prints paths
+  /// with no package name). The owner is resolved on demand, at enable time,
+  /// via [LinuxPhpExtensionDriver.resolveOwnerCommands].
+  final bool ownerUnknown;
+
   const PackageCandidate({
     required this.name,
     this.description = '',
     this.extensionNames = const [],
+    this.ownerUnknown = false,
   });
 
   /// An extension with no package behind it: it is compiled into the PHP
@@ -21,9 +28,23 @@ class PackageCandidate {
   /// matters in practice — it ships no `.so` on Debian, RHEL or Arch for 8.5.
   const PackageCandidate.synthetic(this.extensionNames)
     : name = '',
-      description = '';
+      description = '',
+      ownerUnknown = false;
+
+  /// An extension discovered from a bare file list: a package exists, but the
+  /// manager could not name it. Distinct from [PackageCandidate.synthetic],
+  /// whose extension is compiled in and must never be installed.
+  const PackageCandidate.unknownOwner(this.extensionNames)
+    : name = '',
+      description = '',
+      ownerUnknown = true;
 
   bool get hasPackage => name.isNotEmpty;
+
+  /// True for an extension compiled into the PHP binary (no package, no `.so`).
+  /// Its on/off state is a directive, not a loadable file, so it is never
+  /// "Not installed" and never has anything to install.
+  bool get isSynthetic => !hasPackage && !ownerUnknown;
 }
 
 /// How a family turns an extension on and off.
@@ -55,8 +76,10 @@ abstract class LinuxPhpExtensionDriver {
   List<String> fileListCommands(String phpVersion, List<PackageCandidate> packages);
 
   /// Splits one file-list line into its package and absolute path, or null when
-  /// the line carries no file entry.
-  ({String package, String path})? parseFileListLine(String line);
+  /// the line carries no file entry. [package] is null for a bare path — a
+  /// continuation line of dnf5's block output, or a dnf4 `-l` line, where the
+  /// owning package is not on the line.
+  ({String? package, String path})? parseFileListLine(String line);
 
   /// Keeps only `.so` files whose immediate parent directory is [extensionDir].
   ///
@@ -66,14 +89,30 @@ abstract class LinuxPhpExtensionDriver {
   /// `/usr/lib64/uwsgi/php_plugin.so`, and Arch's `php-apache` ships
   /// `/usr/lib/httpd/modules/libphp.so` — none of them under an
   /// `extension_dir`.
+  ///
+  /// Attribution: a line that names its package starts a block, and every bare
+  /// path that follows belongs to it (dnf5's `%{name} %{files}` prints the name
+  /// once, then one bare path per file). A blank line ends a block. When no
+  /// block has ever named a package (dnf4's bare `-l`), the paths collect under
+  /// the empty key — the unknown-owner bucket that [combine] turns into a
+  /// `PackageCandidate.unknownOwner`.
   Map<String, List<String>> parseFileList(String stdout, String extensionDir) {
     final byPackage = <String, List<String>>{};
+    String? current;
     for (final raw in stdout.split('\n')) {
       final line = raw.trim();
-      if (line.isEmpty) continue;
+      if (line.isEmpty) {
+        current = null;
+        continue;
+      }
       final entry = parseFileListLine(line);
       if (entry == null) continue;
-      if (!LinuxPhpExtensionDriver.isSafeName(entry.package)) continue;
+      if (entry.package != null) current = entry.package;
+
+      final owner = entry.package ?? current ?? '';
+      if (owner.isNotEmpty && !LinuxPhpExtensionDriver.isSafeName(owner)) {
+        continue;
+      }
 
       final path = entry.path;
       if (!path.endsWith('.so')) continue;
@@ -83,7 +122,7 @@ abstract class LinuxPhpExtensionDriver {
 
       final extName = p.posix.basenameWithoutExtension(path);
       if (!LinuxPhpExtensionDriver.isSafeName(extName)) continue;
-      byPackage.putIfAbsent(entry.package, () => <String>[]).add(extName);
+      byPackage.putIfAbsent(owner, () => <String>[]).add(extName);
     }
     for (final names in byPackage.values) {
       names.sort();
@@ -92,7 +131,9 @@ abstract class LinuxPhpExtensionDriver {
   }
 
   /// Attaches the extension names from [filesByPackage] to each package,
-  /// dropping the packages that ship none.
+  /// dropping the packages that ship none. Extension names that no named
+  /// package claimed (the empty key) become a single
+  /// [PackageCandidate.unknownOwner], whose package is resolved on demand.
   List<PackageCandidate> combine(
     List<PackageCandidate> packages,
     Map<String, List<String>> filesByPackage,
@@ -109,6 +150,10 @@ abstract class LinuxPhpExtensionDriver {
         ),
       );
     }
+    final unowned = filesByPackage[''];
+    if (unowned != null && unowned.isNotEmpty) {
+      result.add(PackageCandidate.unknownOwner(List.of(unowned)));
+    }
     return result;
   }
 
@@ -117,6 +162,23 @@ abstract class LinuxPhpExtensionDriver {
   List<String> enableCommands(String phpVersion, String extName);
 
   List<String> disableCommands(String phpVersion, String extName);
+
+  /// Commands that name the package owning `<extensionDir>/<extName>.so`, for
+  /// families whose file-list output cannot attribute an extension to its
+  /// package (see [PackageCandidate.ownerUnknown]). Returns an empty list when
+  /// the family never needs it — Debian and Arch always attribute inline.
+  List<String> resolveOwnerCommands(String extensionDir, String extName) => const [];
+
+  /// Extracts the owning package name from [resolveOwnerCommands] output, or
+  /// null when no safe name is present.
+  String? parseOwner(String stdout) {
+    for (final raw in stdout.split('\n')) {
+      final line = raw.trim();
+      if (line.isEmpty) continue;
+      if (LinuxPhpExtensionDriver.isSafeName(line)) return line;
+    }
+    return null;
+  }
 
   String iniFileNameFor(String extName) => '99-ponta-$extName.ini';
 
