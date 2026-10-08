@@ -84,7 +84,13 @@ void main() {
         phpVersion: '8.5',
       );
 
-      expect(exts.map((e) => e.name), equals(['curl', 'mbstring', 'opcache']));
+      // `standard` is enabled and owned by no package, so it arrives from the
+      // module side as a package-less (synthetic) entry — spec §3.1 step 4 and
+      // the plan's Review Focus 2 ("expects it listed, not hidden").
+      expect(
+        exts.map((e) => e.name),
+        equals(['curl', 'mbstring', 'opcache', 'standard']),
+      );
       final mb = exts[1];
       expect(mb.isEnabled, isTrue);
       expect(mb.isInstalled, isTrue);
@@ -226,7 +232,7 @@ void main() {
   });
 
   group('LinuxPhpExtensionManager.listExtensions (RHEL)', () {
-    test('resolves redis from php-pecl-redis6 through the file list', () async {
+    test('resolves redis from php-pecl-redis6 through the dnf5 attributed file list', () async {
       const info = '''
 phpinfo()
 PHP Version => 8.5.0
@@ -242,11 +248,12 @@ extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules
           exitCode: 0,
           stdout: '[PHP Modules]\nCore\nredis\n',
         ),
-        'dnf repoquery --qf [%{=NAME}\\n] php-* php85-php-*': (
+        'dnf repoquery --qf %{name}\\n php-* php85-php-*': (
           exitCode: 0,
           stdout: 'php-pecl-redis6\nphp-embedded\n',
         ),
-        'dnf repoquery -l --qf [%{=NAME} %{FILENAMES}\\n] php-* php85-php-*': (
+        // dnf5 block form: the package name appears once, then bare paths.
+        'dnf repoquery --qf %{name} %{files}\\n php-* php85-php-*': (
           exitCode: 0,
           stdout: 'php-pecl-redis6 /usr/lib64/php/modules/redis.so\n'
               'php-embedded /usr/lib64/libphp.so\n',
@@ -267,6 +274,57 @@ extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules
       expect(exts.map((e) => e.name), equals(['redis']));
       expect(exts.single.packageName, 'php-pecl-redis6');
       expect(exts.single.isEnabled, isTrue);
+    });
+
+    test('falls back to the dnf4 bare file list and marks the owner unknown', () async {
+      // On dnf4 the attributed form does not fail — it prints the literal
+      // `%{files}` and exits 0 — so the manager must reject the empty parse and
+      // try the `-l` form. That form carries no package, so the extension is
+      // listed with a null package and its .so decides "installed".
+      const info = '''
+phpinfo()
+PHP Version => 8.5.0
+
+Scan this dir for additional .ini files => /etc/php.d
+
+extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules
+''';
+      final runProcess = fakeRunner({
+        '/usr/sbin/php-fpm -i': (exitCode: 0, stdout: info),
+        '/usr/sbin/php-fpm -m': (
+          exitCode: 0,
+          stdout: '[PHP Modules]\nCore\n',
+        ),
+        'dnf repoquery --qf %{name}\\n php-* php85-php-*': (
+          exitCode: 0,
+          stdout: 'php-pecl-imagick-im7\n',
+        ),
+        'dnf repoquery --qf %{name} %{files}\\n php-* php85-php-*': (
+          exitCode: 0,
+          stdout: 'php-pecl-imagick-im7 %{files}\n',
+        ),
+        'dnf repoquery -l php-* php85-php-*': (
+          exitCode: 0,
+          stdout: '/usr/lib64/php/modules/imagick.so\n'
+              '/usr/lib64/libphp.so\n',
+        ),
+      });
+      final manager = LinuxPhpExtensionManager(
+        introspector: LinuxPhpIntrospector(runProcess: runProcess),
+        driver: RhelPhpExtensionDriver(),
+        runProcess: runProcess,
+        fileExists: (_) => false,
+      );
+
+      final exts = await manager.listExtensions(
+        binaryPath: '/usr/sbin/php-fpm',
+        phpVersion: '8.5',
+      );
+
+      expect(exts.map((e) => e.name), equals(['imagick']));
+      expect(exts.single.packageName, isNull);
+      expect(exts.single.isInstalled, isFalse);
+      expect(exts.single.isEnabled, isFalse);
     });
   });
 
@@ -410,11 +468,11 @@ extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules
           exitCode: 0,
           stdout: '[PHP Modules]\nCore\nredis\n',
         ),
-        'dnf repoquery --qf [%{=NAME}\\n] php-* php85-php-*': (
+        'dnf repoquery --qf %{name}\\n php-* php85-php-*': (
           exitCode: 0,
           stdout: 'php-pecl-redis6\n',
         ),
-        'dnf repoquery -l --qf [%{=NAME} %{FILENAMES}\\n] php-* php85-php-*': (
+        'dnf repoquery --qf %{name} %{files}\\n php-* php85-php-*': (
           exitCode: 0,
           stdout: 'php-pecl-redis6 /usr/lib64/php/modules/redis.so\n',
         ),
@@ -444,6 +502,69 @@ extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules
       expect(
         elevated.single,
         equals(["echo 'extension=redis' | tee /etc/php.d/99-ponta-redis.ini"]),
+      );
+    });
+
+    test('enable resolves an unknown owner with dnf -f then installs it', () async {
+      // dnf4 lists extensions without a package (bare `-l`). At enable time the
+      // manager must name the owner with `-f <path>` and install that package,
+      // in the same single elevation as the enable step.
+      final elevated = <List<String>>[];
+      final runProcess = fakeRunner({
+        '/usr/sbin/php-fpm -i': (
+          exitCode: 0,
+          stdout: 'Scan this dir for additional .ini files => /etc/php.d\n'
+              'extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules\n',
+        ),
+        '/usr/sbin/php-fpm -m': (
+          exitCode: 0,
+          stdout: '[PHP Modules]\nCore\nimagick\n',
+        ),
+        'dnf repoquery --qf %{name}\\n php-* php85-php-*': (
+          exitCode: 0,
+          stdout: 'php-pecl-imagick-im7\n',
+        ),
+        'dnf repoquery --qf %{name} %{files}\\n php-* php85-php-*': (
+          exitCode: 0,
+          stdout: 'php-pecl-imagick-im7 %{files}\n',
+        ),
+        'dnf repoquery -l php-* php85-php-*': (
+          exitCode: 0,
+          stdout: '/usr/lib64/php/modules/imagick.so\n',
+        ),
+        'dnf repoquery --qf %{name}\\n -f /usr/lib64/php/modules/imagick.so': (
+          exitCode: 0,
+          stdout: 'php-pecl-imagick-im7\n',
+        ),
+      });
+      final manager = LinuxPhpExtensionManager(
+        introspector: LinuxPhpIntrospector(runProcess: runProcess),
+        driver: RhelPhpExtensionDriver(),
+        runProcess: runProcess,
+        runElevated: ({required commands, required logInfo, required logError}) async {
+          elevated.add(commands);
+          return ProcessResult(0, 0, '', '');
+        },
+        reloader: (_) async {},
+        fileExists: (_) => false,
+      );
+
+      await manager.applyToggle(
+        binaryPath: '/usr/sbin/php-fpm',
+        phpVersion: '8.5',
+        scanDir: '/etc/php.d',
+        parsedIniFiles: const [],
+        extName: 'imagick',
+        enable: true,
+        servicePid: null,
+      );
+
+      expect(
+        elevated.single,
+        equals([
+          'dnf install -y php-pecl-imagick-im7',
+          "echo 'extension=imagick' | tee /etc/php.d/99-ponta-imagick.ini",
+        ]),
       );
     });
 
@@ -565,11 +686,11 @@ extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules
           exitCode: 0,
           stdout: '[PHP Modules]\nCore\nredis\n',
         ),
-        'dnf repoquery --qf [%{=NAME}\\n] php-* php85-php-*': (
+        'dnf repoquery --qf %{name}\\n php-* php85-php-*': (
           exitCode: 0,
           stdout: 'php85-php-pecl-redis6\n',
         ),
-        'dnf repoquery -l --qf [%{=NAME} %{FILENAMES}\\n] php-* php85-php-*': (
+        'dnf repoquery --qf %{name} %{files}\\n php-* php85-php-*': (
           exitCode: 0,
           stdout: 'php85-php-pecl-redis6 $extDir/redis.so\n',
         ),

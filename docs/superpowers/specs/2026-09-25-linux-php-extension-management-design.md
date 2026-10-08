@@ -157,13 +157,19 @@ Two queries are needed: **which packages exist**, and **what files each ships**.
 | Distro | Packages | File lists |
 |---|---|---|
 | Debian/Ubuntu | `apt-cache search --names-only php8.5-` — one `name - description` per line | `apt-file list -x '^php8\.5-'` — requires a one-time `apt-file update` |
-| RHEL/Fedora | `dnf repoquery --qf '[%{=NAME}\n]' 'php-*' 'php85-php-*'` | `dnf repoquery -l --qf '[%{=NAME} %{FILENAMES}\n]' 'php-*' 'php85-php-*'` — covers both modular and SCL layouts |
+| RHEL/Fedora | `dnf repoquery --qf '%{name}\n' 'php-*' 'php85-php-*'` | `dnf repoquery --qf '%{name} %{files}\n' 'php-*' 'php85-php-*'` (dnf5) **or** `dnf repoquery -l 'php-*' 'php85-php-*'` (dnf4) — covers both modular and SCL layouts |
 | Arch | `pacman -Ss php-` — `repo/name version` then an indented description | `pacman -Fl <pkg>…` — requires a one-time `pacman -Fy` |
+
+**dnf4 vs dnf5.** Fedora 41+ and EL10 ship dnf5, where `/usr/bin/dnf` is dnf5; EL7/8/9 ship dnf4. The two versions need different commands, and the RHEL driver emits both so the manager can use whichever the host runs:
+
+- **Names.** dnf5 dropped the rpm `%{=NAME}` tag: `--qf '[%{=NAME}\n]'` prints the literal `[%{=NAME}` and `]`, so the package list parses to nothing. `%{name}` is accepted by both versions.
+- **Files.** dnf5 has a `%{files}` tag and prints one **block** per package — the first line is `pkg /path`, every later file is a bare path, and a blank line separates packages. dnf4 has no file tag at all for `--qf`, and forbids `-l` together with `--qf` (exit 2), so it can only print bare paths via `-l`. The manager tries the driver's file-list commands in order and keeps the first that parses to something.
+- **Owner resolution.** A dnf4 file list names no package, so those extensions are listed with a null package and their `.so` decides "installed". When one of them is enabled and its `.so` is absent, the manager names the owner on demand with `dnf repoquery --qf '%{name}\n' -f '<extension_dir>/<ext>.so'`. `-f` is a *filter*, not a display mode, so it combines with `--qf` on both dnf4 and dnf5 — the one form that prints `pkg` for a known path. The path must be exact; a `*` glob matches nothing here.
 
 Output formats, verified against each tool's own source or test suite:
 
 - `apt-file list -x <regex>` prints `pkg: /path`, one line per file, sorted and de-duplicated (`lib/apt_file.pl`, `print_winners` → `print "$key: $_\n"`; the bundled test `list_regex1` expects `bash-debug: /usr/debug/bin/bash`). The leading `/` is present.
-- `dnf repoquery -l --qf '[%{=NAME} %{FILENAMES}\n]'` prints `pkg /path` per line, with the leading `/` (rpm's documented "annotated file list", `rpm-queryformat.7`).
+- `dnf repoquery --qf '%{name} %{files}\n'` (dnf5) prints `pkg /path` on the block's first line and a bare `/path` on each following line, with the leading `/`. `dnf repoquery -l` (dnf4) prints one bare `/path` per line with no package at all.
 - `pacman -Fl <pkg>` prints `pkg /path` per line, **without** a leading `/` (`src/pacman/files.c`, `dump_file_list`: `printf("%s ", pkgname); printf("%s\n", file->name)` where `file->name` is relative to the root). The Arch driver must prepend `/` before comparing against `extension_dir`.
 
 The separator is deliberately a **space, not a pipe**. An earlier draft used `%{=NAME}|%{FILENAMES}`, which `PackageCommandValidator` rejects: it splits every command on `|` to validate each pipeline segment separately, so a query format containing `|` becomes two segments and the second has no allowed leading binary. A space cannot appear in an rpm package name, so splitting on the first space is unambiguous.

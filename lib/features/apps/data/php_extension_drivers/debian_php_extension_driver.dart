@@ -55,7 +55,7 @@ class DebianPhpExtensionDriver extends LinuxPhpExtensionDriver {
   }
 
   @override
-  ({String package, String path})? parseFileListLine(String line) {
+  ({String? package, String path})? parseFileListLine(String line) {
     final sep = line.indexOf(': ');
     if (sep <= 0) return null;
     return (package: line.substring(0, sep), path: line.substring(sep + 2));
