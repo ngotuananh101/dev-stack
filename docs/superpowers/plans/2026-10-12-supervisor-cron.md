@@ -1683,6 +1683,8 @@ void main() {
     // Advance one minute so the seeded next-run is due.
     now = DateTime(2026, 10, 12, 8, 31);
     await scheduler.tick();
+    // tick() fires the run without awaiting it, so drain its microtasks first.
+    await Future<void>.delayed(Duration.zero);
     expect(ranCommands, ['echo hi']);
 
     // A second tick at the same instant must not re-fire.
@@ -1761,7 +1763,10 @@ void main() {
   });
 
   test('history is capped at 20 records, newest first', () async {
+    // Advance the injected clock between runs: a fixed clock would give every
+    // record the same startedAt, so "newest first" could not be observed.
     for (var i = 0; i < 25; i++) {
+      now = DateTime(2026, 10, 12, 8, 30).add(Duration(minutes: i));
       await scheduler.runNow(jobs.first);
     }
     final history = scheduler.historyFor(1);
@@ -1966,7 +1971,12 @@ class CronSchedulerService {
         _nextRuns[job.id] = expr.nextOccurrence(now);
 
         if (_running.contains(job.id)) continue; // no overlap
-        await _execute(job);
+
+        // Fire without awaiting: a long-running command must not stall the
+        // other due jobs in this same pass (the `_ticking` guard would
+        // otherwise make the next periodic tick a no-op for its whole
+        // duration). Per-job no-overlap is enforced by `_running`.
+        unawaited(_execute(job));
       }
 
       // Drop bookkeeping for jobs that no longer exist.
