@@ -43,6 +43,7 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
                   sessions: sessions,
                   onStart: _start,
                   onStop: _stop,
+                  onCancel: _cancel,
                   onEdit: _edit,
                   onDelete: _delete,
                   onViewLogs: (tunnel) => _viewLogs(tunnel, sessions[tunnel.id]),
@@ -128,6 +129,16 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Stopping tunnel...'),
+        backgroundColor: AppColors.surfaceLight,
+      ),
+    );
+  }
+
+  void _cancel(int tunnelId) {
+    ref.read(tunnelSessionsProvider.notifier).cancelStart(tunnelId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cancelling tunnel start...'),
         backgroundColor: AppColors.surfaceLight,
       ),
     );

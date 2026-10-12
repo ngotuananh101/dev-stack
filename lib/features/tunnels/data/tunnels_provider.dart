@@ -46,5 +46,6 @@ class TunnelSessionsNotifier extends Notifier<Map<int, TunnelSession>> {
 
   Future<void> start(TunnelModel tunnel) => _manager.startTunnel(tunnel);
   Future<void> stop(int tunnelId) => _manager.stopTunnel(tunnelId);
+  Future<void> cancelStart(int tunnelId) => _manager.cancelStart(tunnelId);
   Future<void> delete(int tunnelId) => _manager.deleteTunnel(tunnelId);
 }

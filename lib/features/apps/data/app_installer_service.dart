@@ -40,6 +40,17 @@ typedef InstallationProgressCallback =
     });
 typedef InstallationLogCallback = void Function(String message);
 
+/// Thrown when the user cancels an installation in progress. Callers treat it
+/// as a deliberate stop, not a failure, and must not surface an error.
+class InstallationCancelledException implements Exception {
+  final String message;
+
+  InstallationCancelledException([this.message = 'Installation cancelled']);
+
+  @override
+  String toString() => 'InstallationCancelledException: $message';
+}
+
 class ChecksumMismatchException implements Exception {
   final String message;
   final String expected;
@@ -59,14 +70,16 @@ class AppInstallerService {
   final LogService _logger;
   final Ref _ref;
   static String get defaultBaseDir => AppConfig.appsDir;
-  final _dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(minutes: 10),
-    ),
-  );
+  final Dio _dio;
 
-  AppInstallerService(this._logger, this._ref);
+  AppInstallerService(this._logger, this._ref, {Dio? dio})
+      : _dio = dio ??
+            Dio(
+              BaseOptions(
+                connectTimeout: const Duration(seconds: 30),
+                receiveTimeout: const Duration(minutes: 10),
+              ),
+            );
 
   static Future<String> calculateFileChecksum(File file) async {
     final stream = file.openRead();
@@ -267,6 +280,7 @@ class AppInstallerService {
     InstallationProgressCallback? onProgress,
     InstallationLogCallback? onLog,
     Future<ProcessResult> Function(String, List<String>)? runProcess,
+    CancelToken? cancelToken,
   }) async {
     void logInfo(String msg) {
       _logger.info(msg);
@@ -287,6 +301,7 @@ class AppInstallerService {
         logInfo: logInfo,
         logError: logError,
         runProcess: runProcess,
+        cancelToken: cancelToken,
       );
     }
 
@@ -337,7 +352,14 @@ class AppInstallerService {
         onProgress,
         logInfo,
         expectedSha256: expectedSha256,
+        cancelToken: cancelToken,
       );
+
+      // Everything past the download is local work (extract, detect, configure)
+      // that cannot be interrupted mid-file; honour a cancel between steps so a
+      // user who cancelled while the download finished does not get a surprise
+      // half-installed app.
+      _throwIfCancelled(cancelToken);
 
       // Step 3: Extract payload
       await _extractPayload(
@@ -358,10 +380,12 @@ class AppInstallerService {
       );
 
       // Step 4: Flatten directory if needed
+      _throwIfCancelled(cancelToken);
       onProgress?.call(0.92, 'Preparing files...');
       await _flattenDirectory(installPath, logInfo);
 
       // Step 5: Detect executable and CLI files
+      _throwIfCancelled(cancelToken);
       logInfo('Detecting executable and CLI files...');
       onProgress?.call(0.94, 'Detecting files...');
       final detected = await _detectFiles(
@@ -393,28 +417,46 @@ class AppInstallerService {
     }
   }
 
+  /// Throws [InstallationCancelledException] when [token] has been cancelled.
+  /// Used at step boundaries, where interrupting is safe.
+  void _throwIfCancelled(CancelToken? token) {
+    if (token != null && token.isCancelled) {
+      throw InstallationCancelledException();
+    }
+  }
+
   Future<void> _downloadPayload(
     String url,
     File tempFile,
     InstallationProgressCallback? onProgress,
     void Function(String) logInfo, {
     String? expectedSha256,
+    CancelToken? cancelToken,
   }) async {
-    await _dio.download(
-      url,
-      tempFile.path,
-      onReceiveProgress: (received, total) {
-        if (total != -1) {
-          final progress = (received / total) * 0.7 + 0.1; // 10% to 80%
-          onProgress?.call(
-            progress,
-            'Downloading...',
-            downloadedBytes: received,
-            totalBytes: total,
-          );
-        }
-      },
-    );
+    try {
+      await _dio.download(
+        url,
+        tempFile.path,
+        cancelToken: cancelToken,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            final progress = (received / total) * 0.7 + 0.1; // 10% to 80%
+            onProgress?.call(
+              progress,
+              'Downloading...',
+              downloadedBytes: received,
+              totalBytes: total,
+            );
+          }
+        },
+      );
+    } on DioException catch (e) {
+      // A cancelled download is a deliberate stop, not a network failure.
+      if (e.type == DioExceptionType.cancel || CancelToken.isCancel(e)) {
+        throw InstallationCancelledException();
+      }
+      rethrow;
+    }
     logInfo('Download completed');
     onProgress?.call(0.8, 'Download completed');
 
@@ -2934,7 +2976,9 @@ security:
     required Function(String) logInfo,
     required Function(String) logError,
     Future<ProcessResult> Function(String, List<String>)? runProcess,
+    CancelToken? cancelToken,
   }) async {
+    _throwIfCancelled(cancelToken);
     logInfo('Installing ${app.name} via package manager...');
     onProgress?.call(0.1, 'Detecting distribution...');
 

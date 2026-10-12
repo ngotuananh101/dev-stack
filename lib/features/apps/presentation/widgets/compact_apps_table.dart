@@ -20,6 +20,7 @@ class CompactAppsTable extends StatelessWidget {
   final Future<void> Function(AppModel) onRestartService;
   final Future<void> Function(String) onChangeDefault;
   final Future<void> Function(AppModel) onOpen;
+  final void Function(AppModel) onCancelInstall;
 
   const CompactAppsTable({
     super.key,
@@ -31,6 +32,7 @@ class CompactAppsTable extends StatelessWidget {
     required this.onRestartService,
     required this.onChangeDefault,
     required this.onOpen,
+    required this.onCancelInstall,
   });
 
   IconData _getAppIcon(String appId) {
@@ -531,6 +533,9 @@ class CompactAppsTable extends StatelessWidget {
             isUpdate: isUpdate,
             onInstall: () {
               onToggleInstall(app);
+            },
+            onCancel: () {
+              onCancelInstall(app);
             },
             onClose: () {
               app.installLogs = [];

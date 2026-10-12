@@ -312,7 +312,15 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
             onPressed: () =>
                 ref.read(tunnelSessionsProvider.notifier).start(tunnel),
           )
-        else if (!isConnecting)
+        else if (isConnecting)
+          AppButton(
+            label: 'Cancel',
+            style: AppButtonStyle.danger,
+            icon: const Icon(LucideIcons.x, size: 14),
+            onPressed: () =>
+                ref.read(tunnelSessionsProvider.notifier).cancelStart(tunnel.id),
+          )
+        else
           AppButton(
             label: 'Stop',
             style: AppButtonStyle.danger,
