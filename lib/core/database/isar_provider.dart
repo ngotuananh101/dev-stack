@@ -10,6 +10,7 @@ import '../../features/settings/domain/app_settings.dart';
 import '../../features/sites/domain/site_model.dart';
 import '../../features/tunnels/domain/tunnel_model.dart';
 import '../../features/cron/domain/cron_job.dart';
+import '../../features/supervisor/domain/supervisor_program.dart';
 
 part 'isar_provider.g.dart';
 
@@ -60,6 +61,7 @@ class IsarInstance {
           SiteModelSchema,
           TunnelModelSchema,
           CronJobSchema,
+          SupervisorProgramSchema,
         ],
         directory: dir.path,
       );
@@ -104,6 +106,7 @@ class IsarInstance {
           SiteModelSchema,
           TunnelModelSchema,
           CronJobSchema,
+          SupervisorProgramSchema,
         ],
         directory: dir.path,
       );
