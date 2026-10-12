@@ -44,6 +44,11 @@ on:
         default: ''
         required: false
 
+# The repo defaults the workflow token to read-only, so declare it explicitly.
+# Baseline is read; the release job elevates to contents: write to publish.
+permissions:
+  contents: read
+
 jobs:
   build-windows:
     name: Build Windows
@@ -387,6 +392,10 @@ jobs:
     needs: [build-windows, build-linux]
     if: ${{ always() && (github.event.inputs.create_release == 'true' || github.event.inputs.create_release == true) }}
     runs-on: ubuntu-latest
+    # Publishing a release writes to the repository's releases, which the
+    # read-only workflow baseline does not permit.
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
