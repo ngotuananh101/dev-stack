@@ -12,6 +12,7 @@ import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/shared/widgets/app_button.dart';
 import 'package:dev_stack/shared/widgets/app_modal_header.dart';
 import 'package:dev_stack/shared/widgets/app_text_field.dart';
+import 'package:dev_stack/shared/utils/modal_sizing.dart';
 
 class AddRedisKeyModal extends ConsumerStatefulWidget {
   final AppModel engine;
@@ -274,7 +275,7 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
     return Material(
       color: Colors.transparent,
       child: Container(
-        width: 550,
+        width: modalDimensions(context, ModalSize.md).width,
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),

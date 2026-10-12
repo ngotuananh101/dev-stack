@@ -6,6 +6,7 @@ import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 import '../../data/databases_provider.dart';
 import '../../domain/database_record.dart';
 import '../../../apps/domain/app_model.dart';
@@ -122,7 +123,7 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
     return Material(
       color: Colors.transparent,
       child: Container(
-        width: 450,
+        width: modalDimensions(context, ModalSize.sm).width,
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),

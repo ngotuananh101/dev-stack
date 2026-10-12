@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 import '../../domain/app_model.dart';
 import '../../data/pyenv_provider.dart';
 
@@ -47,10 +48,11 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
   @override
   Widget build(BuildContext context) {
     final stateAsync = ref.watch(pyenvProvider);
+    final dims = modalDimensions(context, ModalSize.lg);
 
     return Container(
-      width: 700,
-      height: 600,
+      width: dims.width,
+      height: dims.height,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),

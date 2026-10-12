@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:quickalert/quickalert.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_size.dart';
+import 'modal_sizing.dart';
 
 class AppDialogs {
   static Future<void> showConfirm({
@@ -29,7 +30,7 @@ class AppDialogs {
       titleColor: AppColors.textPrimary,
       textColor: AppColors.textSecondary,
       confirmBtnColor: type == QuickAlertType.warning ? AppColors.errorStrong : AppColors.successStrong,
-      width: 420,
+      width: kModalWidthSm,
       confirmBtnTextStyle: const TextStyle(
         color: AppColors.textOnColor,
         fontSize: AppTextSize.xs,
@@ -58,7 +59,7 @@ class AppDialogs {
       backgroundColor: AppColors.surface,
       titleColor: AppColors.textPrimary,
       textColor: AppColors.textSecondary,
-      width: 420,
+      width: kModalWidthSm,
       confirmBtnTextStyle: const TextStyle(
         color: AppColors.textOnColor,
         fontSize: AppTextSize.xs,
@@ -82,7 +83,7 @@ class AppDialogs {
       backgroundColor: AppColors.surface,
       titleColor: AppColors.textPrimary,
       textColor: AppColors.textSecondary,
-      width: 420,
+      width: kModalWidthSm,
       confirmBtnTextStyle: const TextStyle(
         color: AppColors.textOnColor,
         fontSize: AppTextSize.xs,
@@ -106,7 +107,7 @@ class AppDialogs {
       backgroundColor: AppColors.surface,
       titleColor: AppColors.textPrimary,
       textColor: AppColors.textSecondary,
-      width: 420,
+      width: kModalWidthSm,
       confirmBtnTextStyle: const TextStyle(
         color: AppColors.textOnColor,
         fontSize: AppTextSize.xs,

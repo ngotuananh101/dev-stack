@@ -6,6 +6,7 @@ import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 import '../../domain/tunnel_model.dart';
 import '../../data/tunnel_manager_service.dart';
 import '../../../sites/data/sites_provider.dart';
@@ -109,16 +110,17 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
   @override
   Widget build(BuildContext context) {
     final sitesAsync = ref.watch(sitesProvider);
+    final dims = modalDimensions(context, ModalSize.md);
 
     return Dialog(
       backgroundColor: AppColors.surface,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      insetPadding: dims.insetPadding,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.border),
       ),
       child: SizedBox(
-        width: 560,
+        width: dims.width,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

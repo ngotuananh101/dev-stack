@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:dev_stack/shared/widgets/code_editor/config_code_editor.dart';
+import 'package:dev_stack/shared/utils/modal_sizing.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -303,9 +304,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
   // ─── Build ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final dims = modalDimensions(context, ModalSize.xl);
     return Container(
-      width: 900,
-      height: 700,
+      width: dims.width,
+      height: dims.height,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -804,6 +806,8 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: 8,
           fontWeight: FontWeight.bold,
@@ -856,11 +860,18 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                 ),
                 if (ext.isZend) ...[
                   const SizedBox(width: 4),
-                  _buildExtensionBadge('ZEND', AppColors.accent),
+                  Flexible(
+                    child: _buildExtensionBadge('ZEND', AppColors.accent),
+                  ),
                 ],
                 if (!ext.isInstalled) ...[
                   const SizedBox(width: 4),
-                  _buildExtensionBadge('Not installed', AppColors.warning),
+                  Flexible(
+                    child: _buildExtensionBadge(
+                      'Not installed',
+                      AppColors.warning,
+                    ),
+                  ),
                 ],
                 if (ext.packageName != null) ...[
                   const SizedBox(width: 4),

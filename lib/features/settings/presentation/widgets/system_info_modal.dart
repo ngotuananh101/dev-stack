@@ -8,6 +8,7 @@ import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 import '../../../system/data/system_info_provider.dart';
 import '../../../system/domain/system_info.dart';
 
@@ -17,13 +18,14 @@ class SystemInfoModal extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final systemInfoAsync = ref.watch(systemInfoStateProvider);
+    final dims = modalDimensions(context, ModalSize.xl);
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
+      insetPadding: dims.insetPadding,
       child: Container(
-        width: 800,
-        height: 600,
+        width: dims.width,
+        height: dims.height,
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),

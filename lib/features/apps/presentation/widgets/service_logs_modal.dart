@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/terminal_log_view.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 import '../../domain/app_model.dart';
 
 class ServiceLogsModal extends ConsumerWidget {
@@ -17,9 +18,10 @@ class ServiceLogsModal extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final dims = modalDimensions(context, ModalSize.xl);
     return SizedBox(
-      width: 800,
-      height: 600,
+      width: dims.width,
+      height: dims.height,
       child: TerminalLogView(
         title: 'Service Logs: ${app.name}',
         lines: app.serviceLogs,

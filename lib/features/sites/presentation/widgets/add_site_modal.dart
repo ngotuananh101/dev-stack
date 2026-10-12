@@ -12,6 +12,7 @@ import '../../data/sites_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 
 class AddSiteModal extends ConsumerStatefulWidget {
   final VoidCallback onClose;
@@ -203,20 +204,21 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
           }
         }
 
-        return _buildUI(phpApps);
+        return _buildUI(context, phpApps);
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error loading apps: $e')),
     );
   }
 
-  Widget _buildUI(List<AppModel> phpApps) {
+  Widget _buildUI(BuildContext context, List<AppModel> phpApps) {
+    final dims = modalDimensions(context, ModalSize.xl);
     return Material(
       color: Colors.transparent,
       child: Container(
-        width: 620,
+        width: dims.width,
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * kModalMaxHeightFraction,
         ),
         decoration: BoxDecoration(
           color: AppColors.surface,

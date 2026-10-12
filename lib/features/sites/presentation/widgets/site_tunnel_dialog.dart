@@ -9,6 +9,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/status_chip.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 import '../../../tunnels/data/tunnels_provider.dart';
 import '../../../tunnels/data/tunnel_manager_service.dart';
 import '../../../tunnels/domain/tunnel_model.dart';
@@ -43,16 +44,17 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
   Widget build(BuildContext context) {
     final tunnelsAsync = ref.watch(tunnelsStreamProvider);
     final sessions = ref.watch(tunnelSessionsProvider);
+    final dims = modalDimensions(context, ModalSize.md);
 
     return Dialog(
       backgroundColor: AppColors.surface,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      insetPadding: dims.insetPadding,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.border),
       ),
       child: SizedBox(
-        width: 500,
+        width: dims.width,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
