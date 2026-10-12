@@ -157,4 +157,40 @@ class CronExpression {
       return e.message;
     }
   }
+
+  /// The first matching minute strictly after [from].
+  ///
+  /// Scans forward one minute at a time from `from + 1 minute`, bounded by a
+  /// 4-year horizon so an unsatisfiable schedule (e.g. `0 0 30 2 *`) returns
+  /// `null` instead of looping forever.
+  DateTime? nextOccurrence(DateTime from) {
+    final start = DateTime(from.year, from.month, from.day, from.hour, from.minute)
+        .add(const Duration(minutes: 1));
+    final horizon = DateTime(start.year + 4, start.month, start.day);
+
+    var candidate = start;
+    while (candidate.isBefore(horizon)) {
+      if (_matches(candidate)) return candidate;
+      candidate = candidate.add(const Duration(minutes: 1));
+    }
+    return null;
+  }
+
+  bool _matches(DateTime t) {
+    if (!minutes.contains(t.minute)) return false;
+    if (!hours.contains(t.hour)) return false;
+    if (!months.contains(t.month)) return false;
+
+    final domHit = daysOfMonth.contains(t.day);
+    // DateTime.weekday is 1=Mon..7=Sun; cron is 0=Sun..6=Sat.
+    final cronDow = t.weekday % 7;
+    final dowHit = daysOfWeek.contains(cronDow);
+
+    // Vixie cron: when both DOM and DOW are restricted, a day matches if
+    // EITHER matches. When only one is restricted, only that one gates.
+    if (domRestricted && dowRestricted) return domHit || dowHit;
+    if (domRestricted) return domHit;
+    if (dowRestricted) return dowHit;
+    return true;
+  }
 }
