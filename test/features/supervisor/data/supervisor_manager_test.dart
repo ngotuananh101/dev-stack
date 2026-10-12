@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:dev_stack/features/supervisor/data/supervisor_manager.dart';
 import 'package:dev_stack/features/supervisor/domain/supervisor_program.dart';
-import 'package:dev_stack/features/supervisor/domain/supervisor_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// A controllable stand-in for a spawned process. The test drives its exit

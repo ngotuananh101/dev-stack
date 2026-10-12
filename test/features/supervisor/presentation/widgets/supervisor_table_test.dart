@@ -47,7 +47,6 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
     int? stoppedId;
-    SupervisorProgram? startedProgram;
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
@@ -55,7 +54,7 @@ void main() {
           programs: [program],
           statuses: const {1: SupervisorStatus.running},
           pids: const {1: 4242},
-          onStart: (p) => startedProgram = p,
+          onStart: (_) {},
           onStop: (id) => stoppedId = id,
           onRestart: (_) {},
           onViewLogs: (_) {},
