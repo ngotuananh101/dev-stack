@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import '../../../../core/config/app_config.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 import '../../../../shared/widgets/terminal_log_view.dart';
 import '../../data/cli_process_manager.dart';
 import '../../domain/site_model.dart';
@@ -68,12 +69,13 @@ class _SiteLogsModalState extends ConsumerState<SiteLogsModal> {
 
   @override
   Widget build(BuildContext context) {
+    final dims = modalDimensions(context, ModalSize.xl);
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      insetPadding: dims.insetPadding,
       child: SizedBox(
-        width: 900,
-        height: 600,
+        width: dims.width,
+        height: dims.height,
         child: TerminalLogView(
           title: 'Logs: ${widget.site.domain}',
           lines: _lines,

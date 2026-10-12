@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/terminal_log_view.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 import '../../domain/tunnel_session.dart';
 
 class TunnelLogsModal extends StatelessWidget {
@@ -15,12 +16,14 @@ class TunnelLogsModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final logs = session?.logs ?? [];
+    final dims = modalDimensions(context, ModalSize.xl);
 
     return Dialog(
       backgroundColor: Colors.transparent,
+      insetPadding: dims.insetPadding,
       child: SizedBox(
-        width: 800,
-        height: 500,
+        width: dims.width,
+        height: dims.height,
         child: TerminalLogView(
           title: 'Logs - $tunnelName',
           lines: logs,

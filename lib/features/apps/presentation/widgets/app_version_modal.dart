@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 import '../../domain/app_conflict_policy.dart';
 import '../../domain/app_brand_resolver.dart';
 import '../../domain/app_model.dart';
@@ -61,7 +62,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
         (appState.status == 'installed' && appState.installLogs.isNotEmpty);
 
     return Container(
-      width: 550, // Slightly wider for logs
+      width: modalDimensions(context, ModalSize.md).width,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),

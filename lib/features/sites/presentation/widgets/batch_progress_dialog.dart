@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 import '../../domain/batch_models.dart';
 
 /// Modal dialog showing live batch progress with a Cancel button. Cancel is
@@ -30,11 +31,13 @@ class _BatchProgressDialogState extends State<BatchProgressDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final dims = modalDimensions(context, ModalSize.sm);
     return Dialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      insetPadding: dims.insetPadding,
       child: SizedBox(
-        width: 420,
+        width: dims.width,
         child: ValueListenableBuilder<BatchProgress>(
           valueListenable: widget.progress,
           builder: (context, p, _) {

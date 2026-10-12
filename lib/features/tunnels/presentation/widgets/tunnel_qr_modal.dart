@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 
 class TunnelQrModal extends StatelessWidget {
   final String tunnelName;
@@ -19,14 +20,16 @@ class TunnelQrModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dims = modalDimensions(context, ModalSize.sm);
     return Dialog(
       backgroundColor: AppColors.surface,
+      insetPadding: dims.insetPadding,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.border),
       ),
       child: SizedBox(
-        width: 360,
+        width: dims.width,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

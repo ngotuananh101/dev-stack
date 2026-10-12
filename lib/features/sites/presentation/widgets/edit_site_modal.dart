@@ -13,6 +13,7 @@ import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/code_editor/config_code_editor.dart';
+import '../../../../shared/utils/modal_sizing.dart';
 
 class EditSiteModal extends ConsumerStatefulWidget {
   final SiteModel site;
@@ -27,13 +28,14 @@ class EditSiteModal extends ConsumerStatefulWidget {
 class _EditSiteModalState extends ConsumerState<EditSiteModal> {
   @override
   Widget build(BuildContext context) {
+    final dims = modalDimensions(context, ModalSize.xl);
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      insetPadding: dims.insetPadding,
       child: Container(
-        width: 620,
+        width: dims.width,
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * kModalMaxHeightFraction,
         ),
         decoration: BoxDecoration(
           color: AppColors.surface,
