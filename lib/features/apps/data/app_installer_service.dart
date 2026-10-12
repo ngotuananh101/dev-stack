@@ -2755,7 +2755,6 @@ security:
   /// Extracts the PHP version prefix from an appId (e.g. `php82` -> `8.2`,
   /// `php83` -> `8.3`). Returns null if the appId doesn't follow the
   /// `php<major><minor>` convention.
-  @visibleForTesting
   static String? phpPrefixFor(String appId) {
     final match = RegExp(r'^php(\d)(\d+)$').firstMatch(appId);
     if (match == null) return null;
@@ -2878,7 +2877,6 @@ security:
   /// `pkexec` (PolicyKit) to present a native OS authorization dialog to the user.
   /// This ensures that all commands execute under a single authorization prompt rather than
   /// prompting repeatedly or failing in non-interactive GUI environments.
-  @visibleForTesting
   static Future<ProcessResult> executePackageManagerCommands({
     required List<String> commands,
     required void Function(String) logInfo,

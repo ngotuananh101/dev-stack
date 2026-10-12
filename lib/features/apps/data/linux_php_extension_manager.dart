@@ -21,7 +21,7 @@ class LinuxPhpDiscoveryUnavailable implements Exception {
   String toString() => 'LinuxPhpDiscoveryUnavailable: $message';
 }
 
-typedef _ElevatedRunner =
+typedef ElevatedRunner =
     Future<ProcessResult> Function({
       required List<String> commands,
       required void Function(String) logInfo,
@@ -35,7 +35,7 @@ class LinuxPhpExtensionManager {
   final LinuxPhpIntrospector _introspector;
   final LinuxPhpExtensionDriver _driver;
   final Future<ProcessResult> Function(String, List<String>) _runProcess;
-  final _ElevatedRunner _runElevated;
+  final ElevatedRunner _runElevated;
   final Future<void> Function(int pid) _reloader;
   final bool Function(String path) _fileExists;
 
@@ -43,7 +43,7 @@ class LinuxPhpExtensionManager {
     required LinuxPhpIntrospector introspector,
     required LinuxPhpExtensionDriver driver,
     required Future<ProcessResult> Function(String, List<String>) runProcess,
-    _ElevatedRunner? runElevated,
+    ElevatedRunner? runElevated,
     Future<void> Function(int pid)? reloader,
     bool Function(String path)? fileExists,
   }) : _introspector = introspector,
@@ -66,7 +66,7 @@ class LinuxPhpExtensionManager {
            }),
        _fileExists = fileExists ?? ((path) => File(path).existsSync());
 
-  static _ElevatedRunner _buildDefaultElevatedRunner(
+  static ElevatedRunner _buildDefaultElevatedRunner(
     Future<ProcessResult> Function(String, List<String>) runProcess,
   ) {
     return ({

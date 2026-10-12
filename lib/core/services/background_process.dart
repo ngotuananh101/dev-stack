@@ -77,7 +77,6 @@ abstract final class BackgroundProcess {
   /// `SIG_DFL` in `fpm_signals_init_child()`, so signalling the whole process
   /// group would terminate every worker instead of triggering a graceful
   /// reload. Upstream systemd uses `ExecReload=/bin/kill -USR2 $MAINPID`.
-  @visibleForTesting
   static ({String executable, List<String> arguments}) buildLinuxReloadArgs(int pid) {
     return (executable: 'kill', arguments: ['-USR2', '--', '$pid']);
   }

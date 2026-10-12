@@ -1,12 +1,10 @@
 import 'dart:io';
 
-import 'package:dev_stack/features/apps/data/linux_php_extension_driver.dart';
 import 'package:dev_stack/features/apps/data/linux_php_extension_manager.dart';
 import 'package:dev_stack/features/apps/data/linux_php_introspector.dart';
 import 'package:dev_stack/features/apps/data/php_extension_drivers/debian_php_extension_driver.dart';
 import 'package:dev_stack/features/apps/data/php_settings_provider.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
-import 'package:dev_stack/features/apps/domain/php_extension.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Sentinel so `_linuxPhpApp(execFilePath: null)` really means "no binary",
