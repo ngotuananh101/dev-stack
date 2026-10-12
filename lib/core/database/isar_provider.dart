@@ -9,6 +9,7 @@ import '../../features/databases/domain/database_record.dart';
 import '../../features/settings/domain/app_settings.dart';
 import '../../features/sites/domain/site_model.dart';
 import '../../features/tunnels/domain/tunnel_model.dart';
+import '../../features/cron/domain/cron_job.dart';
 
 part 'isar_provider.g.dart';
 
@@ -58,6 +59,7 @@ class IsarInstance {
           AppSettingsSchema,
           SiteModelSchema,
           TunnelModelSchema,
+          CronJobSchema,
         ],
         directory: dir.path,
       );
@@ -101,6 +103,7 @@ class IsarInstance {
           AppSettingsSchema,
           SiteModelSchema,
           TunnelModelSchema,
+          CronJobSchema,
         ],
         directory: dir.path,
       );
