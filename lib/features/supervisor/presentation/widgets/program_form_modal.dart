@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -253,8 +254,18 @@ class _ProgramFormModalState extends ConsumerState<ProgramFormModal> {
                           Expanded(
                             child: AppTextField(
                               controller: _workingDir,
-                              hint: 'e.g. /srv/app',
+                              hint: 'e.g. /srv/app (optional)',
                               prefixIcon: LucideIcons.folder,
+                              // Optional: empty is allowed and means "inherit
+                              // the app's working directory". A non-empty value
+                              // must point at an existing directory.
+                              validator: (v) {
+                                final dir = (v ?? '').trim();
+                                if (dir.isEmpty) return null;
+                                return Directory(dir).existsSync()
+                                    ? null
+                                    : 'Directory does not exist';
+                              },
                             ),
                           ),
                           const SizedBox(width: 8),

@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:isolate';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +16,15 @@ import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/cron_provider.dart';
 import '../../domain/cron_expression.dart';
 import '../../domain/cron_job.dart';
+
+/// Computes the next occurrence for [schedule] strictly after [from].
+///
+/// A top-level function (no `this` capture) so it can run in a background
+/// isolate via [Isolate.run]: an unsatisfiable expression scans the domain's
+/// full 4-year horizon (~2 s), which must never block the UI thread.
+DateTime? _nextOccurrenceFor(({String schedule, DateTime from}) input) {
+  return CronExpression.parse(input.schedule).nextOccurrence(input.from);
+}
 
 /// Create/edit form for a cron job: schedule text with quick presets, live
 /// validation, and a "next run" preview.
@@ -44,6 +56,17 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
   late bool _enabled;
   bool _saving = false;
 
+  /// Cached "next run" preview and the schedule it was computed from, plus the
+  /// debounce timer that recomputes it off the keystroke path.
+  DateTime? _preview;
+  String? _previewSchedule;
+  bool _previewComputing = false;
+  Timer? _previewDebounce;
+
+  /// False until the first frame has been built, so [initState] can seed the
+  /// preview without calling `setState` before the widget is mounted.
+  bool _ready = false;
+
   @override
   void initState() {
     super.initState();
@@ -53,15 +76,50 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
     _command = TextEditingController(text: initial?.command ?? '');
     _workingDir = TextEditingController(text: initial?.workingDir ?? '');
     _enabled = initial?.enabled ?? true;
+    _schedulePreview(_schedule.text.trim());
   }
 
   @override
   void dispose() {
+    _previewDebounce?.cancel();
     _name.dispose();
     _schedule.dispose();
     _command.dispose();
     _workingDir.dispose();
     super.dispose();
+  }
+
+  /// Recomputes the "next run" preview for [scheduleText] after a short debounce
+  /// and off the UI thread.
+  ///
+  /// An unsatisfiable expression (e.g. `0 0 30 2 *`) makes
+  /// [CronExpression.nextOccurrence] scan its full 4-year horizon (~2 s); doing
+  /// that on every `setState` would freeze the dialog. The expression's own
+  /// semantics are unchanged — only where/when it is evaluated.
+  void _schedulePreview(String scheduleText) {
+    _previewDebounce?.cancel();
+    if (CronExpression.validate(scheduleText) != null) {
+      // Invalid: the error text is shown instead of a preview.
+      _preview = null;
+      _previewSchedule = null;
+      _previewComputing = false;
+      if (_ready) setState(() {});
+      return;
+    }
+    _previewComputing = true;
+    if (_ready) setState(() {});
+    _previewDebounce = Timer(const Duration(milliseconds: 250), () async {
+      final from = DateTime.now();
+      final next = await Isolate.run(
+        () => _nextOccurrenceFor((schedule: scheduleText, from: from)),
+      );
+      if (!mounted || _schedule.text.trim() != scheduleText) return;
+      setState(() {
+        _preview = next;
+        _previewSchedule = scheduleText;
+        _previewComputing = false;
+      });
+    });
   }
 
   Future<void> _pickDirectory() async {
@@ -124,14 +182,16 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
 
   @override
   Widget build(BuildContext context) {
+    _ready = true;
     final dims = modalDimensions(context, ModalSize.lg);
     final isEditing = widget.initialJob != null;
 
     final scheduleText = _schedule.text.trim();
     final error = CronExpression.validate(scheduleText);
-    final preview = error == null
-        ? CronExpression.parse(scheduleText).nextOccurrence(DateTime.now())
-        : null;
+    // The preview is computed asynchronously (debounced, off the UI thread); a
+    // cached value is only valid for the schedule it was computed from.
+    final previewReady = _previewSchedule == scheduleText;
+    final preview = previewReady ? _preview : null;
     final presetValue = _presets.containsKey(scheduleText) ? scheduleText : null;
 
     return Dialog(
@@ -177,7 +237,7 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
                               controller: _schedule,
                               hint: '*/5 * * * * or @daily',
                               prefixIcon: LucideIcons.clock,
-                              onChanged: (_) => setState(() {}),
+                              onChanged: (v) => _schedulePreview(v.trim()),
                               validator: (v) =>
                                   CronExpression.validate((v ?? '').trim()),
                             ),
@@ -197,9 +257,11 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
                         )
                       else
                         Text(
-                          preview == null
-                              ? 'No matching time within 4 years.'
-                              : 'Next run: ${_formatNext(preview)}',
+                          _previewComputing && !previewReady
+                              ? 'Computing next run…'
+                              : preview == null
+                                  ? 'No matching time within 4 years.'
+                                  : 'Next run: ${_formatNext(preview)}',
                           style: const TextStyle(
                             color: AppColors.textMuted,
                             fontSize: AppTextSize.xxs,
@@ -360,6 +422,7 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
           onChanged: (v) {
             if (v == null) return;
             setState(() => _schedule.text = v);
+            _schedulePreview(v);
           },
         ),
       ),

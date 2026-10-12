@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dev_stack/features/cron/data/cron_scheduler_service.dart';
 import 'package:dev_stack/features/cron/domain/cron_job.dart';
@@ -152,5 +153,97 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 10));
     await sub.cancel();
     expect(seen, contains(1));
+  });
+
+  group('real runner (C1)', () {
+    test('runs a command with arguments through a shell', () async {
+      // No `runner:` injection: this exercises `_defaultRunner`. Before the fix
+      // it passed the whole command as the executable with `runInShell: true`,
+      // so `echo cron-ok` was looked up as a program literally named
+      // "echo cron-ok" and exited 127.
+      final real = CronSchedulerService(
+        clock: () => now,
+        loadJobs: () async => jobs,
+        updateJob: (j) async => persisted.add(j),
+      );
+      addTearDown(real.dispose);
+
+      final job = CronJob(
+        id: 7,
+        name: 'real',
+        schedule: '* * * * *',
+        command: 'echo cron-ok',
+      );
+      await real.runNow(job);
+
+      final record = real.historyFor(7).first;
+      expect(record.exitCode, 0);
+      expect(record.output, contains('cron-ok'));
+    });
+
+    test('caps combined output with a truncation marker', () async {
+      final real = CronSchedulerService(
+        clock: () => now,
+        loadJobs: () async => const <CronJob>[],
+        updateJob: (_) async {},
+      );
+      addTearDown(real.dispose);
+
+      // Emit far more than the cap (POSIX only; Windows has no `head`).
+      final job = CronJob(
+        id: 8,
+        name: 'noisy',
+        schedule: '* * * * *',
+        command: Platform.isWindows
+            ? 'for /L %i in (1,1,5000) do @echo 0123456789'
+            : 'yes 0123456789 | head -n 5000',
+      );
+      await real.runNow(job);
+
+      final record = real.historyFor(8).first;
+      expect(record.exitCode, 0);
+      expect(record.output.length,
+          lessThanOrEqualTo(CronSchedulerService.maxOutputChars + 32));
+      expect(record.output, endsWith('[output truncated]'));
+    });
+  });
+
+  group('schedule edits (I3)', () {
+    test('a changed schedule takes effect on the next tick', () async {
+      jobs = [job(schedule: '@daily')];
+      await scheduler.tick(); // seed @daily (next run is tomorrow)
+      expect(ranCommands, isEmpty);
+
+      // The user edits the schedule to "every minute"; the following tick must
+      // re-seed from the new expression instead of keeping tomorrow's run.
+      jobs = [job(schedule: '* * * * *')];
+      await scheduler.tick();
+      expect(ranCommands, isEmpty); // now 08:30; next run is 08:31
+
+      now = DateTime(2026, 10, 12, 8, 31);
+      await scheduler.tick();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(ranCommands, ['echo hi']);
+    });
+
+    test('an unsatisfiable schedule can recover once edited', () async {
+      // Feb 30 can never match; before the fix its `null` next-run was cached
+      // permanently and editing it did nothing.
+      jobs = [job(schedule: '0 0 30 2 *')];
+      now = DateTime(2026, 10, 12, 9, 0);
+      await scheduler.tick();
+      expect(ranCommands, isEmpty);
+
+      jobs = [job(schedule: '* * * * *')];
+      await scheduler.tick(); // re-seed from the new expression
+      expect(ranCommands, isEmpty);
+
+      now = DateTime(2026, 10, 12, 9, 1);
+      await scheduler.tick();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(ranCommands, ['echo hi']);
+    });
   });
 }

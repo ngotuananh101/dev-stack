@@ -46,6 +46,7 @@ void main() {
     int maxRestarts = 5,
     bool autoRestart = true,
     bool enabled = true,
+    int restartDelaySeconds = 0,
   }) =>
       SupervisorProgram(
         id: 1,
@@ -55,7 +56,7 @@ void main() {
         autoRestart: autoRestart,
         maxRestarts: maxRestarts,
         restartWindowSeconds: 60,
-        restartDelaySeconds: 0,
+        restartDelaySeconds: restartDelaySeconds,
         enabled: enabled,
       );
 
@@ -143,5 +144,101 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 10));
     await sub.cancel();
     expect(seen, contains(1));
+  });
+
+  test('statuses exposes the current status of every known program', () async {
+    expect(manager.statuses, isEmpty);
+    await manager.start(program());
+    expect(manager.statuses[1], SupervisorStatus.running);
+  });
+
+  group('backoff (M8)', () {
+    test('delays follow 2, 4, 8, ... and cap at 60 s', () async {
+      final recorded = <Duration>[];
+      final localSpawner = _FakeSpawner();
+      final local = SupervisorManager(
+        logsDirectory: tempDir.path,
+        spawner: localSpawner.spawn,
+        treeKiller: (_) async {},
+        delay: (d) async => recorded.add(d),
+      );
+      addTearDown(() => local.stopAll());
+
+      // Base 2 s, maxRestarts high enough that the cap is reached before the
+      // watchdog gives up.
+      await local.start(program(maxRestarts: 20, restartDelaySeconds: 2));
+
+      // Crash each spawned process in turn, letting the (instant) delay run.
+      for (var i = 0; i < 6; i++) {
+        if (i < localSpawner.spawned.length) {
+          localSpawner.spawned[i].exit(1);
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+
+      expect(
+        recorded.map((d) => d.inSeconds).toList(),
+        [2, 4, 8, 16, 32, 60],
+      );
+    });
+  });
+
+  group('stale exit guard (M10)', () {
+    test('a backoff-waiting exit does not clobber a newer process', () async {
+      final gate = Completer<void>();
+      final localSpawner = _FakeSpawner();
+      final local = SupervisorManager(
+        logsDirectory: tempDir.path,
+        spawner: localSpawner.spawn,
+        treeKiller: (_) async {},
+        delay: (_) => gate.future,
+      );
+      addTearDown(local.stopAll);
+
+      await local.start(program(restartDelaySeconds: 1));
+      // Crash the first process; the watchdog parks in the backoff delay.
+      localSpawner.spawned[0].exit(1);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(local.statusOf(1), SupervisorStatus.restarting);
+
+      // The user restarts: a new process replaces the parked one.
+      await local.restart(program(restartDelaySeconds: 1));
+      expect(local.statusOf(1), SupervisorStatus.running);
+      final pid = local.getPid(1);
+
+      // Release the old backoff: it must neither respawn nor mark the new
+      // process stopped.
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(local.statusOf(1), SupervisorStatus.running);
+      expect(local.getPid(1), pid);
+      expect(localSpawner.spawned.length, 2);
+    });
+  });
+
+  group('real spawner (C2)', () {
+    test('starts a program with an empty working directory', () async {
+      // No `spawner:` injection: this exercises `_defaultSpawn`. Before the fix
+      // `Process.start(..., workingDirectory: '')` threw
+      // `ProcessException: No such file or directory`.
+      final local = SupervisorManager(logsDirectory: tempDir.path);
+      addTearDown(local.stopAll);
+
+      final p = SupervisorProgram(
+        id: 3,
+        name: 'empty-workdir',
+        command: 'sleep 30',
+        workingDir: '', // the form default
+      );
+
+      final started = await local.start(p);
+      expect(started, isTrue);
+      expect(local.statusOf(3), isNot(SupervisorStatus.fatal));
+      // The spawn must not have failed with a ProcessException.
+      expect(local.isRunning(3), isTrue);
+
+      await local.stop(3);
+      expect(local.isRunning(3), isFalse);
+    });
   });
 }

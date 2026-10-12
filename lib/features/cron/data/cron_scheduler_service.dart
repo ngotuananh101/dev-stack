@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar_plus/isar_plus.dart';
@@ -68,6 +69,7 @@ class CronSchedulerService {
   final int historyLimit = 20;
 
   final Map<int, DateTime?> _nextRuns = {};
+  final Map<int, String> _nextRunSchedules = {};
   final Set<int> _running = {};
   final Map<int, List<RunRecord>> _history = {};
   final StreamController<int> _statusController =
@@ -106,16 +108,40 @@ class CronSchedulerService {
     if (!_statusController.isClosed) _statusController.add(jobId);
   }
 
+  /// Maximum characters retained from a run's combined stdout + stderr. Keeps a
+  /// noisy command from filling RAM (spec: cron output is "stdout + stderr,
+  /// capped").
+  static const int maxOutputChars = 8000;
+
   /// The real runner: one shell command, output captured.
+  ///
+  /// The command is executed by an explicit shell rather than via
+  /// `runInShell: true`: the latter treats the whole command string as a single
+  /// executable name, so `echo hi` would look for a program literally named
+  /// `echo hi` and exit 127. Wrapping in `sh -c` / `cmd.exe /c` mirrors how the
+  /// supervisor spawns and makes arguments work.
   static Future<CronRunResult> _defaultRunner(CronJob job) async {
-    final result = await BackgroundProcess.run(
-      job.command,
-      const [],
-      runInShell: true,
-      workingDirectory: job.workingDir.isEmpty ? null : job.workingDir,
-    );
-    final out = '${result.stdout}${result.stderr}'.trim();
-    return CronRunResult(exitCode: result.exitCode, output: out);
+    final workingDirectory =
+        job.workingDir.isEmpty ? null : job.workingDir;
+    final ProcessResult result;
+    if (Platform.isWindows) {
+      result = await BackgroundProcess.run(
+        'cmd.exe',
+        ['/c', job.command],
+        workingDirectory: workingDirectory,
+      );
+    } else {
+      result = await BackgroundProcess.run(
+        '/bin/sh',
+        ['-c', job.command],
+        workingDirectory: workingDirectory,
+      );
+    }
+    final combined = '${result.stdout}${result.stderr}'.trim();
+    final output = combined.length > maxOutputChars
+        ? '${combined.substring(0, maxOutputChars)}\n…[output truncated]'
+        : combined;
+    return CronRunResult(exitCode: result.exitCode, output: output);
   }
 
   void start() {
@@ -162,9 +188,13 @@ class CronSchedulerService {
         if (!CronExpression.isValid(job.schedule)) continue;
 
         final expr = CronExpression.parse(job.schedule);
-        if (!_nextRuns.containsKey(job.id)) {
-          // First sighting: schedule forward from now (no back-fill).
+        // Recompute when the schedule has changed since the cache was seeded
+        // (first sighting, or an edit). Without this an edited schedule would
+        // be ignored forever, and an unsatisfiable expression would cache
+        // `null` permanently.
+        if (_nextRunSchedules[job.id] != job.schedule) {
           _nextRuns[job.id] = expr.nextOccurrence(now);
+          _nextRunSchedules[job.id] = job.schedule;
         }
         final next = _nextRuns[job.id];
         if (next == null) continue; // unsatisfiable schedule
@@ -185,6 +215,7 @@ class CronSchedulerService {
 
       // Drop bookkeeping for jobs that no longer exist.
       _nextRuns.removeWhere((id, _) => !liveIds.contains(id));
+      _nextRunSchedules.removeWhere((id, _) => !liveIds.contains(id));
     } finally {
       _ticking = false;
     }
@@ -251,6 +282,7 @@ class CronSchedulerService {
     _running.clear();
     _history.clear();
     _nextRuns.clear();
+    _nextRunSchedules.clear();
     if (!_statusController.isClosed) _statusController.close();
   }
 }

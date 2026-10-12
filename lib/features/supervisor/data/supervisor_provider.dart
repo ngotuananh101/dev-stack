@@ -39,7 +39,10 @@ class SupervisorStatusNotifier extends Notifier<Map<int, SupervisorStatus>> {
       _subscription?.cancel();
       _subscription = null;
     });
-    return const {};
+    // Seed from the manager's current statuses so a program already running
+    // when the page first opens (e.g. auto-started at launch) is not shown as
+    // stopped before its first status event.
+    return _manager.statuses;
   }
 
   SupervisorStatus statusOf(int programId) =>

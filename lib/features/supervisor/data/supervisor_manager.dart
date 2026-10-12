@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import '../../../core/config/app_config.dart';
 import '../../../core/database/isar_provider.dart';
 import '../../../core/services/log_service.dart';
+import '../../../core/services/process_environment.dart';
 import '../../sites/data/cli_process_manager.dart' show CircularLogBuffer;
 import '../domain/supervisor_program.dart';
 import '../domain/supervisor_status.dart';
@@ -128,6 +129,11 @@ class SupervisorManager {
   SupervisorStatus statusOf(int programId) =>
       _statuses[programId] ?? SupervisorStatus.stopped;
 
+  /// A snapshot of every known program status. Used to seed the UI's status map
+  /// so a program already running when the page first opens is not shown as
+  /// stopped.
+  Map<int, SupervisorStatus> get statuses => Map.unmodifiable(_statuses);
+
   bool isRunning(int programId) => _processes[programId]?.running ?? false;
 
   int? getPid(int programId) => _processes[programId]?.process.pid;
@@ -141,19 +147,20 @@ class SupervisorManager {
   void clearLogs(int programId) => _processes[programId]?.logBuffer.clear();
 
   static Map<String, String> _buildEnvironment(SupervisorProgram program) {
-    final env = Map<String, String>.from(Platform.environment);
-    env.addAll(program.envVars());
-    return env;
+    return buildEnrichedEnvironment(extra: program.envVars());
   }
 
   static Future<SupervisedProcess> _defaultSpawn(
     SupervisorProgram program,
   ) async {
+    // An empty working directory must become null: `Process.start` throws
+    // `ProcessException: No such file or directory` for `workingDirectory: ''`.
+    final workDir = program.workingDir.isEmpty ? null : program.workingDir;
     if (Platform.isWindows) {
       return _RealSupervisedProcess(await Process.start(
         'cmd.exe',
         ['/c', program.command],
-        workingDirectory: program.workingDir,
+        workingDirectory: workDir,
         environment: _buildEnvironment(program),
       ));
     }
@@ -163,14 +170,14 @@ class SupervisorManager {
       return _RealSupervisedProcess(await Process.start(
         'setsid',
         ['/bin/sh', '-c', program.command],
-        workingDirectory: program.workingDir,
+        workingDirectory: workDir,
         environment: _buildEnvironment(program),
       ));
     } catch (_) {
       return _RealSupervisedProcess(await Process.start(
         '/bin/sh',
         ['-c', program.command],
-        workingDirectory: program.workingDir,
+        workingDirectory: workDir,
         environment: _buildEnvironment(program),
       ));
     }
@@ -288,56 +295,80 @@ class SupervisorManager {
     managed.logBuffer.add(line);
     if (!managed.streamController.isClosed) managed.streamController.add(line);
 
+    // Decide on the *current* configuration, not the snapshot taken when the
+    // process was started: the user may have edited autoRestart / maxRestarts /
+    // the restart window while it was running.
+    final current = _isar?.supervisorPrograms.get(program.id) ?? program;
+
+    // A stale exit — one whose [managed] has already been replaced by a newer
+    // live process (e.g. a `restart()` during the backoff wait) — must neither
+    // write status nor respawn over the new process.
+    bool isCurrent() => identical(_processes[managed.programId], managed);
+
     // A deliberate stop settles at stopped and never restarts.
     if (managed.explicitlyStopped) {
-      _statuses[program.id] = SupervisorStatus.stopped;
-      _notifyStatus(program.id);
+      if (isCurrent()) {
+        _statuses[program.id] = SupervisorStatus.stopped;
+        _notifyStatus(program.id);
+      }
       return;
     }
 
-    if (!program.enabled || !program.autoRestart) {
-      _statuses[program.id] = SupervisorStatus.stopped;
-      _notifyStatus(program.id);
+    if (!current.enabled || !current.autoRestart) {
+      if (isCurrent()) {
+        _statuses[program.id] = SupervisorStatus.stopped;
+        _notifyStatus(program.id);
+      }
       return;
     }
 
     final now = DateTime.now();
     final times = _restartTimes.putIfAbsent(program.id, () => []);
     final windowStart =
-        now.subtract(Duration(seconds: program.restartWindowSeconds));
+        now.subtract(Duration(seconds: current.restartWindowSeconds));
     times.removeWhere((t) => t.isBefore(windowStart));
     times.add(now);
 
-    if (times.length > program.maxRestarts) {
-      _statuses[program.id] = SupervisorStatus.fatal;
-      final msg =
-          'Exceeded max restarts (${program.maxRestarts}) in '
-          '${program.restartWindowSeconds}s — giving up';
-      managed.logBuffer.add(msg);
-      if (!managed.streamController.isClosed) managed.streamController.add(msg);
-      _notifyStatus(program.id);
+    if (times.length > current.maxRestarts) {
+      if (isCurrent()) {
+        _statuses[program.id] = SupervisorStatus.fatal;
+        final msg =
+            'Exceeded max restarts (${current.maxRestarts}) in '
+            '${current.restartWindowSeconds}s — giving up';
+        managed.logBuffer.add(msg);
+        if (!managed.streamController.isClosed) {
+          managed.streamController.add(msg);
+        }
+        _notifyStatus(program.id);
+      }
       return;
     }
 
     // Exponential backoff: base * 2^(attempt-1), capped at 60 s.
     final attempt = times.length > 10 ? 10 : times.length;
-    var seconds = program.restartDelaySeconds * (1 << (attempt - 1));
+    var seconds = current.restartDelaySeconds * (1 << (attempt - 1));
     if (seconds > 60) seconds = 60;
     if (seconds < 0) seconds = 0;
 
-    _statuses[program.id] = SupervisorStatus.restarting;
-    _notifyStatus(program.id);
+    if (isCurrent()) {
+      _statuses[program.id] = SupervisorStatus.restarting;
+      _notifyStatus(program.id);
+    }
 
     if (seconds > 0) {
       await _delay(Duration(seconds: seconds));
     }
     // The program may have been stopped or disabled while we waited.
-    if (managed.explicitlyStopped || !program.enabled) {
-      _statuses[program.id] = SupervisorStatus.stopped;
-      _notifyStatus(program.id);
+    if (managed.explicitlyStopped || !current.enabled) {
+      if (isCurrent()) {
+        _statuses[program.id] = SupervisorStatus.stopped;
+        _notifyStatus(program.id);
+      }
       return;
     }
-    await start(program, isRestart: true);
+    // A newer process may have replaced this one while we waited; leave it be.
+    if (!isCurrent()) return;
+    await start(current, isRestart: true);
   }
 
   Future<bool> stop(int programId) async {
