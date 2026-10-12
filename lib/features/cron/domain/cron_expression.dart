@@ -193,4 +193,92 @@ class CronExpression {
     if (dowRestricted) return dowHit;
     return true;
   }
+
+  static const List<String> _weekdayNames = [
+    'Sunday', 'Monday', 'Tuesday', 'Wednesday',
+    'Thursday', 'Friday', 'Saturday',
+  ];
+  static const List<String> _monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  String _two(int v) => v.toString().padLeft(2, '0');
+
+  /// A short human-readable summary, e.g. "Every 5 minutes" or
+  /// "At 09:00 on Mon-Fri". Deliberately covers the common shapes; unusual
+  /// combinations fall back to a generic time/date summary.
+  String describe() {
+    final everyMinute = minutes.length == 60;
+    final everyHour = hours.length == 24;
+
+    // Time-of-day phrase (only meaningful when a single time is pinned).
+    String? timePhrase;
+    if (minutes.length == 1 && hours.length == 1) {
+      timePhrase = 'At ${_two(hours.first)}:${_two(minutes.first)}';
+    }
+
+    final dayPart = _describeDays();
+
+    if (everyMinute) {
+      return dayPart == null ? 'Every minute' : 'Every minute $dayPart';
+    }
+    if (minutes.length == 1 && minutes.first == 0 && everyHour) {
+      return dayPart == null ? 'Every hour' : 'Every hour $dayPart';
+    }
+    // Pure "every N minutes" within the hour, no other restriction.
+    if (hours.length == 24 && dayPart == null) {
+      if (minutes.length == 1) return 'At minute ${minutes.first}';
+      final step = minutes.length > 1 ? minutes[1] - minutes[0] : 0;
+      final isStepped = minutes.first == 0 &&
+          step > 0 &&
+          List.generate(minutes.length, (i) => i * step).every(
+                (v) => minutes.contains(v),
+              );
+      if (isStepped) return 'Every $step minutes';
+    }
+
+    if (timePhrase != null) {
+      return dayPart == null ? timePhrase : '$timePhrase $dayPart';
+    }
+    if (dayPart != null) {
+      return dayPart[0].toUpperCase() + dayPart.substring(1);
+    }
+    return 'Custom schedule';
+  }
+
+  /// Returns a day qualifier such as "on Mon-Fri", "on day 1", or
+  /// "on Sunday", or `null` when the schedule runs every day.
+  String? _describeDays() {
+    final everyDom = daysOfMonth.length == 31;
+    final everyDow = daysOfWeek.length == 7;
+
+    if (everyDom && everyDow) return null;
+
+    // Month restriction first (yearly-ish).
+    if (months.length == 1 && daysOfMonth.length == 1) {
+      return 'on ${_monthNames[months.first - 1]} ${daysOfMonth.first}';
+    }
+
+    if (!everyDom && daysOfMonth.length == 1) {
+      return 'on day ${daysOfMonth.first}';
+    }
+
+    if (!everyDow) {
+      if (daysOfWeek.length == 1) {
+        return 'on ${_weekdayNames[daysOfWeek.first]}';
+      }
+      // Contiguous range like 1-5 → "Mon-Fri".
+      final contiguous = daysOfWeek.length > 1 &&
+          daysOfWeek.last - daysOfWeek.first == daysOfWeek.length - 1;
+      if (contiguous) {
+        final a = _weekdayNames[daysOfWeek.first].substring(0, 3);
+        final b = _weekdayNames[daysOfWeek.last].substring(0, 3);
+        return 'on $a-$b';
+      }
+    }
+
+    if (!everyDom) return 'on days ${daysOfMonth.join(', ')}';
+    return null;
+  }
 }
