@@ -11,6 +11,8 @@ import '../../features/apps/data/app_service_manager.dart';
 import '../../features/settings/data/settings_provider.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 import '../../features/sites/data/cli_process_manager.dart';
+import '../../features/supervisor/data/supervisor_manager.dart';
+import '../../features/cron/data/cron_scheduler_service.dart';
 import 'linux_desktop_service.dart';
 
 part 'window_service.g.dart';
@@ -200,6 +202,9 @@ class WindowService extends _$WindowService with WindowListener {
     await ref.read(appsProvider.notifier).stopAllServicesQuietly();
     // Stop all CLI site processes so spawned dev servers are reaped on quit.
     await ref.read(cliProcessManagerProvider).stopAll();
+    // Reap supervised programs and stop the in-app cron scheduler.
+    await ref.read(supervisorManagerProvider).stopAll();
+    ref.read(cronSchedulerProvider).stop();
     await windowManager.destroy();
   }
 
@@ -253,6 +258,9 @@ class WindowService extends _$WindowService with WindowListener {
       await ref.read(appsProvider.notifier).stopAllServicesQuietly();
       // Stop all CLI site processes so spawned dev servers are reaped on exit.
       await ref.read(cliProcessManagerProvider).stopAll();
+      // Reap supervised programs and stop the in-app cron scheduler.
+      await ref.read(supervisorManagerProvider).stopAll();
+      ref.read(cronSchedulerProvider).stop();
       await windowManager.destroy();
     }
   }

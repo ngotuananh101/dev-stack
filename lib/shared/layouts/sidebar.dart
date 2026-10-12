@@ -54,6 +54,22 @@ class Sidebar extends ConsumerWidget {
                 .setTab(NavigationTab.tunnels),
           ),
           _buildNavItem(
+            LucideIcons.activity,
+            'Supervisor',
+            isActive: currentTab == NavigationTab.supervisor,
+            onTap: () => ref
+                .read(navigationProvider.notifier)
+                .setTab(NavigationTab.supervisor),
+          ),
+          _buildNavItem(
+            LucideIcons.clock,
+            'Cron',
+            isActive: currentTab == NavigationTab.cron,
+            onTap: () => ref
+                .read(navigationProvider.notifier)
+                .setTab(NavigationTab.cron),
+          ),
+          _buildNavItem(
             LucideIcons.terminal,
             'Logs',
             isActive: currentTab == NavigationTab.logs,
