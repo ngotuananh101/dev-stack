@@ -383,6 +383,14 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     );
   }
 
+  /// Whether the selected engine speaks the MySQL wire protocol. phpMyAdmin
+  /// (and other MySQL-family tools) only work against MySQL/MariaDB, so the
+  /// phpMyAdmin button must be limited to those engines.
+  bool get _isMySqlFamily {
+    final id = selectedEngine?.appId;
+    return id != null && (id.contains('mysql') || id.contains('mariadb'));
+  }
+
   Widget _buildActionHeader(
     bool isRedis, {
     bool isMongo = false,
@@ -400,7 +408,10 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
             onPressed: _showAddDatabaseDialog,
           ),
           const SizedBox(width: 12),
-          if (hasPhpMyAdmin) ...[
+          // phpMyAdmin only speaks the MySQL wire protocol, so the button is
+          // limited to the MySQL/MariaDB family — PostgreSQL, Meilisearch,
+          // Elasticsearch and the like have no phpMyAdmin front end.
+          if (hasPhpMyAdmin && _isMySqlFamily) ...[
             _buildActionButton(
               'phpMyAdmin',
               LucideIcons.externalLink,
