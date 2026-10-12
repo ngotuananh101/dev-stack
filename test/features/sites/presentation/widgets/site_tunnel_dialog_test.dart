@@ -193,6 +193,46 @@ void main() {
     expect(find.text('Start Tunnel'), findsOneWidget);
   });
 
+  testWidgets('SiteTunnelDialog shows a Cancel button while the tunnel is starting', (tester) async {
+    final site = SiteModel(
+      domain: 'myproject.test',
+      rootDir: '/var/www/myproject',
+    );
+
+    final tunnel = TunnelModel(
+      id: 10,
+      name: 'myproject.test',
+      provider: 'cloudflare',
+      targetType: 'site',
+      targetSiteDomain: 'myproject.test',
+      targetPort: 9000,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          tunnelsStreamProvider.overrideWith((ref) => Stream.value([tunnel])),
+          tunnelSessionsProvider.overrideWith(
+            () => TunnelSessionsNotifierMock({
+              10: const TunnelSession(
+                tunnelId: 10,
+                status: TunnelStatus.downloadingBinary,
+              ),
+            }),
+          ),
+        ],
+        child: MaterialApp(
+          home: _HostScreen(site: site),
+        ),
+      ),
+    );
+
+    await _openDialog(tester);
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Stop'), findsNothing);
+    expect(find.text('Start Tunnel'), findsNothing);
+  });
+
   testWidgets('SiteTunnelDialog quick tunnel button creates and starts tunnel', (tester) async {
     final site = SiteModel(
       domain: 'myproject.test',
@@ -256,6 +296,10 @@ class TunnelSessionsNotifierMock extends TunnelSessionsNotifier {
   @override
   Future<void> stop(int tunnelId) =>
       _manager?.stopTunnel(tunnelId) ?? Future<void>.value();
+
+  @override
+  Future<void> cancelStart(int tunnelId) =>
+      _manager?.cancelStart(tunnelId) ?? Future<void>.value();
 
   @override
   Future<void> delete(int tunnelId) =>

@@ -39,6 +39,7 @@ void main() {
             sessions: const {},
             onStart: (_) {},
             onStop: (_) {},
+            onCancel: (_) {},
             onEdit: (_) {},
             onDelete: (_) {},
             onViewLogs: (_) {},
@@ -87,6 +88,7 @@ void main() {
             sessions: sessions,
             onStart: (t) => startedTunnel = t,
             onStop: (id) => stoppedTunnelId = id,
+            onCancel: (_) {},
             onEdit: (_) {},
             onDelete: (_) {},
             onViewLogs: (_) {},
@@ -128,5 +130,47 @@ void main() {
     expect(startButton, findsOneWidget);
     await tester.tap(startButton);
     expect(startedTunnel?.id, 2);
+  });
+
+  testWidgets('TunnelTable shows a Cancel button while a tunnel is starting', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+    final sessions = {
+      1: const TunnelSession(
+        tunnelId: 1,
+        status: TunnelStatus.downloadingBinary,
+      ),
+    };
+
+    int? cancelledTunnelId;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TunnelTable(
+            tunnels: [testTunnel1],
+            sessions: sessions,
+            onStart: (_) {},
+            onStop: (_) {},
+            onCancel: (id) => cancelledTunnelId = id,
+            onEdit: (_) {},
+            onDelete: (_) {},
+            onViewLogs: (_) {},
+            onOpenUrl: (_) {},
+            onCopyUrl: (_) {},
+            onOpenQr: (t, u) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // While starting, the row offers Cancel instead of a spinner-only cell.
+    final cancelButton = find.text('Cancel');
+    expect(cancelButton, findsOneWidget);
+
+    await tester.tap(cancelButton);
+    expect(cancelledTunnelId, 1);
   });
 }

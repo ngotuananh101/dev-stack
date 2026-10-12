@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -16,6 +17,7 @@ class AppVersionModal extends ConsumerStatefulWidget {
   final AppModel app;
   final VoidCallback onInstall;
   final VoidCallback onClose;
+  final VoidCallback? onCancel;
   final bool isUpdate;
 
   const AppVersionModal({
@@ -23,6 +25,7 @@ class AppVersionModal extends ConsumerStatefulWidget {
     required this.app,
     required this.onInstall,
     required this.onClose,
+    this.onCancel,
     this.isUpdate = false,
   });
 
@@ -500,16 +503,19 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                   : 'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
               icon: const Icon(Icons.download, size: 16),
             ),
-          ] else
+          ] else if (appState.status == 'installed')
             AppButton(
-              onPressed: appState.status == 'installed' ? widget.onClose : null,
-              backgroundColor: appState.status == 'installed'
-                  ? AppColors.successStrong
-                  : AppColors.textMuted,
+              onPressed: widget.onClose,
+              backgroundColor: AppColors.successStrong,
               textColor: AppColors.textOnColor,
-              label: appState.status == 'installed'
-                  ? 'Finish'
-                  : (widget.isUpdate ? 'Updating...' : 'Installing...'),
+              label: 'Finish',
+            )
+          else
+            AppButton(
+              onPressed: widget.onCancel,
+              style: AppButtonStyle.danger,
+              icon: const Icon(LucideIcons.x, size: 16),
+              label: 'Cancel',
             ),
         ],
       ),

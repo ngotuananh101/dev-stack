@@ -64,6 +64,7 @@ class TunnelDownloaderService {
     String provider, {
     void Function(double progress)? onProgress,
     Dio? dio,
+    CancelToken? cancelToken,
   }) async {
     final client = dio ?? _dio;
     final targetPath = getBinaryPath(provider);
@@ -80,6 +81,7 @@ class TunnelDownloaderService {
       await client.download(
         url,
         tempPath,
+        cancelToken: cancelToken,
         onReceiveProgress: (received, total) {
           if (total > 0 && onProgress != null) {
             onProgress(received / total);

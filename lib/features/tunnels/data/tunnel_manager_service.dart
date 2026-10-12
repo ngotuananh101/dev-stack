@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar_plus/isar_plus.dart';
+import 'package:dio/dio.dart';
 import '../../../core/services/background_process.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/database/isar_provider.dart';
@@ -57,6 +58,10 @@ class TunnelManagerService {
   final Map<int, TunnelSession> _sessions = {};
   final Map<int, dynamic> _activeProcesses = {};
   final Map<int, List<StreamSubscription>> _logSubscriptions = {};
+  /// Cancel tokens for tunnels whose start is still in flight (binary download
+  /// or process launch). Cancelling the token aborts the download; a tunnel
+  /// whose process has already launched is torn down instead.
+  final Map<int, CancelToken> _startCancelTokens = {};
   final StreamController<Map<int, TunnelSession>> _sessionsController =
       StreamController<Map<int, TunnelSession>>.broadcast();
 
@@ -130,6 +135,11 @@ class TunnelManagerService {
     tunnel.lastActiveAt = DateTime.now();
     await saveTunnel(tunnel);
 
+    // One token per in-flight start: it is cancelled by [cancelStart] to abort
+    // the download, and cleared once the start settles.
+    final cancelToken = CancelToken();
+    _startCancelTokens[tunnel.id] = cancelToken;
+
     _updateSession(
       tunnel.id,
       TunnelSession(
@@ -143,6 +153,7 @@ class TunnelManagerService {
       if (!ready) {
         await _downloader.downloadBinary(
           tunnel.provider,
+          cancelToken: cancelToken,
           onProgress: (progress) {
             final current = _sessions[tunnel.id];
             if (current != null) {
@@ -153,6 +164,17 @@ class TunnelManagerService {
             }
           },
         );
+      }
+
+      // A cancel may have landed between the download finishing and here (or
+      // the binary was already present, so no download observed it). Bail out
+      // before launching a process the user already asked to stop.
+      if (cancelToken.isCancelled) {
+        _updateSession(
+          tunnel.id,
+          TunnelSession(tunnelId: tunnel.id, status: TunnelStatus.stopped),
+        );
+        return;
       }
 
       final execPath = _downloader.getBinaryPath(tunnel.provider);
@@ -265,14 +287,56 @@ class TunnelManagerService {
 
       _logSubscriptions[tunnel.id] = subscriptions;
     } catch (e, st) {
-      _logger?.error('Failed to start tunnel ${tunnel.id}: $e\n$st');
+      // A cancelled start is not a failure: the user asked for it, so settle
+      // the session at "stopped" rather than surfacing a red error.
+      if (cancelToken.isCancelled) {
+        _updateSession(
+          tunnel.id,
+          TunnelSession(tunnelId: tunnel.id, status: TunnelStatus.stopped),
+        );
+      } else {
+        _logger?.error('Failed to start tunnel ${tunnel.id}: $e\n$st');
+        _updateSession(
+          tunnel.id,
+          TunnelSession(
+            tunnelId: tunnel.id,
+            status: TunnelStatus.error,
+            errorMessage: e.toString(),
+          ),
+        );
+      }
+    } finally {
+      _startCancelTokens.remove(tunnel.id);
+    }
+  }
+
+  /// Cancels an in-flight [startTunnel] for [tunnelId].
+  ///
+  /// If the binary is still downloading, the cancel token aborts the request
+  /// (leaving no temp file behind). If the process has already launched, it is
+  /// stopped. Either way the session settles at [TunnelStatus.stopped]. A no-op
+  /// when nothing is starting for [tunnelId].
+  Future<void> cancelStart(int tunnelId) async {
+    final token = _startCancelTokens.remove(tunnelId);
+    if (token != null && !token.isCancelled) {
+      token.cancel('Tunnel start cancelled by user');
+    }
+
+    final session = _sessions[tunnelId];
+    if (session == null) return;
+
+    final pid = session.pid;
+    if (pid != null) {
+      try {
+        await _stopProcess(pid);
+      } catch (e) {
+        _logger?.error('Error stopping tunnel process $pid: $e');
+      }
+      _activeProcesses.remove(tunnelId);
+      _cleanupLogSubscriptions(tunnelId);
       _updateSession(
-        tunnel.id,
-        TunnelSession(
-          tunnelId: tunnel.id,
-          status: TunnelStatus.error,
-          errorMessage: e.toString(),
-        ),
+        tunnelId,
+        TunnelSession(tunnelId: tunnelId, status: TunnelStatus.stopped),
       );
     }
   }

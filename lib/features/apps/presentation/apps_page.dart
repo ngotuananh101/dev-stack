@@ -188,6 +188,11 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                               .read(appsProvider.notifier)
                               .openApp(app);
                         },
+                        onCancelInstall: (app) {
+                          ref
+                              .read(appsProvider.notifier)
+                              .cancelInstall(app.appId);
+                        },
                       ),
                     ),
                     const SizedBox(height: 16),

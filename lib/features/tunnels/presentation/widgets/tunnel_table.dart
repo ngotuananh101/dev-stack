@@ -13,6 +13,7 @@ class TunnelTable extends StatelessWidget {
   final Map<int, TunnelSession> sessions;
   final Function(TunnelModel) onStart;
   final Function(int) onStop;
+  final Function(int) onCancel;
   final Function(TunnelModel) onEdit;
   final Function(TunnelModel) onDelete;
   final Function(TunnelModel) onViewLogs;
@@ -26,6 +27,7 @@ class TunnelTable extends StatelessWidget {
     required this.sessions,
     required this.onStart,
     required this.onStop,
+    required this.onCancel,
     required this.onEdit,
     required this.onDelete,
     required this.onViewLogs,
@@ -107,7 +109,7 @@ class TunnelTable extends StatelessWidget {
           Expanded(flex: 5, child: _buildHeaderCell('PUBLIC URL')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 200,
+            width: 220,
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
@@ -307,7 +309,7 @@ class TunnelTable extends StatelessWidget {
 
           // OPERATE
           SizedBox(
-            width: 200,
+            width: 220,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -326,13 +328,11 @@ class TunnelTable extends StatelessWidget {
                     style: AppButtonStyle.danger,
                   )
                 else if (isConnecting)
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: Padding(
-                      padding: EdgeInsets.all(4),
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
+                  AppButton(
+                    label: 'Cancel',
+                    onPressed: () => onCancel(tunnel.id),
+                    icon: const Icon(LucideIcons.x, size: 12),
+                    style: AppButtonStyle.danger,
                   ),
                 const SizedBox(width: 6),
                 AppIconButton(

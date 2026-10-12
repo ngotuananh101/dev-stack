@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
+import 'package:dio/dio.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/database/isar_provider.dart';
 import '../domain/app_model.dart';
@@ -80,6 +81,23 @@ class Apps extends _$Apps {
 
   DateTime? _lastUpdate;
 
+  /// Cancel tokens for installs/updates still in flight, keyed by app id.
+  /// [cancelInstall] cancels the token to abort the download; a run that is
+  /// past the download checks the token between steps.
+  final Map<String, CancelToken> _installCancelTokens = {};
+
+  /// Cancels an in-flight install or update for [appId].
+  ///
+  /// Returns `true` when a running install was signalled to stop, `false` when
+  /// nothing was installing. The install future settles the app back to its
+  /// previous state and does not surface an error.
+  bool cancelInstall(String appId) {
+    final token = _installCancelTokens[appId];
+    if (token == null || token.isCancelled) return false;
+    token.cancel('Installation cancelled by user');
+    return true;
+  }
+
   /// Updates the state without setting it to loading, used for progress updates
   void notifyUpdate({bool force = false}) {
     final now = DateTime.now();
@@ -133,9 +151,13 @@ class Apps extends _$Apps {
         app.installLogs = []; // Clear old logs
         notifyUpdate(force: true); // Notify UI of in-memory change
 
+        final cancelToken = CancelToken();
+        _installCancelTokens[app.appId] = cancelToken;
+
         final installPath = await installer.install(
           app,
           version,
+          cancelToken: cancelToken,
           onProgress: (progress, status, {downloadedBytes, totalBytes}) {
             final statusChanged = app.installStatus != status;
             app.installProgress = progress;
@@ -151,6 +173,7 @@ class Apps extends _$Apps {
             notifyUpdate();
           },
         );
+        _installCancelTokens.remove(app.appId);
 
         app.isInstalled = true;
         app.status = 'installed';
@@ -189,7 +212,18 @@ class Apps extends _$Apps {
         }
 
         notifyUpdate(force: true);
+      } on InstallationCancelledException {
+        // The user cancelled: return to "not installed" without an error banner.
+        _installCancelTokens.remove(app.appId);
+        app.status = 'not_installed';
+        app.installProgress = null;
+        app.installStatus = null;
+        app.downloadedBytes = null;
+        app.totalBytes = null;
+        app.addLog('Installation cancelled.');
+        notifyUpdate(force: true);
       } catch (e) {
+        _installCancelTokens.remove(app.appId);
         AppLogger.error('Installation failed: $e');
         app.status = 'not_installed';
         app.installProgress = null;
@@ -252,9 +286,13 @@ class Apps extends _$Apps {
           );
 
           // 2. Download and install new version to a new folder
+          final cancelToken = CancelToken();
+          _installCancelTokens[app.appId] = cancelToken;
+
           final newInstallPath = await installer.install(
             app,
             newVersion,
+            cancelToken: cancelToken,
             onProgress: (progress, status, {downloadedBytes, totalBytes}) {
               app.installProgress = progress;
               app.installStatus = status;
@@ -267,6 +305,7 @@ class Apps extends _$Apps {
               notifyUpdate();
             },
           );
+          _installCancelTokens.remove(app.appId);
 
           // 3. Manage PATH if needed
           if (wasInPath) {
@@ -340,7 +379,48 @@ class Apps extends _$Apps {
           }
 
           notifyUpdate(force: true);
+        } on InstallationCancelledException {
+          // Cancelled update: roll the data back and restore the old version,
+          // but stay silent — this is a deliberate stop, not a failure.
+          _installCancelTokens.remove(app.appId);
+          if (dataCarried) {
+            try {
+              await installer.rollbackCarriedDataDir(
+                app.appId,
+                oldVersion,
+                newVersion,
+                (m) {
+                  app.addLog(m);
+                  notifyUpdate();
+                },
+              );
+            } catch (rollbackError) {
+              AppLogger.error(
+                'Data rollback failed after a cancelled update: '
+                '$rollbackError',
+              );
+            }
+          }
+
+          app.status = 'installed'; // Revert to the old version
+          app.installProgress = null;
+          app.installStatus = null;
+          app.downloadedBytes = null;
+          app.totalBytes = null;
+          app.isAddedToPath = wasInPath;
+          if (oldPath != null) {
+            app.location = oldPath;
+          }
+          app.installedVersion = oldVersion;
+          app.selectedVersion = null;
+          // Clear the logs: the modal treats "installed + non-empty logs" as the
+          // just-finished completion screen, and a cancelled update should fall
+          // back to the version picker instead of claiming success.
+          app.installLogs = [];
+
+          notifyUpdate(force: true);
         } catch (e) {
+          _installCancelTokens.remove(app.appId);
           AppLogger.error('Update failed: $e');
 
           var userMessage = e.toString();
