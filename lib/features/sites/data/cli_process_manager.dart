@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import '../../../core/config/app_config.dart';
 import '../../../core/services/log_service.dart';
+import '../../../core/services/process_environment.dart';
 import '../domain/site_model.dart';
 
 /// A fixed-capacity, FIFO log buffer that discards the oldest lines once
@@ -110,45 +111,9 @@ class CliProcessManager {
   }
 
   /// Builds a copy of the current environment with common CLI toolchain
-  /// directories prepended to [PATH] so that `npm`, `bun`, `deno`, `node`,
+  /// directories prepended to `PATH` so that `npm`, `bun`, `deno`, `node`,
   /// etc. resolve even when this desktop process has no login shell.
-  Map<String, String> _buildEnvironment() {
-    final env = Map<String, String>.from(Platform.environment);
-    final home =
-        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '';
-    final pathSeparator = Platform.isWindows ? ';' : ':';
-    final currentPath = env['PATH'] ?? '';
-
-    final extraPaths = <String>[];
-    if (Platform.isLinux || Platform.isMacOS) {
-      extraPaths.addAll([
-        '$home/.nvm/versions/node/current/bin',
-        '$home/.bun/bin',
-        '$home/.deno/bin',
-        '$home/.cargo/bin',
-        '/usr/local/bin',
-        '/usr/bin',
-        '/bin',
-      ]);
-    } else if (Platform.isWindows) {
-      final appData = Platform.environment['APPDATA'] ?? '';
-      final localAppData = Platform.environment['LOCALAPPDATA'] ?? '';
-      extraPaths.addAll([
-        '$appData\\npm',
-        '$localAppData\\Programs\\bun',
-        '$home\\.deno\\bin',
-      ]);
-    }
-
-    final validExtras =
-        extraPaths.where((path) => Directory(path).existsSync()).toList();
-    if (validExtras.isNotEmpty) {
-      env['PATH'] =
-          '${validExtras.join(pathSeparator)}$pathSeparator$currentPath';
-    }
-
-    return env;
-  }
+  Map<String, String> _buildEnvironment() => buildEnrichedEnvironment();
 
   Future<bool> startSite(SiteModel site) async {
     if (site.command == null || site.command!.trim().isEmpty) {

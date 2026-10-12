@@ -87,9 +87,9 @@ class PackageCommandValidator {
 
   /// Targets that tee is allowed to write to: apt source lists (pre-existing)
   /// and the single PHP ini file the extension manager owns across supported
-  /// layouts: RHEL modular (/etc/php.d/), Arch (/etc/php/conf.d/), Debian
-  /// versioned (/etc/php/<v>/<sapi>/conf.d/), and Remi SCL on Fedora/RHEL
-  /// (/etc/opt/remi/php<N>/php.d/). Each alternative ends in one plain path
+  /// layouts: RHEL modular (`/etc/php.d/`), Arch (`/etc/php/conf.d/`), Debian
+  /// versioned (`/etc/php/<v>/<sapi>/conf.d/`), and Remi SCL on Fedora/RHEL
+  /// (`/etc/opt/remi/php<N>/php.d/`). Each alternative ends in one plain path
   /// component — no `/`, so `..` cannot escape the directory, and `sed`/`tee`
   /// cannot be turned into a write-anywhere primitive for catalog commands.
   static final RegExp _allowedTeeTargets = RegExp(

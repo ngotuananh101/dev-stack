@@ -20,6 +20,10 @@ import 'features/settings/presentation/settings_page.dart';
 import 'features/sites/presentation/sites_page.dart';
 import 'features/tunnels/presentation/tunnels_page.dart';
 import 'features/tunnels/data/tunnels_provider.dart';
+import 'features/supervisor/presentation/supervisor_page.dart';
+import 'features/supervisor/data/supervisor_manager.dart';
+import 'features/cron/presentation/cron_page.dart';
+import 'features/cron/data/cron_scheduler_service.dart';
 import 'features/tunnels/domain/tunnel_model.dart';
 import 'core/services/window_service.dart';
 import 'core/services/ssl_service.dart';
@@ -114,6 +118,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       for (final tunnel in autoTunnels) {
         ref.read(tunnelSessionsProvider.notifier).start(tunnel);
       }
+
+      // Resolve the Isar provider first: the manager/scheduler resolve Isar
+      // lazily, and a read before this future completes would see null and
+      // silently start nothing.
+      await ref.read(isarProvider.future);
+      await ref.read(supervisorManagerProvider).startAutoStart();
+      ref.read(cronSchedulerProvider).start();
     });
   }
 
@@ -121,6 +132,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   Widget build(BuildContext context) {
     // Initialize Window Service (Tray, Auto-start, etc.)
     ref.watch(windowServiceProvider);
+
+    // Keep the supervisor and scheduler alive while the app is open.
+    ref.watch(supervisorManagerProvider);
+    ref.watch(cronSchedulerProvider);
 
     // Eagerly initialize apps provider for background services auto-start
     ref.watch(appsProvider.future);
@@ -171,6 +186,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         return const DatabasesPage();
       case NavigationTab.tunnels:
         return const TunnelsPage();
+      case NavigationTab.supervisor:
+        return const SupervisorPage();
+      case NavigationTab.cron:
+        return const CronPage();
       case NavigationTab.hosts:
         return const HostsPage();
       case NavigationTab.settings:

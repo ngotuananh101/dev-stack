@@ -2,7 +2,17 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'navigation_provider.g.dart';
 
-enum NavigationTab { apps, sites, databases, tunnels, logs, hosts, settings }
+enum NavigationTab {
+  apps,
+  sites,
+  databases,
+  tunnels,
+  supervisor,
+  cron,
+  logs,
+  hosts,
+  settings,
+}
 
 @riverpod
 class Navigation extends _$Navigation {
