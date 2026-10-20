@@ -213,6 +213,11 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
+      // A RenderFlex overflow is a Flutter error, so the header and
+      // every data row fitting the narrow window is proved by there
+      // being no exception here.
+      expect(tester.takeException(), isNull);
+
       // The URL is data and stays visible; the buttons around it move into the
       // row's menu so nothing is pushed out of reach.
       expect(find.text('https://slug.trycloudflare.com'), findsOneWidget);

@@ -84,14 +84,16 @@ class CronTable extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(flex: 3, child: _headerCell('SCHEDULE')),
           const SizedBox(width: 12),
-          SizedBox(width: 150, child: _headerCell('LAST RUN')),
+          // Every header cell but the two flexible ones can give up width,
+          // otherwise the header's fixed budget overflows the window while the
+          // rows below it shrink correctly.
+          Flexible(child: _headerCell('LAST RUN')),
           const SizedBox(width: 12),
-          SizedBox(width: 90, child: _headerCell('STATUS')),
+          Flexible(child: _headerCell('STATUS')),
           const SizedBox(width: 12),
-          SizedBox(width: 80, child: _headerCell('ENABLED')),
+          Flexible(child: _headerCell('ENABLED')),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 200,
+          Flexible(
             child: _headerCell('OPERATE', align: TextAlign.right),
           ),
         ],
@@ -103,6 +105,8 @@ class CronTable extends StatelessWidget {
     return Text(
       label,
       textAlign: align,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: const TextStyle(
         fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
@@ -217,10 +221,14 @@ class CronTable extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 150,
+          // The three middle cells are Flexible rather than fixed-width so the
+          // row shrinks with the window; their labels ellipsize instead of
+          // forcing the table wider than it is.
+          Flexible(
             child: Text(
               _formatLastRun(job.lastRunAt),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: AppTextSize.xs,
@@ -228,10 +236,9 @@ class CronTable extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          SizedBox(width: 90, child: _buildStatusChip(job)),
+          Flexible(child: _buildStatusChip(job)),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 80,
+          Flexible(
             child: Switch(
               value: job.enabled,
               activeThumbColor: AppColors.success,
@@ -273,8 +280,8 @@ class CronTable extends StatelessWidget {
   }
 
   /// Width the action cluster cannot grow into: the row padding, the gaps
-  /// before it, the three fixed data columns, and the floor the two flexible
-  /// name/schedule columns need before their text becomes unreadable.
+  /// before it, the three fixed-width middle cells, and the floor the two
+  /// flexible name/schedule columns need before their text becomes unreadable.
   static const double _operateReservedWidth =
       16 * 2 + 12 * 5 + 150 + 90 + 80 + 2 * _flexColumnMinWidth;
 

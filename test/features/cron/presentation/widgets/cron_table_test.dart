@@ -118,6 +118,11 @@ void main() {
       )));
       await tester.pumpAndSettle();
 
+      // A RenderFlex overflow is a Flutter error, so the header and
+      // every data row fitting the narrow window is proved by there
+      // being no exception here.
+      expect(tester.takeException(), isNull);
+
       // The RunFlex overflowed exception is thrown, not logged: getting here
       // is proof the row fits. No action label is laid out inline.
       expect(find.text('Run'), findsNothing);

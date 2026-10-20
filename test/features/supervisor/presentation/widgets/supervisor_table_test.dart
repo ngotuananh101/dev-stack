@@ -136,6 +136,11 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
+      // A RenderFlex overflow is a Flutter error, so the header and
+      // every data row fitting the narrow window is proved by there
+      // being no exception here.
+      expect(tester.takeException(), isNull);
+
       expect(find.text('Start'), findsNothing);
 
       await tester.tap(find.byIcon(LucideIcons.moreHorizontal));

@@ -61,6 +61,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Reaching this pump without a RenderFlex overflow means the row fits.
+    expect(tester.takeException(), isNull);
     expect(find.byIcon(LucideIcons.moreHorizontal), findsOneWidget);
     expect(find.byIcon(Icons.settings_outlined), findsNothing);
 
@@ -70,5 +71,29 @@ void main() {
     expect(find.text('View Logs'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Uninstall'), findsOneWidget);
+  });
+
+  testWidgets('a service row fits a narrow window while its status name is long',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(700, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+    final service = AppModel(
+      appId: 'mysql',
+      name: 'MySQL',
+      // A 'database' first category is what makes this app a service.
+      categories: const ['database'],
+      isInstalled: true,
+    );
+    // The status string is drawn while the service is starting, when it is long
+    // enough to push the rest of the status cell out of the row.
+    service.serviceStatus = 'installing';
+
+    await tester.pumpWidget(host(700, [service]));
+    // A fixed pump rather than pumpAndSettle: the status cell draws a spinner
+    // for a starting service, and settling waits for an animation that loops.
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
   });
 }

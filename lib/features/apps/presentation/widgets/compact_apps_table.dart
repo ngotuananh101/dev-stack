@@ -329,12 +329,16 @@ class CompactAppsTable extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                app.serviceStatus.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: AppTextSize.xxs,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+              Expanded(
+                child: Text(
+                  app.serviceStatus.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: AppTextSize.xxs,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ],

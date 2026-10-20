@@ -406,14 +406,20 @@ class TunnelTable extends StatelessWidget {
     // The URL is data: it stays here. Its actions live with the row's actions,
     // so the cell never decides on its own how wide it must be to stay usable.
     if (status == TunnelStatus.running && publicUrl != null) {
-      return SelectableText(
-        publicUrl,
-        style: const TextStyle(
-          color: AppColors.primary,
-          fontSize: AppTextSize.xs,
-          fontWeight: FontWeight.w500,
+      // The URL is selectable (SelectableText scrolls horizontally when it is
+      // clipped), and a long subdomain gets a tooltip so the full address can be
+      // read without selecting the text.
+      return Tooltip(
+        message: publicUrl,
+        child: SelectableText(
+          publicUrl,
+          style: const TextStyle(
+            color: AppColors.primary,
+            fontSize: AppTextSize.xs,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
         ),
-        maxLines: 1,
       );
     }
 
