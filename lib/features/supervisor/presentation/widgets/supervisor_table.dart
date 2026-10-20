@@ -42,6 +42,14 @@ class SupervisorTable extends StatelessWidget {
       builder: (context, constraints) {
         // Shrink instead of scrolling sideways out of reach.
         final availableWidth = constraints.maxWidth;
+        final operateWidth = availableWidth - _operateReservedWidth;
+        // One action-column width for every row, so the data columns line up
+        // even when rows carry different numbers of actions.
+        final plan = planActionColumn(
+          [for (final program in programs) _rowActions(program)],
+          availableWidth: operateWidth.isFinite && operateWidth > 0 ? operateWidth : 1,
+          firstGap: 6,
+        );
 
         return Container(
           width: double.infinity,
@@ -52,7 +60,7 @@ class SupervisorTable extends StatelessWidget {
           ),
           child: Column(
             children: [
-              _buildHeader(),
+              _buildHeader(plan),
               if (programs.isEmpty)
                 _buildEmptyState()
               else
@@ -62,6 +70,7 @@ class SupervisorTable extends StatelessWidget {
                     itemBuilder: (context, index) => _buildRow(
                       programs[index],
                       availableWidth,
+                      plan,
                       index == programs.length - 1,
                     ),
                   ),
@@ -73,7 +82,7 @@ class SupervisorTable extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ActionColumnPlan plan) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
@@ -92,7 +101,9 @@ class SupervisorTable extends StatelessWidget {
           Expanded(flex: 4, child: _headerCell('COMMAND')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 240,
+            // Header action column takes the shared width so it lines up with
+            // the action buttons of every row below it.
+            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
             child: _headerCell('OPERATE', align: TextAlign.right),
           ),
         ],
@@ -104,6 +115,8 @@ class SupervisorTable extends StatelessWidget {
     return Text(
       label,
       textAlign: align,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: const TextStyle(
         fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
@@ -160,14 +173,10 @@ class SupervisorTable extends StatelessWidget {
   Widget _buildRow(
     SupervisorProgram program,
     double availableWidth,
+    ActionColumnPlan plan,
     bool isLast,
   ) {
     final status = statuses[program.id] ?? SupervisorStatus.stopped;
-    final isRunning = status == SupervisorStatus.running;
-    final isTransitioning =
-        status == SupervisorStatus.starting ||
-        status == SupervisorStatus.stopping ||
-        status == SupervisorStatus.restarting;
     final pid = pids[program.id];
 
     return Container(
@@ -234,6 +243,8 @@ class SupervisorTable extends StatelessWidget {
             width: 80,
             child: Text(
               pid?.toString() ?? '—',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: AppTextSize.xs,
@@ -254,42 +265,64 @@ class SupervisorTable extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          RowActionMenu(
-            availableWidth: availableWidth - _operateReservedWidth,
-            firstGap: 6,
-            actions: [
-              RowAction.button(
-                isRunning ? 'Stop' : 'Start',
-                isRunning
-                    ? () => onStop(program.id)
-                    : _maybeOnPressed(isTransitioning, () => onStart(program)),
-                icon: isRunning ? LucideIcons.square : LucideIcons.play,
-              ),
-              RowAction.icon(
-                'Restart',
-                isRunning ? () => onRestart(program) : null,
-                icon: LucideIcons.rotateCw,
-              ),
-              RowAction.icon(
-                'View Logs',
-                () => onViewLogs(program),
-                icon: LucideIcons.list,
-              ),
-              RowAction.icon(
-                'Edit',
-                () => onEdit(program),
-                icon: LucideIcons.edit,
-              ),
-              RowAction.icon(
-                'Delete',
-                () => onDelete(program),
-                icon: LucideIcons.trash2,
-              ),
-            ],
+          // Actions render in the shared-width column so the header and every
+          // row align, and collapse into the '…' menu together.
+          SizedBox(
+            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            child: RowActionMenu(
+              availableWidth: availableWidth - _operateReservedWidth,
+              firstGap: 6,
+              columnWidth: plan.width,
+              collapsed: plan.collapsed,
+              actions: _rowActions(program),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  /// The actions of one row, in render order.
+  ///
+  /// Extracted so [planActionColumn] can measure every row before layout: the
+  /// column width is the widest cluster, not each row's own.
+  List<RowAction> _rowActions(SupervisorProgram program) {
+    final status = statuses[program.id] ?? SupervisorStatus.stopped;
+    final isRunning = status == SupervisorStatus.running;
+    final isTransitioning =
+        status == SupervisorStatus.starting ||
+        status == SupervisorStatus.stopping ||
+        status == SupervisorStatus.restarting;
+
+    return [
+      RowAction.button(
+        isRunning ? 'Stop' : 'Start',
+        isRunning
+            ? () => onStop(program.id)
+            : _maybeOnPressed(isTransitioning, () => onStart(program)),
+        icon: isRunning ? LucideIcons.square : LucideIcons.play,
+      ),
+      RowAction.icon(
+        'Restart',
+        isRunning ? () => onRestart(program) : null,
+        icon: LucideIcons.rotateCw,
+      ),
+      RowAction.icon(
+        'View Logs',
+        () => onViewLogs(program),
+        icon: LucideIcons.list,
+      ),
+      RowAction.icon(
+        'Edit',
+        () => onEdit(program),
+        icon: LucideIcons.edit,
+      ),
+      RowAction.icon(
+        'Delete',
+        () => onDelete(program),
+        icon: LucideIcons.trash2,
+      ),
+    ];
   }
 
   Widget _buildStatusChip(SupervisorStatus status) {

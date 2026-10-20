@@ -42,6 +42,20 @@ class TunnelTable extends StatelessWidget {
       builder: (context, constraints) {
         // Shrink instead of scrolling sideways out of reach.
         final availableWidth = constraints.maxWidth;
+        final operateWidth = availableWidth - _operateReservedWidth;
+        // One action-column width for every row, so the data columns line up
+        // even when rows carry different numbers of actions.
+        final plan = planActionColumn(
+          [
+            for (final tunnel in tunnels)
+              _rowActions(
+                tunnel,
+                sessions[tunnel.id] ?? TunnelSession(tunnelId: tunnel.id),
+              ),
+          ],
+          availableWidth: operateWidth.isFinite && operateWidth > 0 ? operateWidth : 1,
+          firstGap: 6,
+        );
 
         return Container(
           width: double.infinity,
@@ -52,7 +66,7 @@ class TunnelTable extends StatelessWidget {
           ),
           child: Column(
             children: [
-              _buildHeader(),
+              _buildHeader(plan),
               if (tunnels.isEmpty)
                 _buildEmptyState()
               else
@@ -67,6 +81,7 @@ class TunnelTable extends StatelessWidget {
                         availableWidth,
                         tunnel,
                         session,
+                        plan,
                         index == tunnels.length - 1,
                       );
                     },
@@ -79,7 +94,7 @@ class TunnelTable extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ActionColumnPlan plan) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
@@ -100,7 +115,9 @@ class TunnelTable extends StatelessWidget {
           Expanded(flex: 5, child: _buildHeaderCell('PUBLIC URL')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 220,
+            // Action column takes the shared width so it lines up with every
+            // row's cluster below.
+            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
@@ -115,6 +132,8 @@ class TunnelTable extends StatelessWidget {
     return Text(
       label,
       textAlign: alignment,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: const TextStyle(
         fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
@@ -160,17 +179,11 @@ class TunnelTable extends StatelessWidget {
     double availableWidth,
     TunnelModel tunnel,
     TunnelSession? session,
+    ActionColumnPlan plan,
     bool isLast,
   ) {
     final status = session?.status ?? TunnelStatus.stopped;
-    final isRunning = status == TunnelStatus.running;
-    final isStopped = status == TunnelStatus.stopped;
-    final isConnecting =
-        status == TunnelStatus.connecting ||
-        status == TunnelStatus.downloadingBinary;
-    final hasError = status == TunnelStatus.error;
     final publicUrl = session?.publicUrl;
-    final webInspectorUrl = session?.webInspectorUrl;
     final isNgrok = tunnel.provider == 'ngrok';
 
     return Container(
@@ -291,72 +304,99 @@ class TunnelTable extends StatelessWidget {
           const SizedBox(width: 12),
 
           // OPERATE — every action of this row, the URL cell's ones first,
-          // collapses into one '…' menu when the row gets too narrow.
-          RowActionMenu(
-            availableWidth: availableWidth - _operateReservedWidth,
-            firstGap: 6,
-            actions: [
-              if (status == TunnelStatus.running && publicUrl != null) ...[
-                RowAction.icon(
-                  'Copy Link',
-                  () => onCopyUrl(publicUrl),
-                  icon: LucideIcons.copy,
-                ),
-                RowAction.icon(
-                  'Open in Browser',
-                  () => onOpenUrl(publicUrl),
-                  icon: LucideIcons.externalLink,
-                ),
-                RowAction.icon(
-                  'QR Code',
-                  () => onOpenQr(tunnel, publicUrl),
-                  icon: LucideIcons.qrCode,
-                ),
-                if (isNgrok && webInspectorUrl != null)
-                  RowAction.icon(
-                    'Web Inspector',
-                    () => onOpenUrl(webInspectorUrl),
-                    icon: LucideIcons.monitor,
-                  ),
-              ],
-              if (isStopped || hasError)
-                RowAction.button(
-                  'Start',
-                  () => onStart(tunnel),
-                  icon: LucideIcons.play,
-                ),
-              if (isRunning)
-                RowAction.button(
-                  'Stop',
-                  () => onStop(tunnel.id),
-                  icon: LucideIcons.square,
-                ),
-              if (isConnecting)
-                RowAction.button(
-                  'Cancel',
-                  () => onCancel(tunnel.id),
-                  icon: LucideIcons.x,
-                ),
-              RowAction.icon(
-                'View Logs',
-                () => onViewLogs(tunnel),
-                icon: LucideIcons.list,
-              ),
-              RowAction.icon(
-                'Edit',
-                () => onEdit(tunnel),
-                icon: LucideIcons.edit,
-              ),
-              RowAction.icon(
-                'Delete',
-                () => onDelete(tunnel),
-                icon: LucideIcons.trash2,
-              ),
-            ],
+          // collapses into one '…' menu when the row gets too narrow. The
+          // column width comes from the shared plan so the header lines up.
+          SizedBox(
+            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            child: RowActionMenu(
+              availableWidth: availableWidth - _operateReservedWidth,
+              firstGap: 6,
+              columnWidth: plan.width,
+              collapsed: plan.collapsed,
+              actions: _rowActions(tunnel, session),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  /// The actions of one row, in render order.
+  ///
+  /// Extracted so [planActionColumn] can measure every row before layout: the
+  /// column width is the widest cluster, not each row's own. The URL-cell
+  /// actions (Copy Link, Open in Browser, …) fold into the same cluster and '…'
+  /// menu, so the OPERATE column is one width for the whole table.
+  List<RowAction> _rowActions(TunnelModel tunnel, TunnelSession? session) {
+    final status = session?.status ?? TunnelStatus.stopped;
+    final isRunning = status == TunnelStatus.running;
+    final isStopped = status == TunnelStatus.stopped;
+    final isConnecting =
+        status == TunnelStatus.connecting ||
+        status == TunnelStatus.downloadingBinary;
+    final hasError = status == TunnelStatus.error;
+    final publicUrl = session?.publicUrl;
+    final webInspectorUrl = session?.webInspectorUrl;
+    final isNgrok = tunnel.provider == 'ngrok';
+
+    return [
+      if (isRunning && publicUrl != null) ...[
+        RowAction.icon(
+          'Copy Link',
+          () => onCopyUrl(publicUrl),
+          icon: LucideIcons.copy,
+        ),
+        RowAction.icon(
+          'Open in Browser',
+          () => onOpenUrl(publicUrl),
+          icon: LucideIcons.externalLink,
+        ),
+        RowAction.icon(
+          'QR Code',
+          () => onOpenQr(tunnel, publicUrl),
+          icon: LucideIcons.qrCode,
+        ),
+        if (isNgrok && webInspectorUrl != null)
+          RowAction.icon(
+            'Web Inspector',
+            () => onOpenUrl(webInspectorUrl),
+            icon: LucideIcons.monitor,
+          ),
+      ],
+      if (isStopped || hasError)
+        RowAction.button(
+          'Start',
+          () => onStart(tunnel),
+          icon: LucideIcons.play,
+        ),
+      if (isRunning)
+        RowAction.button(
+          'Stop',
+          () => onStop(tunnel.id),
+          icon: LucideIcons.square,
+        ),
+      if (isConnecting)
+        RowAction.button(
+          'Cancel',
+          () => onCancel(tunnel.id),
+          icon: LucideIcons.x,
+        ),
+      RowAction.icon(
+        'View Logs',
+        () => onViewLogs(tunnel),
+        icon: LucideIcons.list,
+      ),
+      RowAction.icon(
+        'Edit',
+        () => onEdit(tunnel),
+        icon: LucideIcons.edit,
+      ),
+      RowAction.icon(
+        'Delete',
+        () => onDelete(tunnel),
+        icon: LucideIcons.trash2,
+      ),
+    ];
   }
 
   /// Width the OPERATE menu cannot grow into: the row padding, the gaps before

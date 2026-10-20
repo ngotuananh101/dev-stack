@@ -21,9 +21,9 @@ void main() {
     });
 
     test('a button plus icons adds the button label and icon gap', () {
-      // 'Run' at size 12 is estimated as 3 chars * 6.5 = 19.5, plus 20 of
-      // horizontal padding, the 12px icon, the 8px icon gap, then three 28px
-      // icon boxes and their 4px gaps: 20 + 19.5 + 12 + 8 + 84 + 12 = 155.5.
+      // 'Run' (3 chars) at 12.25px = 36.75, plus 20 of horizontal padding,
+      // the 12px icon, the 8px icon gap, then three 28px icon boxes and their
+      // 4px gaps: 20 + 36.75 + 12 + 8 + 84 + 12 = 172.75.
       final size = measureRowActions(const [
         RowAction.button('Run', null),
         RowAction.icon('Run History', null),
@@ -31,7 +31,7 @@ void main() {
         RowAction.icon('Delete', null),
       ]);
 
-      expect(size, 155.5);
+      expect(size, 172.75);
     });
 
     test('the first icon of a cluster gets an extra 6px inset', () {
@@ -54,9 +54,10 @@ void main() {
         RowAction.icon('Delete', null),
       ];
 
-      // 155.5 of cluster, and the cluster may grow to overflow-menu width.
-      expect(rowActionsOverflow(actions, 200), isFalse);
-      expect(rowActionsOverflow(actions, 183.5), isFalse);
+      // 172.75 of cluster; it must also leave room for the 28px overflow-menu
+      // width, so it overflows once the available width drops to 200.75.
+      expect(rowActionsOverflow(actions, 201), isFalse);
+      expect(rowActionsOverflow(actions, 200), isTrue);
     });
 
     test('is true when one px is missing', () {
@@ -67,7 +68,7 @@ void main() {
         RowAction.icon('Delete', null),
       ];
 
-      expect(rowActionsOverflow(actions, 183), isTrue);
+      expect(rowActionsOverflow(actions, 200.74), isTrue);
     });
 
     test('an empty cluster never overflows', () {
@@ -81,7 +82,7 @@ void main() {
 
     test('the supervisor cluster overflows at the 180px a 700px window leaves',
         () {
-      // Supervisor: Start (button) + 4 icon buttons, no inset.
+      // Supervisor: Start (button) + 4 icon buttons, with the 6px first inset.
       const actions = [
         RowAction.button('Start', null),
         RowAction.icon('Restart', null),
@@ -90,8 +91,8 @@ void main() {
         RowAction.icon('Delete', null),
       ];
 
-      expect(rowActionsOverflow(actions, 180), isTrue);
-      expect(rowActionsOverflow(actions, 1000), isFalse);
+      expect(rowActionsOverflow(actions, 180, firstGap: 6), isTrue);
+      expect(rowActionsOverflow(actions, 1000, firstGap: 6), isFalse);
     });
 
     test('a disabled action still occupies layout space', () {
@@ -100,6 +101,51 @@ void main() {
       final actions = [RowAction.button('Run', () {})];
 
       expect(measureRowActions(disabled), measureRowActions(actions));
+    });
+  });
+
+  group('planActionColumn', () {
+    test('sizes the column to the widest row when every row fits', () {
+      // One row has a single 28px icon, the other two (28*2 + 4 gap = 60). The
+      // column takes the widest so every row's cluster is right-aligned inside
+      // the same box, which is what keeps the data columns aligned.
+      final plan = planActionColumn(
+        [
+          const [RowAction.icon('Edit', null)],
+          const [RowAction.icon('Edit', null), RowAction.icon('Delete', null)],
+        ],
+        availableWidth: 300,
+      );
+
+      expect(plan.collapsed, isFalse);
+      expect(plan.width, 60);
+    });
+
+    test('collapses the whole table to the menu width when the widest row does '
+        'not fit', () {
+      // The widest row needs 28*3 + 4*2 = 92, which does not fit in 50. One
+      // breakpoint per table, not per row: a table that mixes inline clusters
+      // and menus would draw its action column at two different widths.
+      final plan = planActionColumn(
+        [
+          const [RowAction.icon('Edit', null)],
+          const [
+            RowAction.icon('A', null),
+            RowAction.icon('B', null),
+            RowAction.icon('C', null),
+          ],
+        ],
+        availableWidth: 50,
+        firstGap: 6,
+      );
+
+      expect(plan.collapsed, isTrue);
+      // The '…' button plus the 6px inset before it.
+      expect(plan.width, 34);
+    });
+
+    test('is zero-wide for a table with no rows', () {
+      expect(planActionColumn(const [], availableWidth: 100).width, 0);
     });
   });
 

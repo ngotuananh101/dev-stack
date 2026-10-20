@@ -54,23 +54,36 @@ class SiteTable extends ConsumerWidget {
           // The row's action cluster needs the width it really has, so the
           // table measures itself instead of assuming a window width.
           final availableWidth = constraints.maxWidth;
+          final operateWidth = availableWidth - _operateReservedWidth;
+          // One action-column width for every row so the data columns line up
+          // across rows, even when different site types carry different actions.
+          final plan = planActionColumn(
+            [for (final site in sites) _rowActions(site, ref)],
+            availableWidth: operateWidth.isFinite && operateWidth > 0 ? operateWidth : 1,
+            firstGap: 8,
+            gap: 8,
+          );
 
           return Column(
             children: [
-              _buildHeader(),
+              _buildHeader(plan, ref),
               if (sites.isEmpty)
                 _buildEmptyState()
               else
                 Expanded(
                   child: ListView.builder(
                     itemCount: sites.length,
-                    itemBuilder: (context, index) => _buildRow(
-                      context,
-                      ref,
-                      availableWidth,
-                      sites[index],
-                      index == sites.length - 1,
-                    ),
+                    itemBuilder: (context, index) {
+                      final site = sites[index];
+                      return _buildRow(
+                        context,
+                        ref,
+                        availableWidth,
+                        plan,
+                        site,
+                        index == sites.length - 1,
+                      );
+                    },
                   ),
                 ),
               ],
@@ -80,7 +93,7 @@ class SiteTable extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ActionColumnPlan plan, WidgetRef ref) {
     final allSelected =
         sites.isNotEmpty && sites.every((s) => selectedIds.contains(s.id));
 
@@ -114,7 +127,7 @@ class SiteTable extends ConsumerWidget {
           SizedBox(width: 50, child: _buildHeaderCell('SSL')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 160,
+            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
@@ -129,6 +142,8 @@ class SiteTable extends ConsumerWidget {
     return Text(
       label,
       textAlign: alignment,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: const TextStyle(
         fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
@@ -148,19 +163,93 @@ class SiteTable extends ConsumerWidget {
   /// uselessness.
   static const double _flexColumnMinWidth = 120;
 
+  /// The actions of one row, in render order.
+  ///
+  /// Extracted so [planActionColumn] can measure every row before layout: the
+  /// column width is the widest cluster, not each row's own. CLI running state
+  /// is read via [ref] — the same read the row used inside its StreamBuilder.
+  List<RowAction> _rowActions(SiteModel site, WidgetRef ref) {
+    final cliManager = ref.read(cliProcessManagerProvider);
+    final isRunning = cliManager.isSiteRunning(site.id);
+
+    return [
+      if (site.siteType == 'cli') ...[
+        RowAction.icon(
+          isRunning ? 'Stop' : 'Start',
+          () async {
+            if (isRunning) {
+              await cliManager.stopSite(site.id);
+            } else {
+              await cliManager.startSite(site);
+            }
+          },
+          icon: isRunning ? LucideIcons.square : LucideIcons.play,
+        ),
+        RowAction.icon(
+          isRunning ? 'Restart' : 'Not running',
+          isRunning ? () => cliManager.restartSite(site) : null,
+          icon: LucideIcons.rotateCw,
+        ),
+        RowAction.icon(
+          'Logs',
+          () {
+            showDialog(
+              context: ref.context,
+              builder: (context) => SiteLogsModal(site: site),
+            );
+          },
+          icon: LucideIcons.scrollText,
+        ),
+      ],
+      if (site.siteType == 'php')
+        RowAction.icon(
+          'Open Terminal',
+          () => _openTerminal(site, ref),
+          icon: LucideIcons.terminal,
+        ),
+      RowAction.icon(
+        'Share / Tunnel',
+        () {
+          showDialog(
+            context: ref.context,
+            builder: (context) => SiteTunnelDialog(site: site),
+          );
+        },
+        icon: LucideIcons.radio,
+      ),
+      RowAction.icon(
+        'Config',
+        () => onEdit(site),
+        icon: LucideIcons.settings,
+      ),
+      RowAction.icon(
+        'Delete',
+        () {
+          AppDialogs.showConfirm(
+            context: ref.context,
+            title: 'Delete Site',
+            text:
+                'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
+            confirmBtnText: 'DELETE',
+            onConfirm: () {
+              ref.read(sitesProvider.notifier).deleteSite(site.id);
+            },
+          );
+        },
+        icon: Icons.delete_outline_rounded,
+      ),
+    ];
+  }
+
   Widget _buildRow(
     BuildContext context,
     WidgetRef ref,
     double availableWidth,
+    ActionColumnPlan plan,
     SiteModel site,
     bool isLast,
   ) {
     final isSelected = selectedIds.contains(site.id);
-    // The row used to read these inside a StreamBuilder that also rebuilt it on
-    // status changes. The provider is read here so the actions keep working;
-    // the rebuild itself comes from watching the stream in [build].
-    final cliManager = ref.read(cliProcessManagerProvider);
-    final isRunning = cliManager.isSiteRunning(site.id);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -281,77 +370,15 @@ class SiteTable extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          RowActionMenu(
-            availableWidth: availableWidth - _operateReservedWidth,
-            firstGap: 8,
-            gap: 8,
-            actions: [
-              if (site.siteType == 'cli') ...[
-                RowAction.icon(
-                  isRunning ? 'Stop' : 'Start',
-                  () async {
-                    if (isRunning) {
-                      await cliManager.stopSite(site.id);
-                    } else {
-                      await cliManager.startSite(site);
-                    }
-                  },
-                  icon: isRunning ? LucideIcons.square : LucideIcons.play,
-                ),
-                RowAction.icon(
-                  isRunning ? 'Restart' : 'Not running',
-                  isRunning ? () => cliManager.restartSite(site) : null,
-                  icon: LucideIcons.rotateCw,
-                ),
-                RowAction.icon(
-                  'Logs',
-                  () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => SiteLogsModal(site: site),
-                    );
-                  },
-                  icon: LucideIcons.scrollText,
-                ),
-              ],
-              if (site.siteType == 'php')
-                RowAction.icon(
-                  'Open Terminal',
-                  () => _openTerminal(site, ref),
-                  icon: LucideIcons.terminal,
-                ),
-              RowAction.icon(
-                'Share / Tunnel',
-                () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => SiteTunnelDialog(site: site),
-                  );
-                },
-                icon: LucideIcons.radio,
-              ),
-              RowAction.icon(
-                'Config',
-                () => onEdit(site),
-                icon: LucideIcons.settings,
-              ),
-              RowAction.icon(
-                'Delete',
-                () {
-                  AppDialogs.showConfirm(
-                    context: context,
-                    title: 'Delete Site',
-                    text:
-                        'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
-                    confirmBtnText: 'DELETE',
-                    onConfirm: () {
-                      ref.read(sitesProvider.notifier).deleteSite(site.id);
-                    },
-                  );
-                },
-                icon: Icons.delete_outline_rounded,
-              ),
-            ],
+          SizedBox(
+            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            child: RowActionMenu(
+              availableWidth: availableWidth - _operateReservedWidth,
+              firstGap: 8,
+              columnWidth: plan.width,
+              collapsed: plan.collapsed,
+              actions: _rowActions(site, ref),
+            ),
           ),
         ],
       ),

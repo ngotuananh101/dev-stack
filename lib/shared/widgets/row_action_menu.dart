@@ -18,6 +18,11 @@ import 'app_icon_button.dart';
 ///
 /// The collapse decision belongs to [rowActionsOverflow], not to this widget:
 /// it is pure and unit-tested, so every table shares one breakpoint.
+///
+/// [columnWidth] fixes the column to a single width shared with every other row
+/// in the same table (see [planActionColumn]). When it is null, the widget
+/// measures itself per row — the old behaviour — which keeps columns from
+/// lining up when different rows carry different numbers of actions.
 class RowActionMenu extends StatelessWidget {
   /// The row's actions, in render order.
   final List<RowAction> actions;
@@ -31,24 +36,39 @@ class RowActionMenu extends StatelessWidget {
   /// Horizontal gap between actions inside the cluster.
   final double gap;
 
+  /// Fixed width for the column, shared with every row in the table. When null,
+  /// each row measures itself (no column alignment guarantee).
+  final double? columnWidth;
+
+  /// Whether the table as a whole is in its collapsed state. When [columnWidth]
+  /// is given this must match [planActionColumn]'s result, so a mixed table
+  /// (some rows inline, some as a menu) does not draw its header off-centre.
+  final bool collapsed;
+
   const RowActionMenu({
     super.key,
     required this.actions,
     required this.availableWidth,
     this.firstGap = 0,
     this.gap = 4,
+    this.columnWidth,
+    this.collapsed = false,
   });
 
   @override
   Widget build(BuildContext context) {
     if (actions.isEmpty) return const SizedBox.shrink();
 
-    if (!rowActionsOverflow(
-      actions,
-      availableWidth,
-      firstGap: firstGap,
-      gap: gap,
-    )) {
+    final fits = columnWidth == null
+        ? !rowActionsOverflow(
+            actions,
+            availableWidth,
+            firstGap: firstGap,
+            gap: gap,
+          )
+        : !collapsed;
+
+    if (fits) {
       return _buildInlineRow();
     }
 

@@ -74,6 +74,14 @@ class CompactAppsTable extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
+        final operateWidth = availableWidth - _operateReservedWidth;
+        // One column width for every row, so the data columns line up even
+        // when different rows carry different numbers of actions.
+        final plan = planActionColumn(
+          [for (final app in apps) _buildAppActions(context, app)],
+          availableWidth: operateWidth.isFinite ? operateWidth : 0,
+          gap: 8,
+        );
 
         return Container(
           decoration: BoxDecoration(
@@ -107,7 +115,7 @@ class CompactAppsTable extends StatelessWidget {
                     SizedBox(width: 50, child: _buildHeaderCell('PATH')),
                     const SizedBox(width: 12),
                     SizedBox(
-                      width: 140,
+                      width: plan.width.isFinite ? plan.width : 140,
                       child: _buildHeaderCell(
                         'OPERATE',
                         alignment: TextAlign.right,
@@ -121,14 +129,13 @@ class CompactAppsTable extends StatelessWidget {
                 child: ListView.builder(
                   physics: const ClampingScrollPhysics(),
                   itemCount: apps.length,
-                  itemBuilder: (context, index) {
-                    return _buildAppRow(
-                      context,
-                      availableWidth,
-                      apps[index],
-                      index == apps.length - 1,
-                    );
-                  },
+                  itemBuilder: (context, index) => _buildAppRow(
+                    context,
+                    availableWidth,
+                    apps[index],
+                    plan,
+                    index == apps.length - 1,
+                  ),
                 ),
               ),
             ],
@@ -158,6 +165,7 @@ class CompactAppsTable extends StatelessWidget {
     BuildContext context,
     double availableWidth,
     AppModel app,
+    ActionColumnPlan plan,
     bool isLast,
   ) {
     return Container(
@@ -282,11 +290,19 @@ class CompactAppsTable extends StatelessWidget {
           // PATH toggle
           SizedBox(width: 50, child: _buildPathToggle(app)),
           const SizedBox(width: 12),
-          // Operate buttons
-          RowActionMenu(
-            availableWidth: availableWidth - _operateReservedWidth,
-            gap: 8,
-            actions: _buildAppActions(context, app),
+          // Operate buttons. The column takes a fixed width (the plan's shared
+          // width) so the header and every row align; without a width each row
+          // would let its cluster grow to its own size and the flexible data
+          // columns would land at a different x per row.
+          SizedBox(
+            width: plan.width.isFinite ? plan.width : null,
+            child: RowActionMenu(
+              availableWidth: availableWidth - _operateReservedWidth,
+              gap: 8,
+              columnWidth: plan.width,
+              collapsed: plan.collapsed,
+              actions: _buildAppActions(context, app),
+            ),
           ),
         ],
       ),
