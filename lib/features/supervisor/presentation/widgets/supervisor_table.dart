@@ -3,8 +3,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
-import '../../../../shared/widgets/app_button.dart';
-import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/utils/action_row_layout.dart';
+import '../../../../shared/widgets/row_action_menu.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/supervisor_program.dart';
 import '../../domain/supervisor_status.dart';
@@ -40,9 +40,8 @@ class SupervisorTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const minWidth = 880.0;
-        final tableWidth =
-            constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
+        // Shrink instead of scrolling sideways out of reach.
+        final availableWidth = constraints.maxWidth;
 
         return Container(
           width: double.infinity,
@@ -51,31 +50,23 @@ class SupervisorTable extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.border),
           ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              height: constraints.maxHeight.isFinite
-                  ? constraints.maxHeight
-                  : null,
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  if (programs.isEmpty)
-                    _buildEmptyState()
-                  else
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: programs.length,
-                        itemBuilder: (context, index) => _buildRow(
-                          programs[index],
-                          index == programs.length - 1,
-                        ),
-                      ),
+          child: Column(
+            children: [
+              _buildHeader(),
+              if (programs.isEmpty)
+                _buildEmptyState()
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: programs.length,
+                    itemBuilder: (context, index) => _buildRow(
+                      programs[index],
+                      availableWidth,
+                      index == programs.length - 1,
                     ),
-                ],
-              ),
-            ),
+                  ),
+                ),
+            ],
           ),
         );
       },
@@ -153,10 +144,28 @@ class SupervisorTable extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(SupervisorProgram program, bool isLast) {
+  /// Width the OPERATE cell cannot grow into: the row padding, the gaps before
+  /// it, the two fixed data columns, and the floor for the two flexible
+  /// program/command columns.
+  static const double _operateReservedWidth =
+      16 * 2 + 12 * 4 + 100 + 80 + _flexColumnMinWidth * 2;
+
+  /// Floor for one flexible data column, below which its text is ellipsized to
+  /// uselessness.
+  static const double _flexColumnMinWidth = 120;
+
+  static VoidCallback? _maybeOnPressed(bool blocked, VoidCallback action) =>
+      blocked ? null : action;
+
+  Widget _buildRow(
+    SupervisorProgram program,
+    double availableWidth,
+    bool isLast,
+  ) {
     final status = statuses[program.id] ?? SupervisorStatus.stopped;
     final isRunning = status == SupervisorStatus.running;
-    final isTransitioning = status == SupervisorStatus.starting ||
+    final isTransitioning =
+        status == SupervisorStatus.starting ||
         status == SupervisorStatus.stopping ||
         status == SupervisorStatus.restarting;
     final pid = pids[program.id];
@@ -245,56 +254,38 @@ class SupervisorTable extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 240,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (isRunning)
-                  AppButton(
-                    label: 'Stop',
-                    onPressed: () => onStop(program.id),
-                    icon: const Icon(LucideIcons.square, size: 12),
-                    style: AppButtonStyle.danger,
-                  )
-                else
-                  AppButton(
-                    label: 'Start',
-                    onPressed: isTransitioning ? null : () => onStart(program),
-                    icon: const Icon(LucideIcons.play, size: 12),
-                    style: AppButtonStyle.success,
-                  ),
-                const SizedBox(width: 6),
-                AppIconButton(
-                  icon: LucideIcons.rotateCw,
-                  tooltip: 'Restart',
-                  onPressed: isRunning ? () => onRestart(program) : null,
-                  size: AppIconButtonSize.sm,
-                ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: LucideIcons.list,
-                  tooltip: 'View Logs',
-                  onPressed: () => onViewLogs(program),
-                  size: AppIconButtonSize.sm,
-                ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: LucideIcons.edit,
-                  tooltip: 'Edit',
-                  onPressed: () => onEdit(program),
-                  size: AppIconButtonSize.sm,
-                ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: LucideIcons.trash2,
-                  tooltip: 'Delete',
-                  color: AppColors.error,
-                  onPressed: () => onDelete(program),
-                  size: AppIconButtonSize.sm,
-                ),
-              ],
-            ),
+          RowActionMenu(
+            availableWidth: availableWidth - _operateReservedWidth,
+            firstGap: 6,
+            actions: [
+              RowAction.button(
+                isRunning ? 'Stop' : 'Start',
+                isRunning
+                    ? () => onStop(program.id)
+                    : _maybeOnPressed(isTransitioning, () => onStart(program)),
+                icon: isRunning ? LucideIcons.square : LucideIcons.play,
+              ),
+              RowAction.icon(
+                'Restart',
+                isRunning ? () => onRestart(program) : null,
+                icon: LucideIcons.rotateCw,
+              ),
+              RowAction.icon(
+                'View Logs',
+                () => onViewLogs(program),
+                icon: LucideIcons.list,
+              ),
+              RowAction.icon(
+                'Edit',
+                () => onEdit(program),
+                icon: LucideIcons.edit,
+              ),
+              RowAction.icon(
+                'Delete',
+                () => onDelete(program),
+                icon: LucideIcons.trash2,
+              ),
+            ],
           ),
         ],
       ),
