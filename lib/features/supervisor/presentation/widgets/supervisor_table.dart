@@ -103,7 +103,7 @@ class SupervisorTable extends StatelessWidget {
           SizedBox(
             // Header action column takes the shared width so it lines up with
             // the action buttons of every row below it.
-            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            width: actionColumnWidth(plan),
             child: _headerCell('OPERATE', align: TextAlign.right),
           ),
         ],
@@ -268,7 +268,7 @@ class SupervisorTable extends StatelessWidget {
           // Actions render in the shared-width column so the header and every
           // row align, and collapse into the '…' menu together.
           SizedBox(
-            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            width: actionColumnWidth(plan),
             child: RowActionMenu(
               availableWidth: availableWidth - _operateReservedWidth,
               firstGap: 6,

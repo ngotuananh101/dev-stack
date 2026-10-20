@@ -149,6 +149,21 @@ void main() {
     });
   });
 
+  group('actionColumnWidth', () {
+    test('keeps the planned width when the table has rows', () {
+      const plan = ActionColumnPlan(width: 60, collapsed: false);
+      expect(actionColumnWidth(plan), 60);
+    });
+
+    test('gives an empty table the width of its header label', () {
+      // An empty table has no cluster to align to, but its header still shows
+      // the OPERATE label: a zero-wide column squeezes the label away.
+      const plan = ActionColumnPlan(width: 0, collapsed: false);
+      expect(actionColumnWidth(plan), greaterThan(0));
+      expect(actionColumnWidth(plan), kActionHeaderMinWidth);
+    });
+  });
+
   group('RowAction', () {
     test('icon actions use their label as the tooltip', () {
       const action = RowAction.icon('Edit', null);

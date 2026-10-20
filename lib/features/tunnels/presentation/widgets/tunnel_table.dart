@@ -117,7 +117,7 @@ class TunnelTable extends StatelessWidget {
           SizedBox(
             // Action column takes the shared width so it lines up with every
             // row's cluster below.
-            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            width: actionColumnWidth(plan),
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
@@ -307,7 +307,7 @@ class TunnelTable extends StatelessWidget {
           // collapses into one '…' menu when the row gets too narrow. The
           // column width comes from the shared plan so the header lines up.
           SizedBox(
-            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            width: actionColumnWidth(plan),
             child: RowActionMenu(
               availableWidth: availableWidth - _operateReservedWidth,
               firstGap: 6,

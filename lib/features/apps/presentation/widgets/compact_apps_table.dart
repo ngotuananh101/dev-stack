@@ -115,7 +115,7 @@ class CompactAppsTable extends StatelessWidget {
                     SizedBox(width: 50, child: _buildHeaderCell('PATH')),
                     const SizedBox(width: 12),
                     SizedBox(
-                      width: plan.width.isFinite ? plan.width : 140,
+                      width: actionColumnWidth(plan),
                       child: _buildHeaderCell(
                         'OPERATE',
                         alignment: TextAlign.right,
@@ -295,7 +295,7 @@ class CompactAppsTable extends StatelessWidget {
           // would let its cluster grow to its own size and the flexible data
           // columns would land at a different x per row.
           SizedBox(
-            width: plan.width.isFinite ? plan.width : null,
+            width: actionColumnWidth(plan),
             child: RowActionMenu(
               availableWidth: availableWidth - _operateReservedWidth,
               gap: 8,

@@ -105,7 +105,7 @@ class CronTable extends StatelessWidget {
           SizedBox(
             // The action column takes the shared width so the header lines up
             // with the button cluster of every row below it.
-            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            width: actionColumnWidth(plan),
             child: _headerCell('OPERATE', align: TextAlign.right),
           ),
         ],
@@ -266,7 +266,7 @@ class CronTable extends StatelessWidget {
           SizedBox(
             // The action column takes the shared width so the header and every
             // row align, and collapse into the '…' menu together.
-            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            width: actionColumnWidth(plan),
             child: RowActionMenu(
               actions: _rowActions(job),
               availableWidth: availableWidth - _operateReservedWidth,

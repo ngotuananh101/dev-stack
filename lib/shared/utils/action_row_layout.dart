@@ -160,3 +160,19 @@ ActionColumnPlan planActionColumn(
   }
   return ActionColumnPlan(width: widest, collapsed: false);
 }
+
+/// Minimum width of the action column's header cell.
+///
+/// The header labels are set in `AppTextSize.xxs` (10px) semibold with 0.5px
+/// letter spacing, which renders "OPERATE" at 73.5px. The column must be at
+/// least wide enough for that label, or a table with no rows — whose plan is
+/// zero-wide — would squeeze its own header away.
+const double kActionHeaderMinWidth = 74;
+
+/// The width the action column occupies in the header and in every row.
+///
+/// A table with rows uses the shared [ActionColumnPlan] width. An empty table
+/// has no cluster to align to, so its column falls back to the header's
+/// minimum width instead of collapsing to nothing.
+double actionColumnWidth(ActionColumnPlan plan) =>
+    plan.width > 0 ? plan.width : kActionHeaderMinWidth;

@@ -246,7 +246,7 @@ class DatabaseTable extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+              width: actionColumnWidth(plan),
               child: RowActionMenu(
                 availableWidth: availableWidth - _operateReservedWidthForRedis,
                 gap: 8,
@@ -317,7 +317,7 @@ class DatabaseTable extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+              width: actionColumnWidth(plan),
               child: RowActionMenu(
                 availableWidth: availableWidth - _operateReservedWidthForSql,
                 gap: 8,

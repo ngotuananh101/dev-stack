@@ -127,7 +127,7 @@ class SiteTable extends ConsumerWidget {
           SizedBox(width: 50, child: _buildHeaderCell('SSL')),
           const SizedBox(width: 12),
           SizedBox(
-            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            width: actionColumnWidth(plan),
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
@@ -371,7 +371,7 @@ class SiteTable extends ConsumerWidget {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            width: actionColumnWidth(plan),
             child: RowActionMenu(
               availableWidth: availableWidth - _operateReservedWidth,
               firstGap: 8,
