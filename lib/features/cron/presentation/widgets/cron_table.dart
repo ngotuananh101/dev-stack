@@ -39,6 +39,14 @@ class CronTable extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
+        final operateWidth = availableWidth - _operateReservedWidth;
+        // One action-column width for every row, so the data columns line up
+        // even when rows carry different numbers of actions.
+        final plan = planActionColumn(
+          [for (final job in jobs) _rowActions(job)],
+          availableWidth: operateWidth.isFinite && operateWidth > 0 ? operateWidth : 1,
+          firstGap: 6,
+        );
 
         return Container(
           width: double.infinity,
@@ -49,7 +57,7 @@ class CronTable extends StatelessWidget {
           ),
           child: Column(
             children: [
-              _buildHeader(),
+              _buildHeader(plan),
               if (jobs.isEmpty)
                 _buildEmptyState()
               else
@@ -59,6 +67,7 @@ class CronTable extends StatelessWidget {
                     itemBuilder: (context, index) => _buildRow(
                       jobs[index],
                       availableWidth,
+                      plan,
                       index == jobs.length - 1,
                     ),
                   ),
@@ -70,7 +79,7 @@ class CronTable extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ActionColumnPlan plan) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
@@ -93,7 +102,10 @@ class CronTable extends StatelessWidget {
           const SizedBox(width: 12),
           Flexible(child: _headerCell('ENABLED')),
           const SizedBox(width: 12),
-          Flexible(
+          SizedBox(
+            // The action column takes the shared width so the header lines up
+            // with the button cluster of every row below it.
+            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
             child: _headerCell('OPERATE', align: TextAlign.right),
           ),
         ],
@@ -147,8 +159,12 @@ class CronTable extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(CronJob job, double availableWidth, bool isLast) {
-    final isRunning = runningIds.contains(job.id);
+  Widget _buildRow(
+    CronJob job,
+    double availableWidth,
+    ActionColumnPlan plan,
+    bool isLast,
+  ) {
     final valid = CronExpression.isValid(job.schedule);
     final description =
         valid ? CronExpression.parse(job.schedule).describe() : 'Invalid schedule';
@@ -247,36 +263,52 @@ class CronTable extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          RowActionMenu(
-            actions: [
-              RowAction.button(
-                'Run',
-                isRunning ? null : () => onRunNow(job),
-                icon: LucideIcons.play,
-                isLoading: isRunning,
-              ),
-              RowAction.icon(
-                'Run History',
-                () => onViewHistory(job),
-                icon: LucideIcons.history,
-              ),
-              RowAction.icon(
-                'Edit',
-                () => onEdit(job),
-                icon: LucideIcons.edit,
-              ),
-              RowAction.icon(
-                'Delete',
-                () => onDelete(job),
-                icon: LucideIcons.trash2,
-              ),
-            ],
-            availableWidth: availableWidth - _operateReservedWidth,
-            firstGap: 6,
+          SizedBox(
+            // The action column takes the shared width so the header and every
+            // row align, and collapse into the '…' menu together.
+            width: plan.width.isFinite && plan.width > 0 ? plan.width : null,
+            child: RowActionMenu(
+              actions: _rowActions(job),
+              availableWidth: availableWidth - _operateReservedWidth,
+              firstGap: 6,
+              columnWidth: plan.width,
+              collapsed: plan.collapsed,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  /// The actions of one row, in render order.
+  ///
+  /// Extracted so [planActionColumn] can measure every row before layout: the
+  /// column width is the widest cluster, not each row's own.
+  List<RowAction> _rowActions(CronJob job) {
+    final isRunning = runningIds.contains(job.id);
+    return [
+      RowAction.button(
+        'Run',
+        isRunning ? null : () => onRunNow(job),
+        icon: LucideIcons.play,
+        isLoading: isRunning,
+      ),
+      RowAction.icon(
+        'Run History',
+        () => onViewHistory(job),
+        icon: LucideIcons.history,
+      ),
+      RowAction.icon(
+        'Edit',
+        () => onEdit(job),
+        icon: LucideIcons.edit,
+      ),
+      RowAction.icon(
+        'Delete',
+        () => onDelete(job),
+        icon: LucideIcons.trash2,
+      ),
+    ];
   }
 
   /// Width the action cluster cannot grow into: the row padding, the gaps
