@@ -304,9 +304,22 @@ class CliProcessManager {
     }
   }
 
+  /// Kills every site's process synchronously, without waiting.
+  ///
+  /// Used on shutdown: the app may be torn down before an awaited kill could
+  /// run, and a dev server must not outlive the app that started it.
+  void stopAllSync() {
+    for (final managed in _processes.values) {
+      managed.running = false;
+      killProcessTreeSync(managed.process.pid);
+    }
+    _processes.clear();
+  }
+
   void dispose() {
-    // Best-effort: stop running processes; don't block shutdown on it.
-    unawaited(stopAll());
+    // The kill is synchronous: an app that is torn down right after this
+    // would otherwise leave the dev servers running.
+    stopAllSync();
     if (!_statusController.isClosed) {
       _statusController.close();
     }

@@ -74,3 +74,37 @@ Future<void> _run(String executable, List<String> arguments) async {
     // Best-effort.
   }
 }
+
+/// Terminates the tree rooted at [pid] synchronously, with SIGKILL only.
+///
+/// Used on shutdown: the isolate may die before an awaited kill could run, so
+/// the signals have to be sent before the call returns. The grace period of
+/// [killProcessTree] is pointless here — the point is that nothing survives.
+void killProcessTreeSync(int pid) {
+  if (Platform.isWindows) {
+    _runSync('taskkill', ['/F', '/T', '/PID', '$pid']);
+    return;
+  }
+
+  final descendants = _descendantsOf(pid);
+  final leadsOwnGroup = _processGroupId(pid) == pid;
+
+  // The descendants first: once the leader dies they are reparented to init
+  // and can no longer be found.
+  for (final child in descendants) {
+    _runSync('kill', ['-9', '$child']);
+  }
+  if (leadsOwnGroup) {
+    _runSync('kill', ['-9', '--', '-$pid']);
+  }
+  _runSync('kill', ['-9', '$pid']);
+}
+
+/// Runs a command synchronously, swallowing failures.
+void _runSync(String executable, List<String> arguments) {
+  try {
+    Process.runSync(executable, arguments);
+  } catch (_) {
+    // Best-effort.
+  }
+}
