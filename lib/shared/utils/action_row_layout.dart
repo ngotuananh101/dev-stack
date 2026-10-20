@@ -1,33 +1,35 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
-/// One action inside a table row's action cluster.
-///
-/// Either a labelled button ([RowActionKind.button], the `AppButton` used for the
-/// row's primary action) or an icon-only button ([RowActionKind.icon], an
-/// `AppIconButton`). [label] doubles as the icon button's tooltip and as the
-/// label shown in the '…' overflow menu.
+/// Whether a row action shows a text label or only an icon.
 @immutable
 enum RowActionKind { button, icon }
 
+/// One action inside a table row's action cluster.
+///
+/// [label] is the button's text, the icon button's tooltip, and the label shown
+/// in the '…' overflow menu. [icon] is the icon the table already uses for this
+/// action; it is reused in the overflow menu so the collapsed state looks like
+/// the expanded one. Actions with no [icon] fall back to a dot.
 @immutable
 class RowAction {
   final RowActionKind kind;
-
-  /// Button label, icon tooltip and overflow-menu label.
   final String label;
 
-  /// `null` when the action is currently disabled. A disabled action still
-  /// occupies layout space, so it is measured like an enabled one.
+  /// The icon the table renders for this action.
+  final IconData? icon;
+
+  /// `null` when the action is disabled. A disabled action still occupies
+  /// layout space, so it is measured like an enabled one.
   final VoidCallback? onPressed;
 
-  const RowAction.button(this.label, this.onPressed)
+  const RowAction.button(this.label, this.onPressed, {this.icon})
     : kind = RowActionKind.button;
 
-  const RowAction.icon(this.label, this.onPressed)
+  const RowAction.icon(this.label, this.onPressed, {this.icon})
     : kind = RowActionKind.icon;
 }
 
-/// Width of one icon action: an `AppIconButton` at `AppIconButtonSize.sm`.
+/// Width of one icon action: an `AppIconButton` at its default `sm` size.
 const double kRowActionIconWidth = 28;
 
 /// Horizontal padding an `AppButton` of size `sm` adds around its label.
@@ -36,7 +38,7 @@ const double kRowActionButtonPadding = 20;
 /// Gap between an `AppButton`'s icon and its label.
 const double kRowActionButtonIconGap = 8;
 
-/// Width of the icon an `AppButton` renders before a non-empty label.
+/// Width of the icon an `AppButton` renders before its label.
 const double kRowActionButtonIconWidth = 12;
 
 /// Estimated advance width per character at the table's `AppTextSize.sm` (12).
@@ -48,10 +50,9 @@ const double kRowActionButtonIconWidth = 12;
 /// character advance is deliberate rather than lazy.
 const double kRowActionCharWidth = 6.5;
 
-/// The width of a single '…' overflow button ([kRowActionIconWidth]).
+/// The width of the single '…' button that replaces a cluster that does not fit.
 double get kOverflowMenuWidth => kRowActionIconWidth;
 
-/// Estimated rendered width of one action at its own size.
 double _measure(RowAction action) {
   final labelWidth = action.label.length * kRowActionCharWidth;
   return switch (action.kind) {
@@ -85,8 +86,9 @@ double? measureRowActions(
 /// Whether the [actions] cluster has to collapse into the '…' menu to fit in
 /// [availableWidth].
 ///
-/// The cluster is allowed to grow to the width the overflow menu would take, so
-/// no row renders a wider cluster than the menu that replaces it.
+/// A cluster is only kept when it fits comfortably; one that would sit within a
+/// menu-button's width of the limit collapses too, so a row never shows a
+/// cluster that is barely reachable.
 bool rowActionsOverflow(
   List<RowAction> actions,
   double availableWidth, {
@@ -95,7 +97,5 @@ bool rowActionsOverflow(
 }) {
   final needed = measureRowActions(actions, firstGap: firstGap, gap: gap);
   if (needed == null) return false;
-  // A cluster that only just fits collapses to the menu, keeping one consistent
-  // breakpoint instead of a near-miss that overflows by a pixel.
   return needed + kOverflowMenuWidth > availableWidth;
 }
