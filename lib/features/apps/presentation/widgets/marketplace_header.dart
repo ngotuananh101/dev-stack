@@ -42,8 +42,10 @@ class MarketplaceHeader extends StatelessWidget {
           ],
         ),
         const Spacer(),
-        // Actions (e.g. Category Bar)
-        actions ?? const SizedBox.shrink(),
+        // Actions (e.g. Category Bar). The bar scrolls horizontally, so it may
+        // take whatever width is left — but it must not demand more than
+        // that, or the row overflows on a narrow window.
+        Flexible(child: actions ?? const SizedBox.shrink()),
         const SizedBox(width: 16),
         // Update Button
         IconButton(
