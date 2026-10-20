@@ -41,7 +41,7 @@ void main() {
                 onViewLogs: (_) {},
                 onOpenUrl: (_) {},
                 onCopyUrl: (_) {},
-                onOpenQr: (_, __) {},
+                onOpenQr: (_, url) {},
               ),
             ),
           ]),

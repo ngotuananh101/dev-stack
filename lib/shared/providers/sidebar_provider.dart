@@ -15,3 +15,22 @@ class SidebarCollapsed extends _$SidebarCollapsed {
 
   void setCollapsed(bool collapsed) => state = collapsed;
 }
+
+/// Whether the sidebar should be collapsed given the current content width.
+///
+/// Extracted so the window-width breakpoint is unit-testable without spinning
+/// up the whole MainScreen widget tree. Below [kSidebarCollapseBreakpoint] the
+/// 240px sidebar eats too much of the page, so it folds to its 64px icon-only
+/// width; at or above it, the user's manual choice is restored.
+bool computeSidebarCollapse(double contentWidth, bool currentlyCollapsed) {
+  if (contentWidth < kSidebarCollapseBreakpoint && !currentlyCollapsed) {
+    return true;
+  }
+  if (contentWidth >= kSidebarCollapseBreakpoint && currentlyCollapsed) {
+    return false;
+  }
+  return currentlyCollapsed;
+}
+
+/// Window content width below which the sidebar auto-collapses.
+const double kSidebarCollapseBreakpoint = 960;
