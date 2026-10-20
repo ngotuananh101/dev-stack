@@ -98,4 +98,25 @@ void main() {
 
     expect(tapped, 1);
   });
+
+  testWidgets('a long action label fits in the overflow menu', (tester) async {
+    // The menu is capped at 280px wide by the framework, so a label that does
+    // not fit has to be clipped rather than pushed out of the menu.
+    const longLabels = <RowAction>[
+      RowAction.icon('Manage Python Versions', null),
+      RowAction.icon('Update to new patch', null),
+    ];
+
+    await tester.pumpWidget(host(60, longLabels));
+    await tester.tap(find.byIcon(LucideIcons.moreHorizontal));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'a long action label must not overflow the menu',
+    );
+    // The label is still readable — it is ellipsized, not cut off.
+    expect(find.text('Manage Python Versions'), findsOneWidget);
+  });
 }

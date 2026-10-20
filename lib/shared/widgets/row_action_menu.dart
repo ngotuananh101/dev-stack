@@ -127,11 +127,18 @@ class RowActionMenu extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  actions[i].label,
-                  style: const TextStyle(
-                    fontSize: AppTextSize.sm,
-                    color: AppColors.textPrimary,
+                // The framework caps the menu at 280px wide, so a long label
+                // has to give way: it is ellipsized rather than pushed out of
+                // the menu and clipped by the screen edge.
+                Expanded(
+                  child: Text(
+                    actions[i].label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: AppTextSize.sm,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ],
