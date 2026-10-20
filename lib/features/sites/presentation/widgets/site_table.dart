@@ -114,7 +114,7 @@ class SiteTable extends ConsumerWidget {
           SizedBox(width: 50, child: _buildHeaderCell('SSL')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 220,
+            width: 160,
             child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
           ),
         ],
