@@ -26,6 +26,19 @@ DateTime? _nextOccurrenceFor(({String schedule, DateTime from}) input) {
   return CronExpression.parse(input.schedule).nextOccurrence(input.from);
 }
 
+/// Computes the next occurrence of [schedule] in a background isolate.
+///
+/// This is a top-level function on purpose. A closure created inside the
+/// widget's state would capture `this`, and the state holds a `Timer` — a
+/// `Timer` cannot be sent to another isolate, so the spawn would fail with
+/// "object is unsendable".
+Future<DateTime?> _computeNextOccurrence(String schedule) {
+  final from = DateTime.now();
+  return Isolate.run(
+    () => _nextOccurrenceFor((schedule: schedule, from: from)),
+  );
+}
+
 /// Create/edit form for a cron job: schedule text with quick presets, live
 /// validation, and a "next run" preview.
 class CronFormModal extends ConsumerStatefulWidget {
@@ -109,10 +122,7 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
     _previewComputing = true;
     if (_ready) setState(() {});
     _previewDebounce = Timer(const Duration(milliseconds: 250), () async {
-      final from = DateTime.now();
-      final next = await Isolate.run(
-        () => _nextOccurrenceFor((schedule: scheduleText, from: from)),
-      );
+      final next = await _computeNextOccurrence(scheduleText);
       if (!mounted || _schedule.text.trim() != scheduleText) return;
       setState(() {
         _preview = next;
