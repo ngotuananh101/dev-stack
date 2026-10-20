@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/core/theme/app_text_size.dart';
+import 'package:dev_stack/shared/utils/action_row_layout.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
-import 'package:dev_stack/shared/widgets/app_icon_button.dart';
+import 'package:dev_stack/shared/widgets/row_action_menu.dart';
 import '../../domain/database_record.dart';
 
 class DatabaseTable extends StatelessWidget {
@@ -24,26 +25,40 @@ class DatabaseTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          _buildTableHeader(),
-          if (databases.isEmpty)
-            _buildNoData()
-          else
-            ...databases.asMap().entries.map((entry) {
-              final index = entry.key;
-              final db = entry.value;
-              return _buildTableRow(context, db, index == databases.length - 1);
-            }),
-        ],
-      ),
+    // The row's action cluster needs the width it really has, so the table
+    // measures itself instead of assuming a window width.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              _buildTableHeader(),
+              if (databases.isEmpty)
+                _buildNoData()
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: databases.length,
+                    itemBuilder: (context, index) => _buildTableRow(
+                      context,
+                      availableWidth,
+                      databases[index],
+                      index == databases.length - 1,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -105,7 +120,23 @@ class DatabaseTable extends StatelessWidget {
     );
   }
 
-  Widget _buildTableRow(BuildContext context, DatabaseRecord db, bool isLast) {
+  /// Floor for one flexible data column, below which its text is ellipsized to
+  /// uselessness.
+  static const double _flexColumnMinWidth = 150;
+
+  /// Width the OPERATE menu cannot grow into: the row padding plus the floor of
+  /// every flexible data column. The redis row carries one column fewer, so it
+  /// keeps its actions inline further down than the SQL row does — that is the
+  /// intended difference, not a shared breakpoint.
+  double get _operateReservedWidth =>
+      16 * 2 + _flexColumnMinWidth * (isRedis ? 3 : 4);
+
+  Widget _buildTableRow(
+    BuildContext context,
+    double availableWidth,
+    DatabaseRecord db,
+    bool isLast,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -119,6 +150,7 @@ class DatabaseTable extends StatelessWidget {
               child: Text(
                 db.name.toUpperCase(),
                 style: const TextStyle(color: AppColors.textPrimary, fontSize: AppTextSize.xs, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             Expanded(
@@ -143,26 +175,21 @@ class DatabaseTable extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Expanded(
-              flex: 1,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  AppIconButton(
-                    icon: Icons.refresh_rounded,
-                    onPressed: () {},
-                    color: AppColors.accent,
-                    tooltip: 'Flush DB',
-                  ),
-                  const SizedBox(width: 8),
-                  AppIconButton(
-                    icon: Icons.delete_outline_rounded,
-                    onPressed: () => onDelete(db),
-                    color: AppColors.error,
-                    tooltip: 'Clear Record',
-                  ),
-                ],
-              ),
+            RowActionMenu(
+              availableWidth: availableWidth - _operateReservedWidth,
+              gap: 8,
+              actions: [
+                RowAction.icon(
+                  'Flush DB',
+                  () {},
+                  icon: Icons.refresh_rounded,
+                ),
+                RowAction.icon(
+                  'Clear Record',
+                  () => onDelete(db),
+                  icon: Icons.delete_outline_rounded,
+                ),
+              ],
             ),
           ]
         : [
@@ -225,26 +252,21 @@ class DatabaseTable extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Expanded(
-              flex: 1,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  AppIconButton(
-                    icon: Icons.edit_outlined,
-                    onPressed: () => onEdit(db),
-                    color: AppColors.textSecondary,
-                    tooltip: 'Edit Database',
-                  ),
-                  const SizedBox(width: 8),
-                  AppIconButton(
-                    icon: Icons.delete_outline_rounded,
-                    onPressed: () => onDelete(db),
-                    color: AppColors.error,
-                    tooltip: 'Delete',
-                  ),
-                ],
-              ),
+            RowActionMenu(
+              availableWidth: availableWidth - _operateReservedWidth,
+              gap: 8,
+              actions: [
+                RowAction.icon(
+                  'Edit Database',
+                  () => onEdit(db),
+                  icon: Icons.edit_outlined,
+                ),
+                RowAction.icon(
+                  'Delete',
+                  () => onDelete(db),
+                  icon: Icons.delete_outline_rounded,
+                ),
+              ],
             ),
           ],
       ),
