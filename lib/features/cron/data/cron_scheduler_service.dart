@@ -236,7 +236,7 @@ class CronSchedulerService {
     final record = RunRecord(startedAt: startedAt, output: '');
     _appendHistory(job.id, record);
     // A copy so the in-flight record can be replaced on completion.
-    final index = _history[job.id]!.indexOf(record);
+    final index = _history[job.id]?.indexOf(record) ?? -1;
 
     job.lastRunAt = startedAt;
     job.lastStatus = 'running';
@@ -252,12 +252,18 @@ class CronSchedulerService {
     final finishedAt = _clock();
     final success = result.exitCode == 0;
 
-    _history[job.id]![index] = RunRecord(
-      startedAt: startedAt,
-      finishedAt: finishedAt,
-      exitCode: result.exitCode,
-      output: result.output,
-    );
+    // The scheduler may have been disposed while the run was in flight, which
+    // wipes the history this run writes its result into. Writing to it now
+    // would throw on a null entry, so the result is dropped instead.
+    final history = _history[job.id];
+    if (history != null && index < history.length) {
+      history[index] = RunRecord(
+        startedAt: startedAt,
+        finishedAt: finishedAt,
+        exitCode: result.exitCode,
+        output: result.output,
+      );
+    }
 
     _running.remove(job.id);
 

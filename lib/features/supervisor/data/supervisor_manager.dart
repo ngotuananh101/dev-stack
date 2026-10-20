@@ -10,6 +10,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/database/isar_provider.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/services/process_environment.dart';
+import '../../../core/services/process_tree_kill.dart';
 import '../../sites/data/cli_process_manager.dart' show CircularLogBuffer;
 import '../domain/supervisor_program.dart';
 import '../domain/supervisor_status.dart';
@@ -184,18 +185,7 @@ class SupervisorManager {
   }
 
   static Future<void> _defaultTreeKill(int pid) async {
-    try {
-      if (Platform.isWindows) {
-        await Process.run('taskkill', ['/F', '/T', '/PID', '$pid']);
-      } else {
-        await Process.run('kill', ['-TERM', '-$pid']);
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-        await Process.run('kill', ['-9', '-$pid']);
-        await Process.run('kill', ['-9', '$pid']);
-      }
-    } catch (_) {
-      // Best-effort: the process may already be gone.
-    }
+    await killProcessTree(pid);
   }
 
   /// Starts [program]. Returns `false` when the program is disabled or its
@@ -358,8 +348,15 @@ class SupervisorManager {
     if (seconds > 0) {
       await _delay(Duration(seconds: seconds));
     }
-    // The program may have been stopped or disabled while we waited.
-    if (managed.explicitlyStopped || !current.enabled) {
+    // The program may have been stopped, disabled or deleted while we waited,
+    // so the configuration is re-read here: the snapshot taken before the
+    // backoff is stale by now and would respawn a program the user just
+    // disabled.
+    final isar = _isar;
+    final latest = isar?.supervisorPrograms.get(program.id);
+    final deleted = isar != null && latest == null;
+    final disabled = latest != null && (!latest.enabled || !latest.autoRestart);
+    if (managed.explicitlyStopped || deleted || disabled) {
       if (isCurrent()) {
         _statuses[program.id] = SupervisorStatus.stopped;
         _notifyStatus(program.id);
@@ -368,7 +365,7 @@ class SupervisorManager {
     }
     // A newer process may have replaced this one while we waited; leave it be.
     if (!isCurrent()) return;
-    await start(current, isRestart: true);
+    await start(latest ?? current, isRestart: true);
   }
 
   Future<bool> stop(int programId) async {

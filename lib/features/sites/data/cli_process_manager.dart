@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../../../core/config/app_config.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/services/process_environment.dart';
+import '../../../core/services/process_tree_kill.dart';
 import '../domain/site_model.dart';
 
 /// A fixed-capacity, FIFO log buffer that discards the oldest lines once
@@ -268,34 +269,11 @@ class CliProcessManager {
     return startSite(site);
   }
 
-  /// Terminates the entire process tree rooted at [pid]. On POSIX the child is
-  /// started as its own process group leader (via `setsid`), so a negative pid
-  /// signals the whole tree; a direct (positive) kill is used as a fallback. On
-  /// Windows `taskkill /F /T /PID` does the equivalent.
+  /// Terminates the entire process tree rooted at [pid]. See
+  /// [killProcessTree]: the descendants are killed explicitly, and the process
+  /// group is only signalled when the child actually leads it.
   Future<void> _killProcessTree(int pid) async {
-    try {
-      if (Platform.isWindows) {
-        await Process.run('taskkill', ['/F', '/T', '/PID', pid.toString()]);
-      } else {
-        await Process.run('kill', ['-TERM', '-$pid']);
-        await Future.delayed(const Duration(milliseconds: 300));
-        await Process.run('kill', ['-9', '-$pid']);
-        // Direct fallback in case the group signal missed (e.g. child is no
-        // longer a process-group leader).
-        await Process.run('kill', ['-9', pid.toString()]);
-      }
-    } catch (_) {
-      // Best-effort tree kill; try a direct kill as last resort.
-      try {
-        if (Platform.isWindows) {
-          await Process.run('taskkill', ['/F', '/T', '/PID', pid.toString()]);
-        } else {
-          await Process.run('kill', ['-9', pid.toString()]);
-        }
-      } catch (_) {
-        // Swallow — the process may already be gone.
-      }
-    }
+    await killProcessTree(pid);
   }
 
   /// Removes per-site state and releases file/stream resources. Safe to call
