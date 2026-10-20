@@ -33,7 +33,7 @@ final class DatabasesProvider
   Databases create() => Databases();
 }
 
-String _$databasesHash() => r'c776b7bae1d2def85ec01229202d11ccf3837374';
+String _$databasesHash() => r'6447bf8686b21dda422353f6f50b968478c912d1';
 
 abstract class _$Databases extends $AsyncNotifier<List<DatabaseRecord>> {
   FutureOr<List<DatabaseRecord>> build();

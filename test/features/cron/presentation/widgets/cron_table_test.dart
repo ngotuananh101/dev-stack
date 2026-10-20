@@ -1,6 +1,7 @@
 import 'package:dev_stack/features/cron/domain/cron_job.dart';
 import 'package:dev_stack/features/cron/presentation/widgets/cron_table.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -94,5 +95,66 @@ void main() {
     // in-flight row shows no "Run" text.
     expect(find.text('Run'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  group('responsive actions', () {
+    // A 700px window leaves ~412px for the table (700 - 240 sidebar - 48
+    // padding), which is narrower than the old 1000px minWidth floor, so the
+    // row used to push its actions out of reach with an invisible scroll.
+    testWidgets('collapses actions into one menu at a ~412px row',
+        (tester) async {
+      await tester.binding.setSurfaceSize(const Size(700, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      CronJob? ran;
+      await tester.pumpWidget(wrap(CronTable(
+        jobs: [job],
+        runningIds: const {},
+        onRunNow: (j) => ran = j,
+        onToggleEnabled: (_) {},
+        onViewHistory: (_) {},
+        onEdit: (_) {},
+        onDelete: (_) {},
+      )));
+      await tester.pumpAndSettle();
+
+      // A RenderFlex overflow is a Flutter error, so the header and
+      // every data row fitting the narrow window is proved by there
+      // being no exception here.
+      expect(tester.takeException(), isNull);
+
+      // The RunFlex overflowed exception is thrown, not logged: getting here
+      // is proof the row fits. No action label is laid out inline.
+      expect(find.text('Run'), findsNothing);
+
+      await tester.tap(find.byIcon(LucideIcons.moreHorizontal));
+      await tester.pumpAndSettle();
+      expect(find.text('Run'), findsOneWidget);
+      expect(find.text('Run History'), findsOneWidget);
+      expect(find.text('Edit'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+
+      await tester.tap(find.text('Run').last);
+      expect(ran?.id, 1);
+    });
+
+    testWidgets('shows every action inline at a wide row', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(wrap(CronTable(
+        jobs: [job],
+        runningIds: const {},
+        onRunNow: (_) {},
+        onToggleEnabled: (_) {},
+        onViewHistory: (_) {},
+        onEdit: (_) {},
+        onDelete: (_) {},
+      )));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Run'), findsOneWidget);
+      expect(find.byIcon(LucideIcons.moreHorizontal), findsNothing);
+    });
   });
 }

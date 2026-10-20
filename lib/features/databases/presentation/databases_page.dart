@@ -398,87 +398,88 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     AppModel? mongoCompass,
     bool hasPhpMyAdmin = false,
   }) {
+    // Every action carries a label, so the group wraps onto a second line at a
+    // narrow window instead of being squeezed past it. The search field is the
+    // one element that can give up width without becoming unusable.
     return Row(
       children: [
-        if (!isRedis && !isMongo) ...[
-          AppButton(
-            label: 'Add DB',
-            icon: const Icon(LucideIcons.plus, size: 14),
-            style: AppButtonStyle.success,
-            onPressed: _showAddDatabaseDialog,
+        Expanded(
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              if (!isRedis && !isMongo)
+                AppButton(
+                  label: 'Add DB',
+                  icon: const Icon(LucideIcons.plus, size: 14),
+                  style: AppButtonStyle.success,
+                  onPressed: _showAddDatabaseDialog,
+                ),
+              // phpMyAdmin only speaks the MySQL wire protocol, so the button
+              // is limited to the MySQL/MariaDB family — PostgreSQL,
+              // Meilisearch, Elasticsearch and the like have no phpMyAdmin
+              // front end.
+              if (!isRedis && !isMongo && hasPhpMyAdmin && _isMySqlFamily)
+                _buildActionButton(
+                  'phpMyAdmin',
+                  LucideIcons.externalLink,
+                  onTap: _launchPhpMyAdmin,
+                ),
+              if (isRedis)
+                _buildActionButton(
+                  'Add Key',
+                  LucideIcons.plus,
+                  color: AppColors.successStrong,
+                  onTap: _showAddRedisKeyDialog,
+                ),
+              if (heidiSql != null &&
+                  (selectedEngine?.appId.contains('mysql') == true ||
+                      selectedEngine?.appId.contains('mariadb') == true))
+                _buildActionButton(
+                  'HeidiSQL',
+                  LucideIcons.externalLink,
+                  color: AppColors.warningStrong,
+                  onTap: () =>
+                      ref.read(appsProvider.notifier).openApp(heidiSql),
+                ),
+              if (mongoCompass != null &&
+                  selectedEngine?.appId.contains('mongodb') == true)
+                _buildActionButton(
+                  'Compass',
+                  LucideIcons.externalLink,
+                  color: AppColors.successStrong,
+                  onTap: () =>
+                      ref.read(appsProvider.notifier).openApp(mongoCompass),
+                ),
+              if (!isMongo)
+                _buildActionButton(
+                  'Sync DB',
+                  LucideIcons.refreshCw,
+                  color: AppColors.accentStrong,
+                  onTap: () {
+                    if (selectedEngine != null) {
+                      if (isRedis) {
+                        ref.invalidate(redisDbStatsProvider(selectedEngine!));
+                        ref.read(redisProvider.notifier).fetchKeys(
+                          selectedEngine!,
+                          _selectedRedisDb,
+                          query: _searchQuery,
+                        );
+                      } else {
+                        ref
+                            .read(databasesProvider.notifier)
+                            .syncDatabases(selectedEngine!);
+                      }
+                    }
+                  },
+                ),
+            ],
           ),
-          const SizedBox(width: 12),
-          // phpMyAdmin only speaks the MySQL wire protocol, so the button is
-          // limited to the MySQL/MariaDB family — PostgreSQL, Meilisearch,
-          // Elasticsearch and the like have no phpMyAdmin front end.
-          if (hasPhpMyAdmin && _isMySqlFamily) ...[
-            _buildActionButton(
-              'phpMyAdmin',
-              LucideIcons.externalLink,
-              onTap: _launchPhpMyAdmin,
-            ),
-            const SizedBox(width: 12),
-          ],
-        ],
-        if (isRedis) ...[
-          _buildActionButton(
-            'Add Key',
-            LucideIcons.plus,
-            color: AppColors.successStrong,
-            onTap: _showAddRedisKeyDialog,
-          ),
-          const SizedBox(width: 12),
-        ],
-        if (heidiSql != null &&
-            (selectedEngine?.appId.contains('mysql') == true ||
-                selectedEngine?.appId.contains('mariadb') == true)) ...[
-          _buildActionButton(
-            'HeidiSQL',
-            LucideIcons.externalLink,
-            color: AppColors.warningStrong,
-            onTap: () =>
-                ref.read(appsProvider.notifier).openApp(heidiSql),
-          ),
-          const SizedBox(width: 12),
-        ],
-        if (mongoCompass != null &&
-            selectedEngine?.appId.contains('mongodb') == true) ...[
-          _buildActionButton(
-            'Compass',
-            LucideIcons.externalLink,
-            color: AppColors.successStrong,
-            onTap: () =>
-                ref.read(appsProvider.notifier).openApp(mongoCompass),
-          ),
-          const SizedBox(width: 12),
-        ],
-        if (!isMongo) ...[
-          _buildActionButton(
-            'Sync DB',
-            LucideIcons.refreshCw,
-            color: AppColors.accentStrong,
-            onTap: () {
-              if (selectedEngine != null) {
-                if (isRedis) {
-                  ref.invalidate(redisDbStatsProvider(selectedEngine!));
-                  ref.read(redisProvider.notifier).fetchKeys(
-                        selectedEngine!,
-                        _selectedRedisDb,
-                        query: _searchQuery,
-                      );
-                } else {
-                  ref
-                      .read(databasesProvider.notifier)
-                      .syncDatabases(selectedEngine!);
-                }
-              }
-            },
-          ),
-          const SizedBox(width: 12),
-        ],
+        ),
+        const SizedBox(width: 12),
         _buildServiceStatusButton(),
-        const Spacer(),
-        if (!isMongo) _buildSearchField(isRedis),
+        const SizedBox(width: 12),
+        if (!isMongo) Flexible(child: _buildSearchField(isRedis)),
       ],
     );
   }
@@ -614,9 +615,15 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
   }
 
   Widget _buildSearchField(bool isRedis) {
-    return SizedBox(
-      width: 280,
-      height: 36,
+    // The search field shrinks with the window rather than pushing the rest of
+    // the toolbar out of reach.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minWidth: 120,
+        maxWidth: 280,
+        minHeight: 36,
+        maxHeight: 36,
+      ),
       child: TextField(
         controller: _searchController,
         style: const TextStyle(

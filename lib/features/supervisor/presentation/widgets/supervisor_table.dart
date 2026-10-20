@@ -3,8 +3,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
-import '../../../../shared/widgets/app_button.dart';
-import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/utils/action_row_layout.dart';
+import '../../../../shared/widgets/row_action_menu.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/supervisor_program.dart';
 import '../../domain/supervisor_status.dart';
@@ -40,9 +40,16 @@ class SupervisorTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const minWidth = 880.0;
-        final tableWidth =
-            constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
+        // Shrink instead of scrolling sideways out of reach.
+        final availableWidth = constraints.maxWidth;
+        final operateWidth = availableWidth - _operateReservedWidth;
+        // One action-column width for every row, so the data columns line up
+        // even when rows carry different numbers of actions.
+        final plan = planActionColumn(
+          [for (final program in programs) _rowActions(program)],
+          availableWidth: operateWidth.isFinite && operateWidth > 0 ? operateWidth : 1,
+          firstGap: 6,
+        );
 
         return Container(
           width: double.infinity,
@@ -51,38 +58,31 @@ class SupervisorTable extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.border),
           ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              height: constraints.maxHeight.isFinite
-                  ? constraints.maxHeight
-                  : null,
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  if (programs.isEmpty)
-                    _buildEmptyState()
-                  else
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: programs.length,
-                        itemBuilder: (context, index) => _buildRow(
-                          programs[index],
-                          index == programs.length - 1,
-                        ),
-                      ),
+          child: Column(
+            children: [
+              _buildHeader(plan),
+              if (programs.isEmpty)
+                _buildEmptyState()
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: programs.length,
+                    itemBuilder: (context, index) => _buildRow(
+                      programs[index],
+                      availableWidth,
+                      plan,
+                      index == programs.length - 1,
                     ),
-                ],
-              ),
-            ),
+                  ),
+                ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ActionColumnPlan plan) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
@@ -101,7 +101,9 @@ class SupervisorTable extends StatelessWidget {
           Expanded(flex: 4, child: _headerCell('COMMAND')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 240,
+            // Header action column takes the shared width so it lines up with
+            // the action buttons of every row below it.
+            width: actionColumnWidth(plan),
             child: _headerCell('OPERATE', align: TextAlign.right),
           ),
         ],
@@ -113,6 +115,8 @@ class SupervisorTable extends StatelessWidget {
     return Text(
       label,
       textAlign: align,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: const TextStyle(
         fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
@@ -153,12 +157,26 @@ class SupervisorTable extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(SupervisorProgram program, bool isLast) {
+  /// Width the OPERATE cell cannot grow into: the row padding, the gaps before
+  /// it, the two fixed data columns, and the floor for the two flexible
+  /// program/command columns.
+  static const double _operateReservedWidth =
+      16 * 2 + 12 * 4 + 100 + 80 + _flexColumnMinWidth * 2;
+
+  /// Floor for one flexible data column, below which its text is ellipsized to
+  /// uselessness.
+  static const double _flexColumnMinWidth = 120;
+
+  static VoidCallback? _maybeOnPressed(bool blocked, VoidCallback action) =>
+      blocked ? null : action;
+
+  Widget _buildRow(
+    SupervisorProgram program,
+    double availableWidth,
+    ActionColumnPlan plan,
+    bool isLast,
+  ) {
     final status = statuses[program.id] ?? SupervisorStatus.stopped;
-    final isRunning = status == SupervisorStatus.running;
-    final isTransitioning = status == SupervisorStatus.starting ||
-        status == SupervisorStatus.stopping ||
-        status == SupervisorStatus.restarting;
     final pid = pids[program.id];
 
     return Container(
@@ -225,6 +243,8 @@ class SupervisorTable extends StatelessWidget {
             width: 80,
             child: Text(
               pid?.toString() ?? '—',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: AppTextSize.xs,
@@ -245,60 +265,64 @@ class SupervisorTable extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
+          // Actions render in the shared-width column so the header and every
+          // row align, and collapse into the '…' menu together.
           SizedBox(
-            width: 240,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (isRunning)
-                  AppButton(
-                    label: 'Stop',
-                    onPressed: () => onStop(program.id),
-                    icon: const Icon(LucideIcons.square, size: 12),
-                    style: AppButtonStyle.danger,
-                  )
-                else
-                  AppButton(
-                    label: 'Start',
-                    onPressed: isTransitioning ? null : () => onStart(program),
-                    icon: const Icon(LucideIcons.play, size: 12),
-                    style: AppButtonStyle.success,
-                  ),
-                const SizedBox(width: 6),
-                AppIconButton(
-                  icon: LucideIcons.rotateCw,
-                  tooltip: 'Restart',
-                  onPressed: isRunning ? () => onRestart(program) : null,
-                  size: AppIconButtonSize.sm,
-                ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: LucideIcons.list,
-                  tooltip: 'View Logs',
-                  onPressed: () => onViewLogs(program),
-                  size: AppIconButtonSize.sm,
-                ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: LucideIcons.edit,
-                  tooltip: 'Edit',
-                  onPressed: () => onEdit(program),
-                  size: AppIconButtonSize.sm,
-                ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: LucideIcons.trash2,
-                  tooltip: 'Delete',
-                  color: AppColors.error,
-                  onPressed: () => onDelete(program),
-                  size: AppIconButtonSize.sm,
-                ),
-              ],
+            width: actionColumnWidth(plan),
+            child: RowActionMenu(
+              availableWidth: availableWidth - _operateReservedWidth,
+              firstGap: 6,
+              columnWidth: plan.width,
+              collapsed: plan.collapsed,
+              actions: _rowActions(program),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// The actions of one row, in render order.
+  ///
+  /// Extracted so [planActionColumn] can measure every row before layout: the
+  /// column width is the widest cluster, not each row's own.
+  List<RowAction> _rowActions(SupervisorProgram program) {
+    final status = statuses[program.id] ?? SupervisorStatus.stopped;
+    final isRunning = status == SupervisorStatus.running;
+    final isTransitioning =
+        status == SupervisorStatus.starting ||
+        status == SupervisorStatus.stopping ||
+        status == SupervisorStatus.restarting;
+
+    return [
+      RowAction.button(
+        isRunning ? 'Stop' : 'Start',
+        isRunning
+            ? () => onStop(program.id)
+            : _maybeOnPressed(isTransitioning, () => onStart(program)),
+        icon: isRunning ? LucideIcons.square : LucideIcons.play,
+      ),
+      RowAction.icon(
+        'Restart',
+        isRunning ? () => onRestart(program) : null,
+        icon: LucideIcons.rotateCw,
+      ),
+      RowAction.icon(
+        'View Logs',
+        () => onViewLogs(program),
+        icon: LucideIcons.list,
+      ),
+      RowAction.icon(
+        'Edit',
+        () => onEdit(program),
+        icon: LucideIcons.edit,
+      ),
+      RowAction.icon(
+        'Delete',
+        () => onDelete(program),
+        icon: LucideIcons.trash2,
+      ),
+    ];
   }
 
   Widget _buildStatusChip(SupervisorStatus status) {

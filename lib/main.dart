@@ -9,6 +9,7 @@ import 'core/database/isar_provider.dart';
 import 'core/theme/app_theme.dart';
 
 import 'shared/providers/navigation_provider.dart';
+import 'shared/providers/sidebar_provider.dart';
 import 'shared/layouts/sidebar.dart';
 import 'shared/layouts/app_header.dart';
 import 'features/apps/presentation/apps_page.dart';
@@ -52,6 +53,7 @@ void main(List<String> args) async {
 
   WindowOptions windowOptions = WindowOptions(
     size: const Size(1080, 720),
+    minimumSize: const Size(720, 520),
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
@@ -67,8 +69,8 @@ void main(List<String> args) async {
     final iconPath = Platform.isWindows
         ? 'assets/images/icon.ico'
         : (Platform.isLinux
-            ? LinuxDesktopService.resolveIconPath()
-            : 'assets/images/icon.png');
+              ? LinuxDesktopService.resolveIconPath()
+              : 'assets/images/icon.png');
     await windowManager.setIcon(iconPath);
 
     if (!isMinimized) {
@@ -113,8 +115,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
       // Auto-start tunnels with autoStart == true
       final isar = await IsarInstance.getInstance();
-      final autoTunnels =
-          isar.tunnelModels.where().autoStartEqualTo(true).findAll();
+      final autoTunnels = isar.tunnelModels
+          .where()
+          .autoStartEqualTo(true)
+          .findAll();
       for (final tunnel in autoTunnels) {
         ref.read(tunnelSessionsProvider.notifier).start(tunnel);
       }
@@ -162,11 +166,27 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         children: [
           const AppHeader(),
           Expanded(
-            child: Row(
-              children: [
-                const Sidebar(),
-                Expanded(child: _buildPage(currentTab)),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Narrow the window below this and the sidebar auto-collapses,
+                // giving the page content room without horizontal scroll.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  final collapsed = ref.read(sidebarCollapsedProvider);
+                  final next = computeSidebarCollapse(
+                    constraints.maxWidth,
+                    collapsed,
+                  );
+                  if (next != collapsed) {
+                    ref.read(sidebarCollapsedProvider.notifier).setCollapsed(next);
+                  }
+                });
+                return Row(
+                  children: [
+                    const Sidebar(),
+                    Expanded(child: _buildPage(currentTab)),
+                  ],
+                );
+              },
             ),
           ),
         ],

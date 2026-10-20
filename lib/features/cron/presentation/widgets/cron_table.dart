@@ -3,8 +3,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
-import '../../../../shared/widgets/app_button.dart';
-import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/utils/action_row_layout.dart';
+import '../../../../shared/widgets/row_action_menu.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/cron_expression.dart';
 import '../../domain/cron_job.dart';
@@ -33,11 +33,20 @@ class CronTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // No horizontal scroll and no minimum width: a scroll the user cannot see
+    // hides the actions off-screen, so the table shrinks instead and the row's
+    // action cluster collapses into a menu when it no longer fits.
     return LayoutBuilder(
       builder: (context, constraints) {
-        const minWidth = 1000.0;
-        final tableWidth =
-            constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
+        final availableWidth = constraints.maxWidth;
+        final operateWidth = availableWidth - _operateReservedWidth;
+        // One action-column width for every row, so the data columns line up
+        // even when rows carry different numbers of actions.
+        final plan = planActionColumn(
+          [for (final job in jobs) _rowActions(job)],
+          availableWidth: operateWidth.isFinite && operateWidth > 0 ? operateWidth : 1,
+          firstGap: 6,
+        );
 
         return Container(
           width: double.infinity,
@@ -46,38 +55,31 @@ class CronTable extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.border),
           ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              height: constraints.maxHeight.isFinite
-                  ? constraints.maxHeight
-                  : null,
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  if (jobs.isEmpty)
-                    _buildEmptyState()
-                  else
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: jobs.length,
-                        itemBuilder: (context, index) => _buildRow(
-                          jobs[index],
-                          index == jobs.length - 1,
-                        ),
-                      ),
+          child: Column(
+            children: [
+              _buildHeader(plan),
+              if (jobs.isEmpty)
+                _buildEmptyState()
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: jobs.length,
+                    itemBuilder: (context, index) => _buildRow(
+                      jobs[index],
+                      availableWidth,
+                      plan,
+                      index == jobs.length - 1,
                     ),
-                ],
-              ),
-            ),
+                  ),
+                ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ActionColumnPlan plan) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
@@ -91,14 +93,19 @@ class CronTable extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(flex: 3, child: _headerCell('SCHEDULE')),
           const SizedBox(width: 12),
-          SizedBox(width: 150, child: _headerCell('LAST RUN')),
+          // Every header cell but the two flexible ones can give up width,
+          // otherwise the header's fixed budget overflows the window while the
+          // rows below it shrink correctly.
+          Flexible(child: _headerCell('LAST RUN')),
           const SizedBox(width: 12),
-          SizedBox(width: 90, child: _headerCell('STATUS')),
+          Flexible(child: _headerCell('STATUS')),
           const SizedBox(width: 12),
-          SizedBox(width: 80, child: _headerCell('ENABLED')),
+          Flexible(child: _headerCell('ENABLED')),
           const SizedBox(width: 12),
           SizedBox(
-            width: 200,
+            // The action column takes the shared width so the header lines up
+            // with the button cluster of every row below it.
+            width: actionColumnWidth(plan),
             child: _headerCell('OPERATE', align: TextAlign.right),
           ),
         ],
@@ -110,6 +117,8 @@ class CronTable extends StatelessWidget {
     return Text(
       label,
       textAlign: align,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: const TextStyle(
         fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
@@ -150,8 +159,12 @@ class CronTable extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(CronJob job, bool isLast) {
-    final isRunning = runningIds.contains(job.id);
+  Widget _buildRow(
+    CronJob job,
+    double availableWidth,
+    ActionColumnPlan plan,
+    bool isLast,
+  ) {
     final valid = CronExpression.isValid(job.schedule);
     final description =
         valid ? CronExpression.parse(job.schedule).describe() : 'Invalid schedule';
@@ -224,10 +237,14 @@ class CronTable extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 150,
+          // The three middle cells are Flexible rather than fixed-width so the
+          // row shrinks with the window; their labels ellipsize instead of
+          // forcing the table wider than it is.
+          Flexible(
             child: Text(
               _formatLastRun(job.lastRunAt),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: AppTextSize.xs,
@@ -235,10 +252,9 @@ class CronTable extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          SizedBox(width: 90, child: _buildStatusChip(job)),
+          Flexible(child: _buildStatusChip(job)),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 80,
+          Flexible(
             child: Switch(
               value: job.enabled,
               activeThumbColor: AppColors.success,
@@ -248,46 +264,62 @@ class CronTable extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 200,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                AppButton(
-                  label: 'Run',
-                  onPressed: isRunning ? null : () => onRunNow(job),
-                  isLoading: isRunning,
-                  icon: const Icon(LucideIcons.play, size: 12),
-                  style: AppButtonStyle.success,
-                ),
-                const SizedBox(width: 6),
-                AppIconButton(
-                  icon: LucideIcons.history,
-                  tooltip: 'Run History',
-                  onPressed: () => onViewHistory(job),
-                  size: AppIconButtonSize.sm,
-                ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: LucideIcons.edit,
-                  tooltip: 'Edit',
-                  onPressed: () => onEdit(job),
-                  size: AppIconButtonSize.sm,
-                ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: LucideIcons.trash2,
-                  tooltip: 'Delete',
-                  color: AppColors.error,
-                  onPressed: () => onDelete(job),
-                  size: AppIconButtonSize.sm,
-                ),
-              ],
+            // The action column takes the shared width so the header and every
+            // row align, and collapse into the '…' menu together.
+            width: actionColumnWidth(plan),
+            child: RowActionMenu(
+              actions: _rowActions(job),
+              availableWidth: availableWidth - _operateReservedWidth,
+              firstGap: 6,
+              columnWidth: plan.width,
+              collapsed: plan.collapsed,
             ),
           ),
         ],
       ),
     );
   }
+
+  /// The actions of one row, in render order.
+  ///
+  /// Extracted so [planActionColumn] can measure every row before layout: the
+  /// column width is the widest cluster, not each row's own.
+  List<RowAction> _rowActions(CronJob job) {
+    final isRunning = runningIds.contains(job.id);
+    return [
+      RowAction.button(
+        'Run',
+        isRunning ? null : () => onRunNow(job),
+        icon: LucideIcons.play,
+        isLoading: isRunning,
+      ),
+      RowAction.icon(
+        'Run History',
+        () => onViewHistory(job),
+        icon: LucideIcons.history,
+      ),
+      RowAction.icon(
+        'Edit',
+        () => onEdit(job),
+        icon: LucideIcons.edit,
+      ),
+      RowAction.icon(
+        'Delete',
+        () => onDelete(job),
+        icon: LucideIcons.trash2,
+      ),
+    ];
+  }
+
+  /// Width the action cluster cannot grow into: the row padding, the gaps
+  /// before it, the three fixed-width middle cells, and the floor the two
+  /// flexible name/schedule columns need before their text becomes unreadable.
+  static const double _operateReservedWidth =
+      16 * 2 + 12 * 5 + 150 + 90 + 80 + 2 * _flexColumnMinWidth;
+
+  /// Floor for one flexible data column, below which its text is ellipsized to
+  /// uselessness.
+  static const double _flexColumnMinWidth = 120;
 
   static String _formatLastRun(DateTime? dt) {
     if (dt == null) return '—';

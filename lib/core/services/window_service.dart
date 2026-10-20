@@ -205,6 +205,10 @@ class WindowService extends _$WindowService with WindowListener {
     // Reap supervised programs and stop the in-app cron scheduler.
     await ref.read(supervisorManagerProvider).stopAll();
     ref.read(cronSchedulerProvider).stop();
+    // The window is about to be destroyed: the trees are killed synchronously
+    // so a child cannot outlive the app that started it.
+    ref.read(cliProcessManagerProvider).stopAllSync();
+    ref.read(supervisorManagerProvider).shutdown();
     await windowManager.destroy();
   }
 
@@ -261,6 +265,10 @@ class WindowService extends _$WindowService with WindowListener {
       // Reap supervised programs and stop the in-app cron scheduler.
       await ref.read(supervisorManagerProvider).stopAll();
       ref.read(cronSchedulerProvider).stop();
+      // The window is about to be destroyed: the trees are killed
+      // synchronously so a child cannot outlive the app that started it.
+      ref.read(cliProcessManagerProvider).stopAllSync();
+      ref.read(supervisorManagerProvider).shutdown();
       await windowManager.destroy();
     }
   }

@@ -4,6 +4,7 @@ import 'package:dev_stack/features/tunnels/presentation/widgets/tunnel_table.dar
 import 'package:dev_stack/shared/widgets/status_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 void main() {
   setUp(() {
@@ -172,5 +173,106 @@ void main() {
 
     await tester.tap(cancelButton);
     expect(cancelledTunnelId, 1);
+  });
+
+  group('responsive actions', () {
+    testWidgets('collapses every action into one menu at a ~412px row',
+        (tester) async {
+      await tester.binding.setSurfaceSize(const Size(700, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(children: [
+              Expanded(
+                child: TunnelTable(
+                  tunnels: [testTunnel1],
+                  sessions: {
+                    1: TunnelSession(
+                      tunnelId: 1,
+                      status: TunnelStatus.running,
+                      publicUrl: 'https://slug.trycloudflare.com',
+                    ),
+                  },
+                  onStart: (_) {},
+                  onStop: (_) {},
+                  onCancel: (_) {},
+                  onViewLogs: (_) {},
+                  onEdit: (_) {},
+                  onDelete: (_) {},
+                  onCopyUrl: (_) {},
+                  onOpenUrl: (_) {},
+                  onOpenQr: (_, _) {},
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      // A RenderFlex overflow is a Flutter error, so the header and
+      // every data row fitting the narrow window is proved by there
+      // being no exception here.
+      expect(tester.takeException(), isNull);
+
+      // The URL is data and stays visible; the buttons around it move into the
+      // row's menu so nothing is pushed out of reach.
+      expect(find.text('https://slug.trycloudflare.com'), findsOneWidget);
+      expect(find.text('Stop'), findsNothing);
+      expect(find.byIcon(LucideIcons.copy), findsNothing);
+
+      await tester.tap(find.byIcon(LucideIcons.moreHorizontal));
+      await tester.pumpAndSettle();
+      expect(find.text('Copy Link'), findsOneWidget);
+      expect(find.text('Open in Browser'), findsOneWidget);
+      expect(find.text('QR Code'), findsOneWidget);
+      expect(find.text('View Logs'), findsOneWidget);
+      expect(find.text('Edit'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+      expect(find.text('Stop'), findsOneWidget);
+    });
+
+    testWidgets('shows every action inline at a wide row', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1600, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(children: [
+              Expanded(
+                child: TunnelTable(
+                  tunnels: [testTunnel1],
+                  sessions: {
+                    1: TunnelSession(
+                      tunnelId: 1,
+                      status: TunnelStatus.running,
+                      publicUrl: 'https://slug.trycloudflare.com',
+                    ),
+                  },
+                  onStart: (_) {},
+                  onStop: (_) {},
+                  onCancel: (_) {},
+                  onViewLogs: (_) {},
+                  onEdit: (_) {},
+                  onDelete: (_) {},
+                  onCopyUrl: (_) {},
+                  onOpenUrl: (_) {},
+                  onOpenQr: (_, _) {},
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(LucideIcons.copy), findsOneWidget);
+      expect(find.byIcon(LucideIcons.moreHorizontal), findsNothing);
+    });
   });
 }

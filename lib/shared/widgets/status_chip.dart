@@ -27,6 +27,10 @@ class StatusChip extends StatelessWidget {
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
         ),
+        // Status columns are fixed-width, so a long label must ellipsize rather
+        // than wrap onto a second line and stretch the row.
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

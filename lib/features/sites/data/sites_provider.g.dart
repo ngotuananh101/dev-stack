@@ -33,7 +33,7 @@ final class SitesProvider
   Sites create() => Sites();
 }
 
-String _$sitesHash() => r'8a2ae773d56e0894ca6c06770349948f195ccf16';
+String _$sitesHash() => r'd856dedd4d2d0dad82dea8277326604eb1572580';
 
 abstract class _$Sites extends $AsyncNotifier<List<SiteModel>> {
   FutureOr<List<SiteModel>> build();

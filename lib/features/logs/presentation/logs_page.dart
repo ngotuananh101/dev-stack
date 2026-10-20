@@ -169,9 +169,13 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                       ),
                     ),
                     const SizedBox(width: 24),
-                    // Compact Grouped Dropdown
-                    Container(
-                      height: 36, // Slightly taller for larger text
+                    // Compact Grouped Dropdown. Expanding is what keeps the
+                    // dropdown usable when the window is narrow: it takes the
+                    // width the action buttons leave, instead of collapsing to
+                    // nothing and pushing the buttons out of view.
+                    Expanded(
+                      child: Container(
+                        height: 36, // Slightly taller for larger text
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         color: AppColors.background,
@@ -181,6 +185,10 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _selectedId,
+                          // Fills whatever width the toolbar leaves for it, so
+                          // the dropdown shrinks with the window instead of
+                          // pushing the action buttons out of view.
+                          isExpanded: true,
                           dropdownColor: AppColors.surface,
                           borderRadius: BorderRadius.circular(8),
                           icon: const Icon(
@@ -235,12 +243,19 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                                       ),
                                     ),
                                     const SizedBox(width: 10),
-                                    Text(
-                                      app.name,
-                                      style: const TextStyle(
-                                        fontSize: AppTextSize
-                                            .xs, // Increased from xxs
-                                        fontWeight: FontWeight.w600,
+                                    // The dropdown shrinks with the window, so
+                                    // the label ellipsizes rather than forcing
+                                    // the menu wider than its field.
+                                    Expanded(
+                                      child: Text(
+                                        app.name,
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                        style: const TextStyle(
+                                          fontSize: AppTextSize
+                                              .xs, // Increased from xxs
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -285,11 +300,15 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                                       color: AppColors.textMuted,
                                     ),
                                     const SizedBox(width: 10),
-                                    Text(
-                                      p.basename(file.path),
-                                      style: const TextStyle(
-                                        fontSize: AppTextSize.xs,
-                                      ), // Increased from xxs
+                                    Expanded(
+                                      child: Text(
+                                        p.basename(file.path),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                        style: const TextStyle(
+                                          fontSize: AppTextSize.xs,
+                                        ), // Increased from xxs
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -299,9 +318,13 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                         ),
                       ),
                     ),
-                    const Spacer(),
-                    // Compact Action Buttons
-                    Row(
+                    ),
+                    const SizedBox(width: 12),
+                    // Compact Action Buttons. Wrapping lets the pair drop onto
+                    // a second line rather than being pushed out of view.
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         AppButton(
                           label: 'REFRESH',

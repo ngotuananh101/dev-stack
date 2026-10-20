@@ -134,4 +134,34 @@ void main() {
       expect(find.text('phpMyAdmin'), findsNothing);
     });
   });
+
+  group('DatabasesPage narrow toolbar', () {
+    testWidgets('fits a narrow window without an overflow', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(560, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appsProvider.overrideWith(
+              () => _StaticAppsNotifier([
+                _engine('mysql', 'MySQL'),
+                _phpMyAdmin(),
+              ]),
+            ),
+            databasesProvider.overrideWith(_StaticDatabasesNotifier.new),
+          ],
+          child: const MaterialApp(home: Scaffold(body: DatabasesPage())),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+
+      final searchWidth = tester.getSize(find.byType(TextField).first).width;
+      expect(searchWidth, lessThan(280));
+      expect(find.text('Add DB'), findsOneWidget);
+      expect(find.text('phpMyAdmin'), findsOneWidget);
+    });
+  });
 }

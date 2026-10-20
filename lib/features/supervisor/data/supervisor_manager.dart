@@ -10,6 +10,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/database/isar_provider.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/services/process_environment.dart';
+import '../../../core/services/process_tree_kill.dart';
 import '../../sites/data/cli_process_manager.dart' show CircularLogBuffer;
 import '../domain/supervisor_program.dart';
 import '../domain/supervisor_status.dart';
@@ -47,6 +48,12 @@ typedef SupervisorSpawner = Future<SupervisedProcess> Function(
 
 /// Terminates an entire process tree rooted at [pid].
 typedef SupervisorTreeKiller = Future<void> Function(int pid);
+
+/// Terminates an entire process tree rooted at [pid], without waiting.
+///
+/// Used on shutdown, where the app may be torn down before an awaited kill
+/// could run.
+typedef SupervisorTreeKillerSync = void Function(int pid);
 
 /// Sleeps for [duration]. Injected so tests can run the backoff instantly.
 typedef SupervisorDelay = Future<void> Function(Duration duration);
@@ -96,6 +103,7 @@ class SupervisorManager {
   final Isar? Function() _isarResolver;
   final SupervisorSpawner _spawner;
   final SupervisorTreeKiller _treeKiller;
+  final SupervisorTreeKillerSync _treeKillerSync;
   final SupervisorDelay _delay;
 
   final Map<int, ManagedSupervisorProcess> _processes = {};
@@ -103,6 +111,14 @@ class SupervisorManager {
   final Map<int, List<DateTime>> _restartTimes = {};
   final StreamController<int> _statusController =
       StreamController<int>.broadcast();
+
+  /// Set when the manager is shutting down. A watchdog parked in its backoff
+  /// must not respawn a program while the app is going down, and the wait
+  /// itself must not keep the manager alive.
+  bool _cancelled = false;
+
+  /// Signals the parked backoff waits to give up.
+  final Completer<void> _cancelSignal = Completer<void>();
 
   /// [isar] pins a fixed database (tests); [isarResolver] resolves one lazily
   /// (production), so a manager created before the async open still sees it.
@@ -112,10 +128,12 @@ class SupervisorManager {
     Isar? Function()? isarResolver,
     SupervisorSpawner? spawner,
     SupervisorTreeKiller? treeKiller,
+    SupervisorTreeKillerSync? treeKillerSync,
     SupervisorDelay? delay,
   })  : _isarResolver = isarResolver ?? (isar != null ? () => isar : () => null),
         _spawner = spawner ?? _defaultSpawn,
         _treeKiller = treeKiller ?? _defaultTreeKill,
+        _treeKillerSync = treeKillerSync ?? killProcessTreeSync,
         _delay = delay ?? Future<void>.delayed;
 
   Isar? get _isar => _isarResolver();
@@ -184,18 +202,7 @@ class SupervisorManager {
   }
 
   static Future<void> _defaultTreeKill(int pid) async {
-    try {
-      if (Platform.isWindows) {
-        await Process.run('taskkill', ['/F', '/T', '/PID', '$pid']);
-      } else {
-        await Process.run('kill', ['-TERM', '-$pid']);
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-        await Process.run('kill', ['-9', '-$pid']);
-        await Process.run('kill', ['-9', '$pid']);
-      }
-    } catch (_) {
-      // Best-effort: the process may already be gone.
-    }
+    await killProcessTree(pid);
   }
 
   /// Starts [program]. Returns `false` when the program is disabled or its
@@ -356,10 +363,25 @@ class SupervisorManager {
     }
 
     if (seconds > 0) {
-      await _delay(Duration(seconds: seconds));
+      await _waitBackoff(Duration(seconds: seconds));
     }
-    // The program may have been stopped or disabled while we waited.
-    if (managed.explicitlyStopped || !current.enabled) {
+    // The program may have been stopped, disabled or deleted while we waited,
+    // so the configuration is re-read here: the snapshot taken before the
+    // backoff is stale by now and would respawn a program the user just
+    // disabled.
+    final isar = _isar;
+    final latest = isar?.supervisorPrograms.get(program.id);
+    final deleted = isar != null && latest == null;
+    final disabled = latest != null && (!latest.enabled || !latest.autoRestart);
+    if (_cancelled) {
+      // The manager is shutting down. The status is settled without the
+      // `isCurrent` guard: the shutdown already dropped the process, so the
+      // program would otherwise stay 'restarting' forever.
+      _statuses[program.id] = SupervisorStatus.stopped;
+      _notifyStatus(program.id);
+      return;
+    }
+    if (managed.explicitlyStopped || deleted || disabled) {
       if (isCurrent()) {
         _statuses[program.id] = SupervisorStatus.stopped;
         _notifyStatus(program.id);
@@ -368,7 +390,20 @@ class SupervisorManager {
     }
     // A newer process may have replaced this one while we waited; leave it be.
     if (!isCurrent()) return;
-    await start(current, isRestart: true);
+    await start(latest ?? current, isRestart: true);
+  }
+
+  /// Waits out the backoff, giving up as soon as the manager is cancelled.
+  ///
+  /// The wait races the cancellation signal, so a shutdown does not have to
+  /// sit through a 60-second backoff before the process it is waiting for is
+  /// let go.
+  Future<void> _waitBackoff(Duration duration) async {
+    if (_cancelled) return;
+    await Future.any([
+      _delay(duration),
+      _cancelSignal.future,
+    ]);
   }
 
   Future<bool> stop(int programId) async {
@@ -434,6 +469,22 @@ class SupervisorManager {
     }
   }
 
+  /// Kills every supervised process synchronously, without waiting.
+  ///
+  /// Used on shutdown: the app may be torn down before an awaited kill could
+  /// run, so the signals have to be sent before the call returns. The
+  /// backoff waits are cancelled too, so a watchdog parked on one cannot
+  /// respawn a program while the app is going down.
+  void shutdown() {
+    _cancelled = true;
+    if (!_cancelSignal.isCompleted) _cancelSignal.complete();
+    for (final managed in _processes.values) {
+      managed.explicitlyStopped = true;
+      _treeKillerSync(managed.process.pid);
+    }
+    _processes.clear();
+  }
+
   Future<void> _remove(int programId) async {
     final managed = _processes.remove(programId);
     if (managed == null) return;
@@ -454,10 +505,9 @@ class SupervisorManager {
   }
 
   void dispose() {
-    for (final managed in _processes.values) {
-      managed.explicitlyStopped = true;
-    }
-    unawaited(stopAll());
+    // The kill is synchronous: the app may be torn down before an awaited one
+    // could run, and a supervised process must not outlive the app.
+    shutdown();
     if (!_statusController.isClosed) _statusController.close();
   }
 }

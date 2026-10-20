@@ -89,38 +89,52 @@ class _SitesPageState extends ConsumerState<SitesPage> {
   Widget _buildHeader() {
     return Row(
       children: [
-        AppButton(
-          label: 'Add Site',
-          icon: const Icon(LucideIcons.plus, size: 16),
-          style: AppButtonStyle.success,
-          onPressed: () => _showSiteDialog(),
+        // The toolbar holds buttons with natural (label-driven) widths, so it
+        // wraps onto a second line instead of squeezing their text.
+        Expanded(
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              AppButton(
+                label: 'Add Site',
+                icon: const Icon(LucideIcons.plus, size: 16),
+                style: AppButtonStyle.success,
+                onPressed: () => _showSiteDialog(),
+              ),
+              AppButton(
+                label: 'Batch Create',
+                style: AppButtonStyle.outline,
+                icon: const Icon(LucideIcons.folderPlus, size: 16),
+                onPressed: () => _handleBatchCreateSites(),
+              ),
+              if (_selectedSiteIds.isNotEmpty)
+                AppButton(
+                  label: 'Delete (${_selectedSiteIds.length})',
+                  style: AppButtonStyle.danger,
+                  icon: const Icon(LucideIcons.trash2, size: 16),
+                  onPressed: () => _handleBulkDelete(),
+                ),
+            ],
+          ),
         ),
         const SizedBox(width: 12),
-        AppButton(
-          label: 'Batch Create',
-          style: AppButtonStyle.outline,
-          icon: const Icon(LucideIcons.folderPlus, size: 16),
-          onPressed: () => _handleBatchCreateSites(),
-        ),
-        if (_selectedSiteIds.isNotEmpty) ...[
-          const SizedBox(width: 12),
-          AppButton(
-            label: 'Delete (${_selectedSiteIds.length})',
-            style: AppButtonStyle.danger,
-            icon: const Icon(LucideIcons.trash2, size: 16),
-            onPressed: () => _handleBulkDelete(),
-          ),
-        ],
-        const Spacer(),
-        _buildSearchField(),
+        Flexible(child: _buildSearchField()),
       ],
     );
   }
 
   Widget _buildSearchField() {
-    return SizedBox(
-      width: 280,
-      height: 36,
+    // The search field is the one element that can give up width without
+    // becoming unusable, so it shrinks (down to 180) rather than pushing the
+    // toolbar past the window.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minWidth: 180,
+        maxWidth: 280,
+        minHeight: 36,
+        maxHeight: 36,
+      ),
       child: TextField(
         controller: _searchController,
         style: const TextStyle(
