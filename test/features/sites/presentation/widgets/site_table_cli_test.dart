@@ -213,4 +213,79 @@ void main() {
     expect(find.byIcon(LucideIcons.play), findsOneWidget);
     expect(find.byIcon(LucideIcons.square), findsNothing);
   });
+
+  group('responsive actions', () {
+    Widget host(SiteModel site) => ProviderScope(
+      child: MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 200,
+            child: SiteTable(
+              sites: [site],
+              selectedIds: const {},
+              onEdit: (_) {},
+              onToggleSelection: (_) {},
+              onToggleAll: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // A 700px window leaves ~412px for the table: narrower than the row's
+    // fixed columns plus the ~220px of action buttons it used to lay out in a
+    // rigid 220px box with no slack.
+    testWidgets('collapses actions into one menu at a ~412px row',
+        (tester) async {
+      tester.view.physicalSize = const Size(700, 720);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final site = SiteModel(
+        id: 12,
+        domain: 'myapp.test',
+        rootDir: '/my/project',
+        siteType: 'cli',
+        command: 'npm run dev',
+        port: 3000,
+      );
+
+      await tester.pumpWidget(host(site));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(LucideIcons.moreHorizontal), findsOneWidget);
+      expect(find.byIcon(LucideIcons.settings), findsNothing);
+
+      await tester.tap(find.byIcon(LucideIcons.moreHorizontal));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Logs'), findsOneWidget);
+      expect(find.text('Share / Tunnel'), findsOneWidget);
+      expect(find.text('Config'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+      expect(find.text('Start'), findsOneWidget);
+    });
+
+    testWidgets('shows every action inline at a wide row', (tester) async {
+      tester.view.physicalSize = const Size(1600, 720);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final site = SiteModel(
+        id: 12,
+        domain: 'myapp.test',
+        rootDir: '/my/project',
+        siteType: 'cli',
+        command: 'npm run dev',
+        port: 3000,
+      );
+
+      await tester.pumpWidget(host(site));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(LucideIcons.moreHorizontal), findsNothing);
+      expect(find.byIcon(LucideIcons.settings), findsOneWidget);
+    });
+  });
 }
+

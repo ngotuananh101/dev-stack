@@ -340,3 +340,41 @@ final cliProcessManagerProvider = Provider<CliProcessManager>((ref) {
   ref.onDispose(() => manager.dispose());
   return manager;
 });
+
+/// The set of CLI site ids with a process of their own, following the
+/// manager's status stream.
+///
+/// The stream emits the id that changed, not what changed, so a widget cannot
+/// watch it directly — a start and a stop of the same site emit the same
+/// value. This holds the derived set instead, which is what a row actually
+/// needs to draw its Start/Stop action.
+final cliRunningSitesProvider =
+    NotifierProvider<CliRunningSitesNotifier, Set<int>>(
+      CliRunningSitesNotifier.new,
+    );
+
+class CliRunningSitesNotifier extends Notifier<Set<int>> {
+  late CliProcessManager _manager;
+  StreamSubscription<int>? _subscription;
+
+  @override
+  Set<int> build() {
+    _manager = ref.watch(cliProcessManagerProvider);
+    _subscription = _manager.statusStream.listen(_syncFrom);
+    ref.onDispose(() {
+      _subscription?.cancel();
+      _subscription = null;
+    });
+    return const {};
+  }
+
+  void _syncFrom(int siteId) {
+    final next = {...state};
+    if (_manager.isSiteRunning(siteId)) {
+      next.add(siteId);
+    } else {
+      next.remove(siteId);
+    }
+    state = next;
+  }
+}
