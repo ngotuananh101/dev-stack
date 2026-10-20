@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 
 /// Whether a row action shows a text label or only an icon.
-@immutable
 enum RowActionKind { button, icon }
 
 /// One action inside a table row's action cluster.
@@ -22,11 +21,23 @@ class RowAction {
   /// layout space, so it is measured like an enabled one.
   final VoidCallback? onPressed;
 
-  const RowAction.button(this.label, this.onPressed, {this.icon})
-    : kind = RowActionKind.button;
+  /// Whether the action is in flight. Replaces a button's label with a
+  /// spinner, and disables its menu item.
+  final bool isLoading;
 
-  const RowAction.icon(this.label, this.onPressed, {this.icon})
-    : kind = RowActionKind.icon;
+  const RowAction.button(
+    this.label,
+    this.onPressed, {
+    this.icon,
+    this.isLoading = false,
+  }) : kind = RowActionKind.button;
+
+  const RowAction.icon(
+    this.label,
+    this.onPressed, {
+    this.icon,
+    this.isLoading = false,
+  }) : kind = RowActionKind.icon;
 }
 
 /// Width of one icon action: an `AppIconButton` at its default `sm` size.

@@ -73,12 +73,13 @@ class RowActionMenu extends StatelessWidget {
     return switch (action.kind) {
       RowActionKind.icon => AppIconButton(
         icon: action.icon ?? LucideIcons.circle,
-        onPressed: action.onPressed,
+        onPressed: action.isLoading ? null : action.onPressed,
         tooltip: action.label,
       ),
       RowActionKind.button => AppButton(
         label: action.label,
         onPressed: action.onPressed,
+        isLoading: action.isLoading,
         icon: action.icon != null ? Icon(action.icon!, size: 12) : null,
       ),
     };
@@ -97,7 +98,7 @@ class RowActionMenu extends StatelessWidget {
         for (var i = 0; i < actions.length; i++)
           PopupMenuItem<String>(
             value: '$i',
-            enabled: actions[i].onPressed != null,
+            enabled: actions[i].onPressed != null && !actions[i].isLoading,
             child: Row(
               children: [
                 Icon(

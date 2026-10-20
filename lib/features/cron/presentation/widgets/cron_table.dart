@@ -3,8 +3,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
-import '../../../../shared/widgets/app_button.dart';
-import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/utils/action_row_layout.dart';
+import '../../../../shared/widgets/row_action_menu.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/cron_expression.dart';
 import '../../domain/cron_job.dart';
@@ -33,11 +33,12 @@ class CronTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // No horizontal scroll and no minimum width: a scroll the user cannot see
+    // hides the actions off-screen, so the table shrinks instead and the row's
+    // action cluster collapses into a menu when it no longer fits.
     return LayoutBuilder(
       builder: (context, constraints) {
-        const minWidth = 1000.0;
-        final tableWidth =
-            constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
+        final availableWidth = constraints.maxWidth;
 
         return Container(
           width: double.infinity,
@@ -46,31 +47,23 @@ class CronTable extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.border),
           ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              height: constraints.maxHeight.isFinite
-                  ? constraints.maxHeight
-                  : null,
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  if (jobs.isEmpty)
-                    _buildEmptyState()
-                  else
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: jobs.length,
-                        itemBuilder: (context, index) => _buildRow(
-                          jobs[index],
-                          index == jobs.length - 1,
-                        ),
-                      ),
+          child: Column(
+            children: [
+              _buildHeader(),
+              if (jobs.isEmpty)
+                _buildEmptyState()
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: jobs.length,
+                    itemBuilder: (context, index) => _buildRow(
+                      jobs[index],
+                      availableWidth,
+                      index == jobs.length - 1,
                     ),
-                ],
-              ),
-            ),
+                  ),
+                ),
+            ],
           ),
         );
       },
@@ -150,7 +143,7 @@ class CronTable extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(CronJob job, bool isLast) {
+  Widget _buildRow(CronJob job, double availableWidth, bool isLast) {
     final isRunning = runningIds.contains(job.id);
     final valid = CronExpression.isValid(job.schedule);
     final description =
@@ -247,47 +240,47 @@ class CronTable extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 200,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                AppButton(
-                  label: 'Run',
-                  onPressed: isRunning ? null : () => onRunNow(job),
-                  isLoading: isRunning,
-                  icon: const Icon(LucideIcons.play, size: 12),
-                  style: AppButtonStyle.success,
-                ),
-                const SizedBox(width: 6),
-                AppIconButton(
-                  icon: LucideIcons.history,
-                  tooltip: 'Run History',
-                  onPressed: () => onViewHistory(job),
-                  size: AppIconButtonSize.sm,
-                ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: LucideIcons.edit,
-                  tooltip: 'Edit',
-                  onPressed: () => onEdit(job),
-                  size: AppIconButtonSize.sm,
-                ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: LucideIcons.trash2,
-                  tooltip: 'Delete',
-                  color: AppColors.error,
-                  onPressed: () => onDelete(job),
-                  size: AppIconButtonSize.sm,
-                ),
-              ],
-            ),
+          RowActionMenu(
+            actions: [
+              RowAction.button(
+                'Run',
+                isRunning ? null : () => onRunNow(job),
+                icon: LucideIcons.play,
+                isLoading: isRunning,
+              ),
+              RowAction.icon(
+                'Run History',
+                () => onViewHistory(job),
+                icon: LucideIcons.history,
+              ),
+              RowAction.icon(
+                'Edit',
+                () => onEdit(job),
+                icon: LucideIcons.edit,
+              ),
+              RowAction.icon(
+                'Delete',
+                () => onDelete(job),
+                icon: LucideIcons.trash2,
+              ),
+            ],
+            availableWidth: availableWidth - _operateReservedWidth,
+            firstGap: 6,
           ),
         ],
       ),
     );
   }
+
+  /// Width the action cluster cannot grow into: the row padding, the gaps
+  /// before it, the three fixed data columns, and the floor the two flexible
+  /// name/schedule columns need before their text becomes unreadable.
+  static const double _operateReservedWidth =
+      16 * 2 + 12 * 5 + 150 + 90 + 80 + 2 * _flexColumnMinWidth;
+
+  /// Floor for one flexible data column, below which its text is ellipsized to
+  /// uselessness.
+  static const double _flexColumnMinWidth = 120;
 
   static String _formatLastRun(DateTime? dt) {
     if (dt == null) return '—';
