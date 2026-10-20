@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/utils/action_row_layout.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/widgets/row_action_menu.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_brand_resolver.dart';
 import '../../domain/app_model.dart';
@@ -68,60 +69,72 @@ class CompactAppsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          // Table Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(8),
-              ),
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: Row(
-              children: [
-                Expanded(flex: 7, child: _buildHeaderCell('SOFTWARE NAME')),
-                const SizedBox(width: 12),
-                Expanded(flex: 5, child: _buildHeaderCell('DESCRIPTION')),
-                const SizedBox(width: 12),
-                SizedBox(width: 120, child: _buildHeaderCell('STATUS')),
-                const SizedBox(width: 12),
-                SizedBox(width: 50, child: _buildHeaderCell('PATH')),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 140,
-                  child: _buildHeaderCell(
-                    'OPERATE',
-                    alignment: TextAlign.right,
-                  ),
+    // The row's action cluster needs to know the width it really has, so the
+    // table measures itself instead of assuming a window width.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              // Table Header
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
-              ],
-            ),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(8),
+                  ),
+                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(flex: 7, child: _buildHeaderCell('SOFTWARE NAME')),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 5, child: _buildHeaderCell('DESCRIPTION')),
+                    const SizedBox(width: 12),
+                    SizedBox(width: 120, child: _buildHeaderCell('STATUS')),
+                    const SizedBox(width: 12),
+                    SizedBox(width: 50, child: _buildHeaderCell('PATH')),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 140,
+                      child: _buildHeaderCell(
+                        'OPERATE',
+                        alignment: TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Table Body — scrollable to prevent overflow
+              Expanded(
+                child: ListView.builder(
+                  physics: const ClampingScrollPhysics(),
+                  itemCount: apps.length,
+                  itemBuilder: (context, index) {
+                    return _buildAppRow(
+                      context,
+                      availableWidth,
+                      apps[index],
+                      index == apps.length - 1,
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-          // Table Body — scrollable to prevent overflow
-          Expanded(
-            child: ListView.builder(
-              physics: const ClampingScrollPhysics(),
-              itemCount: apps.length,
-              itemBuilder: (context, index) {
-                return _buildAppRow(
-                  context,
-                  apps[index],
-                  index == apps.length - 1,
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -141,7 +154,12 @@ class CompactAppsTable extends StatelessWidget {
     );
   }
 
-  Widget _buildAppRow(BuildContext context, AppModel app, bool isLast) {
+  Widget _buildAppRow(
+    BuildContext context,
+    double availableWidth,
+    AppModel app,
+    bool isLast,
+  ) {
     return Container(
       height: 55,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -265,7 +283,11 @@ class CompactAppsTable extends StatelessWidget {
           SizedBox(width: 50, child: _buildPathToggle(app)),
           const SizedBox(width: 12),
           // Operate buttons
-          SizedBox(width: 140, child: _buildOperateButtons(context, app)),
+          RowActionMenu(
+            availableWidth: availableWidth - _operateReservedWidth,
+            gap: 8,
+            actions: _buildAppActions(context, app),
+          ),
         ],
       ),
     );
@@ -416,105 +438,85 @@ class CompactAppsTable extends StatelessWidget {
     );
   }
 
-  Widget _buildOperateButtons(BuildContext context, AppModel app) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        if (app.appId == 'pyenv' && app.isInstalled) ...[
-          AppIconButton(
-            icon: Icons.list_alt_rounded,
-            onPressed: () => _showPyenvModal(context, app),
-            color: AppColors.primary,
-            tooltip: 'Manage Python Versions',
-          ),
-          const SizedBox(width: 8),
-        ],
-        if (app.isInstalled) ...[
-          if (app.hasUpdateAvailable) ...[
-            AppIconButton(
-              icon: Icons.refresh_rounded,
-              onPressed: () {
-                // Find the latest compatible version
-                final parts = app.installedVersion!.split('.');
-                final baseVersion = '${parts[0]}.${parts[1]}';
-                final latestPatch = app.versions
-                    .where((v) => v.startsWith('$baseVersion.'))
-                    .reduce((a, b) => app.isVersionNewer(b, a) ? b : a);
+  /// Width the OPERATE menu cannot grow into: the row padding, the gaps before
+  /// it, the two fixed data columns, and the floor for the two flexible
+  /// name/description columns.
+  static const double _operateReservedWidth =
+      16 * 2 + 12 * 4 + 120 + 50 + _flexColumnMinWidth * 2;
 
-                app.selectedVersion = latestPatch;
-                _showVersionModal(context, app, isUpdate: true);
-              },
-              color: AppColors.primary,
-              tooltip: 'Update to new patch',
-            ),
-            const SizedBox(width: 8),
-          ],
-          if (app.isService) ...[
-            AppIconButton(
-              icon: Icons.terminal_rounded,
-              onPressed: () => _showLogsModal(context, app),
-              color: AppColors.primary,
-              tooltip: 'View Logs',
-            ),
-            const SizedBox(width: 8),
-          ],
-          if (app.groupName == 'php' && !app.isDefault) ...[
-            AppIconButton(
-              icon: Icons.star_border_rounded,
-              onPressed: () => onChangeDefault(app.appId),
-              color: AppColors.warning,
-              tooltip: 'Set as Default PHP',
-            ),
-            const SizedBox(width: 8),
-          ],
-          AppIconButton(
-            icon: Icons.settings_outlined,
-            onPressed: () => _showSettingsModal(context, app),
-            color: AppColors.textSecondary,
-            tooltip: 'Settings',
+  /// Floor for one flexible data column, below which its text is ellipsized to
+  /// uselessness.
+  static const double _flexColumnMinWidth = 140;
+
+  /// Every action of a row, in the order the row showed them inline.
+  ///
+  /// [RowActionMenu] renders these as buttons while they fit and collapses
+  /// them into a single '…' menu when the row gets narrow.
+  List<RowAction> _buildAppActions(BuildContext context, AppModel app) {
+    return [
+      if (app.appId == 'pyenv' && app.isInstalled)
+        RowAction.icon(
+          'Manage Python Versions',
+          () => _showPyenvModal(context, app),
+          icon: Icons.list_alt_rounded,
+        ),
+      if (app.isInstalled) ...[
+        if (app.hasUpdateAvailable)
+          RowAction.icon('Update to new patch', () {
+            // Find the latest compatible version
+            final parts = app.installedVersion!.split('.');
+            final baseVersion = '${parts[0]}.${parts[1]}';
+            final latestPatch = app.versions
+                .where((v) => v.startsWith('$baseVersion.'))
+                .reduce((a, b) => app.isVersionNewer(b, a) ? b : a);
+
+            app.selectedVersion = latestPatch;
+            _showVersionModal(context, app, isUpdate: true);
+          }, icon: Icons.refresh_rounded),
+        if (app.isService)
+          RowAction.icon(
+            'View Logs',
+            () => _showLogsModal(context, app),
+            icon: Icons.terminal_rounded,
           ),
-          const SizedBox(width: 8),
-          AppIconButton(
-            icon: Icons.delete_outline_rounded,
-            onPressed: () {
-              AppDialogs.showConfirm(
-                context: context,
-                title: 'Uninstall App',
-                text:
-                    'Are you sure you want to uninstall ${app.name}?\nThis will delete all files.',
-                onConfirm: () => onToggleInstall(app),
-              );
-            },
-            color: AppColors.error,
-            tooltip: 'Uninstall',
+        if (app.groupName == 'php' && !app.isDefault)
+          RowAction.icon(
+            'Set as Default PHP',
+            () => onChangeDefault(app.appId),
+            icon: Icons.star_border_rounded,
           ),
-        ] else if (app.status == 'installing')
-          AppButton(
-            onPressed: null,
-            style: AppButtonStyle.outline,
-            label: 'INSTALLING...',
-          )
-        else
-          AppIconButton(
-            icon: Icons.file_download_outlined,
-            onPressed: () => _showVersionModal(context, app),
-            color: AppColors.primary,
-            tooltip: 'Install',
-          ),
-        if (app.isInstalled &&
-            (app.appId == 'mongodb-compass' ||
-                app.appId == 'heidisql' ||
-                app.appId == 'rustfs')) ...[
-          const SizedBox(width: 8),
-          AppIconButton(
-            icon: Icons.open_in_new_rounded,
-            onPressed: () => onOpen(app),
-            color: AppColors.success,
-            tooltip: 'Open Application',
-          ),
-        ],
-      ],
-    );
+        RowAction.icon(
+          'Settings',
+          () => _showSettingsModal(context, app),
+          icon: Icons.settings_outlined,
+        ),
+        RowAction.icon('Uninstall', () {
+          AppDialogs.showConfirm(
+            context: context,
+            title: 'Uninstall App',
+            text:
+                'Are you sure you want to uninstall ${app.name}?\nThis will delete all files.',
+            onConfirm: () => onToggleInstall(app),
+          );
+        }, icon: Icons.delete_outline_rounded),
+      ] else if (app.status == 'installing')
+        RowAction.button('INSTALLING...', null)
+      else
+        RowAction.icon(
+          'Install',
+          () => _showVersionModal(context, app),
+          icon: Icons.file_download_outlined,
+        ),
+      if (app.isInstalled &&
+          (app.appId == 'mongodb-compass' ||
+              app.appId == 'heidisql' ||
+              app.appId == 'rustfs'))
+        RowAction.icon(
+          'Open Application',
+          () => onOpen(app),
+          icon: Icons.open_in_new_rounded,
+        ),
+    ];
   }
 
   void _showVersionModal(
