@@ -52,6 +52,7 @@ void main(List<String> args) async {
 
   WindowOptions windowOptions = WindowOptions(
     size: const Size(1080, 720),
+    minimumSize: const Size(720, 520),
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
