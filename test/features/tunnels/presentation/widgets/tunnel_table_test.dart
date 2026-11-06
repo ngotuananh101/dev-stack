@@ -133,6 +133,40 @@ void main() {
     expect(startedTunnel?.id, 2);
   });
 
+  testWidgets('TunnelTable shows a running token tunnel without a known URL as connected', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TunnelTable(
+            tunnels: [testTunnel1],
+            sessions: const {
+              1: TunnelSession(tunnelId: 1, status: TunnelStatus.running),
+            },
+            onStart: (_) {},
+            onStop: (_) {},
+            onCancel: (_) {},
+            onEdit: (_) {},
+            onDelete: (_) {},
+            onViewLogs: (_) {},
+            onOpenUrl: (_) {},
+            onCopyUrl: (_) {},
+            onOpenQr: (t, u) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('RUNNING'), findsOneWidget);
+    expect(find.text('Not running'), findsNothing);
+    expect(find.text('Connected (route set in provider dashboard)'), findsOneWidget);
+    expect(find.text('Stop'), findsOneWidget);
+    expect(find.byIcon(LucideIcons.copy), findsNothing);
+  });
+
   testWidgets('TunnelTable shows a Cancel button while a tunnel is starting', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1200, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));

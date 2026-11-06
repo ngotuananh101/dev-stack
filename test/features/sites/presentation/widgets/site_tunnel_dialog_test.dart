@@ -120,6 +120,47 @@ void main() {
     expect(find.text('https://myproject.trycloudflare.com'), findsOneWidget);
   });
 
+  testWidgets('SiteTunnelDialog shows a running token tunnel without a known URL as connected', (tester) async {
+    final site = SiteModel(
+      domain: 'myproject.test',
+      rootDir: '/var/www/myproject',
+    );
+
+    final tunnel = TunnelModel(
+      id: 10,
+      name: 'myproject.test',
+      provider: 'cloudflare',
+      targetType: 'site',
+      targetSiteDomain: 'myproject.test',
+      authToken: 'cf_token_12345',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          tunnelsStreamProvider.overrideWith((ref) => Stream.value([tunnel])),
+          tunnelSessionsProvider.overrideWith(
+            () => TunnelSessionsNotifierMock({
+              10: const TunnelSession(
+                tunnelId: 10,
+                status: TunnelStatus.running,
+              ),
+            }),
+          ),
+        ],
+        child: MaterialApp(
+          home: _HostScreen(site: site),
+        ),
+      ),
+    );
+
+    await _openDialog(tester);
+    expect(find.text('RUNNING'), findsOneWidget);
+    expect(find.text('Not running'), findsNothing);
+    expect(find.text('Connected (route set in provider dashboard)'), findsOneWidget);
+    expect(find.text('Stop'), findsOneWidget);
+  });
+
   testWidgets('SiteTunnelDialog shows stopped tunnel with start button', (tester) async {
     final site = SiteModel(
       domain: 'myproject.test',

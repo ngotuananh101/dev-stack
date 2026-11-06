@@ -173,6 +173,18 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
       ];
     } else if (publicUrl != null && isRunning) {
       body = [_buildUrlRow(publicUrl)];
+    } else if (isRunning) {
+      // A token tunnel with no custom domain is reachable, but only the
+      // provider dashboard knows on which hostname.
+      body = [
+        const Text(
+          'Connected (route set in provider dashboard)',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: AppTextSize.xs,
+          ),
+        ),
+      ];
     } else {
       body = [
         const Text(
