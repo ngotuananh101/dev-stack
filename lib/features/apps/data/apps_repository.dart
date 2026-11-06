@@ -11,8 +11,18 @@ import 'package:dev_stack/core/services/log_service.dart';
 
 class AppsRepository {
   final Isar? _isar;
+  final Dio? _dio;
+  final Future<Directory> Function() _supportDirectory;
 
-  AppsRepository([Isar? isar]) : _isar = isar;
+  AppsRepository([Isar? isar]) : this.withDependencies(isar);
+
+  AppsRepository.withDependencies(
+    Isar? isar, {
+    Dio? dio,
+    Future<Directory> Function()? supportDirectory,
+  }) : _isar = isar,
+       _dio = dio,
+       _supportDirectory = supportDirectory ?? getApplicationSupportDirectory;
 
   Isar get isar {
     if (_isar == null) {
@@ -31,13 +41,34 @@ class AppsRepository {
     return isLinux ? 'apps-linux.json' : 'apps.json';
   }
 
+  static String _requiredCatalogString(
+    Map<dynamic, dynamic> json,
+    String field,
+    int index,
+  ) {
+    final value = json[field];
+    if (value is String && value.trim().isNotEmpty) return value;
+    throw FormatException(
+      'Invalid app catalog entry at index $index: "$field" must be a non-empty string',
+    );
+  }
+
   static List<AppModel> mergeAppsCatalog(
     List<dynamic> appsJson,
     Map<String, InstalledApp> installedMap,
   ) {
     return appsJson
-        .map((json) {
-          final appId = json['id'];
+        .asMap()
+        .entries
+        .map((entry) {
+          final json = entry.value;
+          if (json is! Map) {
+            throw FormatException(
+              'Invalid app catalog entry at index ${entry.key}: expected an object',
+            );
+          }
+          final appId = _requiredCatalogString(json, 'id', entry.key);
+          final name = _requiredCatalogString(json, 'name', entry.key);
           final installed = installedMap[appId];
 
           List<String> categories = [];
@@ -91,7 +122,7 @@ class AppsRepository {
 
           return AppModel(
             appId: appId,
-            name: json['name'],
+            name: name,
             description: json['description'],
             categories: categories,
             groupName: json['group_name'],
@@ -121,31 +152,52 @@ class AppsRepository {
         .cast<AppModel>();
   }
 
+  static List<AppModel> _parseCatalog(
+    dynamic rawData,
+    Map<String, InstalledApp> installedMap,
+  ) {
+    final data = rawData is String ? json.decode(rawData) : rawData;
+    if (data is! Map || data['apps'] is! List) {
+      throw const FormatException('App catalog must contain an "apps" list');
+    }
+    try {
+      return mergeAppsCatalog(data['apps'] as List<dynamic>, installedMap);
+    } on TypeError catch (e) {
+      throw FormatException('Invalid app catalog field type: $e');
+    }
+  }
+
+  Future<File> _catalogCacheFile() async {
+    final catalogFileName = catalogFileNameFor(isLinux: Platform.isLinux);
+    final supportDir = await _supportDirectory();
+    return File(p.join(supportDir.path, catalogFileName));
+  }
+
   Future<List<AppModel>> getAll() async {
     try {
-      // 1. Load marketplace data
-      String response;
       final catalogFileName = catalogFileNameFor(isLinux: Platform.isLinux);
-      final supportDir = await getApplicationSupportDirectory();
-      final localFile = File(p.join(supportDir.path, catalogFileName));
-
-      if (await localFile.exists()) {
-        AppLogger.info('Loading apps from local storage: ${localFile.path}');
-        response = await localFile.readAsString();
-      } else {
-        AppLogger.info('Loading apps from assets bundle: $catalogFileName');
-        response = await rootBundle.loadString('assets/data/$catalogFileName');
-      }
-
-      final data = json.decode(response);
-      final List appsJson = data['apps'];
-
-      // 2. Load installed apps from Isar
+      final localFile = await _catalogCacheFile();
       final installedApps = isar.installedApps.where().findAll();
       final installedMap = {for (var a in installedApps) a.appId: a};
 
-      // 3. Merge definitions with installation state
-      return mergeAppsCatalog(appsJson, installedMap);
+      if (await localFile.exists()) {
+        AppLogger.info('Loading apps from local storage: ${localFile.path}');
+        try {
+          return _parseCatalog(await localFile.readAsString(), installedMap);
+        } on FormatException catch (e) {
+          // Preserve the invalid file for diagnosis until a valid update
+          // replaces it; keep both screens usable with the bundled catalog.
+          AppLogger.warning(
+            'Ignoring invalid cached $catalogFileName; using bundled catalog: $e',
+          );
+        }
+      }
+
+      AppLogger.info('Loading apps from assets bundle: $catalogFileName');
+      final response = await rootBundle.loadString(
+        'assets/data/$catalogFileName',
+      );
+      return _parseCatalog(response, installedMap);
     } catch (e, stack) {
       AppLogger.error('Error loading apps: $e\n$stack');
 
@@ -153,8 +205,7 @@ class AppsRepository {
       if (e is RangeError || e.toString().contains('RangeError')) {
         try {
           final catalogFileName = catalogFileNameFor(isLinux: Platform.isLinux);
-          final supportDir = await getApplicationSupportDirectory();
-          final localFile = File(p.join(supportDir.path, catalogFileName));
+          final localFile = await _catalogCacheFile();
           if (await localFile.exists()) {
             await localFile.delete();
             AppLogger.info('Deleted corrupted $catalogFileName');
@@ -238,22 +289,25 @@ class AppsRepository {
       throw ArgumentError('Catalog URL must use secure HTTPS protocol: $url');
     }
     try {
-      final dio = Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 20),
-        ),
-      );
+      final dio =
+          _dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 20),
+            ),
+          );
       final response = await dio.get(url);
 
       if (response.statusCode == 200) {
         final data = response.data;
+        // Validate the complete download before replacing the working cache.
+        _parseCatalog(data, const {});
         final jsonString = data is String ? data : jsonEncode(data);
 
         // Save to local support directory for runtime persistence
         final catalogFileName = catalogFileNameFor(isLinux: Platform.isLinux);
-        final supportDir = await getApplicationSupportDirectory();
-        final localFile = File(p.join(supportDir.path, catalogFileName));
+        final localFile = await _catalogCacheFile();
         await localFile.writeAsString(jsonString);
 
         AppLogger.info('Successfully updated apps list ($catalogFileName)');

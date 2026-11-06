@@ -51,6 +51,33 @@ test('all Linux definitions omit package installation metadata', () => {
   }
 });
 
+for (const platform of ['Linux', 'Windows']) {
+  test(`${platform} generated catalog includes required app display metadata`, async (t) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'updater-metadata-'));
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    const u = updater(async () => { throw Error('Unexpected network request'); }, dir);
+    await u.updatePlatformCatalog({
+      platformName: platform,
+      baseApps: platform === 'Linux' ? u.baseLinuxApps : u.baseWindowsApps,
+      fetchers: {},
+      outputFileName: 'output.json',
+      existingFileName: 'absent.json',
+    });
+    const catalog = JSON.parse(fs.readFileSync(path.join(dir, 'output.json'), 'utf8'));
+    assert.ok(catalog.apps.length > 0);
+    for (const app of catalog.apps) {
+      assert.equal(typeof app.id, 'string');
+      assert.ok(app.id.trim(), 'App ID must not be empty');
+      assert.equal(typeof app.name, 'string', `Missing display name for ${app.id}`);
+      assert.ok(app.name.trim(), `Empty display name for ${app.id}`);
+    }
+    const redis = catalog.apps.find((app) => app.id === 'redis');
+    assert.equal(redis.name, 'Redis');
+    assert.equal(typeof redis.description, 'string');
+    assert.ok(redis.description.trim());
+  });
+}
+
 for (const [platform, expectedVersions] of [
   ['Linux', {}],
   ['Windows', { '1.2.3': 'https://example.com/source.tar.gz' }],

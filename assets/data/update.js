@@ -678,6 +678,8 @@ const COMMON_APP_DEFINITIONS = {
   },
   redis: {
     id: "redis",
+    name: "Redis",
+    description: "High-performance in-memory data structure store.",
     category: "database",
     group_name: "redis",
   },

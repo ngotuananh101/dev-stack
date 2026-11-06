@@ -27,6 +27,40 @@ void main() {
         expect(result, isEmpty);
       });
 
+      for (final field in ['id', 'name']) {
+        for (final value in [null, 42, '', '   ']) {
+          test(
+            'rejects invalid required $field ($value) with a catalog error',
+            () {
+              final entry = <String, dynamic>{
+                'id': 'redis',
+                'name': 'Redis',
+                'category': 'database',
+                'versions': <String, String>{},
+              }..[field] = value;
+
+              expect(
+                () => AppsRepository.mergeAppsCatalog([entry], {}),
+                throwsA(
+                  isA<FormatException>().having(
+                    (error) => error.message,
+                    'message',
+                    contains(field),
+                  ),
+                ),
+              );
+            },
+          );
+        }
+      }
+
+      test('rejects a non-object catalog entry with a catalog error', () {
+        expect(
+          () => AppsRepository.mergeAppsCatalog([null], {}),
+          throwsFormatException,
+        );
+      });
+
       test(
         'maps uninstalled app with single category string and version list',
         () {

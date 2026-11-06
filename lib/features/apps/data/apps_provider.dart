@@ -572,13 +572,17 @@ class Apps extends _$Apps {
   }
 
   Future<void> updateCatalog(String url) async {
+    final previousApps = state.value;
     state = const AsyncValue.loading();
     try {
       final repository = await ref.read(appsRepositoryProvider.future);
       await repository.updateAppListFromUrl(url);
       await refresh();
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      state = previousApps != null
+          ? AsyncValue.data(previousApps)
+          : AsyncValue.error(e, st);
+      rethrow;
     }
   }
 

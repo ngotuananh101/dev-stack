@@ -67,7 +67,11 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           }
         } catch (e) {
           if (mounted) {
-            AppDialogs.showToast(context, 'Error deleting file: $e', isError: true);
+            AppDialogs.showToast(
+              context,
+              'Error deleting file: $e',
+              isError: true,
+            );
           }
         }
       },
@@ -84,12 +88,16 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   Widget build(BuildContext context) {
     final appsAsync = ref.watch(appsProvider);
     final logFilesAsync = ref.watch(logFilesProvider);
+    // Catalog loading/failure must not prevent reading diagnostic log files.
+    final apps = appsAsync.value ?? const <AppModel>[];
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: appsAsync.when(
-        data: (apps) {
-          final serviceApps = apps.where((a) => a.isService && a.isInstalled).toList();
+      body: Builder(
+        builder: (context) {
+          final serviceApps = apps
+              .where((a) => a.isService && a.isInstalled)
+              .toList();
           final logFiles = logFilesAsync.value ?? [];
 
           // 1. Check if the current selection is still valid
@@ -176,148 +184,150 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                     Expanded(
                       child: Container(
                         height: 36, // Slightly taller for larger text
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedId,
-                          // Fills whatever width the toolbar leaves for it, so
-                          // the dropdown shrinks with the window instead of
-                          // pushing the action buttons out of view.
-                          isExpanded: true,
-                          dropdownColor: AppColors.surface,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
                           borderRadius: BorderRadius.circular(8),
-                          icon: const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            color: AppColors.textMuted,
-                            size: 20,
-                          ),
-                          style: const TextStyle(
-                            fontSize: AppTextSize.xs, // Increased from xxs
-                            color: AppColors.textPrimary,
-                            fontFamily: 'Inter',
-                          ),
-                          onChanged: (value) {
-                            if (value == null || value.startsWith('header_')) {
-                              return;
-                            }
-                            setState(() {
-                              _selectedId = value;
-                              _isService = serviceApps.any(
-                                (a) => a.appId == value,
-                              );
-                            });
-                          },
-                          items: [
-                            // Group: Live Services
-                            const DropdownMenuItem<String>(
-                              enabled: false,
-                              value: 'header_services',
-                              child: Text(
-                                'LIVE SERVICES',
-                                style: TextStyle(
-                                  fontSize: AppTextSize.xxs, // Slightly larger header
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedId,
+                            // Fills whatever width the toolbar leaves for it, so
+                            // the dropdown shrinks with the window instead of
+                            // pushing the action buttons out of view.
+                            isExpanded: true,
+                            dropdownColor: AppColors.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: AppColors.textMuted,
+                              size: 20,
                             ),
-                            ...serviceApps.map(
-                              (app) => DropdownMenuItem<String>(
-                                value: app.appId,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 8, // Slightly larger dot
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: app.serviceStatus == 'running'
-                                            ? AppColors.success
-                                            : AppColors.error,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    // The dropdown shrinks with the window, so
-                                    // the label ellipsizes rather than forcing
-                                    // the menu wider than its field.
-                                    Expanded(
-                                      child: Text(
-                                        app.name,
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                        style: const TextStyle(
-                                          fontSize: AppTextSize
-                                              .xs, // Increased from xxs
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            style: const TextStyle(
+                              fontSize: AppTextSize.xs, // Increased from xxs
+                              color: AppColors.textPrimary,
+                              fontFamily: 'Inter',
                             ),
-                            // Group: System Log Files
-                            const DropdownMenuItem<String>(
-                              enabled: false,
-                              value: 'header_files',
-                              child: Text(
-                                'SYSTEM LOG FILES',
-                                style: TextStyle(
-                                  fontSize: AppTextSize.xxs,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ),
-                            if (logFiles.isEmpty)
+                            onChanged: (value) {
+                              if (value == null ||
+                                  value.startsWith('header_')) {
+                                return;
+                              }
+                              setState(() {
+                                _selectedId = value;
+                                _isService = serviceApps.any(
+                                  (a) => a.appId == value,
+                                );
+                              });
+                            },
+                            items: [
+                              // Group: Live Services
                               const DropdownMenuItem<String>(
                                 enabled: false,
-                                value: 'no_files',
+                                value: 'header_services',
                                 child: Text(
-                                  '  (No files)',
+                                  'LIVE SERVICES',
                                   style: TextStyle(
-                                    fontSize: AppTextSize.xs,
+                                    fontSize: AppTextSize
+                                        .xxs, // Slightly larger header
+                                    fontWeight: FontWeight.w900,
                                     color: AppColors.textMuted,
-                                    fontStyle: FontStyle.italic,
                                   ),
                                 ),
                               ),
-                            ...logFiles.map(
-                              (file) => DropdownMenuItem<String>(
-                                value: file.path,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.description_outlined,
-                                      size: 14,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        p.basename(file.path),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                        style: const TextStyle(
-                                          fontSize: AppTextSize.xs,
-                                        ), // Increased from xxs
+                              ...serviceApps.map(
+                                (app) => DropdownMenuItem<String>(
+                                  value: app.appId,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 8, // Slightly larger dot
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: app.serviceStatus == 'running'
+                                              ? AppColors.success
+                                              : AppColors.error,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 10),
+                                      // The dropdown shrinks with the window, so
+                                      // the label ellipsizes rather than forcing
+                                      // the menu wider than its field.
+                                      Expanded(
+                                        child: Text(
+                                          app.name,
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                          style: const TextStyle(
+                                            fontSize: AppTextSize
+                                                .xs, // Increased from xxs
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                              // Group: System Log Files
+                              const DropdownMenuItem<String>(
+                                enabled: false,
+                                value: 'header_files',
+                                child: Text(
+                                  'SYSTEM LOG FILES',
+                                  style: TextStyle(
+                                    fontSize: AppTextSize.xxs,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ),
+                              if (logFiles.isEmpty)
+                                const DropdownMenuItem<String>(
+                                  enabled: false,
+                                  value: 'no_files',
+                                  child: Text(
+                                    '  (No files)',
+                                    style: TextStyle(
+                                      fontSize: AppTextSize.xs,
+                                      color: AppColors.textMuted,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                              ...logFiles.map(
+                                (file) => DropdownMenuItem<String>(
+                                  value: file.path,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.description_outlined,
+                                        size: 14,
+                                        color: AppColors.textMuted,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          p.basename(file.path),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                          style: const TextStyle(
+                                            fontSize: AppTextSize.xs,
+                                          ), // Increased from xxs
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
                     ),
                     const SizedBox(width: 12),
                     // Compact Action Buttons. Wrapping lets the pair drop onto
@@ -375,10 +385,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error loading logs: $e')),
       ),
     );
   }
-
 }
