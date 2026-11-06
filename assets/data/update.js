@@ -345,9 +345,81 @@ const fetchersWindows = {
   },
 };
 
+const PHP_BUILDER_REPO = "ngotuananh101/devstack-app-builder";
+const PHP_BUNDLE_ASSET = /^php-(\d+\.\d+\.\d+)-glibc-full-x86_64-([a-f0-9]{16})\.tar\.gz$/;
+let phpReleaseIndex;
+
+function phpBundleVersion(url) {
+  try {
+    const parsed = new URL(url);
+    if (
+      parsed.protocol !== "https:" || parsed.hostname !== "github.com" ||
+      parsed.username || parsed.password || parsed.port || parsed.search || parsed.hash ||
+      !parsed.pathname.startsWith(`/${PHP_BUILDER_REPO}/releases/download/`)
+    ) return null;
+    return PHP_BUNDLE_ASSET.exec(path.posix.basename(parsed.pathname))?.[1] ?? null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function fetchPhpReleaseIndex() {
+  const versions = {};
+  const sha256 = {};
+  let url = `https://api.github.com/repos/${PHP_BUILDER_REPO}/releases?per_page=100&page=1`;
+  const visited = new Set();
+  const headers = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "Ponta-Update",
+    ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
+  };
+  while (url) {
+    if (visited.has(url)) throw new Error("Repeated PHP release pagination link");
+    const parsed = new URL(url);
+    if (parsed.origin !== "https://api.github.com" || parsed.pathname !== `/repos/${PHP_BUILDER_REPO}/releases`) {
+      throw new Error("Invalid PHP release pagination link");
+    }
+    visited.add(url);
+    const res = await fetch(url, { headers });
+    if (!res.ok) throw new Error(`PHP release index returned HTTP ${res.status}`);
+    const releases = await res.json();
+    if (!Array.isArray(releases)) throw new Error("Malformed PHP release index");
+    for (const release of releases) {
+      if (!release || !Array.isArray(release.assets)) throw new Error("Malformed PHP release entry");
+      if (release.draft || release.prerelease) continue;
+      for (const asset of release.assets) {
+        const match = PHP_BUNDLE_ASSET.exec(asset.name);
+        if (!match || phpBundleVersion(asset.browser_download_url) !== match[1]) continue;
+        const version = match[1];
+        // GitHub returns newest releases first; never replace a newer build.
+        if (versions[version]) continue;
+        versions[version] = asset.browser_download_url;
+        const digest = /^sha256:([a-f0-9]{64})$/i.exec(asset.digest ?? "");
+        if (digest) sha256[version] = digest[1].toLowerCase();
+      }
+    }
+    url = res.headers.get("link")?.match(/<([^>]+)>;\s*rel="next"/)?.[1] ?? null;
+  }
+  return { versions, sha256 };
+}
+
 // === CÁC HÀM FETCH DỮ LIỆU LINUX ===
 
 const fetchersLinux = {
+  async php(prefix) {
+    phpReleaseIndex ??= fetchPhpReleaseIndex();
+    const index = await phpReleaseIndex;
+    const versions = Object.fromEntries(
+      sortVersions(Object.keys(index.versions))
+        .filter((version) => version.startsWith(`${prefix}.`))
+        .map((version) => [version, index.versions[version]]),
+    );
+    const sha256 = Object.fromEntries(
+      Object.keys(versions).filter((version) => index.sha256[version])
+        .map((version) => [version, index.sha256[version]]),
+    );
+    return { versions, sha256 };
+  },
   nodejs() {
     return fetchNodejsReleases({
       minMajor: 18,
@@ -535,34 +607,6 @@ function createWindowsPhpApps(versions) {
   }));
 }
 
-function createServicePackageManagerCommands({
-  debPackage,
-  debServiceName = debPackage,
-  rpmPackage,
-  rpmServiceName = rpmPackage,
-}) {
-  return {
-    ubuntu: [
-      "sudo apt-get update",
-      `sudo apt-get install -y ${debPackage}`,
-      `sudo systemctl disable --now ${debServiceName}`,
-    ],
-    debian: [
-      "sudo apt-get update",
-      `sudo apt-get install -y ${debPackage}`,
-      `sudo systemctl disable --now ${debServiceName}`,
-    ],
-    centos: [
-      `sudo dnf install -y ${rpmPackage}`,
-      `sudo systemctl disable --now ${rpmServiceName}`,
-    ],
-    fedora: [
-      `sudo dnf install -y ${rpmPackage}`,
-      `sudo systemctl disable --now ${rpmServiceName}`,
-    ],
-  };
-}
-
 function createLinuxPhpApps(versions) {
   return versions.map((ver) => ({
     id: `php${ver.replace(".", "")}`,
@@ -570,46 +614,10 @@ function createLinuxPhpApps(versions) {
     description: `Hypertext Preprocessor v${ver}`,
     category: "runtime",
     group_name: "php",
-    exec_file: `php-fpm${ver}`,
-    cli_file: `php${ver}`,
+    exec_file: "php-fpm",
+    cli_file: "php",
     prefix: ver,
-    install_method: "package_manager",
-    package_manager_commands: {
-      ubuntu: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common",
-        "sudo add-apt-repository -y ppa:ondrej/php",
-        "sudo apt-get update",
-        `sudo apt-get install -y php${ver}-fpm php${ver}-cli php${ver}-common php${ver}-curl php${ver}-mbstring php${ver}-mysql php${ver}-xml php${ver}-zip`,
-        `sudo systemctl disable --now php${ver}-fpm`,
-      ],
-      debian: [
-        "sudo apt-get update",
-        "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-        "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-        "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-        'echo "deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main" | sudo tee /etc/apt/sources.list.d/php.list',
-        "sudo apt-get update",
-        `sudo apt-get install -y php${ver}-fpm php${ver}-cli php${ver}-common php${ver}-curl php${ver}-mbstring php${ver}-mysql php${ver}-xml php${ver}-zip`,
-        `sudo systemctl disable --now php${ver}-fpm`,
-      ],
-      centos: [
-        "sudo dnf install -y epel-release",
-        "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-        "sudo dnf module reset -y php",
-        `sudo dnf module enable -y php:remi-${ver}`,
-        "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-        "sudo systemctl disable --now php-fpm",
-      ],
-      fedora: [
-        "sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-{version_id}.rpm",
-        `sudo dnf install -y --enablerepo=remi php${ver.replace(".", "")}-php-fpm php${ver.replace(".", "")}-php-cli php${ver.replace(".", "")}-php-common php${ver.replace(".", "")}-php-mysqlnd php${ver.replace(".", "")}-php-mbstring php${ver.replace(".", "")}-php-xml php${ver.replace(".", "")}-php-pecl-zip`,
-        `sudo systemctl disable --now php${ver.replace(".", "")}-php-fpm`,
-      ],
-    },
-    versions: {
-      [ver]: "package_manager",
-    },
+    versions: {},
   }));
 }
 
@@ -765,40 +773,6 @@ function makeBinaryApp(base, execFile, cliFile, extra = {}) {
   return result;
 }
 
-function makeLinuxPackageManagerApp(
-  base,
-  {
-    execFile,
-    cliFile,
-    debPackage,
-    debServiceName,
-    rpmPackage,
-    rpmServiceName,
-    name,
-    description,
-  },
-) {
-  return {
-    id: base.id,
-    name: name || base.name,
-    description: description || base.description,
-    category: base.category,
-    group_name: base.group_name,
-    exec_file: execFile,
-    cli_file: cliFile,
-    install_method: "package_manager",
-    package_manager_commands: createServicePackageManagerCommands({
-      debPackage,
-      debServiceName,
-      rpmPackage,
-      rpmServiceName,
-    }),
-    versions: {
-      system: "package_manager",
-    },
-  };
-}
-
 const baseWindowsApps = [
   {
     ...COMMON_APP_DEFINITIONS.pyenv,
@@ -892,32 +866,13 @@ const baseLinuxApps = [
   makeBinaryApp(COMMON_APP_DEFINITIONS.nodejs, "node", "node"),
   makeBinaryApp(COMMON_APP_DEFINITIONS.caddy, "caddy", "caddy"),
   makeBinaryApp(COMMON_APP_DEFINITIONS.nginx, "nginx", "nginx"),
-  makeLinuxPackageManagerApp(COMMON_APP_DEFINITIONS.apache, {
-    execFile: "apache2",
-    cliFile: "apache2",
-    debPackage: "apache2",
-    rpmPackage: "httpd",
-  }),
+  { ...makeBinaryApp(COMMON_APP_DEFINITIONS.apache, "httpd", "httpd"), versions: {} },
   ...createLinuxPhpApps(PHP_VERSIONS),
   makeBinaryApp(COMMON_APP_DEFINITIONS.mysql, "mysqld", "mysql"),
   makeBinaryApp(COMMON_APP_DEFINITIONS.mariadb, "mariadbd", "mariadb"),
-  makeLinuxPackageManagerApp(COMMON_APP_DEFINITIONS.redis, {
-    name: "Redis",
-    description: "High-performance in-memory data structure store.",
-    execFile: "redis-server",
-    cliFile: "redis-cli",
-    debPackage: "redis-server",
-    rpmPackage: "redis",
-  }),
+  { ...makeBinaryApp(COMMON_APP_DEFINITIONS.redis, "redis-server", "redis-cli"), versions: {} },
   makeBinaryApp(COMMON_APP_DEFINITIONS.mongodb, "mongod", "mongos"),
-  makeLinuxPackageManagerApp(COMMON_APP_DEFINITIONS.postgresql, {
-    execFile: "postgres",
-    cliFile: "psql",
-    debPackage: "postgresql postgresql-contrib",
-    debServiceName: "postgresql",
-    rpmPackage: "postgresql-server postgresql-contrib",
-    rpmServiceName: "postgresql",
-  }),
+  { ...makeBinaryApp(COMMON_APP_DEFINITIONS.postgresql, "postgres", "psql"), versions: {} },
   {
     ...COMMON_APP_DEFINITIONS.phpMyAdmin,
     versions: {
@@ -980,8 +935,21 @@ async function fetchAppVersions(app, fetchers, platformName) {
   return null;
 }
 
+function isPortablePhpApp(app) {
+  return app.group_name === "php" && app.exec_file === "php-fpm";
+}
+
 function applyFetchedVersions(app, fetchedResult) {
   if (!fetchedResult) return;
+
+  if (isPortablePhpApp(app)) {
+    app.versions = Object.fromEntries(
+      sortVersions(Object.keys(fetchedResult.versions ?? {}))
+        .map((version) => [version, fetchedResult.versions[version]]),
+    );
+    app.sha256 = fetchedResult.sha256 ?? {};
+    return;
+  }
 
   if (app.id === "nodejs" && fetchedResult.versions) {
     app.versions = sortVersionsObject(fetchedResult.versions);
@@ -1002,21 +970,37 @@ function applyFetchedVersions(app, fetchedResult) {
   }
 }
 
-function applyFallbackVersions(app, oldData) {
-  if (
-    app.install_method === "package_manager" &&
-    app.package_manager_commands
-  ) {
+function applyFallbackVersions(app, oldData, fetchedResult = null, platformName = null) {
+  // These Linux runtimes have no supported portable distribution yet.
+  // Cached source/package archives must not make them installable again.
+  if (platformName === "Linux" && ["apache", "redis", "postgresql"].includes(app.id)) return;
+  const oldApp = oldData?.apps?.find((a) => a.id === app.id);
+  if (isPortablePhpApp(app)) {
+    if (fetchedResult == null) {
+      app.versions = Object.fromEntries(
+        sortVersions(Object.keys(oldApp?.versions ?? {}))
+          .filter((version) => version.startsWith(`${app.prefix}.`) &&
+            phpBundleVersion(oldApp.versions[version]) === version)
+          .map((version) => [version, oldApp.versions[version]]),
+      );
+    }
+    app.sha256 ??= {};
+    for (const [version, url] of Object.entries(app.versions)) {
+      const oldHash = oldApp?.sha256?.[version];
+      if (!app.sha256[version] && oldApp?.versions?.[version] === url && /^[a-f0-9]{64}$/i.test(oldHash ?? "")) {
+        app.sha256[version] = oldHash.toLowerCase();
+      }
+    }
+    if (Object.keys(app.sha256).length === 0) delete app.sha256;
     return;
   }
 
   if (!app.versions || Object.keys(app.versions).length === 0) {
-    const oldApp = oldData?.apps?.find((a) => a.id === app.id);
     if (oldApp?.versions) {
-      app.versions = oldApp.versions;
-      if (oldApp.lts_labels) {
-        app.lts_labels = oldApp.lts_labels;
-      }
+      // Legacy cached catalogs must never restore package-manager sentinels.
+      app.versions = Object.fromEntries(Object.entries(oldApp.versions)
+        .filter(([, url]) => typeof url === "string" && url.startsWith("https://")));
+      if (oldApp.lts_labels) app.lts_labels = oldApp.lts_labels;
     }
   }
 }
@@ -1046,7 +1030,7 @@ async function updatePlatformCatalog({
     catalogObject.apps.map(async (app) => {
       const fetched = await fetchAppVersions(app, fetchers, platformName);
       applyFetchedVersions(app, fetched);
-      applyFallbackVersions(app, oldData);
+      applyFallbackVersions(app, oldData, fetched, platformName);
     }),
   );
 
@@ -1095,4 +1079,4 @@ async function main() {
   }
 }
 
-main();
+if (require.main === module) main();

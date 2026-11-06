@@ -4,7 +4,7 @@ import 'php_extension_drivers/arch_php_extension_driver.dart';
 import 'php_extension_drivers/debian_php_extension_driver.dart';
 import 'php_extension_drivers/rhel_php_extension_driver.dart';
 
-/// A package the distro can install, together with the extensions it provides.
+/// Read-only package metadata, together with the extensions it provides.
 class PackageCandidate {
   final String name;
   final String description;
@@ -12,8 +12,7 @@ class PackageCandidate {
 
   /// True when the extension's owning package is not yet known: the family's
   /// file-list output could not attribute it (dnf4's bare `-l` prints paths
-  /// with no package name). The owner is resolved on demand, at enable time,
-  /// via [LinuxPhpExtensionDriver.resolveOwnerCommands].
+  /// with no package name). This does not affect configuring an existing .so.
   final bool ownerUnknown;
 
   const PackageCandidate({
@@ -73,7 +72,10 @@ abstract class LinuxPhpExtensionDriver {
 
   List<PackageCandidate> parsePackageList(String stdout, String phpVersion);
 
-  List<String> fileListCommands(String phpVersion, List<PackageCandidate> packages);
+  List<String> fileListCommands(
+    String phpVersion,
+    List<PackageCandidate> packages,
+  );
 
   /// Splits one file-list line into its package and absolute path, or null when
   /// the line carries no file entry. [package] is null for a bare path — a
@@ -133,7 +135,7 @@ abstract class LinuxPhpExtensionDriver {
   /// Attaches the extension names from [filesByPackage] to each package,
   /// dropping the packages that ship none. Extension names that no named
   /// package claimed (the empty key) become a single
-  /// [PackageCandidate.unknownOwner], whose package is resolved on demand.
+  /// [PackageCandidate.unknownOwner], without affecting module configuration.
   List<PackageCandidate> combine(
     List<PackageCandidate> packages,
     Map<String, List<String>> filesByPackage,
@@ -157,8 +159,6 @@ abstract class LinuxPhpExtensionDriver {
     return result;
   }
 
-  List<String> installCommands(PackageCandidate pkg, String phpVersion);
-
   List<String> enableCommands(String phpVersion, String extName);
 
   List<String> disableCommands(String phpVersion, String extName);
@@ -167,7 +167,8 @@ abstract class LinuxPhpExtensionDriver {
   /// families whose file-list output cannot attribute an extension to its
   /// package (see [PackageCandidate.ownerUnknown]). Returns an empty list when
   /// the family never needs it — Debian and Arch always attribute inline.
-  List<String> resolveOwnerCommands(String extensionDir, String extName) => const [];
+  List<String> resolveOwnerCommands(String extensionDir, String extName) =>
+      const [];
 
   /// Extracts the owning package name from [resolveOwnerCommands] output, or
   /// null when no safe name is present.
@@ -214,9 +215,7 @@ abstract class LinuxPhpExtensionDriver {
     if (extName == 'opcache') {
       return r'^\s*opcache\.enable\s*=.*$';
     }
-    return r'^\s*(zend_)?extension\s*=\s*"?(.*/)?' +
-        name +
-        r'(\.so)?"?\s*$';
+    return r'^\s*(zend_)?extension\s*=\s*"?(.*/)?' + name + r'(\.so)?"?\s*$';
   }
 
   /// Splits a discovery command into argv, stripping the single quotes the

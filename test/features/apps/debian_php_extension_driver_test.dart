@@ -13,10 +13,13 @@ void main() {
       expect(driverForFamily('debian'), isA<DebianPhpExtensionDriver>());
     });
 
-    test('returns null for unknown, which callers must treat as unsupported', () {
-      expect(driverForFamily('unknown'), isNull);
-      expect(driverForFamily('nixos'), isNull);
-    });
+    test(
+      'returns null for unknown, which callers must treat as unsupported',
+      () {
+        expect(driverForFamily('unknown'), isNull);
+        expect(driverForFamily('nixos'), isNull);
+      },
+    );
   });
 
   group('isSafeName', () {
@@ -47,7 +50,9 @@ void main() {
         equals(['apt-file', 'list', '-x', '^php8.5-']),
       );
       expect(
-        LinuxPhpExtensionDriver.splitCommand("dnf repoquery --qf '[%{=NAME}\\n]' 'php-*'"),
+        LinuxPhpExtensionDriver.splitCommand(
+          "dnf repoquery --qf '[%{=NAME}\\n]' 'php-*'",
+        ),
         equals(['dnf', 'repoquery', '--qf', '[%{=NAME}\\n]', 'php-*']),
       );
       // An unquoted command is unchanged.
@@ -57,7 +62,9 @@ void main() {
       );
       // A space inside quotes does not split the argument.
       expect(
-        LinuxPhpExtensionDriver.splitCommand("dnf repoquery -l --qf '[%{=NAME} %{FILENAMES}\\n]' 'php-*'"),
+        LinuxPhpExtensionDriver.splitCommand(
+          "dnf repoquery -l --qf '[%{=NAME} %{FILENAMES}\\n]' 'php-*'",
+        ),
         equals([
           'dnf',
           'repoquery',
@@ -124,7 +131,8 @@ WARNING: apt does not have a stable CLI interface.
     });
 
     test('drops a name that fails the safety check', () {
-      const stdout = 'php8.5-a b; rm -rf / - evil\nphp8.5-curl - CURL module for PHP\n';
+      const stdout =
+          'php8.5-a b; rm -rf / - evil\nphp8.5-curl - CURL module for PHP\n';
       final candidates = driver.parsePackageList(stdout, '8.5');
       expect(candidates.map((c) => c.name), equals(['php8.5-curl']));
     });
@@ -146,7 +154,10 @@ php8.5-fpm: /usr/bin/php-fpm8.5
       final byPackage = driver.parseFileList(stdout, extDir);
 
       expect(byPackage['php8.5-mbstring'], equals(['mbstring']));
-      expect(byPackage['php8.5-mysql'], equals(['mysqli', 'mysqlnd', 'pdo_mysql']));
+      expect(
+        byPackage['php8.5-mysql'],
+        equals(['mysqli', 'mysqlnd', 'pdo_mysql']),
+      );
       expect(byPackage['php8.5-common'], equals(['calendar', 'ctype']));
       // php8.5-dev ships files under extensionDir but no .so, and php8.5-fpm
       // ships none at all: neither is an extension package.
@@ -164,17 +175,20 @@ php8.5-mbstring: /usr/lib/php/20250925/mbstring.so
       expect(byPackage.keys, equals(['php8.5-mbstring']));
     });
 
-    test('a package whose name differs from its extension is still resolved', () {
-      // Real sury data: php8.5-interbase ships pdo_firebird.so, php8.5-sybase
-      // ships pdo_dblib.so. No prefix-stripping heuristic could find these.
-      const stdout = '''
+    test(
+      'a package whose name differs from its extension is still resolved',
+      () {
+        // Real sury data: php8.5-interbase ships pdo_firebird.so, php8.5-sybase
+        // ships pdo_dblib.so. No prefix-stripping heuristic could find these.
+        const stdout = '''
 php8.5-interbase: /usr/lib/php/20250925/pdo_firebird.so
 php8.5-sybase: /usr/lib/php/20250925/pdo_dblib.so
 ''';
-      final byPackage = driver.parseFileList(stdout, extDir);
-      expect(byPackage['php8.5-interbase'], equals(['pdo_firebird']));
-      expect(byPackage['php8.5-sybase'], equals(['pdo_dblib']));
-    });
+        final byPackage = driver.parseFileList(stdout, extDir);
+        expect(byPackage['php8.5-interbase'], equals(['pdo_firebird']));
+        expect(byPackage['php8.5-sybase'], equals(['pdo_dblib']));
+      },
+    );
   });
 
   group('combine', () {
@@ -191,7 +205,10 @@ php8.5-common: /usr/lib/php/20250925/ctype.so
 
       final combined = driver.combine(packages, files);
 
-      expect(combined.map((c) => c.name), equals(['php8.5-mbstring', 'php8.5-common']));
+      expect(
+        combined.map((c) => c.name),
+        equals(['php8.5-mbstring', 'php8.5-common']),
+      );
       expect(combined[0].extensionNames, equals(['mbstring']));
       expect(combined[0].description, 'MBSTRING module for PHP');
       expect(combined[1].extensionNames, equals(['ctype']));
@@ -210,13 +227,10 @@ php8.5-common: /usr/lib/php/20250925/ctype.so
       );
     });
 
-    test('installs with apt-get install -y', () {
+    test('rejects Debian installation commands rather than executing them', () {
       expect(
-        driver.installCommands(
-          const PackageCandidate(name: 'php8.5-mbstring'),
-          '8.5',
-        ),
-        equals(['apt-get install -y php8.5-mbstring']),
+        PackageCommandValidator.validate('apt-get install -y php8.5-mbstring'),
+        isNotNull,
       );
     });
 
@@ -242,11 +256,14 @@ php8.5-common: /usr/lib/php/20250925/ctype.so
       for (final cmd in [
         ...driver.packageListCommands('8.5'),
         ...driver.fileListCommands('8.5', const []),
-        ...driver.installCommands(const PackageCandidate(name: 'php8.5-mbstring'), '8.5'),
         ...driver.enableCommands('8.5', 'mbstring'),
         ...driver.disableCommands('8.5', 'mbstring'),
       ]) {
-        expect(PackageCommandValidator.validate(cmd), isNull, reason: 'rejected: $cmd');
+        expect(
+          PackageCommandValidator.validate(cmd),
+          isNull,
+          reason: 'rejected: $cmd',
+        );
       }
     });
   });

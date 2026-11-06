@@ -1,0 +1,52 @@
+# Portable Linux PHP Bundle Design
+
+## Intent
+
+Remove package-manager dependency for new Linux PHP installations. Prebuilt SPC bundles are produced by `ngotuananh101/devstack-app-builder`; DevStack uses its existing Download → extract → setup pipeline, with no compilation on the user's machine. Supported app architecture is amd64 only.
+
+User decisions: consume `manifest.json`, retain static important extensions and toggle shared extensions through the existing UI, and discover available PHP download URLs in `assets/data/update.js`.
+
+## Catalog
+
+Builder releases, not tags or Actions artifacts, are the distribution source. Discover all stable, non-draft releases through GitHub pagination once per updater invocation. Only match `php-<major.minor.patch>-glibc-full-x86_64-<build_id>.tar.gz` assets. Never use source archives, musl, minimal, prereleases, or guessed URLs. Record every available patch in the matching `php85`, `php84`, `php83`, or `php82` entry's `versions` map, newest first. For repeated builds of the same patch, prefer the first match in GitHub's newest-first release order.
+
+Linux PHP definitions use `exec_file: php-fpm`, `cli_file: php`, `versions: {}`, and no package-manager metadata. If no public bundle exists, the entry remains unavailable. On fetch failure, preserve previously recorded compatible bundle URLs only; never resurrect the old `package_manager` sentinel. Empty PHP catalogs must not become an installable synthetic `latest` version. Other applications and Windows behavior remain unchanged.
+
+The assistant chooses `glibc/full/x86_64` to preserve shared-extension support. Fetch errors must remain distinguishable from a successful empty result. GitHub tokens may be supplied through `GITHUB_TOKEN`, but are sent only to GitHub's API. Where the archive asset provides a valid `sha256:<hex>` digest, write the existing catalog `sha256` map. Old checksums are preserved only for an unchanged URL. Checksum sidecar fetching/signing is outside this change.
+
+## Bundle Manifest
+
+Introduce a small `PhpRuntimeBundle` reader, shared by installation and settings. Schema 1 must declare `runtime: php`, `architecture: x86_64`, `target: glibc`, `profile: full`, `verification: PASSED`, and a stable PHP patch version. Installation requires an exact requested version match.
+
+Resolve `paths.cli`, `fpm`, `cli_binary`, `fpm_binary`, `extension_manager`, `php_ini`, `cli_scan_dir`, `fpm_scan_dir`, and `extension_dir` relative to the installation root. The three `bin` launchers must be regular files, not symlinks to backing binaries, and their canonical paths must equal their declared paths; symlinked ancestor directories are also rejected. Producer schema fields are `schema_version: 1`, `php.version`, `php.static_modules: string[]`, and `shared_modules: [{name, directive, path, sha256, enabled_by_default: {cli, fpm}}]`. Shared module paths are root-relative; checksums are 64 hexadecimal characters. Reference producer: `runtimes/php/scripts/manifest.py`; verified fixture: `/tmp/ci-art/glibc/php-8.4.27-glibc-full-x86_64-c3d8f72f7d8a7610.manifest.json`. Reject absolute paths, backslashes, empty segments, `.`/`..`, control characters, paths resolving outside the root, and symlink escapes. Require the manifest's files/directories to exist. A malformed or unsupported manifest is an error, not a legacy fallback; an absent manifest retains existing legacy directory behavior. Validate shared-module names, directives (`extension` or `zend_extension`), hashes and paths, duplicate names, and static/shared overlap. Verify shared `.so` checksums during installation before launching anything; static modules are metadata, not individually toggleable files.
+
+## Standard Installation
+
+Keep the existing archive download, optional archive SHA-256 verification, tar extraction and root-directory flattening. Before generic filename detection, recognize a Linux PHP manifest. Validate it, record the manifest's CLI/FPM launchers (never `libexec` binaries), verify module hashes, and ensure all three launchers plus the two backing binaries are executable. The manifest remains in the bundle and is read again by settings; no database schema change is needed.
+
+Setup tunes the bundle's existing `etc/php.ini`, leaving launcher-managed extension paths and per-SAPI scan directories intact. Do not run the Windows `ext` default-enabling routine on a bundle. Shared modules remain at the builder's default state. Reuse existing Composer installation as a non-fatal follow-up. Generate the existing caller-owned `<AppConfig.baseDir>/php/<appId>/php-fpm.conf` with `phpPortFor(appId)` and create the logs directory; preserve an existing user configuration. Existing service startup already supplies `-F -y <config>`, so no service-manager change is needed.
+
+Do not report installation complete until setup succeeds. Windows archive installation retains its existing path; package-manager installation is removed by the scope update below. The builder guarantees `bin/php-fpm` forwards `-F -y` and uses `exec` for the backing FPM master; require this exact launcher path (and `bin/php`/`bin/php-ext`) so existing name-based service arguments remain correct. An explicit user Update from system PHP to a published bundle is allowed through the ordinary app update flow; it must not remove OS packages or migrate their configuration. No automatic background conversion occurs.
+
+## PHP Settings
+
+For bundle installations, resolve the INI file from `paths.php_ini`. List only `shared_modules` in the toggleable Extensions tab; statically compiled modules are intentionally omitted rather than exposed as switches which cannot work. Determine enabled state from active directives in the common INI and FPM scan directory (the service is the UI's primary SAPI), not from `enabled_by_default`. No package driver or distribution detection is used for bundles.
+
+Enable/disable using the validated `paths.extension_manager` executable with argv `enable|disable <name> all`; never construct a shell command or modify the main INI for this operation. If that module has an active directive in common `php.ini`, refuse the toggle and ask the user to remove that directive in the INI editor first; otherwise scan-file-only toggles could falsely claim it is disabled. Reject modules absent from the registry. Before enabling, verify the selected shared module's SHA256 again to catch post-install corruption; disabling must remain possible when its bytes are corrupt. Propagate command failure. If a managed FPM PID exists, use the existing master-only SIGUSR2 reload helper; on reload failure return a restart-needed message without claiming rollback. Otherwise return a restart-needed message. The wrapper updates CLI and FPM scan files. Windows and system-package settings branches remain unchanged. The legacy extension-removal regex also accepts `.so` to avoid duplicate directives in custom Linux layouts.
+
+## Package-manager Removal (User Scope Update)
+
+The user expanded the feature on 2026-11-06: eliminate the package-manager installation flow entirely, not only for PHP. Work on `feat/portable-runtimes`. Remove the app-install dispatcher, catalog command parsing/storage, command-script installer and distro install-command builders. Old cached catalogs must never execute their commands: reject `install_method: package_manager` before any process/network work and filter package-manager version sentinels when merging. Empty URL maps remain unavailable in both the model and the version dialog, with Install disabled.
+
+Apache, Redis, and PostgreSQL Linux catalog definitions become ordinary archive definitions with empty URL maps until known portable binaries are available; do not invent download URLs or silently distribute source code as executables. Existing archive setup hooks are kept. This change does not build replacement binaries for those runtimes. Pass platform context into the updater fallback so old HTTPS source/archive URLs cannot repopulate these unavailable Linux entries; Windows archive fallback remains unchanged.
+
+Existing system-package installations may still run and be explicitly removed from DevStack's records without touching OS packages. Legacy system PHP extension discovery and toggling of already-present modules remain; automatic installation of missing extensions and all distro install-command builders are removed. The remaining elevated configuration runner accepts only validated PHP configuration tools and cannot run package managers. Keep the `system_package` location sentinel solely for compatibility with records already on disk. Linux uninstall may stop its managed process or target its recorded PID, but must not terminate every process sharing the catalog executable names; leave unrelated runtimes running.
+
+
+## Non-goals and Safety
+
+No auto-migration or uninstall of already-installed system PHP; no builds, sudo, dependency installation, builder edits, workflow dispatch, release publication, or live Isar access. Commits, pushes, merge into `main`, and feature cleanup were explicitly authorized by the user on 2026-11-06 after implementation and public-bundle verification. This is not a generic archive-security overhaul or an ARM/musl port. Public release `runtimes-20261106-initial-075657` was verified on 2026-11-06, superseding the earlier no-release check. A real PHP 8.4.27 glibc/full/x86_64 archive and manifest were downloaded through BrowserOS neo, checked against published digests, and inspected in separate fresh scratch directories. The production manifest reader accepts the extracted bundle; no downloaded code was executed and no live installation or FPM startup was attempted.
+
+## Acceptance
+
+Offline Node tests cover pagination, matching, all patches, duplicate builds, errors, checksums, and safe fallback. Flutter tests cover the shipped catalog, manifest validation and path escapes, exact launcher selection even with duplicate binary names, isolated FPM configuration, settings resolution and shared-module toggles, plus Windows/system-package regressions. No test opens the live Isar database or installs system packages. The captured public Releases API response also passes production updater catalog generation for PHP 8.2.35, 8.3.36, 8.4.27, and 8.5.12 with exact glibc/full/x86_64 URLs and digests. Public archive download and PHP 8.4 manifest interoperability are verified; full UI installation, actual PHP/FPM execution, and oldest-host compatibility are not.

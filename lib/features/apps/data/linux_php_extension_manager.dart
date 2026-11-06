@@ -5,10 +5,10 @@ import 'package:path/path.dart' as p;
 import '../../../core/services/background_process.dart';
 import '../domain/app_model.dart';
 import '../domain/php_extension.dart';
-import 'app_installer_service.dart';
 import 'linux_php_extension_driver.dart';
 import 'linux_php_introspector.dart';
 import 'package_command_validator.dart';
+import 'php_config_command_runner.dart';
 
 /// Thrown when package discovery cannot run honestly (spec §2.8): the
 /// bootstrap tool (`apt-file`, or the `pacman` files database) is missing.
@@ -69,16 +69,7 @@ class LinuxPhpExtensionManager {
   static ElevatedRunner _buildDefaultElevatedRunner(
     Future<ProcessResult> Function(String, List<String>) runProcess,
   ) {
-    return ({
-      required List<String> commands,
-      required void Function(String) logInfo,
-      required void Function(String) logError,
-    }) => AppInstallerService.executePackageManagerCommands(
-      commands: commands,
-      logInfo: logInfo,
-      logError: logError,
-      runProcess: runProcess,
-    );
+    return PhpConfigCommandRunner(runProcess: runProcess).run;
   }
 
   factory LinuxPhpExtensionManager.forApp({
@@ -221,7 +212,7 @@ class LinuxPhpExtensionManager {
     }
   }
 
-  /// Installs (if needed) + enables, or disables, [extName], then reloads.
+  /// Enables an already-present extension, or disables it, then reloads.
   Future<String> applyToggle({
     required String binaryPath,
     required String phpVersion,
@@ -260,60 +251,26 @@ class LinuxPhpExtensionManager {
     required String extName,
     int? servicePid,
   }) async {
-    // Resolve the owning package: the file list is the source of truth, so a
-    // cheap re-discovery here handles toggles issued without a prior list.
-    PackageCandidate? owner;
-    String extensionDir = '';
-    Object? discoveryError;
-    try {
-      final info = await _introspector.readInfo(binaryPath);
-      extensionDir = info.extensionDir ?? '';
-      final packages = await _listPackages(phpVersion);
-      final files = await _listFiles(phpVersion, packages, extensionDir);
-      final combined = _driver.combine(packages, files);
-      for (final pkg in combined) {
-        if (pkg.extensionNames.contains(extName)) {
-          owner = pkg;
-          break;
-        }
-      }
-    } on LinuxPhpDiscoveryUnavailable catch (e) {
-      // Remembered, not swallowed: if it turns out we needed the package (the
-      // .so is not on disk) the caller gets the real reason — "install
-      // apt-file" — instead of a misleading "did not load".
-      discoveryError = e;
-    } catch (_) {
-      // Any other discovery failure is genuinely best-effort.
-    }
-
-    final isSynthetic = extName == 'opcache' && owner == null;
-    final alreadyInstalled =
-        isSynthetic || _fileExists('$extensionDir/$extName.so');
-
-    if (owner == null && !alreadyInstalled && discoveryError != null) {
-      throw discoveryError;
-    }
-
-    // A dnf4 file list names no package, so the owner arrives as a
-    // `PackageCandidate.unknownOwner`. Name it now — only when the .so is
-    // missing and an install would actually run — via `-f <path>`, which is the
-    // one form that combines with `--qf` on both dnf4 and dnf5.
-    String? ownerPackage =
-        owner != null && owner.hasPackage ? owner.name : null;
-    if (owner != null &&
-        owner.ownerUnknown &&
-        !alreadyInstalled &&
-        extensionDir.isNotEmpty) {
-      final resolved = await _resolveOwner(extensionDir, extName);
-      if (resolved != null) ownerPackage = resolved;
+    final info = await _introspector.readInfo(binaryPath);
+    final extensionDir = info.extensionDir ?? '';
+    final modulePath = '$extensionDir/$extName.so';
+    final hasModule = extensionDir.isNotEmpty && _fileExists(modulePath);
+    // Compiled opcache has no .so, including when its acceleration directive
+    // is disabled. Confirm that the binary actually provides the module rather
+    // than treating every absent opcache.so as a compiled-in extension.
+    final isSynthetic =
+        extName == 'opcache' &&
+        !hasModule &&
+        (await _introspector.readModules(binaryPath)).contains('opcache');
+    if (!hasModule && !isSynthetic) {
+      throw StateError(
+        'Cannot enable $extName: compatible module $modulePath is missing. '
+        'Provide a module compatible with this PHP build before enabling it; '
+        'Ponta does not install system packages.',
+      );
     }
 
     final commands = <String>[];
-    if (ownerPackage != null && !alreadyInstalled) {
-      commands.addAll(
-        _driver.installCommands(PackageCandidate(name: ownerPackage), phpVersion),
-      );
-    }
     if (_driver.iniStrategy == PhpIniStrategy.externalTool) {
       commands.addAll(_driver.enableCommands(phpVersion, extName));
     } else {
@@ -323,14 +280,9 @@ class LinuxPhpExtensionManager {
       throw StateError('No enable step produced for $extName');
     }
 
-    final rejection = PackageCommandValidator.validateAll(commands);
-    if (rejection.isNotEmpty) {
-      throw StateError('Refusing to run rejected commands: $rejection');
-    }
-
     final logs = StringBuffer();
-    await _runElevated(
-      commands: commands,
+    await _runConfiguration(
+      commands,
       logInfo: (m) => logs.writeln(m),
       logError: (m) => logs.writeln('ERROR: $m'),
     );
@@ -338,19 +290,6 @@ class LinuxPhpExtensionManager {
     final reloadNote = await _reload(servicePid);
     await _verifyEnabled(binaryPath, extName, isSynthetic, logs.toString());
     return 'Extension $extName enabled.$reloadNote';
-  }
-
-  /// Names the package owning `<extensionDir>/<extName>.so`, or null when the
-  /// family offers no owner query or the query yields no safe name. Best-effort:
-  /// a failed query leaves the extension enableable, just without an install.
-  Future<String?> _resolveOwner(String extensionDir, String extName) async {
-    for (final cmd in _driver.resolveOwnerCommands(extensionDir, extName)) {
-      final stdout = await _runDiscovery(cmd);
-      if (stdout == null) continue;
-      final owner = _driver.parseOwner(stdout);
-      if (owner != null) return owner;
-    }
-    return null;
   }
 
   /// The command that turns an extension on for `ownIniFile` families.
@@ -416,29 +355,51 @@ class LinuxPhpExtensionManager {
       final pattern = _driver.disableIniPattern(extName);
       for (final ini in parsedIniFiles) {
         if (p.posix.dirname(ini) != scanDir) continue;
-        if (!LinuxPhpExtensionDriver.isSafeName(p.posix.basename(ini))) continue;
-        commands.add(r"sed -E -i 's," + pattern + r',\x3b&,' + " '$ini'");
+        if (!LinuxPhpExtensionDriver.isSafeName(p.posix.basename(ini))) {
+          continue;
+        }
+        commands.add(r"sed -E -i 's," + pattern + r",\x3b&,'" + " '$ini'");
       }
     }
     if (commands.isEmpty) {
       throw StateError('No disable step produced for $extName');
     }
 
-    final rejection = PackageCommandValidator.validateAll(commands);
-    if (rejection.isNotEmpty) {
-      throw StateError('Refusing to run rejected commands: $rejection');
-    }
-
-    await _runElevated(
-      commands: commands,
-      logInfo: (_) {},
-      logError: (_) {},
-    );
+    await _runConfiguration(commands, logInfo: (_) {}, logError: (_) {});
 
     final reloadNote = await _reload(servicePid);
     // No post-disable module check: for a static build, `opcache.enable=0`
     // keeps `opcache` listed in `php-fpm -m` while disabling acceleration.
     return 'Extension $extName disabled.$reloadNote';
+  }
+
+  Future<void> _runConfiguration(
+    List<String> commands, {
+    required void Function(String) logInfo,
+    required void Function(String) logError,
+  }) async {
+    // Keep the security gate even with an injected elevated runner.
+    for (final command in commands) {
+      final rejection = PackageCommandValidator.validateConfiguration(command);
+      if (rejection != null) {
+        throw StateError(
+          'Refusing PHP configuration command "$command": $rejection',
+        );
+      }
+    }
+    final result = await _runElevated(
+      commands: commands,
+      logInfo: logInfo,
+      logError: logError,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        'PHP configuration',
+        commands,
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
   }
 
   /// Reloads the running FPM master, or reports a restart note on any failure

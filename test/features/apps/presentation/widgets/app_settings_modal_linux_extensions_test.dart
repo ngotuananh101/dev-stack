@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dev_stack/features/apps/data/apps_provider.dart';
 import 'package:dev_stack/features/apps/data/php_settings_provider.dart';
@@ -32,8 +33,9 @@ class _MockPhpSettings extends PhpSettings {
   Future<String?> toggleExtension(
     AppModel app,
     PhpExtension ext,
-    bool enable,
-  ) async {
+    bool enable, {
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+  }) async {
     if (_toggleGate != null) await _toggleGate.future;
     return 'Extension ${ext.name} ${enable ? 'enabled' : 'disabled'}.';
   }
@@ -112,7 +114,9 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
   });
 
-  testWidgets('renders the package badge and the Not installed chip', (tester) async {
+  testWidgets('renders the package badge and the Not installed chip', (
+    tester,
+  ) async {
     await _openExtensionsTab(tester, () => _MockPhpSettings([_curl, _zip]));
 
     expect(find.text('curl'), findsOneWidget);
@@ -131,7 +135,9 @@ void main() {
     expect(chip, findsOneWidget);
   });
 
-  testWidgets('filters by package name, not only extension name', (tester) async {
+  testWidgets('filters by package name, not only extension name', (
+    tester,
+  ) async {
     await _openExtensionsTab(tester, () => _MockPhpSettings([_curl, _zip]));
 
     await tester.enterText(
@@ -144,31 +150,37 @@ void main() {
     expect(find.text('curl'), findsNothing);
   });
 
-  testWidgets('shows a spinner and drops the switch while a toggle is in flight', (tester) async {
-    final gate = Completer<void>();
-    await _openExtensionsTab(
-      tester,
-      () => _MockPhpSettings([_curl, _zip], toggleGate: gate),
-    );
+  testWidgets(
+    'shows a spinner and drops the switch while a toggle is in flight',
+    (tester) async {
+      final gate = Completer<void>();
+      await _openExtensionsTab(
+        tester,
+        () => _MockPhpSettings([_curl, _zip], toggleGate: gate),
+      );
 
-    await tester.tap(find.byKey(const ValueKey('ext-switch-zip')));
-    await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('ext-switch-zip')));
+      await tester.pump();
 
-    expect(find.byKey(const ValueKey('ext-spinner-zip')), findsOneWidget);
-    expect(find.byKey(const ValueKey('ext-switch-zip')), findsNothing);
+      expect(find.byKey(const ValueKey('ext-spinner-zip')), findsOneWidget);
+      expect(find.byKey(const ValueKey('ext-switch-zip')), findsNothing);
 
-    gate.complete();
-    await tester.pumpAndSettle();
+      gate.complete();
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('ext-spinner-zip')), findsNothing);
-    expect(find.byKey(const ValueKey('ext-switch-zip')), findsOneWidget);
-  });
+      expect(find.byKey(const ValueKey('ext-spinner-zip')), findsNothing);
+      expect(find.byKey(const ValueKey('ext-switch-zip')), findsOneWidget);
+    },
+  );
 
-  testWidgets('surfaces an unsupported distribution instead of spinning forever', (tester) async {
-    await _openExtensionsTab(tester, () => _FailingPhpSettings());
+  testWidgets(
+    'surfaces an unsupported distribution instead of spinning forever',
+    (tester) async {
+      await _openExtensionsTab(tester, () => _FailingPhpSettings());
 
-    expect(find.textContaining('not supported'), findsOneWidget);
-  });
+      expect(find.textContaining('not supported'), findsOneWidget);
+    },
+  );
 }
 
 class _FailingPhpSettings extends PhpSettings {

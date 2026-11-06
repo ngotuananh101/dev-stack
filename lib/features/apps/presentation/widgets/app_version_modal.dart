@@ -59,6 +59,14 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             appsAsync.value ?? const <AppModel>[],
           );
 
+    final versionInfo = versionsAsync.asData?.value;
+    final canInstall =
+        versionInfo != null &&
+        versionInfo.versions.contains(_selectedVersion) &&
+        (versionInfo.downloadUrls[_selectedVersion]?.startsWith('https://') ??
+            false) &&
+        widget.app.installMethod != 'package_manager';
+
     // Show progress if installing OR if just finished installing
     final isInProgress =
         appState.status == 'installing' ||
@@ -95,7 +103,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             ),
           const Divider(color: AppColors.border, height: 1),
           // Footer
-          _buildFooter(isInProgress, appState, conflictingApp),
+          _buildFooter(isInProgress, appState, conflictingApp, canInstall),
         ],
       ),
     );
@@ -210,8 +218,11 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           width: 20,
           height: 20,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) =>
-              Icon(AppBrandResolver.fallbackIcon(widget.app.appId), size: 20, color: AppBrandResolver.iconColor(widget.app.appId)),
+          errorBuilder: (context, error, stackTrace) => Icon(
+            AppBrandResolver.fallbackIcon(widget.app.appId),
+            size: 20,
+            color: AppBrandResolver.iconColor(widget.app.appId),
+          ),
         ),
       ),
       title: widget.isUpdate
@@ -246,6 +257,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             ),
           ),
           const SizedBox(height: 16),
+          if (versionInfo.downloadUrls.isEmpty)
+            const Text('No downloadable versions available.'),
           // Scrollable version list with max height
           ConstrainedBox(
             constraints: const BoxConstraints(
@@ -477,6 +490,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     bool isInProgress,
     AppModel appState,
     AppModel? conflictingApp,
+    bool canInstall,
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
@@ -491,7 +505,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             ),
             const SizedBox(width: 12),
             AppButton(
-              onPressed: conflictingApp != null
+              onPressed: conflictingApp != null || !canInstall
                   ? null
                   : () {
                       widget.app.selectedVersion = _selectedVersion;

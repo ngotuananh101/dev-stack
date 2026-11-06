@@ -48,8 +48,11 @@ class AppsRepository {
           }
 
           final rawVersions = json['versions'];
-          final Map<String, dynamic> versionsMap = rawVersions is Map
-              ? Map<String, dynamic>.from(rawVersions)
+          final Map<String, dynamic> versionsMap =
+              rawVersions is Map && json['install_method'] != 'package_manager'
+              ? (Map<String, dynamic>.from(rawVersions)..removeWhere(
+                  (_, url) => url is! String || !isSecureCatalogUrl(url),
+                ))
               : {};
           final versionKeys = versionsMap.keys.toList();
 
@@ -62,8 +65,7 @@ class AppsRepository {
           } else if (json['lts'] != null || json['lts_labels'] != null) {
             catalogExtra = {
               if (json['lts'] != null) 'lts': json['lts'],
-              if (json['lts_labels'] != null)
-                'lts_labels': json['lts_labels'],
+              if (json['lts_labels'] != null) 'lts_labels': json['lts_labels'],
             };
           }
 
@@ -73,12 +75,6 @@ class AppsRepository {
             extraInfoJson = jsonEncode(catalogExtra);
           }
 
-          // Parse package_manager_commands if present
-          String? packageManagerCommandsJson;
-          if (json['package_manager_commands'] != null) {
-            packageManagerCommandsJson = jsonEncode(json['package_manager_commands']);
-          }
-
           // Parse sha256 checksums if present (Map<version, sha256> or String)
           String? versionSha256Json;
           if (json['sha256'] != null) {
@@ -86,7 +82,9 @@ class AppsRepository {
             if (rawSha is Map) {
               versionSha256Json = jsonEncode(rawSha);
             } else if (rawSha is String && rawSha.isNotEmpty) {
-              final defaultVer = versionKeys.isNotEmpty ? versionKeys.first : 'latest';
+              final defaultVer = versionKeys.isNotEmpty
+                  ? versionKeys.first
+                  : 'latest';
               versionSha256Json = jsonEncode({defaultVer: rawSha});
             }
           }
@@ -99,11 +97,10 @@ class AppsRepository {
             groupName: json['group_name'],
             execFile: json['exec_file'],
             cliFile: json['cli_file'],
-            versions: versionKeys.isNotEmpty ? versionKeys : ['latest'],
+            versions: versionKeys,
             versionLinksJson: jsonEncode(versionsMap),
             versionSha256Json: versionSha256Json,
             installMethod: json['install_method'],
-            packageManagerCommandsJson: packageManagerCommandsJson,
             defaultUsername: json['default_username'],
             defaultPassword: json['default_password'],
             // Merge state from DB
@@ -207,10 +204,7 @@ class AppsRepository {
   Future<void> setDefaultPhp(String appId) async {
     isar.write((_) {
       // 1. Find the target app
-      final target = isar.installedApps
-          .where()
-          .appIdEqualTo(appId)
-          .findFirst();
+      final target = isar.installedApps.where().appIdEqualTo(appId).findFirst();
       if (target == null) return;
 
       // 2. Unset all other apps in the same group (e.g., PHP versions)
@@ -241,9 +235,7 @@ class AppsRepository {
 
   Future<void> updateAppListFromUrl(String url) async {
     if (!isSecureCatalogUrl(url)) {
-      throw ArgumentError(
-        'Catalog URL must use secure HTTPS protocol: $url',
-      );
+      throw ArgumentError('Catalog URL must use secure HTTPS protocol: $url');
     }
     try {
       final dio = Dio(

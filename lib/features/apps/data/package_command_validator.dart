@@ -1,66 +1,19 @@
-/// Security validator for shell commands sourced from app catalog JSON
-/// (bundled assets or user-configured catalog URLs).
+/// Fail-closed validator for legacy system PHP configuration commands.
 ///
-/// Commands run via `sh -c` can execute arbitrary code, so every command
-/// from the catalog must pass this allowlist check before execution.
-/// The check is fail-closed: anything unrecognized is rejected.
-///
-/// Design:
-/// - Pipelines (`a | b`) are split and each segment is validated separately.
-/// - Only known package-management binaries may lead a segment.
-/// - Command substitution (`$(`, backticks), chained execution (`;`, `&&`,
-///   `||`), and redirection (`>`, `<`) are rejected outright. Dynamic values
-///   (e.g. distro codename) must be resolved in Dart before validation —
-///   see `LinuxDistroResolver` — never via shell substitution.
+/// Package installation and repository setup are never allowed. [validate]
+/// also recognizes harmless read-only discovery queries for existing callers;
+/// elevated execution must use [validateConfiguration] instead.
 class PackageCommandValidator {
   PackageCommandValidator._();
 
-  /// Binaries allowed to lead a command segment. Package managers, repo
-  /// tooling, and benign utilities only — anything else is rejected.
-  static const Set<String> _allowedBinaries = {
-    // Debian/Ubuntu package management
-    'apt-get',
-    'apt',
-    'apt-cache',
-    'apt-file',
-    'dpkg',
-    'add-apt-repository',
-    'apt-key',
-    // Debian/Ubuntu PHP extension enable/disable (mods-available + conf.d symlinks)
-    'phpenmod',
-    'phpdismod',
-    // RHEL/CentOS package management
-    'dnf',
-    'yum',
-    'rpm',
-    // Arch package management
-    'pacman',
-    // Repo keys, sources, downloads
-    'gpg',
-    'tee',
-    'curl',
-    'wget',
-    'echo',
-    'sed',
-    'mkdir',
-    'touch',
-    'chmod',
-    'chown',
-    'ln',
-    // Service control (post-install hooks)
-    'systemctl',
-  };
-
-  /// Substrings that must never appear anywhere in a catalog command.
-  static const List<String> _forbiddenSubstrings = [
-    '`', // command substitution
+  static const _forbiddenSubstrings = [
+    '`',
     r'$(',
-    ';', // command chaining
+    ';',
     '&&',
     '||',
-    '>', // redirection
+    '>',
     '<',
-    // Defense-in-depth; the allowlist already blocks most of these
     'mkfs',
     ' dd ',
     'shutdown',
@@ -70,111 +23,123 @@ class PackageCommandValidator {
     'fork',
   ];
 
-  /// Matches the leading binary of a segment: optional `sudo`/`pkexec`
-  /// prefixes, then either an absolute path (`/usr/bin/apt-get`) or a bare
-  /// name (`apt-get`). Group 1 = path, group 2 = bare name.
-  static final RegExp _leadingBinary = RegExp(
-    r'^(?:(?:sudo|pkexec)\s+)*(?:(/[\w.\-/]+)|([\w.\-]+))',
+  static const _binaryPrefix = r'(?:/(?:usr/bin|usr/sbin|bin|sbin)/)?';
+  static const _name = r'[a-z0-9][a-z0-9._+-]*';
+  static const _phpIniDirectory =
+      r'(?:'
+      r'/etc/php\.d'
+      r'|/etc/php/conf\.d'
+      r'|/etc/php/\d+\.\d+/[a-z0-9_-]+/conf\.d'
+      r'|/etc/opt/remi/php\d+/php\.d'
+      r')';
+  static final _iniTarget = RegExp('^$_phpIniDirectory/$_name\\.ini\$');
+  static final _moduleTool = RegExp(
+    '^${_binaryPrefix}php(?:en|dis)mod -v \\d+\\.\\d+ -s fpm $_name\$',
+  );
+  static final _iniWrite = RegExp(
+    "^${_binaryPrefix}echo '(extension=$_name|zend_extension=$_name|opcache\\.enable=[01])' "
+    "\\| ${_binaryPrefix}tee ($_phpIniDirectory/99-ponta-($_name)\\.ini)\$",
+  );
+  static final _iniComment = RegExp(
+    "^${_binaryPrefix}sed -E -i 's,([^']+),\\\\x3b&,' '([^']+)'\$",
   );
 
-  /// Safe directories for absolute path binaries.
-  static const List<String> _allowedBinaryDirs = [
-    '/bin/',
-    '/usr/bin/',
-    '/usr/sbin/',
-    '/sbin/',
-  ];
-
-  /// Targets that tee is allowed to write to: apt source lists (pre-existing)
-  /// and the single PHP ini file the extension manager owns across supported
-  /// layouts: RHEL modular (`/etc/php.d/`), Arch (`/etc/php/conf.d/`), Debian
-  /// versioned (`/etc/php/<v>/<sapi>/conf.d/`), and Remi SCL on Fedora/RHEL
-  /// (`/etc/opt/remi/php<N>/php.d/`). Each alternative ends in one plain path
-  /// component — no `/`, so `..` cannot escape the directory, and `sed`/`tee`
-  /// cannot be turned into a write-anywhere primitive for catalog commands.
-  static final RegExp _allowedTeeTargets = RegExp(
-    r'^(?:'
-    r'/etc/apt/sources\.list\.d/[a-zA-Z0-9_.-]+\.list'
-    r'|/etc/php\.d/[a-zA-Z0-9_.-]+\.ini'
-    r'|/etc/php/conf\.d/[a-zA-Z0-9_.-]+\.ini'
-    r'|/etc/php/\d+\.\d+/[a-z0-9_.-]+/conf\.d/[a-zA-Z0-9_.-]+\.ini'
-    r'|/etc/opt/remi/php\d+/php\.d/[a-zA-Z0-9_.-]+\.ini'
-    r')$',
-  );
-
-  /// Validates a single shell command (one pipeline) from the catalog.
-  ///
-  /// Returns `null` if safe, otherwise a human-readable rejection reason.
-  static String? validate(String command) {
-    final trimmed = command.trim();
-    if (trimmed.isEmpty) return 'Command is empty';
-
+  static String? _precheck(String command) {
+    if (command.trim().isEmpty) return 'Command is empty';
     for (final pattern in _forbiddenSubstrings) {
-      if (trimmed.contains(pattern)) {
-        return 'Forbidden pattern: "$pattern"';
-      }
+      if (command.contains(pattern)) return 'Forbidden pattern: "$pattern"';
     }
-
-    // Reject embedded newlines / carriage returns that would let a single
-    // catalog entry inject additional script lines (multi-line injection).
-    if (trimmed.contains('\n') || trimmed.contains('\r') || trimmed.contains('\v') || trimmed.contains('\f')) {
+    if (RegExp(r'[\n\r\v\f\x00]').hasMatch(command)) {
       return 'Command contains forbidden newline or vertical whitespace character';
     }
-
-    // Split the pipeline and validate every segment's leading binary.
-    final segments = trimmed.split('|');
-    for (final segment in segments) {
-      final segTrimmed = segment.trim();
-      if (segTrimmed.isEmpty) return 'Empty pipeline segment';
-
-      final match = _leadingBinary.firstMatch(segTrimmed);
-      if (match == null) return 'No leading binary in segment: "$segTrimmed"';
-
-      final path = match.group(1);
-      final bare = match.group(2);
-
-      if (path != null) {
-        final isSafeDir = _allowedBinaryDirs.any((dir) => path.startsWith(dir));
-        if (!isSafeDir) {
-          return 'Binary path "$path" is not in the allowed system directories';
-        }
-      }
-
-      final binary = path != null ? path.split('/').last : bare!;
-      if (!_allowedBinaries.contains(binary)) {
-        return 'Binary "$binary" is not in the allowed list';
-      }
-
-      // Hardening for 'tee': only allow writing to safe repository targets
-      if (binary == 'tee') {
-        final parts = segTrimmed.split(RegExp(r'\s+'));
-        final teeIdx = parts.indexWhere((p) => p == 'tee' || p.endsWith('/tee'));
-        if (teeIdx != -1) {
-          final targetArgs = parts.sublist(teeIdx + 1).where((arg) => !arg.startsWith('-')).toList();
-          if (targetArgs.isEmpty) {
-            return 'tee without target file is not allowed';
-          }
-          for (final target in targetArgs) {
-            if (!_allowedTeeTargets.hasMatch(target)) {
-              return 'Target file "$target" for tee is not allowed';
-            }
-          }
-        }
-      }
-    }
-
     return null;
   }
 
-  /// Validates a full command list for one distro.
-  ///
-  /// Returns the list of rejection reasons; empty means all commands passed.
-  static List<String> validateAll(List<String> commands) {
-    final errors = <String>[];
-    for (final cmd in commands) {
-      final reason = validate(cmd);
-      if (reason != null) errors.add('"$cmd": $reason');
+  /// Only module toggles, one owned ini assignment, or a comment-only ini edit.
+  /// Matching the entire command prevents extra flags, targets and shell syntax
+  /// from reaching the elevated shell. Paths must be plain children of a known
+  /// PHP configuration directory, never traversal or arbitrary system files.
+  static String? validateConfiguration(String command) {
+    final error = _precheck(command);
+    if (error != null) return error;
+    final trimmed = command.trim();
+    if (_moduleTool.hasMatch(trimmed)) return null;
+
+    final write = _iniWrite.firstMatch(trimmed);
+    if (write != null) {
+      final assignment = write.group(1)!;
+      final extension = assignment.startsWith('opcache.enable=')
+          ? 'opcache'
+          : assignment.split('=').last;
+      if (extension == write.group(3)) return null;
     }
-    return errors;
+
+    final comment = _iniComment.firstMatch(trimmed);
+    if (comment != null && _iniTarget.hasMatch(comment.group(2)!)) {
+      final pattern = comment.group(1)!;
+      if (pattern == r'^\s*opcache\.enable\s*=.*$') return null;
+      const prefix = r'^\s*(zend_)?extension\s*=\s*"?(.*/)?';
+      const suffix = r'(\.so)?"?\s*$';
+      if (pattern.startsWith(prefix) && pattern.endsWith(suffix)) {
+        final escapedName = pattern.substring(
+          prefix.length,
+          pattern.length - suffix.length,
+        );
+        final name = escapedName.replaceAll(r'\.', '.').replaceAll(r'\+', '+');
+        if (RegExp('^$_name\$').hasMatch(name) &&
+            RegExp.escape(name) == escapedName) {
+          return null;
+        }
+      }
+    }
+    return 'PHP configuration command or target is not allowed';
   }
+
+  /// Includes read-only discovery, but never package installation/update.
+  static String? validate(String command) {
+    final error = _precheck(command);
+    if (error != null) return error;
+    final trimmed = command.trim();
+    if (validateConfiguration(trimmed) == null) return null;
+    if (_isReadOnlyDiscovery(trimmed)) return null;
+    if (trimmed.contains('tee') ||
+        trimmed.contains('sed') ||
+        trimmed.contains('phpenmod') ||
+        trimmed.contains('phpdismod')) {
+      return 'PHP configuration command or target is not allowed';
+    }
+    return 'Binary or command is not in the allowed list';
+  }
+
+  static bool _isReadOnlyDiscovery(String command) {
+    // These queries are executed as direct argv by the manager, never a shell.
+    // Exclude shell metacharacters and writable/update modes even here.
+    if (!RegExp(r"^[a-zA-Z0-9_./+*^{}%\[\]=: '\\\-]+$").hasMatch(command)) {
+      return false;
+    }
+    if (RegExp(
+      '^${_binaryPrefix}apt-cache search (?:--names-only )?[a-zA-Z0-9_.+-]+\$',
+    ).hasMatch(command)) {
+      return true;
+    }
+    if (RegExp(
+      "^${_binaryPrefix}apt-file list -x '?[a-zA-Z0-9_.^+\\\\-]+'?\$",
+    ).hasMatch(command)) {
+      return true;
+    }
+    if (RegExp(
+      '^${_binaryPrefix}pacman (?:-Ss [a-zA-Z0-9_.+-]+|-Fl(?: $_name)*)\$',
+    ).hasMatch(command)) {
+      return true;
+    }
+    return RegExp(
+      "^${_binaryPrefix}dnf repoquery (?:-l )?(?:--qf '[^']+' )?"
+      "(?:-f '[a-zA-Z0-9_./+-]+'|'?$_name\\*?'?(?: '?$_name\\*?'?)*)\$",
+    ).hasMatch(command);
+  }
+
+  static List<String> validateAll(List<String> commands) => [
+    for (final command in commands)
+      if (validate(command) case final String reason) '"$command": $reason',
+  ];
 }

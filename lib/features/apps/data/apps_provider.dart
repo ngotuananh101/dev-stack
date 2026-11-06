@@ -481,16 +481,17 @@ class Apps extends _$Apps {
         await manager.stop(app);
       }
 
-      // Stop whatever is still running. Prefer the recorded PID so we never
-      // kill an unrelated process that merely shares an executable name
-      // (e.g. a stray "php.exe"). Fall back to image-name kill only when no
-      // PID is known.
+      // Only target the recorded runtime on Linux: portable and system PHP
+      // share executable names with other installations. Retain the legacy
+      // Windows image-name cleanup, where open files prevent directory deletion.
       final uninstallPid = app.servicePid ?? 0;
       if (uninstallPid > 0) {
         await manager.forceKillPid(app.appId, uninstallPid);
         app.servicePid = null;
       }
-      await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
+      if (Platform.isWindows) {
+        await manager.forceKillByNames([app.execFile ?? '', app.cliFile ?? '']);
+      }
 
       // Safety delay for Windows file handles
       await Future.delayed(const Duration(seconds: 1));
@@ -501,12 +502,16 @@ class Apps extends _$Apps {
           await installer.cleanupPyenv(app.location!, (m) => app.addLog(m));
         }
 
-        // Skip directory deletion for package_manager apps (they don't have install directories)
-        if (app.installMethod != 'package_manager') {
-          await installer.delete(app.location!, app.appId, app.installedVersion);
+        // Installation records, not catalog metadata, identify legacy system apps.
+        if (app.location == AppInstallerService.systemPackageMarker) {
+          app.addLog('Legacy system installation removed from DevStack only.');
+          app.addLog('System packages and their data are not removed.');
         } else {
-          app.addLog('Package manager app - skipping directory deletion');
-          app.addLog('Note: System packages not removed. Uninstall manually if needed.');
+          await installer.delete(
+            app.location!,
+            app.appId,
+            app.installedVersion,
+          );
         }
       }
 
