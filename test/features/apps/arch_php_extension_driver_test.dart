@@ -9,10 +9,7 @@ void main() {
 
   group('ArchPhpExtensionDriver commands', () {
     test('discovers packages with pacman -Ss', () {
-      expect(
-        driver.packageListCommands('8.5'),
-        equals(['pacman -Ss php-']),
-      );
+      expect(driver.packageListCommands('8.5'), equals(['pacman -Ss php-']));
     });
 
     test('discovers file lists with pacman -Fl for candidate packages', () {
@@ -26,37 +23,45 @@ void main() {
       );
     });
 
-    test('falls back to bare pacman -Fl when candidate package list is empty', () {
+    test(
+      'falls back to bare pacman -Fl when candidate package list is empty',
+      () {
+        expect(
+          driver.fileListCommands('8.5', const []),
+          equals(['pacman -Fl']),
+        );
+      },
+    );
+
+    test('rejects Arch installation commands rather than executing them', () {
       expect(
-        driver.fileListCommands('8.5', const []),
-        equals(['pacman -Fl']),
+        PackageCommandValidator.validate('pacman -S --noconfirm php-gd'),
+        isNotNull,
       );
     });
 
-    test('installs with pacman -S --noconfirm', () {
-      expect(
-        driver.installCommands(
-          const PackageCandidate(name: 'php-gd'),
-          '8.5',
-        ),
-        equals(['pacman -S --noconfirm php-gd']),
-      );
-    });
-
-    test('enables and disables through ownIniFile strategy (empty command lists)', () {
-      expect(driver.iniStrategy, PhpIniStrategy.ownIniFile);
-      expect(driver.enableCommands('8.5', 'gd'), isEmpty);
-      expect(driver.disableCommands('8.5', 'gd'), isEmpty);
-      expect(driver.iniFileNameFor('gd'), equals('99-ponta-gd.ini'));
-    });
+    test(
+      'enables and disables through ownIniFile strategy (empty command lists)',
+      () {
+        expect(driver.iniStrategy, PhpIniStrategy.ownIniFile);
+        expect(driver.enableCommands('8.5', 'gd'), isEmpty);
+        expect(driver.disableCommands('8.5', 'gd'), isEmpty);
+        expect(driver.iniFileNameFor('gd'), equals('99-ponta-gd.ini'));
+      },
+    );
 
     test('every generated command passes PackageCommandValidator', () {
       for (final cmd in [
         ...driver.packageListCommands('8.5'),
-        ...driver.fileListCommands('8.5', const [PackageCandidate(name: 'php-gd')]),
-        ...driver.installCommands(const PackageCandidate(name: 'php-gd'), '8.5'),
+        ...driver.fileListCommands('8.5', const [
+          PackageCandidate(name: 'php-gd'),
+        ]),
       ]) {
-        expect(PackageCommandValidator.validate(cmd), isNull, reason: 'rejected: $cmd');
+        expect(
+          PackageCommandValidator.validate(cmd),
+          isNull,
+          reason: 'rejected: $cmd',
+        );
       }
     });
   });
@@ -75,12 +80,10 @@ extra/php-apache 8.4.11-1
 ''';
       final candidates = driver.parsePackageList(stdout, '8.5');
 
-      expect(candidates.map((c) => c.name), equals([
-        'php',
-        'php-gd',
-        'php-sqlite',
-        'php-apache',
-      ]));
+      expect(
+        candidates.map((c) => c.name),
+        equals(['php', 'php-gd', 'php-sqlite', 'php-apache']),
+      );
       expect(candidates[1].description, equals('GD extension for PHP'));
       expect(candidates[2].description, equals('sqlite extension for PHP'));
     });
@@ -97,33 +100,41 @@ extra/php-bad;rm 8.4.11-1
       expect(candidates.map((c) => c.name), equals(['php-gd']));
     });
 
-    test('parseFileListLine handles pacman relative paths and prepends slash', () {
-      final entry = driver.parseFileListLine('php-gd usr/lib/php/modules/gd.so');
-      expect(entry, isNotNull);
-      expect(entry!.package, equals('php-gd'));
-      expect(entry.path, equals('/usr/lib/php/modules/gd.so'));
-    });
+    test(
+      'parseFileListLine handles pacman relative paths and prepends slash',
+      () {
+        final entry = driver.parseFileListLine(
+          'php-gd usr/lib/php/modules/gd.so',
+        );
+        expect(entry, isNotNull);
+        expect(entry!.package, equals('php-gd'));
+        expect(entry.path, equals('/usr/lib/php/modules/gd.so'));
+      },
+    );
 
-    test('parseFileList filters to extensionDir and excludes runtime libraries', () {
-      // Arch real data:
-      // php-gd ships usr/lib/php/modules/gd.so
-      // php-sqlite ships usr/lib/php/modules/pdo_sqlite.so and sqlite3.so
-      // php-apache ships usr/lib/httpd/modules/libphp.so (junk: outside extensionDir)
-      // php ships usr/bin/php (not .so)
-      const stdout = '''
+    test(
+      'parseFileList filters to extensionDir and excludes runtime libraries',
+      () {
+        // Arch real data:
+        // php-gd ships usr/lib/php/modules/gd.so
+        // php-sqlite ships usr/lib/php/modules/pdo_sqlite.so and sqlite3.so
+        // php-apache ships usr/lib/httpd/modules/libphp.so (junk: outside extensionDir)
+        // php ships usr/bin/php (not .so)
+        const stdout = '''
 php-gd usr/lib/php/modules/gd.so
 php-sqlite usr/lib/php/modules/pdo_sqlite.so
 php-sqlite usr/lib/php/modules/sqlite3.so
 php-apache usr/lib/httpd/modules/libphp.so
 php usr/bin/php
 ''';
-      final byPackage = driver.parseFileList(stdout, extDir);
+        final byPackage = driver.parseFileList(stdout, extDir);
 
-      expect(byPackage['php-gd'], equals(['gd']));
-      expect(byPackage['php-sqlite'], equals(['pdo_sqlite', 'sqlite3']));
-      expect(byPackage.containsKey('php-apache'), isFalse);
-      expect(byPackage.containsKey('php'), isFalse);
-    });
+        expect(byPackage['php-gd'], equals(['gd']));
+        expect(byPackage['php-sqlite'], equals(['pdo_sqlite', 'sqlite3']));
+        expect(byPackage.containsKey('php-apache'), isFalse);
+        expect(byPackage.containsKey('php'), isFalse);
+      },
+    );
 
     test('combine matches Arch packages with discovered extensions', () {
       final packages = driver.parsePackageList('''

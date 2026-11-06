@@ -65,11 +65,6 @@ class ArchPhpExtensionDriver extends LinuxPhpExtensionDriver {
   }
 
   @override
-  List<String> installCommands(PackageCandidate pkg, String phpVersion) => [
-    'pacman -S --noconfirm ${pkg.name}',
-  ];
-
-  @override
   List<String> enableCommands(String phpVersion, String extName) => const [];
 
   @override

@@ -18,8 +18,7 @@ import '../../../core/config/webserver_bind_policy.dart';
 import '../../../core/services/ssl_service.dart';
 import '../../../core/services/path_service.dart';
 import '../../../core/services/linux_distro_resolver.dart';
-import '../../../core/services/background_process.dart';
-import 'package_command_validator.dart';
+import 'php_runtime_bundle.dart';
 import '../../settings/data/settings_provider.dart';
 import 'apps_provider.dart';
 
@@ -63,7 +62,8 @@ class ChecksumMismatchException implements Exception {
   });
 
   @override
-  String toString() => 'ChecksumMismatchException: $message (expected: $expected, actual: $actual)';
+  String toString() =>
+      'ChecksumMismatchException: $message (expected: $expected, actual: $actual)';
 }
 
 class AppInstallerService {
@@ -73,13 +73,14 @@ class AppInstallerService {
   final Dio _dio;
 
   AppInstallerService(this._logger, this._ref, {Dio? dio})
-      : _dio = dio ??
-            Dio(
-              BaseOptions(
-                connectTimeout: const Duration(seconds: 30),
-                receiveTimeout: const Duration(minutes: 10),
-              ),
-            );
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 30),
+              receiveTimeout: const Duration(minutes: 10),
+            ),
+          );
 
   static Future<String> calculateFileChecksum(File file) async {
     final stream = file.openRead();
@@ -210,7 +211,8 @@ class AppInstallerService {
   @visibleForTesting
   static bool isZonkyPgJar(String urlOrPath) {
     final lower = urlOrPath.toLowerCase();
-    return lower.endsWith('.jar') && lower.contains('embedded-postgres-binaries');
+    return lower.endsWith('.jar') &&
+        lower.contains('embedded-postgres-binaries');
   }
 
   @visibleForTesting
@@ -221,11 +223,7 @@ class AppInstallerService {
   }) async {
     final runner = runProcess ?? Process.run;
     try {
-      final res = await runner('chmod', [
-        '-R',
-        'u+rwX,go+rX,go-w',
-        targetPath,
-      ]);
+      final res = await runner('chmod', ['-R', 'u+rwX,go+rX,go-w', targetPath]);
       if (res.exitCode != 0) {
         logInfo?.call('chmod returned code ${res.exitCode}: ${res.stderr}');
       }
@@ -292,16 +290,10 @@ class AppInstallerService {
       onLog?.call('ERROR: $msg');
     }
 
-    // Check if this app uses package manager installation
-    if (app.installMethod == 'package_manager' && Platform.isLinux) {
-      return await _installViaPackageManager(
-        app,
-        version,
-        onProgress: onProgress,
-        logInfo: logInfo,
-        logError: logError,
-        runProcess: runProcess,
-        cancelToken: cancelToken,
+    // Cached catalogs from older releases must never execute install commands.
+    if (app.installMethod == 'package_manager') {
+      throw UnsupportedError(
+        'Package-manager installation is no longer supported.',
       );
     }
 
@@ -328,15 +320,17 @@ class AppInstallerService {
     final extension = isTar ? '.tar' : p.extension(uri.path).toLowerCase();
     final isZip = extension == '.zip';
     final isExe = extension == '.exe';
-    final isZonky = Platform.isLinux &&
+    final isZonky =
+        Platform.isLinux &&
         app.appId.contains('postgresql') &&
         isZonkyPgJar(url);
     // Raw prebuilt Linux binaries (e.g. meilisearch) arrive with no archive
     // extension; on Windows the legacy fallback treats unknown types as ZIP.
     final isRawBinary =
         Platform.isLinux && !isTar && !isZip && !isExe && !isZonky;
-    final downloadExt =
-        isZonky ? '.jar' : (extension.isEmpty ? '.bin' : extension);
+    final downloadExt = isZonky
+        ? '.jar'
+        : (extension.isEmpty ? '.bin' : extension);
 
     final tempDir = await Directory.systemTemp.createTemp(
       'ponta-${app.appId}-',
@@ -388,16 +382,24 @@ class AppInstallerService {
       _throwIfCancelled(cancelToken);
       logInfo('Detecting executable and CLI files...');
       onProgress?.call(0.94, 'Detecting files...');
-      final detected = await _detectFiles(
-        installPath,
-        app.execFile,
-        app.cliFile,
-        logInfo,
-      );
-      app.execFilePath = detected['exec'];
-      app.cliFilePath = detected['cli'];
-
-      logInfo('Successfully installed ${app.name} to $installPath');
+      if (Platform.isLinux &&
+          app.groupName == 'php' &&
+          FileSystemEntity.typeSync(
+                p.join(installPath, 'manifest.json'),
+                followLinks: false,
+              ) !=
+              FileSystemEntityType.notFound) {
+        await configurePhpBundle(app, installPath, version, logInfo);
+      } else {
+        final detected = await _detectFiles(
+          installPath,
+          app.execFile,
+          app.cliFile,
+          logInfo,
+        );
+        app.execFilePath = detected['exec'];
+        app.cliFilePath = detected['cli'];
+      }
 
       // Step 6: Post-installation configurations
       await _configureDatabases(app, version, installPath, onProgress, logInfo);
@@ -405,6 +407,7 @@ class AppInstallerService {
       await _configureStorages(app, installPath, onProgress, logInfo);
       await _configureServices(app, installPath, onProgress, logInfo);
 
+      logInfo('Successfully installed ${app.name} to $installPath');
       onProgress?.call(1.0, 'Completed');
       return installPath;
     } catch (e) {
@@ -724,6 +727,43 @@ class AppInstallerService {
     }
   }
 
+  /// Validates and configures the standard PHP bundle without Composer side effects.
+  Future<void> configurePhpBundle(
+    AppModel app,
+    String installPath,
+    String version,
+    void Function(String) logInfo,
+  ) async {
+    final bundle = PhpRuntimeBundle.load(installPath);
+    if (bundle == null) {
+      throw const FormatException('Missing portable PHP manifest.');
+    }
+    await bundle.validateInstallation(version);
+    for (final key in [
+      'cli',
+      'fpm',
+      'extension_manager',
+      'cli_binary',
+      'fpm_binary',
+    ]) {
+      final result = await Process.run('chmod', ['755', bundle.pathFor(key)]);
+      if (result.exitCode != 0) {
+        throw FileSystemException(
+          'Could not make PHP $key executable',
+          bundle.pathFor(key),
+        );
+      }
+    }
+    await _tunePhpIni(
+      File(bundle.pathFor('php_ini')),
+      logInfo,
+      preserveExtensionDir: true,
+    );
+    await configureIsolatedPhpFpm(app, phpPortFor(app.appId), logInfo);
+    app.execFilePath = bundle.pathFor('fpm');
+    app.cliFilePath = bundle.pathFor('cli');
+  }
+
   Future<void> _configureRuntimes(
     AppModel app,
     String installPath,
@@ -825,7 +865,8 @@ class AppInstallerService {
           .toList();
       if (txzs.isEmpty) {
         throw Exception(
-            'No .txz payload found inside Zonky jar ${jarFile.path}');
+          'No .txz payload found inside Zonky jar ${jarFile.path}',
+        );
       }
       final result = await Process.run(
         'tar',
@@ -984,7 +1025,11 @@ class AppInstallerService {
     return result;
   }
 
-  Future<void> _tunePhpIni(File phpIni, Function(String) logInfo) async {
+  Future<void> _tunePhpIni(
+    File phpIni,
+    Function(String) logInfo, {
+    bool preserveExtensionDir = false,
+  }) async {
     if (!phpIni.existsSync()) return;
 
     logInfo('Tuning php.ini for better performance...');
@@ -1013,7 +1058,8 @@ class AppInstallerService {
       r'^;?\s*memory_limit\s*=.*': 'memory_limit = 2G',
       r'^;?\s*post_max_size\s*=.*': 'post_max_size = 2G',
       r'^;?\s*upload_max_filesize\s*=.*': 'upload_max_filesize = 512M',
-      r'^;?\s*extension_dir\s*=\s*"ext"': 'extension_dir = "ext"',
+      if (!preserveExtensionDir)
+        r'^;?\s*extension_dir\s*=\s*"ext"': 'extension_dir = "ext"',
       r'^;?\s*realpath_cache_size\s*=.*': 'realpath_cache_size = 4096k',
       r'^;?\s*realpath_cache_ttl\s*=.*': 'realpath_cache_ttl = 600',
       r'^;?\s*openssl\.cafile\s*=.*':
@@ -1264,8 +1310,9 @@ class AppInstallerService {
         logInfo('PostgreSQL database cluster initialized successfully.');
 
         // Copy postgres-password.txt into the data dir for restarts/management.
-        final destPasswordFile =
-            File(p.join(dataDir.path, 'postgres-password.txt'));
+        final destPasswordFile = File(
+          p.join(dataDir.path, 'postgres-password.txt'),
+        );
         if (!destPasswordFile.existsSync()) {
           await passwordFile.copy(destPasswordFile.path);
         }
@@ -1287,7 +1334,9 @@ class AppInstallerService {
               content = ensurePostgresUnixSocketDirectory(content);
             }
             await confFile.writeAsString(content);
-            logInfo('Updated PostgreSQL listen_addresses to $listenAddress (allowLanAccess: $allowLan)');
+            logInfo(
+              'Updated PostgreSQL listen_addresses to $listenAddress (allowLanAccess: $allowLan)',
+            );
           }
 
           final hbaFile = File(p.join(dataDir.path, 'pg_hba.conf'));
@@ -1345,7 +1394,8 @@ class AppInstallerService {
   Future<void> setLinuxCapabilityForWebserver(
     String executablePath,
     Function(String) logInfo, {
-    Future<ProcessResult> Function(String executable, List<String> arguments)? runProcess,
+    Future<ProcessResult> Function(String executable, List<String> arguments)?
+    runProcess,
     bool? isLinuxOverride,
     bool allowSystemBinaries = false,
   }) async {
@@ -1355,7 +1405,8 @@ class AppInstallerService {
     final isInsideAppsDir =
         p.isWithin(AppConfig.appsDir, executablePath) ||
         p.equals(AppConfig.appsDir, executablePath);
-    final isAllowedSystem = allowSystemBinaries &&
+    final isAllowedSystem =
+        allowSystemBinaries &&
         const {
           'apache2',
           'httpd',
@@ -1364,17 +1415,23 @@ class AppInstallerService {
         }.contains(p.basename(executablePath));
 
     if (!isInsideAppsDir && !isAllowedSystem) {
-      logInfo('Warning: Executable path $executablePath is outside ${AppConfig.appsDir}, skipping capability setup for security');
+      logInfo(
+        'Warning: Executable path $executablePath is outside ${AppConfig.appsDir}, skipping capability setup for security',
+      );
       return;
     }
 
     final execFile = File(executablePath);
     if (!execFile.existsSync()) {
-      logInfo('Warning: Executable not found at $executablePath, skipping capability setup');
+      logInfo(
+        'Warning: Executable not found at $executablePath, skipping capability setup',
+      );
       return;
     }
 
-    logInfo('Setting CAP_NET_BIND_SERVICE capability for ${p.basename(executablePath)}...');
+    logInfo(
+      'Setting CAP_NET_BIND_SERVICE capability for ${p.basename(executablePath)}...',
+    );
 
     final runner = runProcess ?? Process.run;
 
@@ -1387,7 +1444,9 @@ class AppInstallerService {
       ]);
 
       if (result.exitCode == 0) {
-        logInfo('Successfully set capability for ${p.basename(executablePath)}');
+        logInfo(
+          'Successfully set capability for ${p.basename(executablePath)}',
+        );
         return;
       }
 
@@ -1400,15 +1459,23 @@ class AppInstallerService {
       ]);
 
       if (pkexecResult.exitCode == 0) {
-        logInfo('Successfully set capability via pkexec for ${p.basename(executablePath)}');
+        logInfo(
+          'Successfully set capability via pkexec for ${p.basename(executablePath)}',
+        );
       } else {
-        logInfo('Warning: Could not set capability. You may need to run manually:');
+        logInfo(
+          'Warning: Could not set capability. You may need to run manually:',
+        );
         logInfo('  sudo setcap cap_net_bind_service=+ep $executablePath');
-        logInfo('Or configure the webserver to use ports >= 1024 instead of 80/443');
+        logInfo(
+          'Or configure the webserver to use ports >= 1024 instead of 80/443',
+        );
       }
     } catch (e) {
       logInfo('Warning: Could not set capability: $e');
-      logInfo('To fix manually, run: sudo setcap cap_net_bind_service=+ep $executablePath');
+      logInfo(
+        'To fix manually, run: sudo setcap cap_net_bind_service=+ep $executablePath',
+      );
     }
   }
 
@@ -1512,8 +1579,9 @@ class AppInstallerService {
       }
       final fastcgiParamsFile = File(p.join(confDir.path, 'fastcgi_params'));
       if (!fastcgiParamsFile.existsSync()) {
-        await fastcgiParamsFile
-            .writeAsString(NginxConfigBuilder.defaultFastcgiParams());
+        await fastcgiParamsFile.writeAsString(
+          NginxConfigBuilder.defaultFastcgiParams(),
+        );
       }
 
       final confFile = File(p.join(installPath, 'conf', 'nginx.conf'));
@@ -1803,19 +1871,16 @@ security:
     try {
       final apps = _ref.read(appsProvider).value;
       if (apps == null) return null;
-      final phpApps = apps
-          .where((a) => a.isInstalled && a.groupName == 'php')
-          .toList()
-        ..sort((a, b) {
-          if (a.isDefault && !b.isDefault) return -1;
-          if (!a.isDefault && b.isDefault) return 1;
-          return b.appId.compareTo(a.appId);
-        });
+      final phpApps =
+          apps.where((a) => a.isInstalled && a.groupName == 'php').toList()
+            ..sort((a, b) {
+              if (a.isDefault && !b.isDefault) return -1;
+              if (!a.isDefault && b.isDefault) return 1;
+              return b.appId.compareTo(a.appId);
+            });
       final best = phpApps.firstOrNull;
       if (best == null) return null;
-      final customPort = int.tryParse(
-        best.extraInfo['port']?.toString() ?? '',
-      );
+      final customPort = int.tryParse(best.extraInfo['port']?.toString() ?? '');
       if (customPort != null) return customPort;
       return AppInstallerService.phpPortFor(best.appId);
     } catch (_) {
@@ -1973,18 +2038,15 @@ security:
     String? version, {
     bool deleteData = true,
   }) async {
-    // Guard against deleting a relative or system_package marker directory.
-    // Package-manager apps return systemPackageMarker as their install path;
-    // attempting Directory('system_package') would resolve to a relative path
-    // in the CWD, which is unsafe.
+    // Legacy system records are not managed directories or managed data.
     if (path == systemPackageMarker || path.isEmpty) {
-      _logger.info('Skipping directory delete for system_package marker ($appId)');
-    } else {
-      final directory = Directory(path);
-      if (directory.existsSync()) {
-        _logger.info('Deleting directory: $path');
-        await _deleteRecursiveWithRetries(directory);
-      }
+      _logger.info('Skipping deletion for legacy system location ($appId)');
+      return;
+    }
+    final directory = Directory(path);
+    if (directory.existsSync()) {
+      _logger.info('Deleting directory: $path');
+      await _deleteRecursiveWithRetries(directory);
     }
 
     if (!deleteData) {
@@ -2247,7 +2309,10 @@ security:
   }
 
   @visibleForTesting
-  static String buildApachePmaConfig(String pmaPathUnix, {int phpPort = 9000}) =>
+  static String buildApachePmaConfig(
+    String pmaPathUnix, {
+    int phpPort = 9000,
+  }) =>
       ApacheConfigBuilder.buildPhpMyAdminConfig(pmaPathUnix, phpPort: phpPort);
 
   Future<void> _configurePhpMyAdminInApache(
@@ -2561,7 +2626,9 @@ security:
         if (Platform.isLinux || Platform.isMacOS) {
           await Process.run('chmod', ['600', passwordFile.path]);
         }
-        logInfo('Generated elastic user bootstrap password at ${passwordFile.path}');
+        logInfo(
+          'Generated elastic user bootstrap password at ${passwordFile.path}',
+        );
       }
     }
   }
@@ -2721,36 +2788,9 @@ security:
     _logger.info('Removed Composer wrappers');
   }
 
-  /// Marker returned as installPath for package-manager installations.
-  /// These apps have no Ponta-managed directory; settings providers must
-  /// treat this as "no local config file" (location-based File() lookups
-  /// fail exists() and return null gracefully).
+  /// Compatibility location marker for system installations from older releases.
+  /// Never treat it as a managed installation directory.
   static const String systemPackageMarker = 'system_package';
-
-  /// Resolves the list of executable candidate names used by
-  /// [_installViaPackageManager] when locating the installed binary.
-  ///
-  /// - For `apache`, candidates span both Debian (`apache2`) and RHEL (`httpd`)
-  ///   packaging.
-  /// - For PHP apps, candidates include versioned `php-fpm<version>` (Debian/Ubuntu)
-  ///   and standard `php-fpm` (Fedora/CentOS/RHEL).
-  /// - Otherwise falls back to `app.execFile` or `'php'`.
-  @visibleForTesting
-  static List<String> resolveExecNames(AppModel app) {
-    if (app.appId == 'apache') {
-      return ['apache2', 'httpd'];
-    }
-    if (app.groupName == 'php') {
-      final prefix = phpPrefixFor(app.appId);
-      if (prefix != null) {
-        final noDot = prefix.replaceAll('.', '');
-        return ['php-fpm$prefix', 'php$noDot-php-fpm', 'php-fpm'];
-      }
-      return ['php-fpm'];
-    }
-    final fallback = app.execFile ?? 'php';
-    return [fallback];
-  }
 
   /// Extracts the PHP version prefix from an appId (e.g. `php82` -> `8.2`,
   /// `php83` -> `8.3`). Returns null if the appId doesn't follow the
@@ -2759,426 +2799,6 @@ security:
     final match = RegExp(r'^php(\d)(\d+)$').firstMatch(appId);
     if (match == null) return null;
     return '${match.group(1)}.${match.group(2)}';
-  }
-
-  /// Builds the candidate path list for [findInstalledBinary] during
-  /// package-manager installation.
-  static List<String> _execCandidates(AppModel app, String execName) {
-    if (app.appId == 'apache') {
-      return [
-        '/usr/sbin/apache2',
-        '/usr/sbin/httpd',
-        '/usr/bin/apache2',
-        '/usr/bin/httpd',
-        '/usr/local/bin/apache2',
-        '/usr/local/bin/httpd',
-        '/usr/local/sbin/apache2',
-        '/usr/local/sbin/httpd',
-      ];
-    }
-    if (app.groupName == 'php') {
-      final prefix = phpPrefixFor(app.appId);
-      final candidates = <String>[];
-      if (prefix != null) {
-        final noDot = prefix.replaceAll('.', '');
-        candidates.add('/usr/sbin/php-fpm$prefix');
-        candidates.add('/usr/bin/php-fpm$prefix');
-        candidates.add('/usr/local/bin/php-fpm$prefix');
-        candidates.add('/usr/local/sbin/php-fpm$prefix');
-        candidates.add('/opt/remi/php$noDot/root/usr/sbin/php-fpm');
-      }
-      candidates.addAll([
-        '/usr/sbin/php-fpm',
-        '/usr/bin/php-fpm',
-        '/usr/local/bin/php-fpm',
-        '/usr/local/sbin/php-fpm',
-      ]);
-      // Also add specific version candidates (php-fpm8.5, etc.)
-      for (final v in ['8.5', '8.4', '8.3', '8.2']) {
-        final noDot = v.replaceAll('.', '');
-        candidates.add('/usr/sbin/php-fpm$v');
-        candidates.add('/usr/bin/php-fpm$v');
-        candidates.add('/opt/remi/php$noDot/root/usr/sbin/php-fpm');
-      }
-      return candidates;
-    }
-    if (app.appId.contains('postgresql')) {
-      return [
-        '/usr/bin/postgres',
-        '/usr/sbin/postgres',
-        '/usr/local/bin/postgres',
-        '/usr/local/sbin/postgres',
-      ];
-    }
-    return [
-      '/usr/bin/$execName',
-      '/usr/sbin/$execName',
-      '/usr/local/bin/$execName',
-      '/usr/local/sbin/$execName',
-    ];
-  }
-
-  /// Directories to recursively search for the installed binary.
-  static List<String>? _execSearchDirs(AppModel app) {
-    if (app.appId.contains('postgresql')) {
-      return [
-        '/usr/lib/postgresql',
-        '/usr/pgsql-18',
-        '/usr/pgsql-17',
-        '/usr/pgsql-16',
-      ];
-    }
-    if (app.groupName == 'php') {
-      final prefix = phpPrefixFor(app.appId);
-      final noDot = prefix?.replaceAll('.', '');
-      return [
-        if (noDot != null) '/opt/remi/php$noDot',
-        '/opt/remi',
-        '/etc/php',
-      ];
-    }
-    return null;
-  }
-
-  /// Install app via system package manager (apt, dnf, etc.)
-  /// Generates an atomic shell script that runs package manager commands in one invocation.
-  ///
-  /// Features:
-  /// - `set -e` ensures fail-closed behavior on any command failure.
-  /// - `DEBIAN_FRONTEND=noninteractive` and `NEEDRESTART_MODE=a` avoid hanging interactive prompts.
-  /// - `sudo() { "$@"; }` no-op function definition when run as root, allowing catalog commands
-  ///   with `sudo` to run cleanly whether invoked via `pkexec` or root shell.
-  /// - Echoes progress markers for each command to aid troubleshooting.
-  @visibleForTesting
-  static String buildPackageManagerScript(List<String> commands) {
-    final buffer = StringBuffer();
-    buffer.writeln('#!/bin/sh');
-    buffer.writeln('set -e');
-    buffer.writeln('export DEBIAN_FRONTEND=noninteractive');
-    buffer.writeln('export NEEDRESTART_MODE=a');
-    buffer.writeln();
-    buffer.writeln('# When running as root (e.g. via pkexec), define sudo as a transparent wrapper');
-    buffer.writeln('if [ "\$(id -u)" -eq 0 ]; then');
-    buffer.writeln('  sudo() { "\$@"; }');
-    buffer.writeln('fi');
-    buffer.writeln();
-    for (var i = 0; i < commands.length; i++) {
-      final cmd = commands[i];
-      final escapedNotice = cmd.replaceAll("'", "'\\''");
-      buffer.writeln("echo '[$i/${commands.length}] Running: $escapedNotice'");
-      buffer.writeln(cmd);
-    }
-    return buffer.toString();
-  }
-
-  /// Executes pre-validated package manager commands via a temporary shell script.
-  ///
-  /// On Linux, if passwordless `sudo` is not available, execution is elevated using
-  /// `pkexec` (PolicyKit) to present a native OS authorization dialog to the user.
-  /// This ensures that all commands execute under a single authorization prompt rather than
-  /// prompting repeatedly or failing in non-interactive GUI environments.
-  static Future<ProcessResult> executePackageManagerCommands({
-    required List<String> commands,
-    required void Function(String) logInfo,
-    required void Function(String) logError,
-    Future<ProcessResult> Function(String, List<String>)? runProcess,
-    bool? isLinuxOverride,
-  }) async {
-    final runner = runProcess ?? Process.run;
-    final onLinux = isLinuxOverride ?? Platform.isLinux;
-    final scriptContent = buildPackageManagerScript(commands);
-
-    final tempDir = await Directory.systemTemp.createTemp('ponta-pkg-');
-    final scriptFile = File(p.join(tempDir.path, 'install.sh'));
-
-    try {
-      await scriptFile.writeAsString(scriptContent);
-      try {
-        await runner('chmod', ['755', scriptFile.path]);
-      } catch (_) {}
-
-      bool canSudoNonInteractive = false;
-      if (onLinux) {
-        try {
-          final sudoCheck = await runner('sudo', ['-n', 'true']);
-          if (sudoCheck.exitCode == 0) {
-            canSudoNonInteractive = true;
-          }
-        } catch (_) {}
-      }
-
-      final ProcessResult result;
-      if (canSudoNonInteractive) {
-        logInfo('Executing package manager commands via sudo (non-interactive)...');
-        result = await runner('sudo', ['sh', scriptFile.path]);
-      } else if (onLinux) {
-        logInfo('Requesting system authorization via pkexec...');
-        result = await BackgroundProcess.runElevated(
-          'sh',
-          [scriptFile.path],
-          isLinux: true,
-          logInfo: logInfo,
-          runProcess: runner,
-        );
-      } else {
-        result = await runner('sh', [scriptFile.path]);
-      }
-
-      if (result.exitCode != 0) {
-        final stderrStr = result.stderr.toString();
-        final lowerErr = stderrStr.toLowerCase();
-        if (result.exitCode == 126 ||
-            lowerErr.contains('dismissed') ||
-            lowerErr.contains('not authorized')) {
-          logError('Authentication was cancelled by user.');
-          throw Exception('Installation aborted: authentication was cancelled.');
-        }
-
-        logError('Command failed with exit code ${result.exitCode}');
-        if (result.stdout.toString().isNotEmpty) {
-          logError('STDOUT: ${result.stdout}');
-        }
-        if (stderrStr.isNotEmpty) {
-          logError('STDERR: $stderrStr');
-        }
-        throw Exception(
-          'Installation command failed with exit code ${result.exitCode}:\n$stderrStr',
-        );
-      }
-
-      if (result.stdout.toString().isNotEmpty) {
-        logInfo('Output: ${result.stdout}');
-      }
-
-      return result;
-    } finally {
-      try {
-        if (tempDir.existsSync()) {
-          await tempDir.delete(recursive: true);
-        }
-      } catch (e) {
-        logInfo('Warning: Could not clean up temporary directory ${tempDir.path}: $e');
-      }
-    }
-  }
-
-  /// Used for PHP on Linux where prebuilt binaries are not available.
-  ///
-  /// All commands come from catalog JSON (possibly a user-supplied catalog
-  /// URL), so each one is validated by [PackageCommandValidator] before
-  /// execution — fail-closed, installation aborts on the first rejection.
-  Future<String> _installViaPackageManager(
-    AppModel app,
-    String version, {
-    InstallationProgressCallback? onProgress,
-    required Function(String) logInfo,
-    required Function(String) logError,
-    Future<ProcessResult> Function(String, List<String>)? runProcess,
-    CancelToken? cancelToken,
-  }) async {
-    _throwIfCancelled(cancelToken);
-    logInfo('Installing ${app.name} via package manager...');
-    onProgress?.call(0.1, 'Detecting distribution...');
-
-    // 1. Detect Linux distribution family via the shared resolver
-    final distro = LinuxDistroResolver.detectFamily();
-    logInfo('Detected Linux distribution family: $distro');
-
-    // 2. Get commands for this distro
-    final commands = app.packageManagerCommands[distro];
-    if (commands == null || commands.isEmpty) {
-      logError('No package manager commands found for distro: $distro');
-      throw Exception(
-        'Unsupported Linux distribution: $distro. '
-        'Please install ${app.name} manually using your package manager.',
-      );
-    }
-
-    // 3. Resolve template placeholders ({codename}, {distro}, ...) in Dart —
-    // never via shell substitution, which the validator forbids.
-    final resolvedCommands = commands
-        .map((cmd) => LinuxDistroResolver.resolveUrl(cmd))
-        .toList();
-    final missingCodename = resolvedCommands.any((c) => c.contains('{codename}'));
-    if (missingCodename) {
-      // resolveUrl handles {distro}/{mongo_distro}; {codename} needs detectCodename
-      final codename = LinuxDistroResolver.detectCodename();
-      for (var i = 0; i < resolvedCommands.length; i++) {
-        resolvedCommands[i] = resolvedCommands[i].replaceAll('{codename}', codename);
-      }
-    }
-
-    // 4. Validate every command before running any of them (fail-closed)
-    final errors = PackageCommandValidator.validateAll(resolvedCommands);
-    if (errors.isNotEmpty) {
-      logError('Catalog commands rejected by security validation:');
-      for (final err in errors) {
-        logError('  - $err');
-      }
-      throw Exception(
-        'Installation aborted: catalog commands failed security validation. '
-        'The catalog may be corrupted or from an untrusted source.',
-      );
-    }
-
-    // 5. Run installation commands via pkexec/sudo script
-    logInfo('Running ${resolvedCommands.length} installation commands...');
-    for (var i = 0; i < resolvedCommands.length; i++) {
-      logInfo('  [$i/${resolvedCommands.length}] ${resolvedCommands[i]}');
-    }
-    onProgress?.call(0.2, 'Authorizing & installing packages...');
-
-    try {
-      await executePackageManagerCommands(
-        commands: resolvedCommands,
-        logInfo: logInfo,
-        logError: logError,
-        runProcess: runProcess,
-      );
-    } catch (e) {
-      logError('Failed to run command: $e');
-      rethrow;
-    }
-
-    onProgress?.call(0.85, 'Finding installed executable...');
-
-    // 6. Find installed executable
-    logInfo('Locating installed ${app.name} executable...');
-    final execNames = resolveExecNames(app);
-    final candidates = _execCandidates(app, execNames.first);
-    final searchDirs = _execSearchDirs(app);
-    String? execPath;
-    String foundName = execNames.first;
-    for (final name in execNames) {
-      final path = await findInstalledBinary(
-        name,
-        candidates: candidates,
-        searchDirectories: searchDirs,
-        logInfo: logInfo,
-        runProcess: runProcess,
-      );
-      if (path != null) {
-        execPath = path;
-        foundName = name;
-        break;
-      }
-    }
-
-    if (execPath == null) {
-      logError('Could not find any of $execNames after installation');
-      throw Exception(
-        'Installation completed but none of $execNames were found in PATH. '
-        'You may need to restart your terminal or add them manually.',
-      );
-    }
-
-    logInfo('Found ${app.name} at: $execPath');
-    app.execFilePath = execPath;
-    app.cliFilePath = execPath;
-
-    onProgress?.call(0.95, 'Verifying installation...');
-
-    // 7. Verify the executable actually runs — a failed --version means a
-    // broken install; surface it instead of reporting success.
-    // Apache (apache2/httpd) only accepts -v, not --version.
-    final isApacheVerify = foundName == 'apache2' || foundName == 'httpd';
-    final verifyArgs = isApacheVerify ? ['-v'] : ['--version'];
-    final runner = runProcess ?? Process.run;
-    final verify = await runner(execPath, verifyArgs);
-    if (verify.exitCode != 0) {
-      logError(
-        '$foundName $verifyArgs exited with code ${verify.exitCode}: '
-        '${verify.stderr}',
-      );
-      throw Exception(
-        'Installed $foundName failed verification ($verifyArgs returned '
-        'exit code ${verify.exitCode}). The package installation may be '
-        'incomplete.',
-      );
-    }
-    logInfo('Version check: ${verify.stdout}');
-
-    // 8. Resolve CLI executable path (separate from daemon exec path for PHP-FPM)
-    if (app.cliFile != null) {
-      final cliName = app.cliFile;
-      final cliPath = await findInstalledBinary(
-        cliName!,
-        candidates: [
-          '/usr/bin/$cliName',
-          '/usr/sbin/$cliName',
-          '/usr/local/bin/$cliName',
-          '/usr/local/sbin/$cliName',
-        ],
-        logInfo: logInfo,
-        runProcess: runProcess,
-      );
-      app.cliFilePath = cliPath ?? execPath;
-    }
-
-    // 9. Install Composer for PHP apps
-    if (app.groupName == 'php') {
-      onProgress?.call(0.98, 'Installing Composer...');
-      logInfo('Installing Composer for PHP...');
-      try {
-        await _installComposer(logInfo);
-        logInfo('Composer installed successfully');
-      } catch (e) {
-        logError('Failed to install Composer: $e');
-        // Don't fail the whole installation if Composer fails
-      }
-    }
-
-    // 10. Wire post-install isolation hooks for Linux package manager apps
-    onProgress?.call(0.99, 'Configuring isolated services...');
-    await _configureIsolatedServices(app, version, execPath, logInfo);
-
-    onProgress?.call(1.0, 'Completed');
-
-    logInfo('Successfully installed ${app.name} via package manager');
-    return systemPackageMarker;
-  }
-
-  /// Wires post-install isolation hooks so that Linux package manager apps get
-  /// isolated configuration files / clusters created after installation.
-  /// This is only invoked from [_installViaPackageManager] on Linux.
-  Future<void> _configureIsolatedServices(
-    AppModel app,
-    String version,
-    String execPath,
-    Function(String) logInfo,
-  ) async {
-    if (app.appId == 'apache' || app.appId.contains('apache')) {
-      await setLinuxCapabilityForWebserver(execPath, logInfo, allowSystemBinaries: true);
-      await configureIsolatedApache(app, logInfo);
-    } else if (app.appId == 'redis' || app.groupName == 'redis') {
-      await configureIsolatedRedis(app, logInfo);
-    } else if (app.appId.contains('postgresql')) {
-      final initdb = await findInstalledBinary(
-        'initdb',
-        candidates: [
-          '/usr/bin/initdb',
-          '/usr/sbin/initdb',
-          '/usr/local/bin/initdb',
-        ],
-        searchDirectories: [
-          '/usr/lib/postgresql',
-          '/usr/pgsql-18',
-          '/usr/pgsql-17',
-          '/usr/pgsql-16',
-        ],
-        logInfo: logInfo,
-      );
-      if (initdb == null) {
-        logInfo('ERROR: PostgreSQL packages installed but initdb binary was not found.');
-        throw Exception(
-          'PostgreSQL packages installed but initdb binary was not found.',
-        );
-      }
-      await configureIsolatedPostgresql(app, version, initdb, logInfo);
-    } else if (app.groupName == 'php') {
-      final port = phpPortFor(app.appId);
-      await configureIsolatedPhpFpm(app, port, logInfo);
-    }
   }
 
   /// Find installed executable in system PATH and standard candidate directories.
@@ -3232,7 +2852,10 @@ security:
         final dir = Directory(searchDir);
         if (dir.existsSync()) {
           try {
-            for (final entity in dir.listSync(recursive: true, followLinks: false)) {
+            for (final entity in dir.listSync(
+              recursive: true,
+              followLinks: false,
+            )) {
               if (entity is File && p.basename(entity.path) == binaryName) {
                 logInfo('Found $binaryName in $searchDir at: ${entity.path}');
                 return entity.path;
@@ -3266,7 +2889,10 @@ security:
   }
 
   @visibleForTesting
-  Future<void> configureIsolatedRedis(AppModel app, Function(String) logInfo) async {
+  Future<void> configureIsolatedRedis(
+    AppModel app,
+    Function(String) logInfo,
+  ) async {
     final redisDir = Directory(p.join(AppConfig.dataDir, 'redis'));
     if (!redisDir.existsSync()) {
       redisDir.createSync(recursive: true);
@@ -3274,7 +2900,8 @@ security:
     final confFile = File(p.join(redisDir.path, 'redis.conf'));
     if (!confFile.existsSync()) {
       final normalizedDir = redisDir.path.replaceAll('\\', '/');
-      final content = '''
+      final content =
+          '''
 # Ponta isolated Redis configuration
 daemonize no
 port 6379
@@ -3290,17 +2917,25 @@ appendonly no
   }
 
   @visibleForTesting
-  Future<void> configureIsolatedPhpFpm(AppModel app, int port, Function(String) logInfo) async {
+  Future<void> configureIsolatedPhpFpm(
+    AppModel app,
+    int port,
+    Function(String) logInfo,
+  ) async {
     final phpDir = Directory(p.join(AppConfig.baseDir, 'php', app.appId));
     if (!phpDir.existsSync()) {
       phpDir.createSync(recursive: true);
     }
+    await Directory(AppConfig.logsDir).create(recursive: true);
     final confFile = File(p.join(phpDir.path, 'php-fpm.conf'));
     if (!confFile.existsSync()) {
-      final logsDirNormalized = AppConfig.logsDir.replaceAll('\\', '/');
-      final content = '''
+      final logsDirNormalized = AppConfig.logsDir
+          .replaceAll('\\', '/')
+          .replaceAll('"', '\\"');
+      final content =
+          '''
 [global]
-error_log = $logsDirNormalized/${app.appId}-fpm.error.log
+error_log = "$logsDirNormalized/${app.appId}-fpm.error.log"
 daemonize = no
 
 [www]
@@ -3317,7 +2952,10 @@ catch_workers_output = yes
   }
 
   @visibleForTesting
-  Future<void> configureIsolatedApache(AppModel app, Function(String) logInfo) async {
+  Future<void> configureIsolatedApache(
+    AppModel app,
+    Function(String) logInfo,
+  ) async {
     final apacheVhostsDir = Directory(p.join(AppConfig.vhostsDir, 'apache'));
     if (!apacheVhostsDir.existsSync()) {
       apacheVhostsDir.createSync(recursive: true);
@@ -3334,15 +2972,22 @@ catch_workers_output = yes
       // Build module Includes based on distro
       final moduleIncludes = isDebian
           ? 'IncludeOptional "/etc/apache2/mods-enabled/*.load"\n'
-              'IncludeOptional "/etc/apache2/mods-enabled/*.conf"'
+                'IncludeOptional "/etc/apache2/mods-enabled/*.conf"'
           : 'Include conf.modules.d/*.conf';
 
-      final pidFile = p.join(AppConfig.logsDir, 'httpd.pid').replaceAll('\\', '/');
-      final errorLog = p.join(AppConfig.logsDir, 'apache_error.log').replaceAll('\\', '/');
-      final vhostsGlob = p.join(AppConfig.vhostsDir, 'apache', '*.conf').replaceAll('\\', '/');
+      final pidFile = p
+          .join(AppConfig.logsDir, 'httpd.pid')
+          .replaceAll('\\', '/');
+      final errorLog = p
+          .join(AppConfig.logsDir, 'apache_error.log')
+          .replaceAll('\\', '/');
+      final vhostsGlob = p
+          .join(AppConfig.vhostsDir, 'apache', '*.conf')
+          .replaceAll('\\', '/');
       final wwwRoot = AppConfig.webserverRoot.replaceAll('\\', '/');
 
-      final content = '''
+      final content =
+          '''
 # Ponta isolated Apache configuration
 ServerRoot "$serverRoot"
 Listen 127.0.0.1:80
@@ -3373,13 +3018,17 @@ IncludeOptional "$vhostsGlob"
   /// requires root permissions to create lock files and sockets, causing permission
   /// denied errors when running as a regular user.
   static String ensurePostgresUnixSocketDirectory(String confContent) {
-    if (confContent.contains(RegExp(r"^#?unix_socket_directories\s*=", multiLine: true))) {
+    if (confContent.contains(
+      RegExp(r"^#?unix_socket_directories\s*=", multiLine: true),
+    )) {
       return confContent.replaceAll(
         RegExp(r"^#?unix_socket_directories\s*=\s*'.*?'", multiLine: true),
         "unix_socket_directories = '/tmp'",
       );
     } else {
-      final prefix = (confContent.isNotEmpty && !confContent.endsWith('\n')) ? '\n' : '';
+      final prefix = (confContent.isNotEmpty && !confContent.endsWith('\n'))
+          ? '\n'
+          : '';
       return '$confContent${prefix}unix_socket_directories = \'/tmp\'\n';
     }
   }
@@ -3411,10 +3060,14 @@ IncludeOptional "$vhostsGlob"
       try {
         final chmodResult = await runner('chmod', ['700', dataDir.path]);
         if (chmodResult.exitCode != 0) {
-          logInfo('Warning: chmod 700 failed on ${dataDir.path}: ${chmodResult.stderr}');
+          logInfo(
+            'Warning: chmod 700 failed on ${dataDir.path}: ${chmodResult.stderr}',
+          );
         }
       } catch (e) {
-        logInfo('Warning: Could not set 0700 permissions on ${dataDir.path}: $e');
+        logInfo(
+          'Warning: Could not set 0700 permissions on ${dataDir.path}: $e',
+        );
       }
     }
 
@@ -3458,7 +3111,9 @@ IncludeOptional "$vhostsGlob"
 
     // After initdb succeeds, copy postgres-password.txt into the data dir
     // so it is available alongside the cluster for restarts/management.
-    final destPasswordFile = File(p.join(dataDir.path, 'postgres-password.txt'));
+    final destPasswordFile = File(
+      p.join(dataDir.path, 'postgres-password.txt'),
+    );
     if (!destPasswordFile.existsSync()) {
       await passwordFile.copy(destPasswordFile.path);
     }

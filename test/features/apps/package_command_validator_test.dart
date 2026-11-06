@@ -1,62 +1,59 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dev_stack/features/apps/data/package_command_validator.dart';
 
 void main() {
   group('PackageCommandValidator', () {
-    group('catalog commands (positive cases)', () {
-      test('accepts all ubuntu php85 commands from the real catalog', () {
-        final commands = [
-          'sudo apt-get update',
-          'sudo apt-get install -y software-properties-common',
-          'sudo add-apt-repository -y ppa:ondrej/php',
-          'sudo apt-get update',
-          'sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common',
-        ];
-        expect(PackageCommandValidator.validateAll(commands), isEmpty);
-      });
-
-      test('accepts debian sury.org flow with pipeline to tee', () {
-        final commands = [
-          'sudo apt-get update',
-          'curl -sSLo /tmp/keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb',
-          'sudo dpkg -i /tmp/keyring.deb',
-          'echo "deb [signed-by=/usr/share/keyrings/k.gpg] https://packages.sury.org/php/ bookworm main" '
-              '| sudo tee /etc/apt/sources.list.d/php.list',
-          'sudo apt-get install -y php8.2-cli',
-        ];
-        expect(PackageCommandValidator.validateAll(commands), isEmpty);
-      });
-
-      test('accepts centos dnf remi flow', () {
-        final commands = [
-          'sudo dnf install -y epel-release',
-          'sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm',
-          'sudo dnf module reset -y php',
-          'sudo dnf module enable -y php:remi-8.4',
-        ];
-        expect(PackageCommandValidator.validateAll(commands), isEmpty);
-      });
-
-      test('accepts fedora dnf remi flow', () {
-        final commands = [
-          'sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-41.rpm',
-          'sudo dnf install -y --enablerepo=remi php83-php-fpm php83-php-cli php83-php-common php83-php-mysqlnd php83-php-mbstring php83-php-xml php83-php-pecl-zip',
-          'sudo systemctl disable --now php83-php-fpm',
-        ];
-        expect(PackageCommandValidator.validateAll(commands), isEmpty);
-      });
+    group('package installation is not supported', () {
+      for (final command in [
+        'sudo apt-get update',
+        'apt install -y php8.5-curl',
+        'apt-get install -y php8.5-curl',
+        'dpkg -i /tmp/keyring.deb',
+        'sudo add-apt-repository -y ppa:ondrej/php',
+        'apt-key add /tmp/key',
+        'dnf install -y php-pdo',
+        'dnf module enable -y php:remi-8.4',
+        'yum install -y php-pdo',
+        'rpm -i /tmp/php.rpm',
+        'pacman -S --noconfirm php-gd',
+        'pacman -Fy',
+        'curl -o /tmp/payload https://example.invalid/payload',
+        'wget https://example.invalid/payload',
+        'gpg --dearmor /tmp/key',
+        'mkdir /etc/php.d/new',
+        'touch /etc/php.d/new.ini',
+        'chmod 777 /etc/php.d/new.ini',
+        'chown root /etc/php.d/new.ini',
+        'ln -s /tmp/evil /etc/php.d/new.ini',
+        'systemctl disable --now php-fpm',
+        'echo "deb https://example.invalid stable main" | tee /etc/apt/sources.list.d/php.list',
+      ]) {
+        test('rejects $command', () {
+          expect(PackageCommandValidator.validate(command), isNotNull);
+        });
+      }
     });
 
     group('extension management binaries', () {
       test('accepts read-only discovery commands', () {
-        expect(PackageCommandValidator.validate('apt-cache search --names-only php8.5-'), isNull);
-        expect(PackageCommandValidator.validate('apt-file list -x ^php8\\.5-'), isNull);
+        expect(
+          PackageCommandValidator.validate(
+            'apt-cache search --names-only php8.5-',
+          ),
+          isNull,
+        );
+        expect(
+          PackageCommandValidator.validate('apt-file list -x ^php8\\.5-'),
+          isNull,
+        );
         expect(PackageCommandValidator.validate('pacman -Ss php-'), isNull);
-        expect(PackageCommandValidator.validate('pacman -Fy'), isNull);
         expect(PackageCommandValidator.validate('pacman -Fl php-gd'), isNull);
-        expect(PackageCommandValidator.validate("dnf repoquery --qf '[%{=NAME}\\n]' 'php-*'"), isNull);
+        expect(
+          PackageCommandValidator.validate(
+            "dnf repoquery --qf '[%{=NAME}\\n]' 'php-*'",
+          ),
+          isNull,
+        );
       });
 
       test('accepts the RHEL annotated file list query format', () {
@@ -80,8 +77,14 @@ void main() {
       });
 
       test('accepts Debian module enable/disable commands', () {
-        expect(PackageCommandValidator.validate('phpenmod -v 8.5 -s fpm mbstring'), isNull);
-        expect(PackageCommandValidator.validate('phpdismod -v 8.5 -s fpm mbstring'), isNull);
+        expect(
+          PackageCommandValidator.validate('phpenmod -v 8.5 -s fpm mbstring'),
+          isNull,
+        );
+        expect(
+          PackageCommandValidator.validate('phpdismod -v 8.5 -s fpm mbstring'),
+          isNull,
+        );
       });
 
       test('accepts the manager writing an ini line into the PHP scan dir', () {
@@ -151,7 +154,9 @@ void main() {
 
       test('still rejects chaining smuggled through the new binaries', () {
         expect(
-          PackageCommandValidator.validate('phpenmod -v 8.5 -s fpm mbstring; rm -rf /'),
+          PackageCommandValidator.validate(
+            'phpenmod -v 8.5 -s fpm mbstring; rm -rf /',
+          ),
           contains('Forbidden pattern'),
         );
         expect(
@@ -172,7 +177,10 @@ void main() {
       test('rejects arbitrary binaries smuggled after sudo', () {
         expect(
           PackageCommandValidator.validate('sudo /tmp/payload.sh'),
-          anyOf(contains('not in the allowed list'), contains('not in the allowed system directories')),
+          anyOf(
+            contains('not in the allowed list'),
+            contains('not in the allowed system directories'),
+          ),
         );
       });
 
@@ -225,7 +233,9 @@ void main() {
 
       test('rejects tee targeting sensitive system files', () {
         expect(
-          PackageCommandValidator.validate('echo evil | sudo tee /etc/cron.d/evil'),
+          PackageCommandValidator.validate(
+            'echo evil | sudo tee /etc/cron.d/evil',
+          ),
           contains('not allowed'),
         );
         expect(
@@ -241,56 +251,59 @@ void main() {
       test('rejects dangerous paths smuggled as binaries', () {
         expect(
           PackageCommandValidator.validate('/tmp/evil_tool'),
-          anyOf(contains('not in the allowed list'), contains('not in the allowed system directories')),
+          anyOf(
+            contains('not in the allowed list'),
+            contains('not in the allowed system directories'),
+          ),
         );
         expect(
           PackageCommandValidator.validate('sudo /tmp/evil_tool'),
-          anyOf(contains('not in the allowed list'), contains('not in the allowed system directories')),
+          anyOf(
+            contains('not in the allowed list'),
+            contains('not in the allowed system directories'),
+          ),
         );
       });
     });
 
-    group('real linux catalog validation', () {
-      test('all package manager commands in apps-linux.json pass validation', () async {
-        final catalogFile = File('assets/data/apps-linux.json');
-        expect(catalogFile.existsSync(), isTrue);
-        final jsonData = jsonDecode(await catalogFile.readAsString()) as Map<String, dynamic>;
-        final jsonContent = jsonData['apps'] as List<dynamic>;
-
-        final packageManagerApps = jsonContent.where(
-          (app) => app['install_method'] == 'package_manager',
+    group('narrow PHP configuration syntax', () {
+      test('accepts the manager comment-only sed expression', () {
+        expect(
+          PackageCommandValidator.validate(
+            r'''sed -E -i 's,^\s*(zend_)?extension\s*=\s*"?(.*/)?redis(\.so)?"?\s*$,\x3b&,' '/etc/php.d/20-redis.ini' ''',
+          ),
+          isNull,
         );
-
-        final expectedAppIds = {'apache', 'postgresql', 'redis', 'php82', 'php83', 'php84', 'php85'};
-        final foundAppIds = packageManagerApps.map((a) => a['id'] as String).toSet();
-        expect(foundAppIds, containsAll(expectedAppIds));
-
-        for (final app in packageManagerApps) {
-          final commandsMap = app['package_manager_commands'] as Map<String, dynamic>?;
-          expect(commandsMap, isNotNull, reason: '${app['id']} missing package_manager_commands');
-
-          for (final entry in commandsMap!.entries) {
-            final distro = entry.key;
-            final commands = (entry.value as List<dynamic>).cast<String>();
-            // Emulate placeholder resolution for validation
-            final resolved = commands.map((c) => c.replaceAll('{codename}', 'bookworm')).toList();
-            final errors = PackageCommandValidator.validateAll(resolved);
-            expect(
-              errors,
-              isEmpty,
-              reason: 'Commands for ${app['id']} on $distro failed validation: $errors',
-            );
-
-            // Verify systemctl disable command is present
-            final hasDisable = commands.any((c) => c.contains('systemctl disable --now'));
-            expect(
-              hasDisable,
-              isTrue,
-              reason: '${app['id']} on $distro must disable default systemd daemon',
-            );
-          }
-        }
+        expect(
+          PackageCommandValidator.validate(
+            r"sed -E -i 's,^\s*opcache\.enable\s*=.*$,\x3b&,' '/etc/opt/remi/php85/php.d/10-opcache.ini'",
+          ),
+          isNull,
+        );
       });
+      for (final command in [
+        'phpenmod -v 8.5 -s fpm curl &',
+        'phpenmod -v 8.5 -s fpm curl # ignored',
+        'phpenmod -v 8.5 -s fpm "curl"',
+        'phpenmod -v 8.5 -s fpm curl --help',
+        '/usr/bin/../local/bin/phpenmod -v 8.5 -s fpm curl',
+        "echo 'extension=redis' | tee /etc/php.d/x.ini /etc/shadow",
+        "echo 'extension=redis' | tee -a /etc/php.d/99-ponta-redis.ini",
+        "echo 'extension=redis' | tee /etc/php.d/20-redis.ini",
+        "echo 'auto_prepend_file=/tmp/payload' | tee /etc/php.d/99-ponta-redis.ini",
+        "echo 'extension=redis' | tee /etc/php.d/99-ponta-curl.ini",
+        "sed -i 's,.*,owned,' /etc/shadow",
+        "sed -i 's,.*,owned,' /etc/php.d/20-redis.ini",
+        r"sed -E -i 's,^\s*opcache\.enable\s*=.*$,\x3b&,' '/etc/shadow'",
+        r"sed -E -i 's,^\s*opcache\.enable\s*=.*$,\x3b&,' '/etc/php.d/../../shadow.ini'",
+        r"sed -E -i 's,^\s*opcache\.enable\s*=.*$,\x3b&,' '/etc/php.d/x.ini' -e 's,.*,x,w /tmp/p'",
+        "apt-cache search php | tee /etc/php.d/99-ponta-redis.ini",
+        "sudo dnf repoquery php-*",
+      ]) {
+        test('rejects unsafe configuration: $command', () {
+          expect(PackageCommandValidator.validate(command), isNotNull);
+        });
+      }
     });
   });
 }

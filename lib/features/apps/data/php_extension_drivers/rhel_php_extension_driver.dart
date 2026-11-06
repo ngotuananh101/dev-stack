@@ -17,7 +17,7 @@ import '../linux_php_extension_driver.dart';
 /// - **Files**: dnf5 accepts `--qf '%{name} %{files}\n'` and prints one block
 ///   per package (`pkg path`, then bare paths). dnf4 has no file tag for
 ///   `--qf` and forbids `-l` with `--qf`, so it can only print bare paths via
-///   `-l` — leaving the owner unknown until enable time.
+///   `-l` — leaving the owner unknown in discovery metadata.
 ///
 /// Enabling and disabling uses [PhpIniStrategy.ownIniFile]: the manager writes
 /// `<scanDir>/99-ponta-<ext>.ini` when enabling, and comments out the loader
@@ -87,11 +87,6 @@ class RhelPhpExtensionDriver extends LinuxPhpExtensionDriver {
     // path. The exact path is used because a `*` glob matches nothing here.
     return ["dnf repoquery --qf '%{name}\\n' -f '$extensionDir/$extName.so'"];
   }
-
-  @override
-  List<String> installCommands(PackageCandidate pkg, String phpVersion) => [
-    'dnf install -y ${pkg.name}',
-  ];
 
   @override
   List<String> enableCommands(String phpVersion, String extName) => const [];

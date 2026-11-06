@@ -3,10 +3,8 @@ import '../linux_php_extension_driver.dart';
 /// Debian and Ubuntu.
 ///
 /// Extensions are enabled through `mods-available/*.ini` plus per-SAPI
-/// `conf.d/` symlinks, managed by `phpenmod` / `phpdismod`. Installing a
-/// package usually enables it already (its `postinst` runs `php_invoke enmod`),
-/// but only for SAPIs whose `conf.d` directory already exists — so the manager
-/// always runs the enable step explicitly rather than relying on `postinst`.
+/// `conf.d/` symlinks, managed by `phpenmod` / `phpdismod`. Only modules
+/// already present on disk are configured; package installation is unsupported.
 ///
 /// File lists come from `apt-file`, which needs a one-time `apt-file update`
 /// before it can answer. `apt-file list -x` matches the pattern against package
@@ -60,11 +58,6 @@ class DebianPhpExtensionDriver extends LinuxPhpExtensionDriver {
     if (sep <= 0) return null;
     return (package: line.substring(0, sep), path: line.substring(sep + 2));
   }
-
-  @override
-  List<String> installCommands(PackageCandidate pkg, String phpVersion) => [
-    'apt-get install -y ${pkg.name}',
-  ];
 
   @override
   List<String> enableCommands(String phpVersion, String extName) => [

@@ -107,32 +107,9 @@
       "description": "World No. 1 web server",
       "category": "webserver",
       "group_name": "webserver",
-      "exec_file": "apache2",
-      "cli_file": "apache2",
-      "install_method": "package_manager",
-      "package_manager_commands": {
-        "ubuntu": [
-          "sudo apt-get update",
-          "sudo apt-get install -y apache2",
-          "sudo systemctl disable --now apache2"
-        ],
-        "debian": [
-          "sudo apt-get update",
-          "sudo apt-get install -y apache2",
-          "sudo systemctl disable --now apache2"
-        ],
-        "centos": [
-          "sudo dnf install -y httpd",
-          "sudo systemctl disable --now httpd"
-        ],
-        "fedora": [
-          "sudo dnf install -y httpd",
-          "sudo systemctl disable --now httpd"
-        ]
-      },
-      "versions": {
-        "system": "package_manager"
-      }
+      "exec_file": "httpd",
+      "cli_file": "httpd",
+      "versions": {}
     },
     {
       "id": "caddy",
@@ -172,46 +149,10 @@
       "description": "Hypertext Preprocessor v8.5",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php-fpm8.5",
-      "cli_file": "php8.5",
+      "exec_file": "php-fpm",
+      "cli_file": "php",
       "prefix": "8.5",
-      "install_method": "package_manager",
-      "package_manager_commands": {
-        "ubuntu": [
-          "sudo apt-get update",
-          "sudo apt-get install -y software-properties-common",
-          "sudo add-apt-repository -y ppa:ondrej/php",
-          "sudo apt-get update",
-          "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip",
-          "sudo systemctl disable --now php8.5-fpm"
-        ],
-        "debian": [
-          "sudo apt-get update",
-          "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-          "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-          "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-          "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-          "sudo apt-get update",
-          "sudo apt-get install -y php8.5-fpm php8.5-cli php8.5-common php8.5-curl php8.5-mbstring php8.5-mysql php8.5-xml php8.5-zip",
-          "sudo systemctl disable --now php8.5-fpm"
-        ],
-        "centos": [
-          "sudo dnf install -y epel-release",
-          "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-          "sudo dnf module reset -y php",
-          "sudo dnf module enable -y php:remi-8.5",
-          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-          "sudo systemctl disable --now php-fpm"
-        ],
-        "fedora": [
-          "sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-{version_id}.rpm",
-          "sudo dnf install -y --enablerepo=remi php85-php-fpm php85-php-cli php85-php-common php85-php-mysqlnd php85-php-mbstring php85-php-xml php85-php-pecl-zip",
-          "sudo systemctl disable --now php85-php-fpm"
-        ]
-      },
-      "versions": {
-        "8.5": "package_manager"
-      }
+      "versions": {}
     },
     {
       "id": "php84",
@@ -219,46 +160,10 @@
       "description": "Hypertext Preprocessor v8.4",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php-fpm8.4",
-      "cli_file": "php8.4",
+      "exec_file": "php-fpm",
+      "cli_file": "php",
       "prefix": "8.4",
-      "install_method": "package_manager",
-      "package_manager_commands": {
-        "ubuntu": [
-          "sudo apt-get update",
-          "sudo apt-get install -y software-properties-common",
-          "sudo add-apt-repository -y ppa:ondrej/php",
-          "sudo apt-get update",
-          "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip",
-          "sudo systemctl disable --now php8.4-fpm"
-        ],
-        "debian": [
-          "sudo apt-get update",
-          "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-          "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-          "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-          "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-          "sudo apt-get update",
-          "sudo apt-get install -y php8.4-fpm php8.4-cli php8.4-common php8.4-curl php8.4-mbstring php8.4-mysql php8.4-xml php8.4-zip",
-          "sudo systemctl disable --now php8.4-fpm"
-        ],
-        "centos": [
-          "sudo dnf install -y epel-release",
-          "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-          "sudo dnf module reset -y php",
-          "sudo dnf module enable -y php:remi-8.4",
-          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-          "sudo systemctl disable --now php-fpm"
-        ],
-        "fedora": [
-          "sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-{version_id}.rpm",
-          "sudo dnf install -y --enablerepo=remi php84-php-fpm php84-php-cli php84-php-common php84-php-mysqlnd php84-php-mbstring php84-php-xml php84-php-pecl-zip",
-          "sudo systemctl disable --now php84-php-fpm"
-        ]
-      },
-      "versions": {
-        "8.4": "package_manager"
-      }
+      "versions": {}
     },
     {
       "id": "php83",
@@ -266,46 +171,10 @@
       "description": "Hypertext Preprocessor v8.3",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php-fpm8.3",
-      "cli_file": "php8.3",
+      "exec_file": "php-fpm",
+      "cli_file": "php",
       "prefix": "8.3",
-      "install_method": "package_manager",
-      "package_manager_commands": {
-        "ubuntu": [
-          "sudo apt-get update",
-          "sudo apt-get install -y software-properties-common",
-          "sudo add-apt-repository -y ppa:ondrej/php",
-          "sudo apt-get update",
-          "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip",
-          "sudo systemctl disable --now php8.3-fpm"
-        ],
-        "debian": [
-          "sudo apt-get update",
-          "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-          "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-          "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-          "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-          "sudo apt-get update",
-          "sudo apt-get install -y php8.3-fpm php8.3-cli php8.3-common php8.3-curl php8.3-mbstring php8.3-mysql php8.3-xml php8.3-zip",
-          "sudo systemctl disable --now php8.3-fpm"
-        ],
-        "centos": [
-          "sudo dnf install -y epel-release",
-          "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-          "sudo dnf module reset -y php",
-          "sudo dnf module enable -y php:remi-8.3",
-          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-          "sudo systemctl disable --now php-fpm"
-        ],
-        "fedora": [
-          "sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-{version_id}.rpm",
-          "sudo dnf install -y --enablerepo=remi php83-php-fpm php83-php-cli php83-php-common php83-php-mysqlnd php83-php-mbstring php83-php-xml php83-php-pecl-zip",
-          "sudo systemctl disable --now php83-php-fpm"
-        ]
-      },
-      "versions": {
-        "8.3": "package_manager"
-      }
+      "versions": {}
     },
     {
       "id": "php82",
@@ -313,46 +182,10 @@
       "description": "Hypertext Preprocessor v8.2",
       "category": "runtime",
       "group_name": "php",
-      "exec_file": "php-fpm8.2",
-      "cli_file": "php8.2",
+      "exec_file": "php-fpm",
+      "cli_file": "php",
       "prefix": "8.2",
-      "install_method": "package_manager",
-      "package_manager_commands": {
-        "ubuntu": [
-          "sudo apt-get update",
-          "sudo apt-get install -y software-properties-common",
-          "sudo add-apt-repository -y ppa:ondrej/php",
-          "sudo apt-get update",
-          "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip",
-          "sudo systemctl disable --now php8.2-fpm"
-        ],
-        "debian": [
-          "sudo apt-get update",
-          "sudo apt-get install -y software-properties-common apt-transport-https lsb-release ca-certificates",
-          "curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb",
-          "sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb",
-          "echo \"deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ {codename} main\" | sudo tee /etc/apt/sources.list.d/php.list",
-          "sudo apt-get update",
-          "sudo apt-get install -y php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip",
-          "sudo systemctl disable --now php8.2-fpm"
-        ],
-        "centos": [
-          "sudo dnf install -y epel-release",
-          "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm",
-          "sudo dnf module reset -y php",
-          "sudo dnf module enable -y php:remi-8.2",
-          "sudo dnf install -y php php-fpm php-cli php-common php-mysqlnd php-mbstring php-xml php-zip",
-          "sudo systemctl disable --now php-fpm"
-        ],
-        "fedora": [
-          "sudo dnf install -y https://rpms.remirepo.net/fedora/remi-release-{version_id}.rpm",
-          "sudo dnf install -y --enablerepo=remi php82-php-fpm php82-php-cli php82-php-common php82-php-mysqlnd php82-php-mbstring php82-php-xml php82-php-pecl-zip",
-          "sudo systemctl disable --now php82-php-fpm"
-        ]
-      },
-      "versions": {
-        "8.2": "package_manager"
-      }
+      "versions": {}
     },
     {
       "id": "mysql",
@@ -393,30 +226,7 @@
       "group_name": "redis",
       "exec_file": "redis-server",
       "cli_file": "redis-cli",
-      "install_method": "package_manager",
-      "package_manager_commands": {
-        "ubuntu": [
-          "sudo apt-get update",
-          "sudo apt-get install -y redis-server",
-          "sudo systemctl disable --now redis-server"
-        ],
-        "debian": [
-          "sudo apt-get update",
-          "sudo apt-get install -y redis-server",
-          "sudo systemctl disable --now redis-server"
-        ],
-        "centos": [
-          "sudo dnf install -y redis",
-          "sudo systemctl disable --now redis"
-        ],
-        "fedora": [
-          "sudo dnf install -y redis",
-          "sudo systemctl disable --now redis"
-        ]
-      },
-      "versions": {
-        "system": "package_manager"
-      }
+      "versions": {}
     },
     {
       "id": "mongodb",
@@ -439,30 +249,7 @@
       "group_name": "database",
       "exec_file": "postgres",
       "cli_file": "psql",
-      "install_method": "package_manager",
-      "package_manager_commands": {
-        "ubuntu": [
-          "sudo apt-get update",
-          "sudo apt-get install -y postgresql postgresql-contrib",
-          "sudo systemctl disable --now postgresql"
-        ],
-        "debian": [
-          "sudo apt-get update",
-          "sudo apt-get install -y postgresql postgresql-contrib",
-          "sudo systemctl disable --now postgresql"
-        ],
-        "centos": [
-          "sudo dnf install -y postgresql-server postgresql-contrib",
-          "sudo systemctl disable --now postgresql"
-        ],
-        "fedora": [
-          "sudo dnf install -y postgresql-server postgresql-contrib",
-          "sudo systemctl disable --now postgresql"
-        ]
-      },
-      "versions": {
-        "system": "package_manager"
-      }
+      "versions": {}
     },
     {
       "id": "phpMyAdmin",
