@@ -7,6 +7,7 @@ const vm = require('node:vm');
 
 const repo = 'ngotuananh101/devstack-app-builder';
 const api = `https://api.github.com/repos/${repo}/releases?per_page=100&page=`;
+const assetsApi = (id) => `https://api.github.com/repos/${repo}/releases/${id}/assets?per_page=100&page=`;
 const digest = 'a'.repeat(64);
 
 function asset(version, variant = 'glibc-full-x86_64', build = 'abcdef0123456789') {
@@ -16,6 +17,12 @@ function asset(version, variant = 'glibc-full-x86_64', build = 'abcdef0123456789
     browser_download_url: `https://github.com/${repo}/releases/download/runtime-1/${name}`,
     digest: `sha256:${digest}`,
   };
+}
+
+// Every release is scanned through its own paginated assets endpoint, so each
+// fixture release needs an id and the assets it exposes there.
+function release(id, assets, extra = {}) {
+  return { id, tag_name: `runtimes-2026-11-0${id}`, draft: false, prerelease: false, assets, ...extra };
 }
 
 function updater(fetch, dataDir = path.resolve('assets/data')) {
@@ -35,6 +42,32 @@ function response(data, { status = 200, next } = {}) {
     ok: status >= 200 && status < 300, status,
     headers: { get: (name) => name.toLowerCase() === 'link' && next ? `<${next}>; rel="next"` : null },
     json: async () => data,
+  };
+}
+
+// Routes release pages and their per-release asset pages, exactly like the
+// real builder API; anything else is a fixture mistake. A release's assets may
+// be given as one page or as a list of pages.
+function network(releasePages, calls = []) {
+  const assetsById = {};
+  for (const page of releasePages) {
+    for (const r of page) assetsById[r.id] = r.assets;
+  }
+  return async (url) => {
+    calls.push(url);
+    const releasePage = url.startsWith(api) ? Number(url.slice(api.length)) - 1 : null;
+    if (releasePage !== null) {
+      if (!releasePages[releasePage]) throw Error(`No fixture for release page ${url}`);
+      return response(releasePages[releasePage], { next: releasePages[releasePage + 1] ? api + (releasePage + 2) : null });
+    }
+    const assetPage = /releases\/(\d+)\/assets\?per_page=100&page=(\d+)$/.exec(url);
+    if (assetPage) {
+      const pages = Array.isArray(assetsById[assetPage[1]]?.[0]) ? assetsById[assetPage[1]] : [assetsById[assetPage[1]] ?? []];
+      const page = pages[Number(assetPage[2]) - 1];
+      if (!page) throw Error(`No fixture for assets page ${url}`);
+      return response(page, { next: pages[Number(assetPage[2])] ? assetsApi(assetPage[1]) + (Number(assetPage[2]) + 1) : null });
+    }
+    throw Error(`Unexpected request: ${url}`);
   };
 }
 
@@ -114,32 +147,30 @@ test('discovers all PHP patches across pages once for all minors', async () => {
   const a = asset('8.4.27');
   const b = asset('8.4.26');
   const c = asset('8.5.1');
-  const u = updater(async (url) => {
-    calls.push(url);
-    if (url === api + '1') return response([{ assets: [a] }], { next: api + '2' });
-    if (url === api + '2') return response([{ assets: [b, c] }]);
-    throw Error(`Unexpected request: ${url}`);
-  });
+  const u = updater(network([[release(3, [a])], [release(2, [b, c])]], calls));
   const [php84, php85] = await Promise.all([u.fetchersLinux.php('8.4'), u.fetchersLinux.php('8.5')]);
   assert.deepEqual(plain(php84.versions), { '8.4.27': a.browser_download_url, '8.4.26': b.browser_download_url });
   assert.deepEqual(plain(php84.sha256), { '8.4.27': digest, '8.4.26': digest });
   assert.deepEqual(plain(php85.versions), { '8.5.1': c.browser_download_url });
-  assert.deepEqual(calls, [api + '1', api + '2']);
+  assert.deepEqual(calls, [
+    api + '1', api + '2',
+    assetsApi(3) + '1', assetsApi(2) + '1',
+  ]);
 });
 
 test('skips non-portable assets and draft/prerelease builds', async () => {
   const good = asset('8.4.27');
-  const u = updater(async () => response([
-    { draft: true, assets: [asset('8.4.29')] },
-    { prerelease: true, assets: [asset('8.4.28')] },
-    { assets: [good, asset('8.4.30', 'musl-full-x86_64'), asset('8.4.31', 'glibc-minimal-x86_64'), asset('8.4.32', 'glibc-full-aarch64'), { name: 'php-8.4.33.tar.gz', browser_download_url: 'https://example.com/source.tar.gz' }] },
+  const u = updater(network([
+    [release(1, [], { draft: true })],
+    [release(2, [], { prerelease: true })],
+    [release(3, [good, asset('8.4.30', 'musl-full-x86_64'), asset('8.4.31', 'glibc-minimal-x86_64'), asset('8.4.32', 'glibc-full-aarch64'), { name: 'php-8.4.33.tar.gz', browser_download_url: 'https://example.com/source.tar.gz' }])],
   ]));
   assert.deepEqual(plain((await u.fetchersLinux.php('8.4')).versions), { '8.4.27': good.browser_download_url });
 });
 
 test('prefers newest release build and does not attach an invalid digest', async () => {
   const newest = { ...asset('8.4.27', undefined, 'bbbbbbbbbbbbbbbb'), digest: 'sha256:bad' };
-  const u = updater(async () => response([{ assets: [newest] }, { assets: [asset('8.4.27')] }]));
+  const u = updater(network([[release(2, [newest])], [release(1, [asset('8.4.27')])]]));
   const result = await u.fetchersLinux.php('8.4');
   assert.deepEqual(plain(result.versions), { '8.4.27': newest.browser_download_url });
   assert.deepEqual(plain(result.sha256), {});

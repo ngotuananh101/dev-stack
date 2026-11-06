@@ -702,6 +702,14 @@ class AppInstallerService {
       onProgress?.call(0.96, 'Initializing PostgreSQL...');
       await _initializePostgresql(app, version, installPath, logInfo);
     }
+
+    // A portable Redis bundle carries no `redis.conf`, but the service manager
+    // launches `redis-server` with one; without it the server exits
+    // immediately. Only Linux uses the portable bundle.
+    if (Platform.isLinux && app.appId == 'redis') {
+      onProgress?.call(0.96, 'Configuring Redis...');
+      await configureIsolatedRedis(app, logInfo);
+    }
   }
 
   /// On Windows, Bun ships `bun.exe` but not `bunx.exe`. `bunx` is the package

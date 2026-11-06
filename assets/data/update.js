@@ -345,80 +345,171 @@ const fetchersWindows = {
   },
 };
 
-const PHP_BUILDER_REPO = "ngotuananh101/devstack-app-builder";
+const BUILDER_REPO = "ngotuananh101/devstack-app-builder";
+const BUILDER_API_ORIGIN = "https://api.github.com";
+const BUILDER_RELEASES_PATH = `/repos/${BUILDER_REPO}/releases`;
+// Only fully static musl Redis bundles are accepted: a glibc build carries a
+// host floor that cannot be verified here, and the builder publishes both.
 const PHP_BUNDLE_ASSET = /^php-(\d+\.\d+\.\d+)-glibc-full-x86_64-([a-f0-9]{16})\.tar\.gz$/;
-let phpReleaseIndex;
+const REDIS_BUNDLE_ASSET = /^redis-(\d+\.\d+\.\d+)-musl-x86_64-([a-f0-9]{16})\.tar\.gz$/;
+const BUILDER_BUNDLES = [
+  { runtime: "php", pattern: PHP_BUNDLE_ASSET },
+  { runtime: "redis", pattern: REDIS_BUNDLE_ASSET },
+];
+let builderReleaseIndex;
 
-function phpBundleVersion(url) {
+function builderBundleVersion(url, assetPattern, expectedAssetName = null) {
   try {
     const parsed = new URL(url);
     if (
       parsed.protocol !== "https:" || parsed.hostname !== "github.com" ||
       parsed.username || parsed.password || parsed.port || parsed.search || parsed.hash ||
-      !parsed.pathname.startsWith(`/${PHP_BUILDER_REPO}/releases/download/`)
+      !parsed.pathname.startsWith(`/${BUILDER_REPO}/releases/download/`)
     ) return null;
-    return PHP_BUNDLE_ASSET.exec(path.posix.basename(parsed.pathname))?.[1] ?? null;
+    const assetName = path.posix.basename(parsed.pathname);
+    if (expectedAssetName != null && assetName !== expectedAssetName) return null;
+    return assetPattern.exec(assetName)?.[1] ?? null;
   } catch (_) {
     return null;
   }
 }
 
-async function fetchPhpReleaseIndex() {
-  const versions = {};
-  const sha256 = {};
-  let url = `https://api.github.com/repos/${PHP_BUILDER_REPO}/releases?per_page=100&page=1`;
-  const visited = new Set();
-  const headers = {
+function builderLinkIsValid(url, pathPattern) {
+  try {
+    const parsed = new URL(url);
+    return parsed.origin === BUILDER_API_ORIGIN && !parsed.username &&
+      !parsed.password && !parsed.port && !parsed.hash &&
+      pathPattern.test(parsed.pathname);
+  } catch (_) {
+    return false;
+  }
+}
+
+// Never follow a server-supplied link off the builder API: only this
+// repository's release and release-asset pathnames are acceptable targets.
+const BUILDER_RELEASE_PATH = new RegExp(`^${BUILDER_RELEASES_PATH}$`);
+
+function builderHeaders() {
+  return {
     Accept: "application/vnd.github+json",
     "User-Agent": "Ponta-Update",
     ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
   };
+}
+
+async function fetchBuilderReleasePages() {
+  const releases = [];
+  let url = `${BUILDER_API_ORIGIN}${BUILDER_RELEASES_PATH}?per_page=100&page=1`;
+  const visited = new Set();
   while (url) {
-    if (visited.has(url)) throw new Error("Repeated PHP release pagination link");
-    const parsed = new URL(url);
-    if (parsed.origin !== "https://api.github.com" || parsed.pathname !== `/repos/${PHP_BUILDER_REPO}/releases`) {
-      throw new Error("Invalid PHP release pagination link");
+    if (visited.has(url)) throw new Error("Repeated builder release pagination link");
+    if (!builderLinkIsValid(url, BUILDER_RELEASE_PATH)) {
+      throw new Error("Invalid builder release pagination link");
     }
     visited.add(url);
-    const res = await fetch(url, { headers });
-    if (!res.ok) throw new Error(`PHP release index returned HTTP ${res.status}`);
-    const releases = await res.json();
-    if (!Array.isArray(releases)) throw new Error("Malformed PHP release index");
-    for (const release of releases) {
-      if (!release || !Array.isArray(release.assets)) throw new Error("Malformed PHP release entry");
-      if (release.draft || release.prerelease) continue;
-      for (const asset of release.assets) {
-        const match = PHP_BUNDLE_ASSET.exec(asset.name);
-        if (!match || phpBundleVersion(asset.browser_download_url) !== match[1]) continue;
-        const version = match[1];
-        // GitHub returns newest releases first; never replace a newer build.
-        if (versions[version]) continue;
-        versions[version] = asset.browser_download_url;
-        const digest = /^sha256:([a-f0-9]{64})$/i.exec(asset.digest ?? "");
-        if (digest) sha256[version] = digest[1].toLowerCase();
+    const res = await fetch(url, { headers: builderHeaders() });
+    if (!res.ok) throw new Error(`Builder release index returned HTTP ${res.status}`);
+    const page = await res.json();
+    if (!Array.isArray(page)) throw new Error("Malformed builder release index");
+    for (const release of page) {
+      if (!release || typeof release !== "object") {
+        throw new Error("Malformed builder release entry");
       }
+      if (release.draft || release.prerelease) continue;
+      if (!Number.isSafeInteger(release.id) || release.id <= 0) {
+        throw new Error("Malformed builder release identity");
+      }
+      releases.push(release);
     }
     url = res.headers.get("link")?.match(/<([^>]+)>;\s*rel="next"/)?.[1] ?? null;
   }
+  return releases;
+}
+
+// A release's embedded asset list can be truncated, so every stable release is
+// scanned through its own paginated assets endpoint.
+async function fetchBuilderReleaseAssets(releaseId) {
+  const pathname = `${BUILDER_RELEASES_PATH}/${releaseId}/assets`;
+  const pattern = new RegExp(`^${pathname}$`);
+  const assets = [];
+  let url = `${BUILDER_API_ORIGIN}${pathname}?per_page=100&page=1`;
+  const visited = new Set();
+  while (url) {
+    if (visited.has(url)) throw new Error("Repeated builder asset pagination link");
+    if (!builderLinkIsValid(url, pattern)) {
+      throw new Error("Invalid builder asset pagination link");
+    }
+    visited.add(url);
+    const res = await fetch(url, { headers: builderHeaders() });
+    if (!res.ok) throw new Error(`Builder asset index returned HTTP ${res.status}`);
+    const page = await res.json();
+    if (!Array.isArray(page)) throw new Error("Malformed builder asset index");
+    for (const asset of page) {
+      if (!asset || typeof asset !== "object") {
+        throw new Error("Malformed builder asset entry");
+      }
+      assets.push(asset);
+    }
+    url = res.headers.get("link")?.match(/<([^>]+)>;\s*rel="next"/)?.[1] ?? null;
+  }
+  return assets;
+}
+
+// One complete, historical scan shared by every PHP minor and by Redis.
+async function fetchBuilderReleaseIndex() {
+  const index = { php: { versions: {}, sha256: {} }, redis: { versions: {}, sha256: {} } };
+  const releases = await fetchBuilderReleasePages();
+  for (const release of releases) {
+    const assets = await fetchBuilderReleaseAssets(release.id);
+    for (const asset of assets) {
+      for (const { runtime, pattern } of BUILDER_BUNDLES) {
+        const match = pattern.exec(asset.name ?? "");
+        // The URL basename must name the exact bundle claimed by `name`.
+        if (!match || builderBundleVersion(asset.browser_download_url, pattern, asset.name) !== match[1]) continue;
+        const version = match[1];
+        // GitHub returns newest releases first; never replace a newer build.
+        if (index[runtime].versions[version]) continue;
+        index[runtime].versions[version] = asset.browser_download_url;
+        const digest = /^sha256:([a-f0-9]{64})$/i.exec(asset.digest ?? "");
+        if (digest) index[runtime].sha256[version] = digest[1].toLowerCase();
+        break;
+      }
+    }
+  }
+  return index;
+}
+
+function builderRuntimeIndex(runtime) {
+  builderReleaseIndex ??= fetchBuilderReleaseIndex();
+  return builderReleaseIndex.then((index) => index[runtime]);
+}
+
+function selectBuilderRuntime(runtimeIndex, accept) {
+  const versions = Object.fromEntries(
+    sortVersions(Object.keys(runtimeIndex.versions))
+      .filter(accept)
+      .map((version) => [version, runtimeIndex.versions[version]]),
+  );
+  const sha256 = Object.fromEntries(
+    Object.keys(versions).filter((version) => runtimeIndex.sha256[version])
+      .map((version) => [version, runtimeIndex.sha256[version]]),
+  );
   return { versions, sha256 };
 }
 
 // === CÁC HÀM FETCH DỮ LIỆU LINUX ===
 
 const fetchersLinux = {
+  // Portable-builder runtimes abort the whole run on a discovery failure; every
+  // other runtime keeps the previous best-effort behavior.
+  isBuilderBacked: (app) => isPortablePhpApp(app) || isPortableRedisApp(app),
   async php(prefix) {
-    phpReleaseIndex ??= fetchPhpReleaseIndex();
-    const index = await phpReleaseIndex;
-    const versions = Object.fromEntries(
-      sortVersions(Object.keys(index.versions))
-        .filter((version) => version.startsWith(`${prefix}.`))
-        .map((version) => [version, index.versions[version]]),
+    return selectBuilderRuntime(await builderRuntimeIndex("php"), (version) =>
+      version.startsWith(`${prefix}.`),
     );
-    const sha256 = Object.fromEntries(
-      Object.keys(versions).filter((version) => index.sha256[version])
-        .map((version) => [version, index.sha256[version]]),
-    );
-    return { versions, sha256 };
+  },
+  async redis() {
+    return selectBuilderRuntime(await builderRuntimeIndex("redis"), () => true);
   },
   nodejs() {
     return fetchNodejsReleases({
@@ -929,6 +1020,9 @@ async function fetchAppVersions(app, fetchers, platformName) {
       });
     }
   } catch (err) {
+    // An incomplete builder scan must never be published as availability: it
+    // would silently drop every bundle the scan did not reach.
+    if (fetchers.isBuilderBacked?.(app)) throw err;
     console.error(
       `[${platformName}] Lỗi khi lấy dữ liệu cho ${app.name}:`,
       err.message,
@@ -941,10 +1035,24 @@ function isPortablePhpApp(app) {
   return app.group_name === "php" && app.exec_file === "php-fpm";
 }
 
+// Linux Redis ships only as a portable builder archive; Windows keeps the
+// third-party `zkteco-home/redis-windows` GitHub release fetcher.
+function isPortableRedisApp(app) {
+  return app.id === "redis" && app.exec_file === "redis-server";
+}
+
+function portableBundleRuntime(app) {
+  if (isPortablePhpApp(app)) return "php";
+  if (isPortableRedisApp(app)) return "redis";
+  return null;
+}
+
+const PORTABLE_BUNDLE_ASSETS = { php: PHP_BUNDLE_ASSET, redis: REDIS_BUNDLE_ASSET };
+
 function applyFetchedVersions(app, fetchedResult) {
   if (!fetchedResult) return;
 
-  if (isPortablePhpApp(app)) {
+  if (portableBundleRuntime(app)) {
     app.versions = Object.fromEntries(
       sortVersions(Object.keys(fetchedResult.versions ?? {}))
         .map((version) => [version, fetchedResult.versions[version]]),
@@ -975,14 +1083,17 @@ function applyFetchedVersions(app, fetchedResult) {
 function applyFallbackVersions(app, oldData, fetchedResult = null, platformName = null) {
   // These Linux runtimes have no supported portable distribution yet.
   // Cached source/package archives must not make them installable again.
-  if (platformName === "Linux" && ["apache", "redis", "postgresql"].includes(app.id)) return;
+  if (platformName === "Linux" && ["apache", "postgresql"].includes(app.id)) return;
   const oldApp = oldData?.apps?.find((a) => a.id === app.id);
-  if (isPortablePhpApp(app)) {
+  const runtime = portableBundleRuntime(app);
+  if (runtime) {
+    const assetPattern = PORTABLE_BUNDLE_ASSETS[runtime];
     if (fetchedResult == null) {
       app.versions = Object.fromEntries(
         sortVersions(Object.keys(oldApp?.versions ?? {}))
-          .filter((version) => version.startsWith(`${app.prefix}.`) &&
-            phpBundleVersion(oldApp.versions[version]) === version)
+          .filter((version) =>
+            (app.prefix == null || version.startsWith(`${app.prefix}.`)) &&
+            builderBundleVersion(oldApp.versions[version], assetPattern) === version)
           .map((version) => [version, oldApp.versions[version]]),
       );
     }
@@ -1039,21 +1150,20 @@ async function updatePlatformCatalog({
   const hasChanged =
     JSON.stringify(catalogObject.apps) !== JSON.stringify(oldData?.apps);
 
-  if (hasChanged || !oldData) {
-    catalogObject.lastUpdated = new Date().toISOString();
-    await fs.writeFile(
-      outputPath,
-      JSON.stringify(catalogObject, null, 2),
-      "utf8",
-    );
-    console.log(
-      `[${new Date().toLocaleString()}] [${platformName}] Thành công: Đã cập nhật ${outputFileName}.`,
-    );
-  } else {
-    console.log(
-      `[${new Date().toLocaleString()}] [${platformName}] Hoàn tất: Không có thay đổi nào.`,
-    );
-  }
+  // Every successful run must materialize the output the publication step
+  // consumes; a fresh checkout has no generated file at all. Unchanged data
+  // keeps the previously published timestamp so consumers do not see churn.
+  catalogObject.lastUpdated = hasChanged || !oldData?.lastUpdated
+    ? new Date().toISOString()
+    : oldData.lastUpdated;
+  await fs.writeFile(
+    outputPath,
+    JSON.stringify(catalogObject, null, 2),
+    "utf8",
+  );
+  console.log(
+    `[${new Date().toLocaleString()}] [${platformName}] Thành công: ${hasChanged ? "Đã cập nhật" : "Không có thay đổi, giữ nguyên"} ${outputFileName}.`,
+  );
 }
 
 async function main() {
