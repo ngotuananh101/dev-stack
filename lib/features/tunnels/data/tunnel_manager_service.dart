@@ -223,11 +223,24 @@ class TunnelManagerService {
 
         var next = current.copyWith(logs: updatedLogs);
 
-        final publicUrl = driver.parsePublicUrl(line);
+        final publicUrl = driver.parsePublicUrl(
+          line,
+          customDomain: tunnel.customDomain,
+        );
         if (publicUrl != null) {
           next = next.copyWith(
             status: TunnelStatus.running,
             publicUrl: publicUrl,
+          );
+        }
+
+        // Token tunnels never print their URL: a registered connection is the
+        // readiness signal, and the configured custom domain is the best URL
+        // until (or unless) the logged ingress config names one.
+        if (driver.isConnectionEstablished(line)) {
+          next = next.copyWith(
+            status: TunnelStatus.running,
+            publicUrl: next.publicUrl ?? customDomainUrl(tunnel.customDomain),
           );
         }
 

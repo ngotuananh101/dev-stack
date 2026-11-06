@@ -463,6 +463,16 @@ class TunnelTable extends StatelessWidget {
       );
     }
 
+    // A token tunnel with no custom domain is reachable, but only the provider
+    // dashboard knows on which hostname.
+    if (status == TunnelStatus.running) {
+      return const Text(
+        'Connected (route set in provider dashboard)',
+        style: TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
     if (status == TunnelStatus.connecting ||
         status == TunnelStatus.downloadingBinary) {
       return Column(

@@ -1,11 +1,14 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'hosts_repository.dart';
 
 part 'hosts_provider.g.dart';
 
+final hostsRepositoryProvider = Provider<HostsRepository>((ref) => HostsRepository());
+
 @riverpod
 class Hosts extends _$Hosts {
-  final _repository = HostsRepository();
+  HostsRepository get _repository => ref.read(hostsRepositoryProvider);
 
   @override
   Future<String> build() async {
@@ -19,7 +22,10 @@ class Hosts extends _$Hosts {
   Future<bool> save() async {
     final current = state.value ?? '';
     final success = await _repository.saveHostsRaw(current);
-    if (success) {
+    // The page only reads this auto-dispose provider, so it can be disposed
+    // while pkexec/UAC waits for the password. The file is already written by
+    // then; there is just no state left to refresh.
+    if (success && ref.mounted) {
       ref.invalidateSelf();
     }
     return success;

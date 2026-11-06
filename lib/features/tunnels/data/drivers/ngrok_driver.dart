@@ -48,7 +48,7 @@ class NgrokDriver implements TunnelDriver {
   }
 
   @override
-  String? parsePublicUrl(String logLine) {
+  String? parsePublicUrl(String logLine, {String? customDomain}) {
     try {
       if (logLine.trim().startsWith('{') && logLine.trim().endsWith('}')) {
         final data = jsonDecode(logLine) as Map<String, dynamic>;
@@ -64,6 +64,11 @@ class NgrokDriver implements TunnelDriver {
     final match = _fallbackUrlRegex.firstMatch(logLine);
     return match?.group(0);
   }
+
+  // ngrok always logs the public URL once the tunnel is up, so readiness is
+  // detected through [parsePublicUrl].
+  @override
+  bool isConnectionEstablished(String logLine) => false;
 
   @override
   String? parseInspectorUrl(String logLine) {

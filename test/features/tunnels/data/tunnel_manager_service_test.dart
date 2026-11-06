@@ -116,6 +116,72 @@ void main() {
     expect(runningSession?.publicUrl, equals('https://purple-butterfly-123.trycloudflare.com'));
   });
 
+  group('Cloudflare token tunnels', () {
+    // A token tunnel never prints a *.trycloudflare.com URL; it only reports
+    // the registered edge connections (and the dashboard ingress config).
+    const registeredLine = '2026-11-06T02:10:11Z INF Registered tunnel connection connIndex=0 '
+        'connection=8f1c6a1e-2b7d-4e0a-9a51-3d0c2f6b7e44 event=0 ip=198.41.192.7 location=sin12 protocol=quic\n';
+    const configLine = r'2026-11-06T02:10:11Z INF Updated to new configuration '
+        r'config="{\"ingress\":[{\"hostname\":\"app.example.com\",\"service\":\"http://localhost:80\"},'
+        r'{\"service\":\"http_status:404\"}]}" version=3'
+        '\n';
+
+    Future<void> emit(String line) async {
+      fakeProcess.stderrController.add(utf8.encode(line));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+
+    test('runs on the custom domain once a connection is registered', () async {
+      final tunnel = TunnelModel(
+        id: 4,
+        name: 'Domain Tunnel',
+        provider: 'cloudflare',
+        authToken: 'cf_token_12345',
+        customDomain: 'https://app.example.com/',
+      );
+
+      await manager.startTunnel(tunnel);
+      await emit(registeredLine);
+
+      final session = manager.getSession(4);
+      expect(session?.status, equals(TunnelStatus.running));
+      expect(session?.publicUrl, equals('https://app.example.com'));
+    });
+
+    test('runs on the dashboard hostname when no custom domain is set', () async {
+      final tunnel = TunnelModel(
+        id: 5,
+        name: 'Dashboard Tunnel',
+        provider: 'cloudflare',
+        authToken: 'cf_token_12345',
+      );
+
+      await manager.startTunnel(tunnel);
+      await emit(registeredLine);
+      await emit(configLine);
+
+      final session = manager.getSession(5);
+      expect(session?.status, equals(TunnelStatus.running));
+      expect(session?.publicUrl, equals('https://app.example.com'));
+    });
+
+    test('runs without a URL when neither a domain nor a hostname is known', () async {
+      final tunnel = TunnelModel(
+        id: 6,
+        name: 'Bare Tunnel',
+        provider: 'cloudflare',
+        authToken: 'cf_token_12345',
+      );
+
+      await manager.startTunnel(tunnel);
+      await emit(registeredLine);
+
+      final session = manager.getSession(6);
+      expect(session?.status, equals(TunnelStatus.running));
+      expect(session?.publicUrl, isNull);
+    });
+  });
+
   test('transitions from connecting to running when ngrok emits JSON log to stdout', () async {
     final tunnel = TunnelModel(
       id: 3,
