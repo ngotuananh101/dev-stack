@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
-/// Utility to detect the current Linux distribution family and resolve
-/// distro-specific download URL placeholders (e.g. `{distro}`, `{mongo_distro}`)
+/// Utility to detect Linux distribution info and resolve
+/// distro-specific download URL placeholders (e.g. `{mongo_distro}`, `{version_id}`)
 /// based on `/etc/os-release`.
 class LinuxDistroResolver {
   /// Parses `/etc/os-release` key-value pairs.
@@ -27,7 +27,7 @@ class LinuxDistroResolver {
   }
 
   /// Detects the distro codename (e.g. noble, jammy, focal, bookworm).
-  static String detectCodename({String? osReleaseContent, bool? isLinux}) {
+  static String _detectCodename({String? osReleaseContent, bool? isLinux}) {
     final linux = isLinux ?? Platform.isLinux;
     if (!linux) return 'jammy';
 
@@ -62,33 +62,10 @@ class LinuxDistroResolver {
     return 'jammy'; // Safe modern LTS default (glibc 2.35)
   }
 
-  /// Maps detected distro codename to the best available Valkey distribution target.
-  @visibleForTesting
-  static String resolveValkeyDistro({String? osReleaseContent, bool? isLinux}) {
-    final codename = detectCodename(
-      osReleaseContent: osReleaseContent,
-      isLinux: isLinux,
-    );
-
-    // Valkey official binaries support: noble (24.04), jammy (22.04), focal (20.04)
-    switch (codename) {
-      case 'noble':
-      case 'trixie':
-        return 'noble';
-      case 'focal':
-        return 'focal';
-      case 'jammy':
-      case 'bookworm':
-      case 'bullseye':
-      default:
-        return 'jammy';
-    }
-  }
-
   /// Maps detected distro codename to the best available MongoDB distribution target.
   @visibleForTesting
   static String resolveMongoDistro({String? osReleaseContent, bool? isLinux}) {
-    final codename = detectCodename(
+    final codename = _detectCodename(
       osReleaseContent: osReleaseContent,
       isLinux: isLinux,
     );
@@ -132,8 +109,7 @@ class LinuxDistroResolver {
     return '41';
   }
 
-  /// Resolves any template placeholders in download URLs and package manager commands:
-  /// - `{distro}` or `{valkey_distro}` -> `noble` / `jammy` / `focal`
+  /// Resolves any template placeholders in download URLs:
   /// - `{mongo_distro}` -> `ubuntu2404` / `ubuntu2204` / `ubuntu2004` / `debian12`
   /// - `{version_id}` -> `41` / `40` / `12` / `24.04`
   static String resolveUrl(
@@ -143,10 +119,6 @@ class LinuxDistroResolver {
   }) {
     if (!url.contains('{')) return url;
 
-    final valkeyDistro = resolveValkeyDistro(
-      osReleaseContent: osReleaseContent,
-      isLinux: isLinux,
-    );
     final mongoDistro = resolveMongoDistro(
       osReleaseContent: osReleaseContent,
       isLinux: isLinux,
@@ -157,77 +129,9 @@ class LinuxDistroResolver {
     );
 
     var resolved = url
-        .replaceAll('{distro}', valkeyDistro)
-        .replaceAll('{valkey_distro}', valkeyDistro)
         .replaceAll('{mongo_distro}', mongoDistro)
         .replaceAll('{version_id}', versionId);
 
     return resolved;
-  }
-
-  /// Maps `/etc/os-release` ID/ID_LIKE to the package-manager family used by
-  /// `package_manager_commands` keys in the catalog: `ubuntu`, `debian`, `centos`,
-  /// `fedora`, or `arch`. Distros that match no known family fall back to
-  /// `ubuntu` (the largest derivative family). Returns `unknown` only when
-  /// detection is impossible (non-Linux or unreadable os-release) — callers
-  /// decide their own fallback.
-  ///
-  /// Note: `arch` is returned even though the bundled catalog defines no
-  /// `package_manager_commands` entry for it, so that package-manager callers
-  /// fail with an explicit "unsupported distribution" message instead of
-  /// silently running apt-get on a system that has no apt.
-  static String detectFamily({String? osReleaseContent, bool? isLinux}) {
-    final linux = isLinux ?? Platform.isLinux;
-    if (!linux) return 'unknown';
-
-    try {
-      String content = osReleaseContent ?? '';
-      if (osReleaseContent == null) {
-        final file = File('/etc/os-release');
-        if (file.existsSync()) {
-          content = file.readAsStringSync();
-        }
-      }
-      if (content.isEmpty) return 'ubuntu';
-
-      final parsed = parseOsRelease(content);
-      final id = (parsed['ID'] ?? '').toLowerCase();
-      final idLike = (parsed['ID_LIKE'] ?? '').toLowerCase();
-
-      // Ubuntu family (includes derivatives like linuxmint, pop, neon)
-      if (id == 'ubuntu' || idLike.contains('ubuntu')) return 'ubuntu';
-      // Debian proper (surv.org repo flow differs from the Ubuntu PPA flow)
-      if (id == 'debian' || idLike.contains('debian')) return 'debian';
-      // Enterprise Linux / RedHat family (rhel, rocky, almalinux, ol, centos derivatives).
-      // Note: RHEL clones often have ID_LIKE="rhel centos fedora" or ID_LIKE="fedora" (e.g. ol),
-      // so we match Enterprise Linux IDs and centos/rhel ID_LIKE before pure Fedora.
-      if (id == 'centos' ||
-          id == 'rhel' ||
-          id == 'rocky' ||
-          id == 'almalinux' ||
-          id == 'ol' ||
-          idLike.contains('centos') ||
-          idLike.contains('rhel')) {
-        return 'centos';
-      }
-      // Fedora family (upstream of RHEL; uses native dnf packages without EPEL or EL9 RPMs)
-      if (id == 'fedora' || idLike.contains('fedora')) {
-        return 'fedora';
-      }
-      // Arch family (arch itself, plus derivatives such as manjaro and endeavour
-      // that declare ID_LIKE="arch"). Arch has no `package_manager_commands`
-      // entry in the catalog, so callers must handle it explicitly rather than
-      // letting it fall through to the ubuntu default below — which would run
-      // apt-get on a system that has no apt.
-      if (id == 'arch' || idLike.contains('arch')) {
-        return 'arch';
-      }
-
-      // ID_LIKE with multiple values (e.g. "debian ubuntu") — first match wins
-      // in the order above, so reaching here means no known family.
-      return 'ubuntu';
-    } catch (_) {
-      return 'ubuntu';
-    }
   }
 }

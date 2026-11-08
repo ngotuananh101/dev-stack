@@ -2710,15 +2710,6 @@ security:
     _logger.info('Removed Composer wrappers');
   }
 
-  /// Extracts the PHP version prefix from an appId (e.g. `php82` -> `8.2`,
-  /// `php83` -> `8.3`). Returns null if the appId doesn't follow the
-  /// `php<major><minor>` convention.
-  static String? phpPrefixFor(String appId) {
-    final match = RegExp(r'^php(\d)(\d+)$').firstMatch(appId);
-    if (match == null) return null;
-    return '${match.group(1)}.${match.group(2)}';
-  }
-
   /// Find installed executable in system PATH and standard candidate directories.
   ///
   /// Resolution order:

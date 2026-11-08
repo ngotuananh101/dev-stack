@@ -1,16 +1,10 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/services/background_process.dart';
-import '../../../core/services/linux_distro_resolver.dart';
 import '../domain/app_model.dart';
 import '../domain/php_extension.dart';
 import 'php_runtime_bundle.dart';
-import 'app_installer_service.dart';
-import 'linux_php_extension_driver.dart';
-import 'linux_php_extension_manager.dart';
-import 'linux_php_introspector.dart';
 export '../domain/php_extension.dart';
 
 part 'php_settings_provider.g.dart';
@@ -65,10 +59,6 @@ class PhpSettings extends _$PhpSettings {
     AppModel app, [
     String? iniContent,
   ]) async {
-    if (Platform.isLinux &&
-        app.location == 'system_package') {
-      return getLinuxExtensions(app);
-    }
     if (app.location == null) return [];
     final bundle = Platform.isLinux
         ? PhpRuntimeBundle.load(app.location!)
@@ -195,11 +185,6 @@ class PhpSettings extends _$PhpSettings {
     bool enable, {
     Future<ProcessResult> Function(String, List<String>)? runProcess,
   }) async {
-    if (Platform.isLinux &&
-        app.location == 'system_package') {
-      return toggleLinuxExtension(app, ext, enable);
-    }
-
     final bundle = Platform.isLinux && app.location != null
         ? PhpRuntimeBundle.load(app.location!)
         : null;
@@ -308,104 +293,5 @@ class PhpSettings extends _$PhpSettings {
       modules.add(name);
     }
     return modules;
-  }
-
-  @visibleForTesting
-  Future<List<PhpExtension>> getLinuxExtensions(
-    AppModel app, {
-    String? familyOverride,
-    LinuxPhpExtensionManager? managerOverride,
-  }) async {
-    final family = familyOverride ?? LinuxDistroResolver.detectFamily();
-    final driver = driverForFamily(family);
-    if (driver == null) {
-      throw UnsupportedError(
-        'PHP extensions are not supported on this Linux distribution ($family).',
-      );
-    }
-    final binaryPath = app.execFilePath;
-    if (binaryPath == null || binaryPath.isEmpty) {
-      throw StateError('No php-fpm binary recorded for ${app.appId}.');
-    }
-    final manager =
-        managerOverride ??
-        LinuxPhpExtensionManager.forApp(app: app, driver: driver);
-    final phpVersion = _linuxPhpVersion(app); // e.g. 'php85' -> '8.5'
-    try {
-      return await manager.listExtensions(
-        binaryPath: binaryPath,
-        phpVersion: phpVersion,
-      );
-    } on LinuxPhpDiscoveryUnavailable catch (e) {
-      throw UnsupportedError(e.message);
-    }
-  }
-
-  @visibleForTesting
-  Future<String?> toggleLinuxExtension(
-    AppModel app,
-    PhpExtension ext,
-    bool enable, {
-    String? familyOverride,
-    LinuxPhpExtensionManager? managerOverride,
-    LinuxPhpIntrospector? introspectorOverride,
-    ({String? scanDir, List<String> parsedIniFiles})? infoOverride,
-  }) async {
-    final family = familyOverride ?? LinuxDistroResolver.detectFamily();
-    final driver = driverForFamily(family);
-    if (driver == null) {
-      throw UnsupportedError(
-        'PHP extensions are not supported on this Linux distribution ($family).',
-      );
-    }
-    final binaryPath = app.execFilePath;
-    if (binaryPath == null || binaryPath.isEmpty) {
-      throw StateError('No php-fpm binary recorded for ${app.appId}.');
-    }
-    final phpVersion = _linuxPhpVersion(app);
-
-    String? scanDir;
-    List<String> parsedIniFiles;
-    if (infoOverride != null) {
-      scanDir = infoOverride.scanDir;
-      parsedIniFiles = infoOverride.parsedIniFiles;
-    } else {
-      final info = await (introspectorOverride ?? LinuxPhpIntrospector())
-          .readInfo(binaryPath);
-      scanDir = info.scanDir;
-      parsedIniFiles = info.scannedIniFiles;
-    }
-    if (scanDir == null) {
-      throw StateError(
-        'PHP-FPM reported no scan directory for $binaryPath; '
-        'there is nowhere to write the extension ini file.',
-      );
-    }
-
-    final manager =
-        managerOverride ??
-        LinuxPhpExtensionManager.forApp(app: app, driver: driver);
-    return manager.applyToggle(
-      binaryPath: binaryPath,
-      phpVersion: phpVersion,
-      scanDir: scanDir,
-      parsedIniFiles: parsedIniFiles,
-      extName: ext.name,
-      enable: enable,
-      servicePid: app.servicePid,
-    );
-  }
-
-  String _linuxPhpVersion(AppModel app) {
-    final fromId = AppInstallerService.phpPrefixFor(app.appId);
-    if (fromId != null) return fromId;
-
-    final match = RegExp(r'^(\d+\.\d+)').firstMatch(app.installedVersion ?? '');
-    if (match != null) return match.group(1)!;
-
-    throw StateError(
-      'Cannot determine the PHP version for ${app.appId}; '
-      'extension discovery needs a major.minor version.',
-    );
   }
 }

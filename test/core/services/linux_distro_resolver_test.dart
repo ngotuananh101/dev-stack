@@ -43,10 +43,6 @@ ID=ubuntu
 VERSION_CODENAME=noble
 ''';
       expect(
-        LinuxDistroResolver.resolveValkeyDistro(osReleaseContent: osRelease, isLinux: true),
-        equals('noble'),
-      );
-      expect(
         LinuxDistroResolver.resolveMongoDistro(osReleaseContent: osRelease, isLinux: true),
         equals('ubuntu2404'),
       );
@@ -58,10 +54,6 @@ ID=ubuntu
 VERSION_CODENAME=jammy
 ''';
       expect(
-        LinuxDistroResolver.resolveValkeyDistro(osReleaseContent: osRelease, isLinux: true),
-        equals('jammy'),
-      );
-      expect(
         LinuxDistroResolver.resolveMongoDistro(osReleaseContent: osRelease, isLinux: true),
         equals('ubuntu2204'),
       );
@@ -72,10 +64,6 @@ VERSION_CODENAME=jammy
 ID=ubuntu
 VERSION_CODENAME=focal
 ''';
-      expect(
-        LinuxDistroResolver.resolveValkeyDistro(osReleaseContent: osRelease, isLinux: true),
-        equals('focal'),
-      );
       expect(
         LinuxDistroResolver.resolveMongoDistro(osReleaseContent: osRelease, isLinux: true),
         equals('ubuntu2004'),
@@ -89,20 +77,12 @@ VERSION_ID="12"
 VERSION_CODENAME=bookworm
 ''';
       expect(
-        LinuxDistroResolver.resolveValkeyDistro(osReleaseContent: osRelease, isLinux: true),
-        equals('jammy'), // Valkey uses compatible glibc jammy for Debian
-      );
-      expect(
         LinuxDistroResolver.resolveMongoDistro(osReleaseContent: osRelease, isLinux: true),
         equals('debian12'),
       );
     });
 
     test('falls back to safe defaults when unknown or empty', () {
-      expect(
-        LinuxDistroResolver.resolveValkeyDistro(osReleaseContent: '', isLinux: true),
-        equals('jammy'),
-      );
       expect(
         LinuxDistroResolver.resolveMongoDistro(osReleaseContent: '', isLinux: true),
         equals('ubuntu2204'),
@@ -111,23 +91,6 @@ VERSION_CODENAME=bookworm
   });
 
   group('LinuxDistroResolver - URL Placeholder Resolution', () {
-    test('resolves {distro} and {valkey_distro} in URLs for Noble host', () {
-      const osRelease = 'VERSION_CODENAME=noble\nID=ubuntu';
-      const template =
-          'https://download.valkey.io/releases/valkey-8.0.3-{distro}-x86_64.tar.gz';
-
-      final resolved = LinuxDistroResolver.resolveUrl(
-        template,
-        osReleaseContent: osRelease,
-        isLinux: true,
-      );
-
-      expect(
-        resolved,
-        equals('https://download.valkey.io/releases/valkey-8.0.3-noble-x86_64.tar.gz'),
-      );
-    });
-
     test('resolves {mongo_distro} in URLs for Debian 12 host', () {
       const osRelease = 'ID=debian\nVERSION_CODENAME=bookworm';
       const template =
@@ -145,125 +108,25 @@ VERSION_CODENAME=bookworm
       );
     });
 
+    test('resolves {version_id} in URLs', () {
+      const osRelease = 'ID=fedora\nVERSION_ID=41';
+      const template = 'https://example.com/repo-{version_id}.rpm';
+
+      final resolved = LinuxDistroResolver.resolveUrl(
+        template,
+        osReleaseContent: osRelease,
+        isLinux: true,
+      );
+
+      expect(
+        resolved,
+        equals('https://example.com/repo-41.rpm'),
+      );
+    });
+
     test('leaves standard static URLs without placeholders untouched', () {
       const url = 'https://jirutka.github.io/nginx-binaries/bin/nginx-1.30.4-x86_64-linux';
       expect(LinuxDistroResolver.resolveUrl(url), equals(url));
-    });
-  });
-
-  group('LinuxDistroResolver - Package Manager Family Detection', () {
-    test('maps ubuntu and derivatives to ubuntu family', () {
-      expect(
-        LinuxDistroResolver.detectFamily(
-          osReleaseContent: 'ID=ubuntu\nID_LIKE=debian',
-          isLinux: true,
-        ),
-        equals('ubuntu'),
-      );
-      expect(
-        LinuxDistroResolver.detectFamily(
-          osReleaseContent: 'ID=linuxmint\nID_LIKE="ubuntu debian"',
-          isLinux: true,
-        ),
-        equals('ubuntu'),
-      );
-      expect(
-        LinuxDistroResolver.detectFamily(
-          osReleaseContent: 'ID=pop\nID_LIKE="ubuntu debian"',
-          isLinux: true,
-        ),
-        equals('ubuntu'),
-      );
-    });
-
-    test('maps debian proper to debian family (sury.org flow)', () {
-      expect(
-        LinuxDistroResolver.detectFamily(
-          osReleaseContent: 'ID=debian\nID_LIKE=""',
-          isLinux: true,
-        ),
-        equals('debian'),
-      );
-    });
-
-    test('maps rhel-family distros to centos family', () {
-      for (final content in [
-        'ID=centos\nID_LIKE="rhel fedora"',
-        'ID=rhel',
-        'ID=rocky\nID_LIKE="rhel centos fedora"',
-        'ID=almalinux\nID_LIKE="rhel centos fedora"',
-        'ID=ol\nID_LIKE="fedora"',
-      ]) {
-        expect(
-          LinuxDistroResolver.detectFamily(osReleaseContent: content, isLinux: true),
-          equals('centos'),
-          reason: 'os-release "$content" should map to centos family',
-        );
-      }
-    });
-
-    test('maps fedora and fedora derivatives to fedora family', () {
-      for (final content in [
-        'ID=fedora\nID_LIKE=""',
-        'ID=fedora\nVERSION_ID=41',
-        'ID=nobara\nID_LIKE="fedora"',
-        'ID=bazzite\nID_LIKE="fedora"',
-      ]) {
-        expect(
-          LinuxDistroResolver.detectFamily(osReleaseContent: content, isLinux: true),
-          equals('fedora'),
-          reason: 'os-release "$content" should map to fedora family',
-        );
-      }
-    });
-
-    test('ubuntu ID_LIKE wins over debian (mint uses PPA flow, not sury)', () {
-      // linuxmint has ID_LIKE="ubuntu debian" — must match ubuntu first
-      expect(
-        LinuxDistroResolver.detectFamily(
-          osReleaseContent: 'ID=linuxmint\nID_LIKE="ubuntu debian"',
-          isLinux: true,
-        ),
-        equals('ubuntu'),
-      );
-    });
-
-    test('maps arch and its derivatives to arch family', () {
-      expect(
-        LinuxDistroResolver.detectFamily(
-          osReleaseContent: 'ID=arch',
-          isLinux: true,
-        ),
-        equals('arch'),
-      );
-      expect(
-        LinuxDistroResolver.detectFamily(
-          osReleaseContent: 'ID=manjaro\nID_LIKE=arch',
-          isLinux: true,
-        ),
-        equals('arch'),
-      );
-    });
-
-    test('unknown distro falls back to ubuntu family', () {
-      expect(
-        LinuxDistroResolver.detectFamily(
-          osReleaseContent: 'ID=nixos\nID_LIKE=nixos',
-          isLinux: true,
-        ),
-        equals('ubuntu'),
-      );
-    });
-
-    test('non-Linux and empty content return safe fallbacks', () {
-      expect(
-        LinuxDistroResolver.detectFamily(isLinux: false),
-        equals('unknown'),
-      );
-      expect(
-        LinuxDistroResolver.detectFamily(osReleaseContent: '', isLinux: true),
-        equals('ubuntu'),
-      );
     });
   });
 }
