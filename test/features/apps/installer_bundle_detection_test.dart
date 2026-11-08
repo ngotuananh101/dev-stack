@@ -83,4 +83,44 @@ void main() {
       expect(missing['cli'], p.join(pgRoot.path, 'bin', 'psql'));
     },
   );
+
+  test(
+    'PostgreSQL non-manifest launcher detected when parent directory contains libexec',
+    () async {
+      final libexecParent = Directory(p.join(tempDir.path, 'libexec', 'nested'))
+        ..createSync(recursive: true);
+      final pgRoot = createPostgresqlBundleFixture(libexecParent);
+      final detected = await installer.detectFiles(
+        pgRoot.path,
+        'postgres',
+        'psql',
+        (_) {},
+      );
+      expect(detected['exec'], p.join(pgRoot.path, 'bin', 'postgres'));
+      expect(detected['cli'], p.join(pgRoot.path, 'bin', 'psql'));
+    },
+  );
+
+  test(
+    'manifest-less directory resolves both exec and cli via recursive listing',
+    () async {
+      final plainDir = Directory(p.join(tempDir.path, 'plain_archive'))
+        ..createSync(recursive: true);
+      Directory(p.join(plainDir.path, 'bin')).createSync();
+      File(
+        p.join(plainDir.path, 'bin', 'app'),
+      ).writeAsStringSync('#!/bin/sh\nexit 0\n');
+      final toolFile = File(p.join(plainDir.path, 'tool'))
+        ..writeAsStringSync('#!/bin/sh\nexit 0\n');
+
+      final detected = await installer.detectFiles(
+        plainDir.path,
+        'app',
+        'tool',
+        (_) {},
+      );
+      expect(detected['exec'], endsWith(p.join('bin', 'app')));
+      expect(detected['cli'], toolFile.path);
+    },
+  );
 }

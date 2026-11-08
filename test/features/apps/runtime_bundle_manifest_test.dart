@@ -70,6 +70,21 @@ void main() {
       '{"schema_version":1,"runtime":"apache","apache":{"version":"invalid"}}',
     );
     expect(RuntimeBundleManifest.load(root.path), isNull);
+
+    File(
+      p.join(root.path, 'manifest.json'),
+    ).writeAsStringSync('["invalid", "array"]');
+    expect(RuntimeBundleManifest.load(root.path), isNull);
+
+    File(p.join(root.path, 'manifest.json')).writeAsStringSync(
+      '{"schema_version":1,"runtime":"apache","apache":{"version":"2.4.70"}}',
+    );
+    expect(RuntimeBundleManifest.load(root.path), isNull);
+
+    File(p.join(root.path, 'manifest.json')).writeAsStringSync(
+      '{"schema_version":1,"runtime":"postgresql","postgresql":{"version":"18.6"}}',
+    );
+    expect(RuntimeBundleManifest.load(root.path), isNull);
   });
 
   test('returns null when manifest is absent or directory missing', () {

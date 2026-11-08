@@ -938,21 +938,20 @@ class AppInstallerService {
 
         for (final entity in entities) {
           if (entity is File || entity is Link) {
-            if (bundle != null && p.split(entity.path).contains('libexec')) {
+            if (bundle != null &&
+                p
+                    .split(p.relative(entity.path, from: installPath))
+                    .contains('libexec')) {
               continue;
             }
             final filename = p.basename(entity.path);
 
-            if (needExec &&
-                filename == execName &&
-                result['exec'] == null) {
+            if (needExec && filename == execName && result['exec'] == null) {
               result['exec'] = entity.path;
               logInfo('Detected executable: ${entity.path}');
             }
 
-            if (needCli &&
-                filename == cliName &&
-                result['cli'] == null) {
+            if (needCli && filename == cliName && result['cli'] == null) {
               result['cli'] = entity.path;
               logInfo('Detected CLI: ${entity.path}');
             }
