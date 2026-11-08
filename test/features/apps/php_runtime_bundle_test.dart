@@ -34,7 +34,6 @@ void main() {
     'runtime',
     'architecture',
     'target',
-    'profile',
     'verification',
   ]) {
     test('rejects unsupported $field', () {
@@ -45,6 +44,10 @@ void main() {
       expect(() => PhpRuntimeBundle.load(root.path), throwsFormatException);
     });
   }
+  test('rejects a glibc target even when everything else is valid', () {
+    editBundleManifest(root, (m) => m['target'] = 'glibc');
+    expect(() => PhpRuntimeBundle.load(root.path), throwsFormatException);
+  });
   for (final path in [
     '/tmp/php',
     '../php',

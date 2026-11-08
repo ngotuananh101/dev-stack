@@ -68,8 +68,7 @@ class PhpRuntimeBundle {
           data['schema_version'] != 1 ||
           data['runtime'] != 'php' ||
           data['architecture'] != 'x86_64' ||
-          data['target'] != 'glibc' ||
-          data['profile'] != 'full' ||
+          data['target'] != 'musl-dynamic' ||
           data['verification'] != 'PASSED') {
         throw const FormatException(
           'Unsupported portable PHP manifest identity.',

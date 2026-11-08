@@ -47,8 +47,7 @@ done
     'schema_version': 1,
     'runtime': 'php',
     'architecture': 'x86_64',
-    'target': 'glibc',
-    'profile': 'full',
+    'target': 'musl-dynamic',
     'verification': 'PASSED',
     'php': {
       'version': '8.4.27',
