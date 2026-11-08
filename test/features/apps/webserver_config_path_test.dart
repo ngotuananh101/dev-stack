@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dev_stack/core/config/apache_config_builder.dart';
 import 'package:dev_stack/core/config/app_config.dart';
 import 'package:dev_stack/features/apps/data/webserver_settings_provider.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
@@ -38,11 +39,12 @@ void main() {
       }
     });
 
-    test('prefers isolated <vhosts>/apache/httpd.conf when it exists', () {
+    test('prefers isolated <vhosts>/apache/_httpd.conf when it exists', () {
       final isolatedDir = Directory(p.join(AppConfig.vhostsDir, 'apache'))
         ..createSync(recursive: true);
-      final isolatedConf = File(p.join(isolatedDir.path, 'httpd.conf'))
-        ..writeAsStringSync('isolated');
+      final isolatedConf = File(
+        p.join(isolatedDir.path, ApacheConfigBuilder.mainConfigFileName),
+      )..writeAsStringSync('isolated');
 
       final app = AppModel(
         appId: 'apache',

@@ -25,6 +25,12 @@ void main() {
       expect(mode, same(langApache));
     });
 
+    test('maps isolated apache _httpd.conf to apache mode', () {
+      final mode =
+          languageForConfigPath(r'/home/user/.ponta/vhosts/apache/_httpd.conf');
+      expect(mode, same(langApache));
+    });
+
     test('maps apache site vhost conf to apache mode', () {
       final mode = languageForConfigPath(r'C:\dev-stack\vhosts\apache\my-project.test.conf');
       expect(mode, same(langApache));

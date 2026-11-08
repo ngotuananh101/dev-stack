@@ -1,11 +1,12 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:dev_stack/core/config/apache_config_builder.dart';
 import 'package:dev_stack/features/apps/data/app_service_manager.dart';
 
 void main() {
   group('linux foreground service arguments', () {
-    test('apache2 gets foreground and isolated httpd.conf', () {
+    test('apache2 gets foreground and isolated _httpd.conf', () {
       final args = AppServiceManager.argumentsForExecutable(
         'apache2',
         '/usr/sbin',
@@ -13,10 +14,10 @@ void main() {
       );
       expect(args, contains('-DFOREGROUND'));
       expect(args, contains('-f'));
-      expect(args.last, contains('httpd.conf'));
+      expect(args.last, contains(ApacheConfigBuilder.mainConfigFileName));
     });
 
-    test('httpd also gets foreground and isolated httpd.conf', () {
+    test('httpd also gets foreground and isolated _httpd.conf', () {
       final args = AppServiceManager.argumentsForExecutable(
         'httpd',
         '/usr/sbin',
@@ -24,7 +25,7 @@ void main() {
       );
       expect(args, contains('-DFOREGROUND'));
       expect(args, contains('-f'));
-      expect(args.last, contains('httpd.conf'));
+      expect(args.last, contains(ApacheConfigBuilder.mainConfigFileName));
     });
 
     test('redis-server receives isolated redis.conf from ~/.ponta/data/redis', () {

@@ -27,7 +27,11 @@ Mode languageForConfigPath(String path) {
   if (name == 'nginx.conf' || normalized.contains('/nginx/') || name.startsWith('nginx_')) {
     return langNginx;
   }
-  if (name == 'httpd.conf' || name == 'apache.conf' || normalized.contains('/apache/') || name.startsWith('apache_')) {
+  if (name == 'httpd.conf' ||
+      name == '_httpd.conf' ||
+      name == 'apache.conf' ||
+      normalized.contains('/apache/') ||
+      name.startsWith('apache_')) {
     return langApache;
   }
   if (name == 'caddyfile' || normalized.contains('/caddy/') || name.startsWith('caddy_')) {

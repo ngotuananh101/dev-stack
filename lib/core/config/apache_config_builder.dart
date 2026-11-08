@@ -5,16 +5,41 @@ import 'webserver_bind_policy.dart';
 abstract final class ApacheConfigBuilder {
   static String _path(String value) => value.replaceAll('\\', '/');
 
+  /// The filename for the generated isolated Apache main configuration.
+  ///
+  /// Placed inside `<AppConfig.vhostsDir>/apache/`. Prefixed with an underscore
+  /// so that `<vhostsDir>/apache/[a-zA-Z0-9]*.conf` includes virtual hosts
+  /// without matching its own main config.
+  static const mainConfigFileName = '_httpd.conf';
+
+  /// The filename glob used by Apache's IncludeOptional directive to load
+  /// site virtual hosts from the vhosts directory.
+  static const vhostsGlobPattern = '[a-zA-Z0-9]*.conf';
+
   @visibleForTesting
   static String prependDirectives(String content, List<String> directives) {
     var result = content;
     final toInsert = <String>[];
 
     for (final directive in directives) {
-      if (result.contains(directive)) {
-        continue;
+      final parts = directive.trim().split(RegExp(r'\s+'));
+      if (parts.isEmpty || parts.first.isEmpty) continue;
+      final directiveName = parts.first;
+
+      if (directiveName == 'LoadModule') {
+        if (parts.length > 1) {
+          final modName = parts[1];
+          final modRegex = RegExp(
+            '^\\s*#?\\s*LoadModule\\s+${RegExp.escape(modName)}\\s+.*\$',
+            multiLine: true,
+          );
+          if (modRegex.hasMatch(result)) {
+            result = result.replaceFirst(modRegex, directive);
+            continue;
+          }
+        }
       }
-      final directiveName = directive.split(RegExp(r'\s+')).first;
+
       if (directiveName == 'ErrorLog' || directiveName == 'PidFile') {
         final regex = RegExp('^\\s*$directiveName\\s+.*\$', multiLine: true);
         if (regex.hasMatch(result)) {
@@ -22,6 +47,15 @@ abstract final class ApacheConfigBuilder {
           continue;
         }
       }
+
+      final activeRegex = RegExp(
+        '^\\s*${RegExp.escape(directive.trim())}\$',
+        multiLine: true,
+      );
+      if (activeRegex.hasMatch(result)) {
+        continue;
+      }
+
       toInsert.add(directive);
     }
 
@@ -59,7 +93,7 @@ abstract final class ApacheConfigBuilder {
       initialContent: initialContent,
       serverRoot: serverRoot,
       documentRoot: documentRoot,
-      vhostsGlob: p.join(vhostsDir, '[!h]*.conf'),
+      vhostsGlob: p.join(vhostsDir, vhostsGlobPattern),
       allowLanAccess: allowLanAccess,
       isSslInstalled: isSslInstalled,
       certPath: certPath,

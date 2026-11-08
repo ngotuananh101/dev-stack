@@ -1,12 +1,25 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:dev_stack/core/config/apache_config_builder.dart';
 import 'package:dev_stack/core/config/app_config.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/features/apps/data/app_installer_service.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
 import '../../helpers/runtime_bundle_fixture.dart';
 import '../../helpers/test_ref.dart';
+
+RegExp _apacheGlobToRegExp(String glob) {
+  var pattern = glob;
+  pattern = pattern.replaceAllMapped(
+    RegExp(r'\[!(.*?)\]'),
+    (m) => '[^${m[1]}]',
+  );
+  pattern = pattern.replaceAll('.', r'\.');
+  pattern = pattern.replaceAll('*', '.*');
+  pattern = pattern.replaceAll('?', '.');
+  return RegExp('^$pattern\$');
+}
 
 
 void main() {
@@ -62,7 +75,7 @@ void main() {
       expect(content, contains('pm = ondemand'));
     });
 
-    test('generates isolated apache httpd.conf from bundle with [!h]*.conf and mod_unixd', () async {
+    test('generates isolated apache _httpd.conf from bundle with [a-zA-Z0-9]*.conf and mod_unixd', () async {
       final bundleDir = createApacheBundleFixture(tempBaseDir);
       final app = AppModel(
         appId: 'apache',
@@ -72,17 +85,63 @@ void main() {
       );
 
       await installer.configureApacheBundle(app, bundleDir.path, (msg) {});
-      final confFile = File(p.join(AppConfig.vhostsDir, 'apache', 'httpd.conf'));
+      final confFile = File(
+        p.join(AppConfig.vhostsDir, 'apache', ApacheConfigBuilder.mainConfigFileName),
+      );
       expect(confFile.existsSync(), isTrue);
+
+      final oldConfFile = File(p.join(AppConfig.vhostsDir, 'apache', 'httpd.conf'));
+      expect(oldConfFile.existsSync(), isFalse);
 
       final content = confFile.readAsStringSync();
       expect(
         content,
         contains(
-          'IncludeOptional "${p.join(AppConfig.vhostsDir, 'apache', '[!h]*.conf').replaceAll('\\', '/')}"',
+          'IncludeOptional "${p.join(AppConfig.vhostsDir, 'apache', ApacheConfigBuilder.vhostsGlobPattern).replaceAll('\\', '/')}"',
         ),
       );
       expect(content, contains('LoadModule unixd_module modules/mod_unixd.so'));
+    });
+
+    test('IncludeOptional glob matches hello.test.conf alongside main config while excluding _httpd.conf', () async {
+      final bundleDir = createApacheBundleFixture(tempBaseDir);
+      final app = AppModel(
+        appId: 'apache',
+        name: 'Apache',
+        categories: ['webserver'],
+        groupName: 'webserver',
+      );
+
+      await installer.configureApacheBundle(app, bundleDir.path, (msg) {});
+      final confFile = File(
+        p.join(AppConfig.vhostsDir, 'apache', ApacheConfigBuilder.mainConfigFileName),
+      );
+      expect(confFile.existsSync(), isTrue);
+
+      final helloConf = File(p.join(AppConfig.vhostsDir, 'apache', 'hello.test.conf'))
+        ..writeAsStringSync('# hello.test vhost');
+      expect(helloConf.existsSync(), isTrue);
+
+      final content = confFile.readAsStringSync();
+      final match = RegExp(r'IncludeOptional\s+"([^"]+)"').firstMatch(content);
+      expect(match, isNotNull);
+      final globPath = match!.group(1)!;
+      final globFileName = p.posix.basename(globPath);
+
+      final regex = _apacheGlobToRegExp(globFileName);
+
+      // Must match hello.test.conf
+      expect(
+        regex.hasMatch(p.basename(helloConf.path)),
+        isTrue,
+        reason: 'Sites starting with "h" must not be excluded by the include glob',
+      );
+      // Must NOT match _httpd.conf
+      expect(
+        regex.hasMatch(p.basename(confFile.path)),
+        isFalse,
+        reason: 'The main config file must not match its own include glob',
+      );
     });
 
     test('initializes isolated postgresql cluster with initdb and 0700 permissions', () async {

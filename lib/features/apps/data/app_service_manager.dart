@@ -9,6 +9,7 @@ import '../domain/app_model.dart';
 import 'app_installer_service.dart';
 import '../../../core/services/background_process.dart';
 import '../../../core/services/log_service.dart';
+import '../../../core/config/apache_config_builder.dart';
 import '../../../core/config/app_config.dart';
 
 part 'app_service_manager.g.dart';
@@ -290,7 +291,11 @@ class AppServiceManager {
       return ['-p', '$prefix/', '-c', conf, '-g', 'daemon off;'];
     }
     if (onLinux && (name == 'apache2' || name == 'httpd')) {
-      final conf = p.join(AppConfig.vhostsDir, 'apache', 'httpd.conf');
+      final conf = p.join(
+        AppConfig.vhostsDir,
+        'apache',
+        ApacheConfigBuilder.mainConfigFileName,
+      );
       return ['-DFOREGROUND', '-f', conf];
     }
     if (name == 'redis-server' || name == 'valkey-server') {

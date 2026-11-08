@@ -2704,7 +2704,9 @@ catch_workers_output = yes
     if (!logsDir.existsSync()) {
       await logsDir.create(recursive: true);
     }
-    final isolatedConf = File(p.join(apacheVhostsDir.path, 'httpd.conf'));
+    final isolatedConf = File(
+      p.join(apacheVhostsDir.path, ApacheConfigBuilder.mainConfigFileName),
+    );
 
     final effectiveSsl = isSslInstalled ?? false;
     final effectiveLan = allowLanAccess ?? false;

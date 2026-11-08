@@ -1,5 +1,18 @@
 import 'package:dev_stack/core/config/apache_config_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+
+RegExp _apacheGlobToRegExp(String glob) {
+  var pattern = glob;
+  pattern = pattern.replaceAllMapped(
+    RegExp(r'\[!(.*?)\]'),
+    (m) => '[^${m[1]}]',
+  );
+  pattern = pattern.replaceAll('.', r'\.');
+  pattern = pattern.replaceAll('*', '.*');
+  pattern = pattern.replaceAll('?', '.');
+  return RegExp('^$pattern\$');
+}
 
 void main() {
   group('ApacheConfigBuilder.buildMainConfig', () {
@@ -251,10 +264,40 @@ DocumentRoot "\${SRVROOT}/htdocs"
       expect(out, contains('LoadModule unixd_module modules/mod_unixd.so'));
       expect(out, contains('PidFile "/opt/logs/httpd.pid"'));
       expect(out, contains('ErrorLog "/opt/logs/apache_error.log"'));
-      expect(out, contains('IncludeOptional "/opt/vhosts/apache/[!h]*.conf"'));
+      expect(out, contains('IncludeOptional "/opt/vhosts/apache/[a-zA-Z0-9]*.conf"'));
+      expect(out, isNot(contains('IncludeOptional "/opt/vhosts/apache/[!h]*.conf"')));
       expect(out, isNot(contains('IncludeOptional "/opt/vhosts/apache/*.conf"')));
       expect(RegExp(r'^Listen ', multiLine: true).allMatches(out).length, 1);
       expect(out, contains('Listen 127.0.0.1:80'));
+    });
+
+    test('IncludeOptional glob matches hello.test.conf and excludes _httpd.conf', () {
+      final out = ApacheConfigBuilder.buildBundleConfig(
+        initialContent: producerConf,
+        serverRoot: '/opt/apps/apache/2.4.70',
+        documentRoot: '/opt/www',
+        vhostsDir: '/opt/vhosts/apache',
+        logsDir: '/opt/logs',
+        allowLanAccess: false,
+        isSslInstalled: false,
+      );
+      final match = RegExp(r'IncludeOptional\s+"([^"]+)"').firstMatch(out);
+      expect(match, isNotNull);
+      final glob = p.posix.basename(match!.group(1)!);
+      final regex = _apacheGlobToRegExp(glob);
+
+      // Must match domains starting with 'h' (e.g. hello.test, hotel.local)
+      expect(regex.hasMatch('hello.test.conf'), isTrue,
+          reason: 'Sites starting with "h" must not be excluded');
+      expect(regex.hasMatch('hotel.local.conf'), isTrue,
+          reason: 'Sites starting with "h" must not be excluded');
+      // Must match domains starting with digits or other letters
+      expect(regex.hasMatch('123site.test.conf'), isTrue);
+      expect(regex.hasMatch('mysite.local.conf'), isTrue);
+
+      // Must NOT match the main config file (_httpd.conf)
+      expect(regex.hasMatch(ApacheConfigBuilder.mainConfigFileName), isFalse,
+          reason: 'The main config file must not match its own include glob');
     });
 
     test('replaces existing ErrorLog', () {
@@ -296,6 +339,66 @@ Listen 80
       final first = ApacheConfigBuilder.prependDirectives(conf, directives);
       final second = ApacheConfigBuilder.prependDirectives(first, directives);
       expect(second, equals(first));
+    });
+
+    test('prependDirectives uncomments commented-out LoadModule', () {
+      const conf = '''
+Define SRVROOT "/opt/apps/apache/2.4.70"
+ServerRoot "\${SRVROOT}"
+# LoadModule unixd_module modules/mod_unixd.so
+Listen 80
+''';
+      final directives = [
+        'LoadModule unixd_module modules/mod_unixd.so',
+      ];
+      final out = ApacheConfigBuilder.prependDirectives(conf, directives);
+      expect(out, contains('LoadModule unixd_module modules/mod_unixd.so'));
+      expect(out, isNot(contains('# LoadModule unixd_module')));
+      expect(
+        RegExp(r'^LoadModule\s+unixd_module', multiLine: true)
+            .allMatches(out)
+            .length,
+        1,
+      );
+    });
+
+    test('prependDirectives avoids duplicate LoadModule with irregular spacing', () {
+      const conf = '''
+Define SRVROOT "/opt/apps/apache/2.4.70"
+ServerRoot "\${SRVROOT}"
+LoadModule   unixd_module   modules/mod_unixd.so
+Listen 80
+''';
+      final directives = [
+        'LoadModule unixd_module modules/mod_unixd.so',
+      ];
+      final out = ApacheConfigBuilder.prependDirectives(conf, directives);
+      expect(out, contains('LoadModule unixd_module modules/mod_unixd.so'));
+      expect(
+        RegExp(r'LoadModule\s+unixd_module', multiLine: true)
+            .allMatches(out)
+            .length,
+        1,
+      );
+    });
+
+    test('prependDirectives ignores commented-out ErrorLog and inserts active line', () {
+      const conf = '''
+Define SRVROOT "/opt/apps/apache/2.4.70"
+ServerRoot "\${SRVROOT}"
+# ErrorLog "logs/error.log"
+Listen 80
+''';
+      final directives = [
+        'ErrorLog "/opt/logs/apache_error.log"',
+      ];
+      final out = ApacheConfigBuilder.prependDirectives(conf, directives);
+      expect(out, contains('ErrorLog "/opt/logs/apache_error.log"'));
+      expect(out, contains('# ErrorLog "logs/error.log"'));
+      expect(
+        RegExp(r'^ErrorLog ', multiLine: true).allMatches(out).length,
+        1,
+      );
     });
   });
 }

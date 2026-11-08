@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as p;
+import '../../../core/config/apache_config_builder.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/services/background_process.dart';
 import '../domain/app_model.dart';
@@ -21,8 +22,13 @@ File? webserverConfigFileFor(AppModel app, {bool? isLinux}) {
   }
   if (appId.contains('apache')) {
     if (onLinux) {
-      final isolatedConf =
-          File(p.join(AppConfig.vhostsDir, 'apache', 'httpd.conf'));
+      final isolatedConf = File(
+        p.join(
+          AppConfig.vhostsDir,
+          'apache',
+          ApacheConfigBuilder.mainConfigFileName,
+        ),
+      );
       if (isolatedConf.existsSync()) return isolatedConf;
       return File(p.join(location, 'conf', 'httpd.conf'));
     }
