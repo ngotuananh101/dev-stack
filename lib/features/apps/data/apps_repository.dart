@@ -80,7 +80,7 @@ class AppsRepository {
 
           final rawVersions = json['versions'];
           final Map<String, dynamic> versionsMap =
-              rawVersions is Map && json['install_method'] != 'package_manager'
+              rawVersions is Map
               ? (Map<String, dynamic>.from(rawVersions)..removeWhere(
                   (_, url) => url is! String || !isSecureCatalogUrl(url),
                 ))
@@ -131,7 +131,6 @@ class AppsRepository {
             versions: versionKeys,
             versionLinksJson: jsonEncode(versionsMap),
             versionSha256Json: versionSha256Json,
-            installMethod: json['install_method'],
             defaultUsername: json['default_username'],
             defaultPassword: json['default_password'],
             // Merge state from DB

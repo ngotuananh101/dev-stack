@@ -65,22 +65,11 @@ void main() {
   });
 
   group('delete(deleteData:)', () {
-    test(
-      'preserves legacy system installation data when removing its record',
-      () async {
-        final data = seedDataDir('postgresql', '16.0', 'legacy user data');
-        await installer.delete(
-          AppInstallerService.systemPackageMarker,
-          'postgresql',
-          '16.0',
-        );
-        expect(data.existsSync(), isTrue);
-        expect(
-          File(p.join(data.path, 'user_table.ibd')).readAsStringSync(),
-          'legacy user data',
-        );
-      },
-    );
+    test('skips deletion when path is empty', () async {
+      final data = seedDataDir('postgresql', '16.0', 'user data');
+      await installer.delete('', 'postgresql', '16.0');
+      expect(data.existsSync(), isTrue);
+    });
     test('preserves the data directory during a version swap', () async {
       final data = seedDataDir('mysql', '8.0.36', 'my precious databases');
       final install = Directory(

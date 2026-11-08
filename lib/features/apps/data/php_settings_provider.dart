@@ -17,106 +17,27 @@ part 'php_settings_provider.g.dart';
 
 /// Resolves the php.ini configuration file path for an app.
 ///
-/// On Windows or for custom directory locations, points to `<location>/php.ini`.
-/// On Linux with `system_package`, checks known system locations in priority order:
-/// 1. `/etc/php/<version>/fpm/php.ini` (Debian/Ubuntu PHP-FPM)
-/// 2. `/etc/php/<version>/cli/php.ini` (Debian/Ubuntu PHP CLI)
-/// 3. `/etc/php.ini` (RHEL/CentOS/Fedora)
-/// 4. `/etc/php.d/<version>.ini`
-/// 5. `/etc/opt/remi/php<versionRaw>/php.ini`
-///
-/// If none exist, falls back to `/etc/php/<version>/fpm/php.ini`.
-String? resolvePhpIniPath(
-  AppModel app, {
-  bool? isLinux,
-  bool Function(String path)? fileExists,
-}) {
-  if (app.location == null || app.location!.isEmpty) {
-    return null;
-  }
-
+/// Returns [PhpRuntimeBundle.pathFor('php_ini')] on Linux when a bundle
+/// is present, otherwise `<location>/php.ini`.
+String? resolvePhpIniPath(AppModel app, {bool? isLinux}) {
+  final location = app.location;
+  if (location == null || location.isEmpty) return null;
   final onLinux = isLinux ?? Platform.isLinux;
-  if (onLinux && app.location != AppInstallerService.systemPackageMarker) {
-    final bundle = PhpRuntimeBundle.load(app.location!);
+  if (onLinux) {
+    final bundle = PhpRuntimeBundle.load(location);
     if (bundle != null) return bundle.pathFor('php_ini');
   }
-  if (!onLinux || app.location != 'system_package') {
-    final pathContext = onLinux ? p.posix : p.context;
-    return pathContext.join(app.location!, 'php.ini');
-  }
-
-  final checkFile = fileExists ?? ((path) => File(path).existsSync());
-  final version = _extractPhpVersion(app);
-  final versionRaw = version?.replaceAll('.', '');
-
-  final candidates = <String>[
-    if (version != null) '/etc/php/$version/fpm/php.ini',
-    if (version != null) '/etc/php/$version/cli/php.ini',
-    if (versionRaw != null) '/etc/opt/remi/php$versionRaw/php.ini',
-    if (version != null) '/etc/php.d/$version.ini',
-    '/etc/php.ini',
-  ];
-
-  for (final candidate in candidates) {
-    if (checkFile(candidate)) {
-      return candidate;
-    }
-  }
-
-  if (version != null) {
-    return '/etc/php/$version/fpm/php.ini';
-  }
-  return '/etc/php.ini';
+  return (onLinux ? p.posix : p.context).join(location, 'php.ini');
 }
 
 /// Resolves the php.ini [File] for an app using [resolvePhpIniPath].
 File? resolvePhpIniFile(
   AppModel app, {
   bool? isLinux,
-  bool Function(String path)? fileExists,
 }) {
-  final path = resolvePhpIniPath(app, isLinux: isLinux, fileExists: fileExists);
+  final path = resolvePhpIniPath(app, isLinux: isLinux);
   if (path == null) return null;
   return File(path);
-}
-
-String? _extractPhpVersion(AppModel app) {
-  final match = RegExp(r'[\d.]+').firstMatch(app.appId);
-  if (match != null && match.group(0)!.isNotEmpty) {
-    final raw = match.group(0)!;
-    if (raw.contains('.')) {
-      final parts = raw
-          .split('.')
-          .where((segment) => segment.isNotEmpty)
-          .toList();
-      if (parts.length >= 2) {
-        return '${parts[0]}.${parts[1]}';
-      }
-      return parts.isNotEmpty ? parts[0] : null;
-    }
-    if (raw.length == 2) {
-      return '${raw[0]}.${raw[1]}';
-    }
-    if (raw.length > 2) {
-      return '${raw[0]}.${raw[1]}';
-    }
-    return raw;
-  }
-  if (app.installedVersion != null && app.installedVersion!.isNotEmpty) {
-    final matchInv = RegExp(r'[\d.]+').firstMatch(app.installedVersion!);
-    if (matchInv != null && matchInv.group(0)!.isNotEmpty) {
-      final raw = matchInv.group(0)!;
-      final parts = raw
-          .split('.')
-          .where((segment) => segment.isNotEmpty)
-          .toList();
-      if (parts.length >= 2) {
-        return '${parts[0]}.${parts[1]}';
-      }
-      return parts.isNotEmpty ? parts[0] : null;
-    }
-  }
-  return null;
 }
 
 @riverpod
@@ -145,7 +66,7 @@ class PhpSettings extends _$PhpSettings {
     String? iniContent,
   ]) async {
     if (Platform.isLinux &&
-        app.location == AppInstallerService.systemPackageMarker) {
+        app.location == 'system_package') {
       return getLinuxExtensions(app);
     }
     if (app.location == null) return [];
@@ -275,7 +196,7 @@ class PhpSettings extends _$PhpSettings {
     Future<ProcessResult> Function(String, List<String>)? runProcess,
   }) async {
     if (Platform.isLinux &&
-        app.location == AppInstallerService.systemPackageMarker) {
+        app.location == 'system_package') {
       return toggleLinuxExtension(app, ext, enable);
     }
 

@@ -20,7 +20,7 @@ class RedisSettings extends _$RedisSettings {
 
     // Check candidate config files (Valkey / Redis Linux & Windows)
     final candidates = [
-      if (Platform.isLinux || location == 'system_package') isolatedPath,
+      if (Platform.isLinux) isolatedPath,
       p.join(location, 'valkey.conf'),
       p.join(location, 'redis.conf'),
       p.join(location, 'redis.windows.conf'),
@@ -33,7 +33,7 @@ class RedisSettings extends _$RedisSettings {
       }
     }
 
-    if (Platform.isLinux || location == 'system_package') {
+    if (Platform.isLinux) {
       return File(isolatedPath);
     }
 

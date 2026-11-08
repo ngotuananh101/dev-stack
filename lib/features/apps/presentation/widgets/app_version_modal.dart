@@ -64,8 +64,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
         versionInfo != null &&
         versionInfo.versions.contains(_selectedVersion) &&
         (versionInfo.downloadUrls[_selectedVersion]?.startsWith('https://') ??
-            false) &&
-        widget.app.installMethod != 'package_manager';
+            false);
 
     // Show progress if installing OR if just finished installing
     final isInProgress =

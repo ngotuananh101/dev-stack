@@ -214,7 +214,6 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (_isRedis) {
       final isolatedPath = p.join(AppConfig.dataDir, 'redis', 'redis.conf');
       if (File(isolatedPath).existsSync()) return isolatedPath;
-      if (location == 'system_package') return isolatedPath;
       final winPath = p.join(location, 'redis.windows.conf');
       if (File(winPath).existsSync()) return winPath;
       final valkeyPath = p.join(location, 'valkey.conf');
@@ -450,9 +449,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             _buildInfoRow(
               Icons.folder_open,
               'Location',
-              widget.app.location == 'system_package'
-                  ? 'System package (managed by your OS)'
-                  : widget.app.location ?? 'Unknown',
+              widget.app.location ?? 'Unknown',
             ),
             _buildInfoRow(
               Icons.new_releases_outlined,

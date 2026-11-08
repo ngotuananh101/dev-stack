@@ -18,9 +18,6 @@ class AppModel {
   String? defaultPassword;
   String? extraInfoJson;
 
-  // Retained only to reject legacy catalog installation methods.
-  String? installMethod;
-
   // UI/State properties
   String? selectedVersion;
 
@@ -162,7 +159,6 @@ class AppModel {
     this.versions = const ['latest'],
     this.versionLinksJson,
     this.versionSha256Json,
-    this.installMethod,
     this.selectedVersion,
     this.location,
     this.status,

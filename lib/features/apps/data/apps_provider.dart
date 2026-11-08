@@ -502,17 +502,11 @@ class Apps extends _$Apps {
           await installer.cleanupPyenv(app.location!, (m) => app.addLog(m));
         }
 
-        // Installation records, not catalog metadata, identify legacy system apps.
-        if (app.location == AppInstallerService.systemPackageMarker) {
-          app.addLog('Legacy system installation removed from DevStack only.');
-          app.addLog('System packages and their data are not removed.');
-        } else {
-          await installer.delete(
-            app.location!,
-            app.appId,
-            app.installedVersion,
-          );
-        }
+        await installer.delete(
+          app.location!,
+          app.appId,
+          app.installedVersion,
+        );
       }
 
       app.isInstalled = false;

@@ -281,13 +281,6 @@ class AppInstallerService {
       onLog?.call('ERROR: $msg');
     }
 
-    // Cached catalogs from older releases must never execute install commands.
-    if (app.installMethod == 'package_manager') {
-      throw UnsupportedError(
-        'Package-manager installation is no longer supported.',
-      );
-    }
-
     final rawUrl = app.versionLinks[version];
     if (rawUrl == null || rawUrl.isEmpty) {
       _logger.error('Download URL for ${app.name} version $version not found.');
@@ -1969,9 +1962,7 @@ security:
     String? version, {
     bool deleteData = true,
   }) async {
-    // Legacy system records are not managed directories or managed data.
-    if (path == systemPackageMarker || path.isEmpty) {
-      _logger.info('Skipping deletion for legacy system location ($appId)');
+    if (path.isEmpty) {
       return;
     }
     final directory = Directory(path);
@@ -2718,10 +2709,6 @@ security:
     }
     _logger.info('Removed Composer wrappers');
   }
-
-  /// Compatibility location marker for system installations from older releases.
-  /// Never treat it as a managed installation directory.
-  static const String systemPackageMarker = 'system_package';
 
   /// Extracts the PHP version prefix from an appId (e.g. `php82` -> `8.2`,
   /// `php83` -> `8.3`). Returns null if the appId doesn't follow the

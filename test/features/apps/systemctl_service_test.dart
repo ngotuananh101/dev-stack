@@ -10,7 +10,6 @@ void main() {
       name: name,
       categories: ['language'],
       groupName: 'php',
-      installMethod: 'package_manager',
     );
   }
 

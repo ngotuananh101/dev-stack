@@ -88,62 +88,42 @@ void main() {
     root.deleteSync(recursive: true);
   });
 
-  for (final system in [false, true]) {
-    for (final pid in [null, 1234]) {
-      test(
-        'uninstall ${system ? 'system' : 'portable'} PHP with PID $pid preserves other runtimes',
-        () async {
-          app = AppModel(
-            appId: 'php84',
-            name: 'PHP 8.4',
-            categories: ['runtime'],
-            isInstalled: true,
-            execFile: 'php-fpm',
-            cliFile: 'php',
-          )..servicePid = pid;
-          repository.apps
-            ..clear()
-            ..add(app);
-          final install = Directory(p.join(root.path, 'apps/php84/8.4.27'))
-            ..createSync(recursive: true);
-          app.location = system
-              ? AppInstallerService.systemPackageMarker
-              : install.path;
-          // Another FPM master and CLI share the catalog's unversioned names.
-          processes.addAll({2345: 'php-fpm', 3456: 'php'});
-          if (pid != null) processes[pid] = 'php-fpm';
-          await container.read(appsProvider.future);
-          await container.read(appsProvider.notifier).uninstall(app);
-          expect(repository.apps, isEmpty);
-          expect(processes, {2345: 'php-fpm', 3456: 'php'});
-          expect(
-            commands,
-            pid == null
-                ? isEmpty
-                : [
-                    ['kill', '-9', '--', '-1234'],
-                  ],
-          );
-        },
-      );
-    }
+  for (final pid in [null, 1234]) {
+    test(
+      'uninstall portable PHP with PID $pid preserves other runtimes',
+      () async {
+        app = AppModel(
+          appId: 'php84',
+          name: 'PHP 8.4',
+          categories: ['runtime'],
+          isInstalled: true,
+          execFile: 'php-fpm',
+          cliFile: 'php',
+        )..servicePid = pid;
+        repository.apps
+          ..clear()
+          ..add(app);
+        final install = Directory(p.join(root.path, 'apps/php84/8.4.27'))
+          ..createSync(recursive: true);
+        app.location = install.path;
+        // Another FPM master and CLI share the catalog's unversioned names.
+        processes.addAll({2345: 'php-fpm', 3456: 'php'});
+        if (pid != null) processes[pid] = 'php-fpm';
+        await container.read(appsProvider.future);
+        await container.read(appsProvider.notifier).uninstall(app);
+        expect(repository.apps, isEmpty);
+        expect(processes, {2345: 'php-fpm', 3456: 'php'});
+        expect(
+          commands,
+          pid == null
+              ? isEmpty
+              : [
+                  ['kill', '-9', '--', '-1234'],
+                ],
+        );
+      },
+    );
   }
-
-  test(
-    'uninstall forgets a legacy system record without deleting its data',
-    () async {
-      app.location = AppInstallerService.systemPackageMarker;
-      final data = Directory(p.join(AppConfig.dataDir, 'postgresql-16.0'))
-        ..createSync(recursive: true);
-      final marker = File(p.join(data.path, 'PG_VERSION'))
-        ..writeAsStringSync('16\n');
-      await container.read(appsProvider.future);
-      await container.read(appsProvider.notifier).uninstall(app);
-      expect(repository.apps, isEmpty);
-      expect(app.isInstalled, isFalse);
-      expect(marker.readAsStringSync(), '16\n');
-    },
-  );
 
   test(
     'uninstall removes a managed directory even with stale catalog install metadata',
@@ -151,7 +131,6 @@ void main() {
       final install = Directory(p.join(root.path, 'apps/postgresql/16.0'))
         ..createSync(recursive: true);
       app.location = install.path;
-      app.installMethod = 'package_manager';
       await container.read(appsProvider.future);
       await container.read(appsProvider.notifier).uninstall(app);
       expect(repository.apps, isEmpty);

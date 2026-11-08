@@ -56,7 +56,6 @@ void main() {
       description: 'Test $name',
       categories: ['test'],
       versions: [version],
-      installMethod: 'download',
       isInstalled: true,
       status: 'installed',
       installedVersion: version,

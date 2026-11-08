@@ -31,7 +31,6 @@ void main() {
         name: 'Redis',
         categories: ['database'],
         groupName: 'redis',
-        installMethod: 'package_manager',
       );
 
       await installer.configureIsolatedRedis(app, (msg) {});
@@ -50,7 +49,6 @@ void main() {
         name: 'PHP 8.3',
         categories: ['runtime'],
         groupName: 'php',
-        installMethod: 'package_manager',
       );
 
       await installer.configureIsolatedPhpFpm(app, 9083, (msg) {});
@@ -69,7 +67,6 @@ void main() {
         name: 'Apache',
         categories: ['webserver'],
         groupName: 'webserver',
-        installMethod: 'package_manager',
       );
 
       await installer.configureIsolatedApache(app, (msg) {});
@@ -87,7 +84,6 @@ void main() {
         name: 'PostgreSQL',
         categories: ['database'],
         groupName: 'database',
-        installMethod: 'package_manager',
       );
 
       var initdbRan = false;
@@ -121,7 +117,6 @@ void main() {
         name: 'PostgreSQL',
         categories: ['database'],
         groupName: 'database',
-        installMethod: 'package_manager',
       );
 
       final fakeInitdb = File(p.join(tempBaseDir.path, 'initdb2'))..createSync();

@@ -97,7 +97,6 @@ void main() {
           expect(app.execFile, equals('node.exe'));
           expect(app.cliFile, equals('node.exe'));
           expect(app.versions, equals(['22.14.0', '20.18.3']));
-          expect(app.installMethod, equals('download'));
           expect(app.defaultUsername, equals('root'));
           expect(app.defaultPassword, equals('secret'));
 
@@ -295,25 +294,27 @@ void main() {
         },
       );
 
-      test('ignores legacy package-manager metadata and download URLs', () {
+      test('ignores legacy package-manager metadata and keeps only secure URLs', () {
         final app = AppsRepository.mergeAppsCatalog([
           {
             'id': 'php84',
             'name': 'PHP 8.4',
             'category': 'runtime',
             'install_method': 'package_manager',
-            'versions': {'8.4': 'https://example.test/legacy.tar.gz'},
+            'versions': {
+              '8.4': 'https://example.test/legacy.tar.gz',
+              'insecure': 'http://example.test/insecure.tar.gz',
+            },
             'package_manager_commands': {
               'ubuntu': ['sudo apt-get install php'],
             },
           },
         ], {}).first;
+        expect(app.versions, equals(['8.4']));
         expect(
-          app.installMethod,
-          'package_manager',
-        ); // Fail-closed legacy gate.
-        expect(app.versions, isEmpty);
-        expect(app.versionLinks, isEmpty);
+          app.versionLinks,
+          equals({'8.4': 'https://example.test/legacy.tar.gz'}),
+        );
       });
     });
   });
