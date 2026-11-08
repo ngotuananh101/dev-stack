@@ -52,7 +52,7 @@ function loadUpdater(fetch, dataDir, { env = {} } = {}) {
   // The guarded CLI entrypoint does not run when loaded for offline tests.
   vm.runInContext(fs.readFileSync(sourcePath, "utf8"), context);
   return vm.runInContext(
-    "({ fetchersLinux, createLinuxPhpApps, applyFetchedVersions, applyFallbackVersions, baseLinuxApps, baseWindowsApps, updatePlatformCatalog })",
+    "({ fetchersLinux, fetchersWindows, fetchMariadbReleases, createLinuxPhpApps, applyFetchedVersions, applyFallbackVersions, baseLinuxApps, baseWindowsApps, updatePlatformCatalog })",
     context,
   );
 }

@@ -2,7 +2,7 @@
 
 ## Catalog scope (as of 2026-08-23)
 - **Nginx** uses Jakub Jirutka static Linux binaries (`jirutka/nginx-binaries`).
-- **Redis (Valkey)** uses official Valkey prebuilt binary tarballs (`download.valkey.io`).
+- **Redis** ships as a static musl bundle from `devstack-app-builder`.
 - **Apache and PostgreSQL** ship as musl-dynamic portable bundles from `devstack-app-builder`.
 
 ## Runtime limitations
