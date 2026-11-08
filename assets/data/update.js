@@ -1095,9 +1095,6 @@ function applyFetchedVersions(app, fetchedResult) {
 }
 
 function applyFallbackVersions(app, oldData, fetchedResult = null, platformName = null) {
-  // These Linux runtimes have no supported portable distribution yet.
-  // Cached source/package archives must not make them installable again.
-  if (platformName === "Linux" && ["apache", "postgresql"].includes(app.id)) return;
   const oldApp = oldData?.apps?.find((a) => a.id === app.id);
   const runtime = portableBundleRuntime(app);
   if (runtime) {

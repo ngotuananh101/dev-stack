@@ -112,7 +112,7 @@ for (const platform of ['Linux', 'Windows']) {
 }
 
 for (const [platform, expectedVersions] of [
-  ['Linux', {}],
+  ['Linux', null],
   ['Windows', { '1.2.3': 'https://example.com/source.tar.gz' }],
 ]) {
   test(`${platform} output catalog respects unavailable runtimes after fallback`, async (t) => {
@@ -138,7 +138,20 @@ for (const [platform, expectedVersions] of [
     });
     const catalog = JSON.parse(fs.readFileSync(path.join(dir, 'output.json'), 'utf8'));
     assert.deepEqual(catalog.apps.map((app) => app.id), ids);
-    for (const app of catalog.apps) assert.deepEqual(app.versions, expectedVersions);
+    if (platform === 'Linux') {
+      for (const app of catalog.apps) {
+        assert.equal(
+          Object.values(app.versions).some((u) => u.includes('example.com')),
+          false,
+        );
+        for (const url of Object.values(app.versions)) {
+          assert.ok(url.startsWith('https://github.com/ngotuananh101/devstack-app-builder/releases/download/'));
+        }
+        assert.deepEqual(app.versions, {});
+      }
+    } else {
+      for (const app of catalog.apps) assert.deepEqual(app.versions, expectedVersions);
+    }
   });
 }
 

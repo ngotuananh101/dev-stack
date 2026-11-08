@@ -570,3 +570,23 @@ test("Apache and PostgreSQL ignore glibc, static-musl and aarch64 bundles", asyn
   assert.deepEqual(plain((await u.fetchersLinux.apache()).versions), {});
   assert.deepEqual(plain((await u.fetchersLinux.postgresql()).versions), {});
 });
+
+test("Apache and PostgreSQL fall back only to builder bundles that still match", async (t) => {
+  const u = loadUpdater(async () => { throw Error("Unexpected network request"); }, fixtureDir(t));
+  const cases = [
+    { id: "apache", version: "2.4.70", asset: apacheAsset("2.4.70") },
+    { id: "postgresql", version: "18.6", asset: postgresqlAsset("18.6") },
+  ];
+  for (const { id, version, asset } of cases) {
+    const app = u.baseLinuxApps.find((a) => a.id === id);
+    const old = { apps: [{ id, versions: {
+      [version]: asset.browser_download_url,
+      "9.9.9": `https://github.com/ngotuananh101/devstack-app-builder/releases/download/x/${id}-9.9.9-glibc-x86_64-abcdef0123456789.tar.gz`,
+      latest: "https://example.com/source.tar.gz",
+    } }] };
+    u.applyFallbackVersions(app, old, null, "Linux");
+    assert.deepEqual(Object.keys(app.versions), [version]);
+    assert.equal(app.versions[version], asset.browser_download_url);
+  }
+});
+
