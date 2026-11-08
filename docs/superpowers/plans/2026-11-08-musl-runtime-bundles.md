@@ -640,7 +640,7 @@ test('builds a runnable config from the producer bundle conf', () {
   expect(out, contains('LoadModule unixd_module modules/mod_unixd.so'));
   expect(out, contains('PidFile "/opt/logs/httpd.pid"'));
   expect(out, contains('ErrorLog "/opt/logs/apache_error.log"'));
-  expect(out, contains('IncludeOptional "/opt/vhosts/apache/[!h]*.conf"'));
+  expect(out, contains('IncludeOptional "/opt/vhosts/apache/[a-zA-Z0-9]*.conf"'));
   expect(out, isNot(contains('IncludeOptional "/opt/vhosts/apache/*.conf"')));
   expect(RegExp(r'^Listen ', multiLine: true).allMatches(out).length, 1);
   expect(out, contains('Listen 127.0.0.1:80'));
@@ -660,7 +660,7 @@ static String buildBundleConfig({ ... }) {
     initialContent: initialContent,
     serverRoot: serverRoot,
     documentRoot: documentRoot,
-    vhostsGlob: p.join(vhostsDir, '[!h]*.conf'),
+    vhostsGlob: p.join(vhostsDir, '[a-zA-Z0-9]*.conf'),
     allowLanAccess: allowLanAccess,
     isSslInstalled: isSslInstalled,
     certPath: certPath,
@@ -687,15 +687,15 @@ Expected: PASS.
 In `_configureWebserver`'s Apache branch: if `RuntimeBundleManifest.load(installPath)?.runtime == 'apache'`, then
 
 - read `<installPath>/conf/httpd.conf` (never the `Apache24/` fallback — that is Windows only),
-- write `ApacheConfigBuilder.buildBundleConfig(...)` to `<AppConfig.vhostsDir>/apache/httpd.conf` (creating the directory, which `_configureWebserver` already does) instead of rewriting the bundle's own file,
+- write `ApacheConfigBuilder.buildBundleConfig(...)` to `<AppConfig.vhostsDir>/apache/_httpd.conf` (creating the directory, which `_configureWebserver` already does) instead of rewriting the bundle's own file,
 - log `Generated isolated Apache configuration at: <path>`,
 - `setLinuxCapabilityForWebserver(p.join(installPath, 'lib', 'musl', 'ld-musl-x86_64.so.1'))`.
 
-Otherwise (Windows zip, no manifest) keep the current in-place rewrite of `conf/httpd.conf` unchanged. Delete `configureIsolatedApache` and its `IncludeOptional "*.conf"` test, replacing that test with an assertion that the installer writes `<vhosts>/apache/httpd.conf` containing `include` of `[!h]*.conf` and `mod_unixd`.
+Otherwise (Windows zip, no manifest) keep the current in-place rewrite of `conf/httpd.conf` unchanged. Delete `configureIsolatedApache` and its `IncludeOptional "*.conf"` test, replacing that test with an assertion that the installer writes `<vhosts>/apache/_httpd.conf` containing `include` of `[a-zA-Z0-9]*.conf` and `mod_unixd`. (Superseded during Task 9: the earlier `[!h]*.conf` form silently excluded every site whose domain begins with `h`, because site vhosts live in the same directory.)
 
 - [ ] **Step 6: Prefer the isolated config in the settings editor**
 
-In `webserverConfigFileFor`, for `apache` on Linux: return `<vhosts>/apache/httpd.conf` when it exists, else the bundle's `conf/httpd.conf`. Add a test in `webserver_config_path_test.dart` covering both.
+In `webserverConfigFileFor`, for `apache` on Linux: return `<vhosts>/apache/_httpd.conf` when it exists, else the bundle's `conf/httpd.conf`. Add a test in `webserver_config_path_test.dart` covering both.
 
 - [ ] **Step 7: Run the affected tests**
 
@@ -855,7 +855,7 @@ Use a temporary `AppConfig` root (never the user's live one) and the production 
 - PHP 8.4 → `php-fpm` config generated, FPM answers on its port.
 - Redis → `redis-cli PING` returns `PONG`.
 - PostgreSQL 18 → `psql --version` from the bundle, then start and stop the service.
-- Apache → `httpd -t` prints `Syntax OK` against `<vhosts>/apache/httpd.conf`, then serve a page under `unshare -r -n` (binding port 80 needs `CAP_NET_BIND_SERVICE`; this host has no passwordless sudo). Record the `setcap` warning line as the expected output when the capability cannot be granted.
+- Apache → `httpd -t` prints `Syntax OK` against `<vhosts>/apache/_httpd.conf`, then serve a page under `unshare -r -n` (binding port 80 needs `CAP_NET_BIND_SERVICE`; this host has no passwordless sudo). Record the `setcap` warning line as the expected output when the capability cannot be granted.
 
 Record the actual command output in the commit message body.
 

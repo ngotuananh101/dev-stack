@@ -100,7 +100,7 @@
 - **Windows**: Windows 10 & Windows 11 (64-bit architecture). Supports portable standalone software installations under `C:\dev-stack`.
 - **Linux**: Ubuntu, Debian, Fedora, Arch Linux, openSUSE, and Alpine Linux.
   - Automatic distribution detection via `LinuxDistroResolver`.
-  - Seamless support for portable standalone binaries (Jirutka static Linux binaries, Valkey tarballs, and portable musl runtime bundles).
+  - Seamless support for portable standalone runtimes: static musl and musl-dynamic runtime bundles from `devstack-app-builder` (Apache, PHP, PostgreSQL, Redis), plus Jirutka static nginx binaries.
 
 ---
 

@@ -146,5 +146,81 @@ void main() {
       expect(logMessages.any((msg) => msg.contains('sudo setcap cap_net_bind_service=+ep')), isTrue);
       expect(logMessages.any((msg) => msg.contains('ports >= 1024')), isTrue);
     });
+    test('grants the capability to the loader, not the bin launcher', () async {
+      final logMessages = <String>[];
+      // The kernel runs the musl loader, so that is what must carry the
+      // capability; targeting bin/httpd would silently leave port 80 broken.
+      final loader = File(
+        p.join(
+          AppConfig.appsDir,
+          'apache',
+          '2.4.70',
+          'lib',
+          'musl',
+          'ld-musl-x86_64.so.1',
+        ),
+      )..createSync(recursive: true);
+      // A decoy launcher that must never be the setcap target.
+      File(p.join(loader.parent.parent.parent.path, 'bin', 'httpd'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('#!/bin/sh\n');
+
+      final executedArgs = <List<String>>[];
+
+      await installerService.setLinuxCapabilityForWebserver(
+        loader.path,
+        logMessages.add,
+        isLinuxOverride: true,
+        runProcess: (executable, arguments) async {
+          executedArgs.add([executable, ...arguments]);
+          return ProcessResult(1234, 0, '', '');
+        },
+      );
+
+      expect(executedArgs, hasLength(1));
+      expect(
+        executedArgs.single,
+        equals([
+          'sudo',
+          'setcap',
+          'cap_net_bind_service=+ep',
+          loader.path,
+        ]),
+      );
+      expect(executedArgs.single.last.endsWith('ld-musl-x86_64.so.1'), isTrue);
+      expect(logMessages.any((msg) => msg.contains('Executable not found')), isFalse);
+    });
+
+    test('logs and does not throw when the runner fails', () async {
+      final logMessages = <String>[];
+      final loader = File(
+        p.join(
+          AppConfig.appsDir,
+          'apache',
+          '2.4.70',
+          'lib',
+          'musl',
+          'ld-musl-x86_64.so.1',
+        ),
+      )..createSync(recursive: true);
+
+      await installerService.setLinuxCapabilityForWebserver(
+        loader.path,
+        logMessages.add,
+        isLinuxOverride: true,
+        runProcess: (executable, arguments) async {
+          throw const ProcessException('sudo', ['setcap'], 'denied', 1);
+        },
+      );
+
+      expect(
+        logMessages.any((msg) => msg.contains('Could not set capability')),
+        isTrue,
+      );
+      expect(
+        logMessages.any((msg) => msg.contains('sudo setcap cap_net_bind_service=+ep')),
+        isTrue,
+      );
+    });
   });
 }

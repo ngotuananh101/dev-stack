@@ -2691,10 +2691,13 @@ catch_workers_output = yes
   }) async {
     final confFile = File(p.join(installPath, 'conf', 'httpd.conf'));
     if (!confFile.existsSync()) {
-      logInfo(
-        'Warning: Could not find Apache httpd.conf to configure at ${confFile.path}',
+      // The generated isolated config is what the service manager launches
+      // (`httpd -f <vhosts>/apache/_httpd.conf`), so continuing here would
+      // leave the app installed but unable to start. Fail loudly instead.
+      throw Exception(
+        'Apache bundle config not found at ${confFile.path}; '
+        'cannot generate the isolated configuration.',
       );
-      return;
     }
 
     final apacheVhostsDir = Directory(p.join(AppConfig.vhostsDir, 'apache'));
@@ -2819,6 +2822,11 @@ catch_workers_output = yes
     ];
 
     try {
+      if (!File(initdbPath).existsSync()) {
+        throw Exception(
+          'initdb not found at $initdbPath; cannot initialize the cluster.',
+        );
+      }
       logInfo('Running initdb: $initdbPath ${args.join(' ')}');
       final result = await runner(initdbPath, args);
 
@@ -2858,6 +2866,37 @@ catch_workers_output = yes
         conf = ensurePostgresUnixSocketDirectory(conf);
       }
       await confFile.writeAsString(conf);
+    }
+
+    // `initdb -A scram-sha-256` writes a pg_hba.conf that only admits
+    // localhost, so `listen_addresses = '*'` alone would still refuse every
+    // remote client. Append the LAN rule when (and only when) LAN access was
+    // requested, idempotently.
+    if (allowLanAccess) {
+      final hbaFile = File(p.join(dataDir.path, 'pg_hba.conf'));
+      if (hbaFile.existsSync()) {
+        final hba = await hbaFile.readAsString();
+        if (hba.contains('0.0.0.0/0')) {
+          logInfo(
+            'PostgreSQL pg_hba.conf already allows LAN clients: ${hbaFile.path}',
+          );
+        } else {
+          final prefix = hba.isNotEmpty && !hba.endsWith('\n') ? '\n' : '';
+          await hbaFile.writeAsString(
+            '$hba${prefix}host    all             all             '
+            '0.0.0.0/0               scram-sha-256\n'
+            'host    all             all             '
+            '::/0                    scram-sha-256\n',
+          );
+          logInfo(
+            'Enabled LAN access in PostgreSQL pg_hba.conf: ${hbaFile.path}',
+          );
+        }
+      } else {
+        logInfo(
+          'Warning: PostgreSQL pg_hba.conf not found at ${hbaFile.path}; LAN access not enabled',
+        );
+      }
     }
     logInfo('Initialized isolated PostgreSQL cluster at ${dataDir.path}');
   }

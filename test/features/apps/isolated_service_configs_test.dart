@@ -22,6 +22,21 @@ RegExp _apacheGlobToRegExp(String glob) {
 }
 
 
+/// Writes the files a real `initdb -A scram-sha-256` leaves in the data dir.
+void writeRealisticPostgresqlCluster(String dataDir, {String hbaSuffix = ''}) {
+  Directory(dataDir).createSync(recursive: true);
+  File(p.join(dataDir, 'postgresql.conf')).writeAsStringSync(
+    "#listen_addresses = 'localhost'\n#unix_socket_directories = '/var/run/postgresql'\nport = 5432\n",
+  );
+  File(p.join(dataDir, 'pg_hba.conf')).writeAsStringSync(
+    '# TYPE  DATABASE        USER            ADDRESS                 METHOD\n'
+    'local   all             all                                     scram-sha-256\n'
+    'host    all             all             127.0.0.1/32            scram-sha-256\n'
+    'host    all             all             ::1/128                 scram-sha-256\n'
+    '$hbaSuffix',
+  );
+}
+
 void main() {
   late AppInstallerService installer;
   late Directory tempBaseDir;
@@ -212,7 +227,7 @@ void main() {
       expect(content, contains("listen_addresses = '127.0.0.1'"));
     });
 
-    test('binds listen_addresses to * when allowLanAccess is true', () async {
+    test('binds listen_addresses to * and opens pg_hba.conf when allowLanAccess is true', () async {
       final app = AppModel(
         appId: 'postgresql',
         name: 'PostgreSQL',
@@ -232,9 +247,7 @@ void main() {
         runProcess: (exec, args) async {
           if (exec == fakeInitdb.path && args.contains('-D')) {
             final targetDir = args[args.indexOf('-D') + 1];
-            File(p.join(targetDir, 'postgresql.conf')).writeAsStringSync(
-              "listen_addresses = 'localhost'\n",
-            );
+            writeRealisticPostgresqlCluster(targetDir);
             return ProcessResult(1, 0, 'ok', '');
           }
           return ProcessResult(2, 0, '', '');
@@ -245,6 +258,178 @@ void main() {
       expect(confFile.existsSync(), isTrue);
       final content = confFile.readAsStringSync();
       expect(content, contains("listen_addresses = '*'"));
+
+      final hbaFile = File(p.join(AppConfig.dataDir, 'postgresql-18', 'pg_hba.conf'));
+      expect(hbaFile.existsSync(), isTrue);
+      final hba = hbaFile.readAsStringSync();
+      expect(hba, contains('0.0.0.0/0'));
+      expect(hba, contains('::/0'));
+      expect(
+        hba,
+        contains(
+          'host    all             all             0.0.0.0/0               scram-sha-256',
+        ),
+      );
+      expect(
+        hba,
+        contains(
+          'host    all             all             ::/0                    scram-sha-256',
+        ),
+      );
+      // initdb's own localhost-only lines must be preserved.
+      expect(hba, contains('127.0.0.1/32'));
+    });
+
+    test('does not touch pg_hba.conf when allowLanAccess is false', () async {
+      final app = AppModel(
+        appId: 'postgresql',
+        name: 'PostgreSQL',
+        categories: ['database'],
+        groupName: 'database',
+      );
+
+      final fakeInitdb = File(p.join(tempBaseDir.path, 'initdb4'))..createSync();
+
+      await installer.configureIsolatedPostgresql(
+        app,
+        '21',
+        fakeInitdb.path,
+        (msg) {},
+        isLinux: true,
+        runProcess: (exec, args) async {
+          if (exec == fakeInitdb.path && args.contains('-D')) {
+            final targetDir = args[args.indexOf('-D') + 1];
+            writeRealisticPostgresqlCluster(targetDir);
+            return ProcessResult(1, 0, 'ok', '');
+          }
+          return ProcessResult(2, 0, '', '');
+        },
+      );
+
+      final hbaFile = File(p.join(AppConfig.dataDir, 'postgresql-21', 'pg_hba.conf'));
+      expect(hbaFile.existsSync(), isTrue);
+      final hba = hbaFile.readAsStringSync();
+      expect(hba, isNot(contains('0.0.0.0/0')));
+      expect(hba, isNot(contains('::/0')));
+      expect(hba, contains('127.0.0.1/32'));
+    });
+
+    test('does not stack duplicate LAN lines when pg_hba.conf already allows LAN', () async {
+      final app = AppModel(
+        appId: 'postgresql',
+        name: 'PostgreSQL',
+        categories: ['database'],
+        groupName: 'database',
+      );
+
+      final logs = <String>[];
+      final fakeInitdb = File(p.join(tempBaseDir.path, 'initdb5'))..createSync();
+
+      // The cluster already carries a LAN rule (as a reconfigured cluster
+      // would), so the append path is reached and must be guarded.
+      await installer.configureIsolatedPostgresql(
+        app,
+        '22',
+        fakeInitdb.path,
+        logs.add,
+        isLinux: true,
+        allowLanAccess: true,
+        runProcess: (exec, args) async {
+          if (exec == fakeInitdb.path && args.contains('-D')) {
+            final targetDir = args[args.indexOf('-D') + 1];
+            writeRealisticPostgresqlCluster(
+              targetDir,
+              hbaSuffix:
+                  'host    all             all             0.0.0.0/0               scram-sha-256\n',
+            );
+            return ProcessResult(1, 0, 'ok', '');
+          }
+          return ProcessResult(2, 0, '', '');
+        },
+      );
+
+      final hba = File(
+        p.join(AppConfig.dataDir, 'postgresql-22', 'pg_hba.conf'),
+      ).readAsStringSync();
+      expect('0.0.0.0/0'.allMatches(hba).length, 1);
+      expect(hba, isNot(contains('::/0')));
+      expect(
+        logs.any((l) => l.contains('already allows LAN clients')),
+        isTrue,
+      );
+    });
+
+    test('throws a message naming the path when initdb is missing and leaves no temp dir', () async {
+      final app = AppModel(
+        appId: 'postgresql',
+        name: 'PostgreSQL',
+        categories: ['database'],
+        groupName: 'database',
+      );
+
+      final missingInitdb = p.join(tempBaseDir.path, 'no-such-bin', 'initdb');
+
+      final existingTempDirs = Directory.systemTemp
+          .listSync()
+          .whereType<Directory>()
+          .map((d) => d.path)
+          .where((name) => p.basename(name).startsWith('ponta-pg-pw-'))
+          .toSet();
+
+      var initdbInvoked = false;
+      await expectLater(
+        installer.configureIsolatedPostgresql(
+          app,
+          '23',
+          missingInitdb,
+          (msg) {},
+          isLinux: true,
+          runProcess: (exec, args) async {
+            if (exec == missingInitdb) initdbInvoked = true;
+            return ProcessResult(1, 0, '', '');
+          },
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(contains('initdb not found at'), contains(missingInitdb)),
+          ),
+        ),
+      );
+
+      expect(initdbInvoked, isFalse);
+
+      final remainingTempDirs = Directory.systemTemp
+          .listSync()
+          .whereType<Directory>()
+          .map((d) => d.path)
+          .where((name) => p.basename(name).startsWith('ponta-pg-pw-'))
+          .toSet();
+      expect(remainingTempDirs.difference(existingTempDirs), isEmpty);
+    });
+
+    test('throws when the Apache bundle conf/httpd.conf is absent', () async {
+      final bundleDir = Directory(p.join(tempBaseDir.path, 'broken apache'))
+        ..createSync(recursive: true);
+      final app = AppModel(
+        appId: 'apache',
+        name: 'Apache',
+        categories: ['webserver'],
+        groupName: 'webserver',
+      );
+      final missingConf = p.join(bundleDir.path, 'conf', 'httpd.conf');
+
+      await expectLater(
+        installer.configureApacheBundle(app, bundleDir.path, (msg) {}),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(contains('Apache bundle config not found'), contains(missingConf)),
+          ),
+        ),
+      );
     });
 
     test('cleans up temp password dir when runner throws ProcessException', () async {

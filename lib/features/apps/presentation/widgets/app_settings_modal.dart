@@ -11,6 +11,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
+import '../../../../core/config/apache_config_builder.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/services/background_process.dart';
 import '../../../../core/services/log_service.dart';
@@ -18,6 +19,21 @@ import '../../domain/app_model.dart';
 import '../../data/php_settings_provider.dart';
 import '../../data/apps_provider.dart';
 import '../../data/webserver_settings_provider.dart';
+
+/// Human-facing label for the config tab of a webserver app.
+///
+/// On Linux the Apache editor opens the generated isolated config
+/// (`ApacheConfigBuilder.mainConfigFileName`); Windows keeps the bundle's own
+/// `httpd.conf`. Reusing the constant keeps the label from drifting.
+String webserverConfigTabLabel(AppModel app, {bool? isLinux}) {
+  final id = app.appId.toLowerCase();
+  if (id.contains('caddy')) return 'Caddyfile';
+  if (id.contains('nginx')) return 'nginx.conf';
+  if (id.contains('apache') && (isLinux ?? Platform.isLinux)) {
+    return ApacheConfigBuilder.mainConfigFileName;
+  }
+  return 'httpd.conf';
+}
 
 class AppSettingsModal extends ConsumerStatefulWidget {
   final AppModel app;
@@ -424,12 +440,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
     if (_isPma) return 'config.inc.php';
     if (_isPostgresql) return 'postgresql.conf';
     if (_isDb) return 'my.ini';
-    if (_isWebserver) {
-      final id = widget.app.appId.toLowerCase();
-      if (id.contains('caddy')) return 'Caddyfile';
-      if (id.contains('nginx')) return 'nginx.conf';
-      return 'httpd.conf';
-    }
+    if (_isWebserver) return webserverConfigTabLabel(widget.app);
     if (_isRedis) return 'redis.conf';
     if (_isMongodb) return 'mongod.cfg';
     if (_isRustFS) return 'Configuration';

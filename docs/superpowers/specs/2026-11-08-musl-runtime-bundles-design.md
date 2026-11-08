@@ -104,7 +104,7 @@ normalize to bare names; `<root>/bin/<name>` is the launcher to execute.
 
 ### Apache
 
-Post-extract setup generates `<AppConfig.vhostsDir>/apache/httpd.conf` from the
+Post-extract setup generates `<AppConfig.vhostsDir>/apache/_httpd.conf` from the
 bundle's `conf/httpd.conf`, leaving the bundle's own copy untouched. The
 generator reuses `ApacheConfigBuilder.buildMainConfig` and adds:
 
@@ -118,7 +118,9 @@ generator reuses `ApacheConfigBuilder.buildMainConfig` and adds:
 - `ServerName localhost:80`.
 - `LoadModule unixd_module modules/mod_unixd.so` when the module is not already
   loaded.
-- `IncludeOptional "<vhosts>/apache/[!h]*.conf"`.
+- `IncludeOptional "<vhosts>/apache/[a-zA-Z0-9]*.conf"`. (Superseded during
+  Task 9: the earlier `[!h]*.conf` form silently excluded every site whose
+  domain begins with `h`, because site vhosts live in the same directory.)
 
 Two of these are not cosmetic, both verified against the real 2.4.66 bundle:
 
@@ -136,7 +138,7 @@ not the `bin/` shell launcher. Failure stays a logged warning; the generated
 config is still valid either way.
 
 The service manager already launches `httpd -DFOREGROUND -f
-<vhosts>/apache/httpd.conf` for Linux, so it needs no change.
+<vhosts>/apache/_httpd.conf` for Linux, so it needs no change.
 
 `configureIsolatedApache` today invents a config from `/etc/httpd` or
 `/etc/apache2` and is reachable only from tests. It is replaced by the
@@ -281,7 +283,7 @@ plus a rejection case for `glibc`. `linux_catalog_test.dart` asserts
 musl-dynamic PHP URLs, that Apache, PostgreSQL, Redis and PHP are all
 installable, and that no Linux entry carries package-manager metadata. New
 tests for the generated Apache config (`SRVROOT` from the bundle, bind policy,
-`PidFile`/`ErrorLog` under logs, `[!h]*.conf` include, injected
+`PidFile`/`ErrorLog` under logs, `[a-zA-Z0-9]*.conf` include, injected
 `mod_unixd`), for launcher resolution ignoring `libexec/`, and for
 `configureIsolatedPostgresql` being driven by the bundle manifest.
 

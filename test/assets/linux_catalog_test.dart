@@ -112,4 +112,33 @@ void main() {
     expect(AppsRepository.catalogFileNameFor(isLinux: true), 'apps-linux.json');
     expect(AppsRepository.catalogFileNameFor(isLinux: false), 'apps.json');
   });
+
+  test('new-apps-linux.json is byte-identical to apps-linux.json', () async {
+    final primary = await File('assets/data/apps-linux.json').readAsBytes();
+    final staged = await File('assets/data/new-apps-linux.json').readAsBytes();
+    expect(staged, equals(primary));
+  });
+
+  test('builder runtimes carry a 64-hex sha256 for every version', () async {
+    final apps = await loadApps();
+    for (final id in ['apache', 'php84', 'postgresql', 'redis']) {
+      final app = apps.firstWhere((a) => a['id'] == id);
+      final versions = (app['versions'] as Map).keys.cast<String>();
+      final digests = app['sha256'] as Map;
+      expect(versions, isNotEmpty, reason: '$id must have versions');
+      for (final version in versions) {
+        final digest = digests[version];
+        expect(
+          digest,
+          isA<String>(),
+          reason: '$id $version must carry a sha256',
+        );
+        expect(
+          digest,
+          matches(RegExp(r'^[a-f0-9]{64}$')),
+          reason: '$id $version sha256 must be 64 lowercase hex chars',
+        );
+      }
+    }
+  });
 }
