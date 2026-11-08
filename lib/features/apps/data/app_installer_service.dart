@@ -19,6 +19,7 @@ import '../../../core/services/ssl_service.dart';
 import '../../../core/services/path_service.dart';
 import '../../../core/services/linux_distro_resolver.dart';
 import 'php_runtime_bundle.dart';
+import 'runtime_bundle.dart';
 import '../../settings/data/settings_provider.dart';
 import 'apps_provider.dart';
 
@@ -907,22 +908,54 @@ class AppInstallerService {
     if (!dir.existsSync()) return result;
 
     try {
-      final entities = await dir.list(recursive: true).toList();
-
-      for (final entity in entities) {
-        if (entity is File || entity is Link) {
-          final filename = p.basename(entity.path);
-
-          if (execName != null &&
-              filename == execName &&
-              result['exec'] == null) {
-            result['exec'] = entity.path;
-            logInfo('Detected executable: ${entity.path}');
+      final bundle = RuntimeBundleManifest.load(installPath);
+      final handledByBundle = <String>{};
+      if (bundle != null) {
+        for (final entry in {'exec': execName, 'cli': cliName}.entries) {
+          final name = entry.value;
+          if (name != null && bundle.declaresLauncher(name)) {
+            handledByBundle.add(entry.key);
+            final path = bundle.launcherPath(name);
+            if (File(path).existsSync()) {
+              result[entry.key] = path;
+              logInfo('Detected ${entry.key}: $path');
+            }
           }
+        }
+      }
 
-          if (cliName != null && filename == cliName && result['cli'] == null) {
-            result['cli'] = entity.path;
-            logInfo('Detected CLI: ${entity.path}');
+      final needExec =
+          execName != null &&
+          result['exec'] == null &&
+          !handledByBundle.contains('exec');
+      final needCli =
+          cliName != null &&
+          result['cli'] == null &&
+          !handledByBundle.contains('cli');
+
+      if (needExec || needCli) {
+        final entities = await dir.list(recursive: true).toList();
+
+        for (final entity in entities) {
+          if (entity is File || entity is Link) {
+            if (bundle != null && p.split(entity.path).contains('libexec')) {
+              continue;
+            }
+            final filename = p.basename(entity.path);
+
+            if (needExec &&
+                filename == execName &&
+                result['exec'] == null) {
+              result['exec'] = entity.path;
+              logInfo('Detected executable: ${entity.path}');
+            }
+
+            if (needCli &&
+                filename == cliName &&
+                result['cli'] == null) {
+              result['cli'] = entity.path;
+              logInfo('Detected CLI: ${entity.path}');
+            }
           }
         }
       }
