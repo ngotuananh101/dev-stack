@@ -247,7 +247,7 @@ test("Redis fallback restores only builder-owned bundles with matching checksums
   const app = u.baseLinuxApps.find((entry) => entry.id === "redis");
   app.versions = {};
 
-  u.applyFallbackVersions(app, oldData, null, "Linux");
+  u.applyFallbackVersions(app, oldData, null);
 
   assert.deepEqual(plain(app.versions), { "8.10.3": good.browser_download_url });
   assert.deepEqual(plain(app.sha256), { "8.10.3": digest });
@@ -535,7 +535,7 @@ test("a stale checksum is never reattached to a different archive of the same ve
   // belongs to the older archive and must not be attached to this URL.
   app.versions = { "8.10.3": replacement.browser_download_url };
 
-  u.applyFallbackVersions(app, oldData, { versions: { "8.10.3": replacement.browser_download_url }, sha256: {} }, "Linux");
+  u.applyFallbackVersions(app, oldData, { versions: { "8.10.3": replacement.browser_download_url }, sha256: {} });
 
   assert.deepEqual(plain(app.versions), { "8.10.3": replacement.browser_download_url });
   assert.equal(app.sha256?.["8.10.3"], undefined);
@@ -584,7 +584,7 @@ test("Apache and PostgreSQL fall back only to builder bundles that still match",
       "9.9.9": `https://github.com/ngotuananh101/devstack-app-builder/releases/download/x/${id}-9.9.9-glibc-x86_64-abcdef0123456789.tar.gz`,
       latest: "https://example.com/source.tar.gz",
     } }] };
-    u.applyFallbackVersions(app, old, null, "Linux");
+    u.applyFallbackVersions(app, old, null);
     assert.deepEqual(Object.keys(app.versions), [version]);
     assert.equal(app.versions[version], asset.browser_download_url);
   }

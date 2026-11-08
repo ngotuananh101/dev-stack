@@ -1094,7 +1094,7 @@ function applyFetchedVersions(app, fetchedResult) {
   }
 }
 
-function applyFallbackVersions(app, oldData, fetchedResult = null, platformName = null) {
+function applyFallbackVersions(app, oldData, fetchedResult = null) {
   const oldApp = oldData?.apps?.find((a) => a.id === app.id);
   const runtime = portableBundleRuntime(app);
   if (runtime) {
@@ -1154,7 +1154,7 @@ async function updatePlatformCatalog({
     catalogObject.apps.map(async (app) => {
       const fetched = await fetchAppVersions(app, fetchers, platformName);
       applyFetchedVersions(app, fetched);
-      applyFallbackVersions(app, oldData, fetched, platformName);
+      applyFallbackVersions(app, oldData, fetched);
     }),
   );
 

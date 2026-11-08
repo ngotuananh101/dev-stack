@@ -111,10 +111,22 @@ for (const platform of ['Linux', 'Windows']) {
   });
 }
 
-for (const [platform, expectedVersions] of [
-  ['Linux', null],
-  ['Windows', { '1.2.3': 'https://example.com/source.tar.gz' }],
-]) {
+const linuxBuilderBundles = {
+  apache: {
+    version: '2.4.70',
+    url: 'https://github.com/ngotuananh101/devstack-app-builder/releases/download/runtime-1/apache-2.4.70-musl-dynamic-x86_64-abcdef0123456789.tar.gz',
+  },
+  redis: {
+    version: '7.4.1',
+    url: 'https://github.com/ngotuananh101/devstack-app-builder/releases/download/runtime-1/redis-7.4.1-musl-x86_64-abcdef0123456789.tar.gz',
+  },
+  postgresql: {
+    version: '18.6',
+    url: 'https://github.com/ngotuananh101/devstack-app-builder/releases/download/runtime-1/postgresql-18.6-musl-dynamic-x86_64-abcdef0123456789.tar.gz',
+  },
+};
+
+for (const platform of ['Linux', 'Windows']) {
   test(`${platform} output catalog respects unavailable runtimes after fallback`, async (t) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'updater-fallback-'));
     t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -123,10 +135,17 @@ for (const [platform, expectedVersions] of [
     const definitions = platform === 'Linux' ? u.baseLinuxApps : u.baseWindowsApps;
     const apps = definitions.filter((app) => ids.includes(app.id));
     const oldData = {
-      apps: ids.map((id) => ({ id, versions: {
-        '1.2.3': 'https://example.com/source.tar.gz',
-        latest: 'package_manager',
-      } })),
+      apps: ids.map((id) => {
+        const bundle = platform === 'Linux' ? linuxBuilderBundles[id] : null;
+        return {
+          id,
+          versions: {
+            ...(bundle ? { [bundle.version]: bundle.url } : {}),
+            '1.2.3': 'https://example.com/source.tar.gz',
+            latest: 'package_manager',
+          },
+        };
+      }),
     };
     fs.writeFileSync(path.join(dir, 'existing.json'), JSON.stringify(oldData));
     await u.updatePlatformCatalog({
@@ -140,6 +159,9 @@ for (const [platform, expectedVersions] of [
     assert.deepEqual(catalog.apps.map((app) => app.id), ids);
     if (platform === 'Linux') {
       for (const app of catalog.apps) {
+        const expected = linuxBuilderBundles[app.id];
+        assert.deepEqual(Object.keys(app.versions), [expected.version]);
+        assert.equal(app.versions[expected.version], expected.url);
         assert.equal(
           Object.values(app.versions).some((u) => u.includes('example.com')),
           false,
@@ -147,10 +169,11 @@ for (const [platform, expectedVersions] of [
         for (const url of Object.values(app.versions)) {
           assert.ok(url.startsWith('https://github.com/ngotuananh101/devstack-app-builder/releases/download/'));
         }
-        assert.deepEqual(app.versions, {});
       }
     } else {
-      for (const app of catalog.apps) assert.deepEqual(app.versions, expectedVersions);
+      for (const app of catalog.apps) {
+        assert.deepEqual(app.versions, { '1.2.3': 'https://example.com/source.tar.gz' });
+      }
     }
   });
 }
