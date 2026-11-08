@@ -10,8 +10,8 @@ const api = `https://api.github.com/repos/${repo}/releases?per_page=100&page=`;
 const assetsApi = (id) => `https://api.github.com/repos/${repo}/releases/${id}/assets?per_page=100&page=`;
 const digest = 'a'.repeat(64);
 
-function asset(version, variant = 'glibc-full-x86_64', build = 'abcdef0123456789') {
-  const name = `php-${version}-${variant}-${build}.tar.gz`;
+function asset(version, target = 'musl-dynamic-x86_64', build = 'abcdef0123456789') {
+  const name = `php-${version}-${target}-${build}.tar.gz`;
   return {
     name,
     browser_download_url: `https://github.com/${repo}/releases/download/runtime-1/${name}`,
@@ -163,7 +163,7 @@ test('skips non-portable assets and draft/prerelease builds', async () => {
   const u = updater(network([
     [release(1, [], { draft: true })],
     [release(2, [], { prerelease: true })],
-    [release(3, [good, asset('8.4.30', 'musl-full-x86_64'), asset('8.4.31', 'glibc-minimal-x86_64'), asset('8.4.32', 'glibc-full-aarch64'), { name: 'php-8.4.33.tar.gz', browser_download_url: 'https://example.com/source.tar.gz' }])],
+    [release(3, [good, asset('8.4.30', 'glibc-full-x86_64'), asset('8.4.31', 'glibc-minimal-x86_64'), asset('8.4.32', 'glibc-full-aarch64'), asset('8.4.33', 'musl-full-x86_64'), { name: 'php-8.4.34.tar.gz', browser_download_url: 'https://example.com/source.tar.gz' }])],
   ]));
   assert.deepEqual(plain((await u.fetchersLinux.php('8.4')).versions), { '8.4.27': good.browser_download_url });
 });

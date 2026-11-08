@@ -348,13 +348,14 @@ const fetchersWindows = {
 const BUILDER_REPO = "ngotuananh101/devstack-app-builder";
 const BUILDER_API_ORIGIN = "https://api.github.com";
 const BUILDER_RELEASES_PATH = `/repos/${BUILDER_REPO}/releases`;
-// Only fully static musl Redis bundles are accepted: a glibc build carries a
-// host floor that cannot be verified here, and the builder publishes both.
-const PHP_BUNDLE_ASSET = /^php-(\d+\.\d+\.\d+)-glibc-full-x86_64-([a-f0-9]{16})\.tar\.gz$/;
-const REDIS_BUNDLE_ASSET = /^redis-(\d+\.\d+\.\d+)-musl-x86_64-([a-f0-9]{16})\.tar\.gz$/;
+// Every builder-produced runtime is musl-based: musl-dynamic for the ones that
+// link libc, static musl for Redis. No other target is accepted.
 const BUILDER_BUNDLES = [
-  { runtime: "php", pattern: PHP_BUNDLE_ASSET },
-  { runtime: "redis", pattern: REDIS_BUNDLE_ASSET },
+  { runtime: "php", pattern: /^php-(\d+\.\d+\.\d+)-musl-dynamic-x86_64-([a-f0-9]{16})\.tar\.gz$/ },
+  { runtime: "apache", pattern: /^apache-(\d+\.\d+\.\d+)-musl-dynamic-x86_64-([a-f0-9]{16})\.tar\.gz$/ },
+  // PostgreSQL has used two-part versions since v10 (18.6, 17.11).
+  { runtime: "postgresql", pattern: /^postgresql-(\d+(?:\.\d+)+)-musl-dynamic-x86_64-([a-f0-9]{16})\.tar\.gz$/ },
+  { runtime: "redis", pattern: /^redis-(\d+\.\d+\.\d+)-musl-x86_64-([a-f0-9]{16})\.tar\.gz$/ },
 ];
 let builderReleaseIndex;
 
@@ -457,7 +458,9 @@ async function fetchBuilderReleaseAssets(releaseId) {
 
 // One complete, historical scan shared by every PHP minor and by Redis.
 async function fetchBuilderReleaseIndex() {
-  const index = { php: { versions: {}, sha256: {} }, redis: { versions: {}, sha256: {} } };
+  const index = Object.fromEntries(
+    BUILDER_BUNDLES.map(({ runtime }) => [runtime, { versions: {}, sha256: {} }]),
+  );
   const releases = await fetchBuilderReleasePages();
   for (const release of releases) {
     const assets = await fetchBuilderReleaseAssets(release.id);
@@ -502,11 +505,18 @@ function selectBuilderRuntime(runtimeIndex, accept) {
 const fetchersLinux = {
   // Portable-builder runtimes abort the whole run on a discovery failure; every
   // other runtime keeps the previous best-effort behavior.
-  isBuilderBacked: (app) => isPortablePhpApp(app) || isPortableRedisApp(app),
+  isBuilderBacked: (app) =>
+    ["php", "apache", "postgresql", "redis"].includes(portableBundleRuntime(app)),
   async php(prefix) {
     return selectBuilderRuntime(await builderRuntimeIndex("php"), (version) =>
       version.startsWith(`${prefix}.`),
     );
+  },
+  async apache() {
+    return selectBuilderRuntime(await builderRuntimeIndex("apache"), () => true);
+  },
+  async postgresql() {
+    return selectBuilderRuntime(await builderRuntimeIndex("postgresql"), () => true);
   },
   async redis() {
     return selectBuilderRuntime(await builderRuntimeIndex("redis"), () => true);
@@ -1043,11 +1053,15 @@ function isPortableRedisApp(app) {
 
 function portableBundleRuntime(app) {
   if (isPortablePhpApp(app)) return "php";
+  if (app.id === "apache" && app.exec_file === "httpd") return "apache";
+  if (app.id === "postgresql" && app.exec_file === "postgres") return "postgresql";
   if (isPortableRedisApp(app)) return "redis";
   return null;
 }
 
-const PORTABLE_BUNDLE_ASSETS = { php: PHP_BUNDLE_ASSET, redis: REDIS_BUNDLE_ASSET };
+const PORTABLE_BUNDLE_ASSETS = Object.fromEntries(
+  BUILDER_BUNDLES.map(({ runtime, pattern }) => [runtime, pattern]),
+);
 
 function applyFetchedVersions(app, fetchedResult) {
   if (!fetchedResult) return;

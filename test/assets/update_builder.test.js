@@ -6,6 +6,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const {
+  apacheAsset,
   apiOrigin,
   assetsApi,
   digest,
@@ -14,6 +15,7 @@ const {
   loadUpdater,
   phpAsset,
   plain,
+  postgresqlAsset,
   redisAsset,
   release,
   releasesApi,
@@ -537,4 +539,34 @@ test("a stale checksum is never reattached to a different archive of the same ve
 
   assert.deepEqual(plain(app.versions), { "8.10.3": replacement.browser_download_url });
   assert.equal(app.sha256?.["8.10.3"], undefined);
+});
+
+test("Apache and PostgreSQL are discovered from musl-dynamic bundles", async (t) => {
+  const apache = apacheAsset("2.4.70", { tag: "runtimes-2026-11-08" });
+  const pg = postgresqlAsset("18.6", { tag: "runtimes-2026-11-08" });
+  const network = githubNetwork({
+    releasePages: [[release(1, { tag: "runtimes-2026-11-08" })]],
+    assetsByRelease: { 1: [apache, pg] },
+  });
+  const u = loadUpdater(network.fetch, fixtureDir(t));
+
+  const [a, p] = await Promise.all([u.fetchersLinux.apache(), u.fetchersLinux.postgresql()]);
+  assert.deepEqual(plain(a.versions), { "2.4.70": apache.browser_download_url });
+  assert.deepEqual(plain(p.versions), { "18.6": pg.browser_download_url });
+  assert.deepEqual(plain(p.sha256), { "18.6": digest });
+});
+
+test("Apache and PostgreSQL ignore glibc, static-musl and aarch64 bundles", async (t) => {
+  const network = githubNetwork({
+    releasePages: [[release(1, { tag: "runtimes-2026-11-08" })]],
+    assetsByRelease: { 1: [
+      apacheAsset("2.4.70", { target: "glibc-x86_64" }),
+      apacheAsset("2.4.71", { target: "musl-x86_64" }),
+      postgresqlAsset("18.6", { target: "musl-dynamic-aarch64" }),
+      { name: "postgresql-18.6.tar.gz", browser_download_url: "https://example.com/pg.tar.gz" },
+    ] },
+  });
+  const u = loadUpdater(network.fetch, fixtureDir(t));
+  assert.deepEqual(plain((await u.fetchersLinux.apache()).versions), {});
+  assert.deepEqual(plain((await u.fetchersLinux.postgresql()).versions), {});
 });

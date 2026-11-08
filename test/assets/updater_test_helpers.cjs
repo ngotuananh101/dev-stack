@@ -61,16 +61,12 @@ function bundleUrl(tag, name) {
   return `https://github.com/${repo}/releases/download/${tag}/${name}`;
 }
 
-function phpAsset(version, options = {}) {
-  const {
-    tag = "runtimes-2026-11-06",
-    variant = "glibc-full-x86_64",
-    build = "abcdef0123456789",
-    hash = digest,
-    name,
-    url,
-  } = options;
-  const assetName = name ?? `php-${version}-${variant}-${build}.tar.gz`;
+const BUILDER_TARGETS = { php: "musl-dynamic", apache: "musl-dynamic", postgresql: "musl-dynamic", redis: "musl" };
+
+function bundleAsset(runtime, version, options = {}) {
+  const { tag = "runtimes-2026-11-06", build = "abcdef0123456789", hash = digest, name, url } = options;
+  const target = options.target ?? `${BUILDER_TARGETS[runtime]}-x86_64`;
+  const assetName = name ?? `${runtime}-${version}-${target}-${build}.tar.gz`;
   return {
     name: assetName,
     browser_download_url: url ?? bundleUrl(tag, assetName),
@@ -78,22 +74,10 @@ function phpAsset(version, options = {}) {
   };
 }
 
-function redisAsset(version, options = {}) {
-  const {
-    tag = "runtimes-2026-11-06",
-    target = "musl",
-    build = "abcdef0123456789",
-    hash = digest,
-    name,
-    url,
-  } = options;
-  const assetName = name ?? `redis-${version}-${target}-x86_64-${build}.tar.gz`;
-  return {
-    name: assetName,
-    browser_download_url: url ?? bundleUrl(tag, assetName),
-    ...(hash ? { digest: `sha256:${hash}` } : {}),
-  };
-}
+const phpAsset = (version, options) => bundleAsset("php", version, options);
+const redisAsset = (version, options) => bundleAsset("redis", version, options);
+const apacheAsset = (version, options) => bundleAsset("apache", version, options);
+const postgresqlAsset = (version, options) => bundleAsset("postgresql", version, options);
 
 // Releases carry no embedded assets: the updater must read the per-release
 // assets endpoint, exactly as a real, complete scan does.
@@ -155,9 +139,11 @@ function githubNetwork({ releasePages = [], assetsByRelease = {}, override } = {
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 module.exports = {
+  apacheAsset,
   apiOrigin,
   assetsApi,
   assetPages,
+  bundleAsset,
   bundleUrl,
   digest,
   fixtureDir,
@@ -165,6 +151,7 @@ module.exports = {
   loadUpdater,
   phpAsset,
   plain,
+  postgresqlAsset,
   redisAsset,
   release,
   releasesApi,
