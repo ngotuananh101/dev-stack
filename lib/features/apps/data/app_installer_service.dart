@@ -652,7 +652,19 @@ class AppInstallerService {
 
     if (app.appId.contains('postgresql')) {
       onProgress?.call(0.96, 'Initializing PostgreSQL...');
-      await _initializePostgresql(app, version, installPath, logInfo);
+      bool allowLan = false;
+      try {
+        allowLan = _ref.read(settingsProvider).value?.allowLanAccess ?? false;
+      } catch (e) {
+        logInfo('Could not read LAN access setting: $e');
+      }
+      await configureIsolatedPostgresql(
+        app,
+        version,
+        resolveDbTool(installPath, 'initdb'),
+        logInfo,
+        allowLanAccess: allowLan,
+      );
     }
 
     // A portable Redis bundle carries no `redis.conf`, but the service manager
@@ -1191,151 +1203,6 @@ class AppInstallerService {
       throw Exception(
         'Database initialization executable not found in $binDir',
       );
-    }
-  }
-
-  Future<void> _initializePostgresql(
-    AppModel app,
-    String version,
-    String installPath,
-    Function(String) logInfo,
-  ) async {
-    logInfo('Initializing PostgreSQL database cluster...');
-    final dataDir = Directory(
-      p.join(AppConfig.dataDir, '${app.appId}-$version'),
-    );
-    if (dataDir.existsSync() && dataDir.listSync().isNotEmpty) {
-      logInfo(
-        'Data directory already contains a cluster, skipping initdb to '
-        'avoid overwriting it: ${dataDir.path}',
-      );
-      return;
-    }
-    if (!dataDir.existsSync()) {
-      await dataDir.create(recursive: true);
-    }
-
-    // PostgreSQL initdb requires the data directory to have 700 (owner-only)
-    // permissions on Linux/macOS. Set explicitly to avoid "could not change
-    // permissions of existing directory" or "Data directory is invalid" errors.
-    if (Platform.isLinux || Platform.isMacOS) {
-      await Process.run('chmod', ['700', dataDir.path]);
-    }
-
-    final binDir = Directory(p.join(installPath, 'bin'));
-    if (!binDir.existsSync()) {
-      throw Exception(
-        'PostgreSQL bin directory not found at $binDir; cannot initialize.',
-      );
-    }
-
-    final initdbPath = resolveDbTool(installPath, 'initdb');
-    if (!File(initdbPath).existsSync()) {
-      throw Exception(
-        'initdb not found at $initdbPath; cannot initialize the cluster.',
-      );
-    }
-
-    // Write the password file to a temp location OUTSIDE the data dir first.
-    // initdb refuses to run in a non-empty directory, so writing
-    // postgres-password.txt into dataDir before initdb would cause failure.
-    final tempDir = await Directory.systemTemp.createTemp('ponta-pg-pw-');
-    final passwordFile = File(p.join(tempDir.path, 'postgres-password.txt'));
-    if (!passwordFile.existsSync()) {
-      await passwordFile.writeAsString(_generateSecret());
-    }
-
-    final args = [
-      '-D',
-      dataDir.path,
-      '-E',
-      'UTF8',
-      '-U',
-      'postgres',
-      '--locale=C',
-      '-A',
-      'scram-sha-256',
-      '--pwfile',
-      passwordFile.path,
-    ];
-
-    logInfo('Running: $initdbPath ${args.join(' ')}');
-    try {
-      final result = await Process.run(initdbPath, args);
-      if (result.exitCode == 0) {
-        logInfo('PostgreSQL database cluster initialized successfully.');
-
-        // Copy postgres-password.txt into the data dir for restarts/management.
-        final destPasswordFile = File(
-          p.join(dataDir.path, 'postgres-password.txt'),
-        );
-        if (!destPasswordFile.existsSync()) {
-          await passwordFile.copy(destPasswordFile.path);
-        }
-
-        // Configure network binding based on allowLanAccess setting
-        try {
-          final settings = _ref.read(settingsProvider).value;
-          final allowLan = settings?.allowLanAccess ?? false;
-          final listenAddress = allowLan ? '*' : '127.0.0.1';
-
-          final confFile = File(p.join(dataDir.path, 'postgresql.conf'));
-          if (confFile.existsSync()) {
-            var content = await confFile.readAsString();
-            content = content.replaceAll(
-              RegExp(r"^#?listen_addresses\s*=\s*'.*?'", multiLine: true),
-              "listen_addresses = '$listenAddress'",
-            );
-            if (Platform.isLinux) {
-              content = ensurePostgresUnixSocketDirectory(content);
-            }
-            await confFile.writeAsString(content);
-            logInfo(
-              'Updated PostgreSQL listen_addresses to $listenAddress (allowLanAccess: $allowLan)',
-            );
-          }
-
-          final hbaFile = File(p.join(dataDir.path, 'pg_hba.conf'));
-          if (hbaFile.existsSync()) {
-            var content = await hbaFile.readAsString();
-            if (!content.contains('127.0.0.1/32')) {
-              content +=
-                  '\nhost    all             all             127.0.0.1/32            scram-sha-256\n';
-              await hbaFile.writeAsString(content);
-              logInfo(
-                'Updated pg_hba.conf to allow localhost connections only',
-              );
-            }
-          }
-        } catch (e) {
-          logInfo(
-            'Warning: Could not update PostgreSQL config for remote access: $e',
-          );
-        }
-      } else {
-        logInfo('Initialization returned non-zero code: ${result.exitCode}');
-        logInfo('Output: ${result.stdout}');
-        logInfo('Error: ${result.stderr}');
-        throw Exception(
-          'PostgreSQL initialization failed (exit code ${result.exitCode}): '
-          '${result.stderr}',
-        );
-      }
-    } catch (e) {
-      logInfo('Error during PostgreSQL initialization: $e');
-      if (e is Exception) {
-        rethrow;
-      }
-      throw Exception('PostgreSQL initialization failed: $e');
-    } finally {
-      // Clean up the temp password dir regardless of success or failure.
-      try {
-        if (tempDir.existsSync()) {
-          await tempDir.delete(recursive: true);
-        }
-      } catch (e) {
-        logInfo('Warning: Could not clean up temp password dir: $e');
-      }
     }
   }
 
@@ -2894,6 +2761,7 @@ catch_workers_output = yes
     Function(String) logInfo, {
     Future<ProcessResult> Function(String, List<String>)? runProcess,
     bool? isLinux,
+    bool allowLanAccess = false,
   }) async {
     final onLinux = isLinux ?? Platform.isLinux;
     final clusterName = 'postgresql-$version';
@@ -2983,9 +2851,10 @@ catch_workers_output = yes
     final confFile = File(p.join(dataDir.path, 'postgresql.conf'));
     if (confFile.existsSync()) {
       var conf = await confFile.readAsString();
+      final listenAddress = allowLanAccess ? '*' : '127.0.0.1';
       conf = conf.replaceAll(
         RegExp(r"^#?listen_addresses\s*=\s*'.*?'", multiLine: true),
-        "listen_addresses = '127.0.0.1'",
+        "listen_addresses = '$listenAddress'",
       );
       if (onLinux) {
         conf = ensurePostgresUnixSocketDirectory(conf);

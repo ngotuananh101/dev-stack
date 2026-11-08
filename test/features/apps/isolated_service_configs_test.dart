@@ -153,6 +153,41 @@ void main() {
       expect(content, contains("listen_addresses = '127.0.0.1'"));
     });
 
+    test('binds listen_addresses to * when allowLanAccess is true', () async {
+      final app = AppModel(
+        appId: 'postgresql',
+        name: 'PostgreSQL',
+        categories: ['database'],
+        groupName: 'database',
+      );
+
+      final fakeInitdb = File(p.join(tempBaseDir.path, 'initdb3'))..createSync();
+
+      await installer.configureIsolatedPostgresql(
+        app,
+        '18',
+        fakeInitdb.path,
+        (msg) {},
+        isLinux: true,
+        allowLanAccess: true,
+        runProcess: (exec, args) async {
+          if (exec == fakeInitdb.path && args.contains('-D')) {
+            final targetDir = args[args.indexOf('-D') + 1];
+            File(p.join(targetDir, 'postgresql.conf')).writeAsStringSync(
+              "listen_addresses = 'localhost'\n",
+            );
+            return ProcessResult(1, 0, 'ok', '');
+          }
+          return ProcessResult(2, 0, '', '');
+        },
+      );
+
+      final confFile = File(p.join(AppConfig.dataDir, 'postgresql-18', 'postgresql.conf'));
+      expect(confFile.existsSync(), isTrue);
+      final content = confFile.readAsStringSync();
+      expect(content, contains("listen_addresses = '*'"));
+    });
+
     test('ensurePostgresUnixSocketDirectory adds or replaces socket directory', () {
       const commented = "#unix_socket_directories = '/var/run/postgresql'\nport = 5432\n";
       final updated = AppInstallerService.ensurePostgresUnixSocketDirectory(commented);
