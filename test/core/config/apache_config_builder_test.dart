@@ -218,4 +218,84 @@ DocumentRoot "c:/Apache24/htdocs"
       expect(config, isNot(contains('DocumentRoot')));
     });
   });
+
+  group('ApacheConfigBuilder.buildBundleConfig', () {
+    const producerConf = '''
+Define SRVROOT "\${APACHE_SERVER_ROOT}"
+ServerRoot "\${SRVROOT}"
+Listen 80
+LoadModule mpm_event_module modules/mod_mpm_event.so
+<IfModule unixd_module>
+User daemon
+Group daemon
+</IfModule>
+DocumentRoot "\${SRVROOT}/htdocs"
+<Directory "\${SRVROOT}/htdocs">
+    Require all granted
+</Directory>
+''';
+
+    test('builds a runnable config from the producer bundle conf', () {
+      final out = ApacheConfigBuilder.buildBundleConfig(
+        initialContent: producerConf,
+        serverRoot: '/opt/apps/apache/2.4.70',
+        documentRoot: '/opt/www',
+        vhostsDir: '/opt/vhosts/apache',
+        logsDir: '/opt/logs',
+        allowLanAccess: false,
+        isSslInstalled: false,
+      );
+      expect(out, contains('Define SRVROOT "/opt/apps/apache/2.4.70"'));
+      expect(out, contains('ServerRoot "\${SRVROOT}"'));
+      expect(out, contains('DocumentRoot "/opt/www"'));
+      expect(out, contains('LoadModule unixd_module modules/mod_unixd.so'));
+      expect(out, contains('PidFile "/opt/logs/httpd.pid"'));
+      expect(out, contains('ErrorLog "/opt/logs/apache_error.log"'));
+      expect(out, contains('IncludeOptional "/opt/vhosts/apache/[!h]*.conf"'));
+      expect(out, isNot(contains('IncludeOptional "/opt/vhosts/apache/*.conf"')));
+      expect(RegExp(r'^Listen ', multiLine: true).allMatches(out).length, 1);
+      expect(out, contains('Listen 127.0.0.1:80'));
+    });
+
+    test('replaces existing ErrorLog', () {
+      const confWithErrorLog = '''
+Define SRVROOT "\${APACHE_SERVER_ROOT}"
+ServerRoot "\${SRVROOT}"
+Listen 80
+ErrorLog "logs/error_log"
+DocumentRoot "\${SRVROOT}/htdocs"
+<Directory "\${SRVROOT}/htdocs">
+    Require all granted
+</Directory>
+''';
+      final out = ApacheConfigBuilder.buildBundleConfig(
+        initialContent: confWithErrorLog,
+        serverRoot: '/opt/apps/apache/2.4.70',
+        documentRoot: '/opt/www',
+        vhostsDir: '/opt/vhosts/apache',
+        logsDir: '/opt/logs',
+        allowLanAccess: false,
+        isSslInstalled: false,
+      );
+      expect(out, contains('ErrorLog "/opt/logs/apache_error.log"'));
+      expect(out, isNot(contains('logs/error_log')));
+      expect(RegExp(r'^ErrorLog ', multiLine: true).allMatches(out).length, 1);
+    });
+
+    test('prependDirectives is idempotent', () {
+      const conf = '''
+Define SRVROOT "/opt/apps/apache/2.4.70"
+ServerRoot "\${SRVROOT}"
+Listen 80
+''';
+      final directives = [
+        'PidFile "/opt/logs/httpd.pid"',
+        'ErrorLog "/opt/logs/apache_error.log"',
+        'LoadModule unixd_module modules/mod_unixd.so',
+      ];
+      final first = ApacheConfigBuilder.prependDirectives(conf, directives);
+      final second = ApacheConfigBuilder.prependDirectives(first, directives);
+      expect(second, equals(first));
+    });
+  });
 }

@@ -1590,53 +1590,73 @@ class AppInstallerService {
         await _setLinuxCapabilityForWebserver(app.execFilePath!, logInfo);
       }
     } else if (app.appId.contains('apache')) {
-      // Apache Lounge zips often contain an 'Apache24' subfolder
-      String apacheRoot = installPath;
-      File confFile = File(p.join(installPath, 'conf', 'httpd.conf'));
-
-      if (!confFile.existsSync()) {
-        final nestedConf = File(
-          p.join(installPath, 'Apache24', 'conf', 'httpd.conf'),
-        );
-        if (nestedConf.existsSync()) {
-          confFile = nestedConf;
-          apacheRoot = p.join(installPath, 'Apache24');
-        }
-      }
-
-      if (confFile.existsSync()) {
-        logInfo('Configuring Apache paths in ${confFile.path}...');
-        final content = await confFile.readAsString();
-
+      final isBundle =
+          RuntimeBundleManifest.load(installPath)?.runtime == 'apache';
+      if (isBundle) {
         final certPath = isSslInstalled
             ? sslNotifier.getSiteCertPath('localhost')
             : null;
         final keyPath = isSslInstalled
             ? sslNotifier.getSiteKeyPath('localhost')
             : null;
-
-        final updatedContent = ApacheConfigBuilder.buildMainConfig(
-          initialContent: content,
-          serverRoot: apacheRoot,
-          documentRoot: webRoot,
-          vhostsGlob: p.join(AppConfig.vhostsDir, 'apache', '*.conf'),
+        await configureApacheBundle(
+          app,
+          installPath,
+          logInfo,
           allowLanAccess: allowLanAccess,
           isSslInstalled: isSslInstalled,
           certPath: certPath,
           keyPath: keyPath,
         );
-
-        await confFile.writeAsString(updatedContent);
-        logInfo(
-          'Apache configuration updated (SRVROOT, DocumentRoot, Permissions, SSL).',
-        );
       } else {
-        logInfo('Warning: Could not find Apache httpd.conf to configure.');
-      }
+        // Apache Lounge zips often contain an 'Apache24' subfolder
+        String apacheRoot = installPath;
+        File confFile = File(p.join(installPath, 'conf', 'httpd.conf'));
 
-      // Set Linux capability to bind privileged ports (80, 443)
-      if (Platform.isLinux && app.execFilePath != null) {
-        await _setLinuxCapabilityForWebserver(app.execFilePath!, logInfo);
+        if (!confFile.existsSync()) {
+          final nestedConf = File(
+            p.join(installPath, 'Apache24', 'conf', 'httpd.conf'),
+          );
+          if (nestedConf.existsSync()) {
+            confFile = nestedConf;
+            apacheRoot = p.join(installPath, 'Apache24');
+          }
+        }
+
+        if (confFile.existsSync()) {
+          logInfo('Configuring Apache paths in ${confFile.path}...');
+          final content = await confFile.readAsString();
+
+          final certPath = isSslInstalled
+              ? sslNotifier.getSiteCertPath('localhost')
+              : null;
+          final keyPath = isSslInstalled
+              ? sslNotifier.getSiteKeyPath('localhost')
+              : null;
+
+          final updatedContent = ApacheConfigBuilder.buildMainConfig(
+            initialContent: content,
+            serverRoot: apacheRoot,
+            documentRoot: webRoot,
+            vhostsGlob: p.join(AppConfig.vhostsDir, 'apache', '*.conf'),
+            allowLanAccess: allowLanAccess,
+            isSslInstalled: isSslInstalled,
+            certPath: certPath,
+            keyPath: keyPath,
+          );
+
+          await confFile.writeAsString(updatedContent);
+          logInfo(
+            'Apache configuration updated (SRVROOT, DocumentRoot, Permissions, SSL).',
+          );
+        } else {
+          logInfo('Warning: Could not find Apache httpd.conf to configure.');
+        }
+
+        // Set Linux capability to bind privileged ports (80, 443)
+        if (Platform.isLinux && app.execFilePath != null) {
+          await _setLinuxCapabilityForWebserver(app.execFilePath!, logInfo);
+        }
       }
     }
   }
@@ -2793,64 +2813,57 @@ catch_workers_output = yes
   }
 
   @visibleForTesting
-  Future<void> configureIsolatedApache(
+  Future<void> configureApacheBundle(
     AppModel app,
-    Function(String) logInfo,
-  ) async {
+    String installPath,
+    Function(String) logInfo, {
+    bool? allowLanAccess,
+    bool? isSslInstalled,
+    String? certPath,
+    String? keyPath,
+  }) async {
+    final confFile = File(p.join(installPath, 'conf', 'httpd.conf'));
+    if (!confFile.existsSync()) {
+      logInfo(
+        'Warning: Could not find Apache httpd.conf to configure at ${confFile.path}',
+      );
+      return;
+    }
+
     final apacheVhostsDir = Directory(p.join(AppConfig.vhostsDir, 'apache'));
     if (!apacheVhostsDir.existsSync()) {
-      apacheVhostsDir.createSync(recursive: true);
+      await apacheVhostsDir.create(recursive: true);
     }
-    final confFile = File(p.join(apacheVhostsDir.path, 'httpd.conf'));
-    if (!confFile.existsSync()) {
-      // Determine ServerRoot based on distro layout
-      final serverRoot = Directory('/etc/httpd').existsSync()
-          ? '/etc/httpd'
-          : '/etc/apache2';
+    final logsDir = Directory(AppConfig.logsDir);
+    if (!logsDir.existsSync()) {
+      await logsDir.create(recursive: true);
+    }
+    final isolatedConf = File(p.join(apacheVhostsDir.path, 'httpd.conf'));
 
-      final isDebian = !Directory('/etc/httpd').existsSync();
+    final effectiveSsl = isSslInstalled ?? false;
+    final effectiveLan = allowLanAccess ?? false;
 
-      // Build module Includes based on distro
-      final moduleIncludes = isDebian
-          ? 'IncludeOptional "/etc/apache2/mods-enabled/*.load"\n'
-                'IncludeOptional "/etc/apache2/mods-enabled/*.conf"'
-          : 'Include conf.modules.d/*.conf';
+    final content = await confFile.readAsString();
+    final updatedContent = ApacheConfigBuilder.buildBundleConfig(
+      initialContent: content,
+      serverRoot: installPath,
+      documentRoot: AppConfig.webserverRoot,
+      vhostsDir: apacheVhostsDir.path,
+      logsDir: AppConfig.logsDir,
+      allowLanAccess: effectiveLan,
+      isSslInstalled: effectiveSsl,
+      certPath: certPath,
+      keyPath: keyPath,
+    );
 
-      final pidFile = p
-          .join(AppConfig.logsDir, 'httpd.pid')
-          .replaceAll('\\', '/');
-      final errorLog = p
-          .join(AppConfig.logsDir, 'apache_error.log')
-          .replaceAll('\\', '/');
-      final vhostsGlob = p
-          .join(AppConfig.vhostsDir, 'apache', '*.conf')
-          .replaceAll('\\', '/');
-      final wwwRoot = AppConfig.webserverRoot.replaceAll('\\', '/');
+    await isolatedConf.writeAsString(updatedContent);
+    logInfo('Generated isolated Apache configuration at: ${isolatedConf.path}');
 
-      final content =
-          '''
-# Ponta isolated Apache configuration
-ServerRoot "$serverRoot"
-Listen 127.0.0.1:80
-ServerName localhost:80
-DocumentRoot "$wwwRoot"
-PidFile "$pidFile"
-ErrorLog "$errorLog"
-
-$moduleIncludes
-
-<Directory "$wwwRoot">
-    Options Indexes FollowSymLinks
-    AllowOverride All
-    Require all granted
-</Directory>
-
-# Include devstack virtual hosts (httpd.conf is in the same dir, so use
-# a glob that matches site configs but not this file itself)
-IncludeOptional "$vhostsGlob"
-''';
-      await confFile.writeAsString(content);
-      logInfo('Generated isolated Apache config at: ${confFile.path}');
+    if (Platform.isLinux) {
+      await _setLinuxCapabilityForWebserver(
+        p.join(installPath, 'lib', 'musl', 'ld-musl-x86_64.so.1'),
+        logInfo,
+      );
     }
   }
 

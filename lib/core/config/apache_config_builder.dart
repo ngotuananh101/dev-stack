@@ -1,7 +1,77 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:path/path.dart' as p;
 import 'webserver_bind_policy.dart';
 
 abstract final class ApacheConfigBuilder {
   static String _path(String value) => value.replaceAll('\\', '/');
+
+  @visibleForTesting
+  static String prependDirectives(String content, List<String> directives) {
+    var result = content;
+    final toInsert = <String>[];
+
+    for (final directive in directives) {
+      if (result.contains(directive)) {
+        continue;
+      }
+      final directiveName = directive.split(RegExp(r'\s+')).first;
+      if (directiveName == 'ErrorLog' || directiveName == 'PidFile') {
+        final regex = RegExp('^\\s*$directiveName\\s+.*\$', multiLine: true);
+        if (regex.hasMatch(result)) {
+          result = result.replaceFirst(regex, directive);
+          continue;
+        }
+      }
+      toInsert.add(directive);
+    }
+
+    if (toInsert.isNotEmpty) {
+      final insertText = toInsert.join('\n');
+      final srvRootMatch =
+          RegExp(r'^Define\s+SRVROOT\s+.*$', multiLine: true).firstMatch(result);
+      if (srvRootMatch != null) {
+        var index = srvRootMatch.end;
+        if (index < result.length && result[index] == '\r') index++;
+        if (index < result.length && result[index] == '\n') index++;
+        result =
+            '${result.substring(0, index)}$insertText\n${result.substring(index)}';
+      } else {
+        result = '$insertText\n$result';
+      }
+    }
+
+    return result;
+  }
+
+  /// Builds a runnable, isolated Apache `httpd.conf` from a portable bundle conf.
+  static String buildBundleConfig({
+    required String initialContent,
+    required String serverRoot,
+    required String documentRoot,
+    required String vhostsDir,
+    required String logsDir,
+    required bool allowLanAccess,
+    required bool isSslInstalled,
+    String? certPath,
+    String? keyPath,
+  }) {
+    var content = buildMainConfig(
+      initialContent: initialContent,
+      serverRoot: serverRoot,
+      documentRoot: documentRoot,
+      vhostsGlob: p.join(vhostsDir, '[!h]*.conf'),
+      allowLanAccess: allowLanAccess,
+      isSslInstalled: isSslInstalled,
+      certPath: certPath,
+      keyPath: keyPath,
+    );
+    content = prependDirectives(content, [
+      'PidFile "${_path(p.join(logsDir, 'httpd.pid'))}"',
+      'ErrorLog "${_path(p.join(logsDir, 'apache_error.log'))}"',
+      'LoadModule unixd_module modules/mod_unixd.so',
+    ]);
+    return content;
+  }
 
   /// Transforms and configures the main Apache `httpd.conf` content.
   static String buildMainConfig({

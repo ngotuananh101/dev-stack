@@ -5,6 +5,7 @@ import 'package:dev_stack/core/config/app_config.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 import 'package:dev_stack/features/apps/data/app_installer_service.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
+import '../../helpers/runtime_bundle_fixture.dart';
 import '../../helpers/test_ref.dart';
 
 
@@ -61,7 +62,8 @@ void main() {
       expect(content, contains('pm = ondemand'));
     });
 
-    test('generates isolated apache httpd.conf with IncludeOptional for vhosts', () async {
+    test('generates isolated apache httpd.conf from bundle with [!h]*.conf and mod_unixd', () async {
+      final bundleDir = createApacheBundleFixture(tempBaseDir);
       final app = AppModel(
         appId: 'apache',
         name: 'Apache',
@@ -69,13 +71,18 @@ void main() {
         groupName: 'webserver',
       );
 
-      await installer.configureIsolatedApache(app, (msg) {});
+      await installer.configureApacheBundle(app, bundleDir.path, (msg) {});
       final confFile = File(p.join(AppConfig.vhostsDir, 'apache', 'httpd.conf'));
       expect(confFile.existsSync(), isTrue);
 
       final content = confFile.readAsStringSync();
-      expect(content, contains('ServerName localhost'));
-      expect(content, contains('IncludeOptional'));
+      expect(
+        content,
+        contains(
+          'IncludeOptional "${p.join(AppConfig.vhostsDir, 'apache', '[!h]*.conf').replaceAll('\\', '/')}"',
+        ),
+      );
+      expect(content, contains('LoadModule unixd_module modules/mod_unixd.so'));
     });
 
     test('initializes isolated postgresql cluster with initdb and 0700 permissions', () async {
