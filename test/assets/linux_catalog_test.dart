@@ -64,20 +64,35 @@ void main() {
         expect(
           url,
           matches(
-            r'php-\d+\.\d+\.\d+-glibc-full-x86_64-[a-f0-9]{16}\.tar\.gz$',
+            r'php-\d+\.\d+\.\d+-musl-dynamic-x86_64-[a-f0-9]{16}\.tar\.gz$',
           ),
         );
       }
     }
   });
 
-  test('unavailable runtimes have no synthetic installable version', () async {
+  test('builder runtimes are installable from musl bundles', () async {
     final apps = await loadApps();
-    for (final app in AppsRepository.mergeAppsCatalog(apps, {})) {
-      if (app.versionLinks.isEmpty) expect(app.versions, isEmpty);
+    for (final id in ['apache', 'php84', 'postgresql', 'redis']) {
+      final app = apps.firstWhere((a) => a['id'] == id);
+      expect(app['versions'], isNotEmpty, reason: '$id must be installable');
+      for (final url in (app['versions'] as Map).values) {
+        expect(
+          url,
+          startsWith(
+            'https://github.com/ngotuananh101/devstack-app-builder/releases/download/',
+          ),
+        );
+      }
     }
-    for (final id in ['apache', 'redis', 'postgresql']) {
-      expect(apps.firstWhere((a) => a['id'] == id)['versions'], isEmpty);
+    final postgresql = apps.firstWhere((a) => a['id'] == 'postgresql');
+    for (final url in (postgresql['versions'] as Map).values) {
+      expect(
+        url,
+        matches(
+          r'postgresql-\d+(?:\.\d+)+-musl-dynamic-x86_64-[a-f0-9]{16}\.tar\.gz$',
+        ),
+      );
     }
   });
 
@@ -87,7 +102,7 @@ void main() {
     for (final url in (nginx['versions'] as Map).values) {
       expect(
         url,
-        startsWith('https://jirutka.github.io/nginx-binaries/bin/nginx-'),
+        startsWith('https://jirutka.github.io/nginx-binaries/nginx-'),
       );
       expect(url, contains('-x86_64-linux'));
     }

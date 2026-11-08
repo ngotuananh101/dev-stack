@@ -67,7 +67,10 @@ async function fetchMariadbReleases(fileMatcher) {
     for (const [releaseVer, details] of Object.entries(majorData.releases)) {
       const match = details.files?.find(fileMatcher);
       if (match?.file_download_url) {
-        versions[releaseVer] = match.file_download_url;
+        versions[releaseVer] = match.file_download_url.replace(
+          /^http:\/\//,
+          "https://",
+        );
       }
     }
   }

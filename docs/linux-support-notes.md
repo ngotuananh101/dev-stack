@@ -3,16 +3,9 @@
 ## Catalog scope (as of 2026-08-23)
 - **Nginx** uses Jakub Jirutka static Linux binaries (`jirutka/nginx-binaries`).
 - **Redis (Valkey)** uses official Valkey prebuilt binary tarballs (`download.valkey.io`).
-- **Apache** is intentionally ABSENT from `apps-linux.json`:
-  upstream publishes no official portable prebuilt Linux binaries. Re-add
-  only when a trustworthy signed source exists.
-- **PostgreSQL** uses Zonky embedded binaries (Maven Central), unpacked from
-  the jar's inner `.txz` by the installer.
+- **Apache and PostgreSQL** ship as musl-dynamic portable bundles from `devstack-app-builder`.
 
 ## Runtime limitations
-- Linux PHP (static-php-cli) ships the CLI SAPI only: services run via
-  `php -S host:port` (built-in server). Nginx↔PHP-FastCGI integration is a
-  follow-up requiring an fpm build.
 - mkcert CA trust install requires the Polkit agent (pkexec prompt).
 - Port-conflict probing uses `ss -tulpn` on Linux (best-effort, skips
   silently when unavailable — same policy as netstat on Windows).
