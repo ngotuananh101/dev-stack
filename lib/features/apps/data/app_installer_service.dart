@@ -654,7 +654,8 @@ class AppInstallerService {
       onProgress?.call(0.96, 'Initializing PostgreSQL...');
       bool allowLan = false;
       try {
-        allowLan = _ref.read(settingsProvider).value?.allowLanAccess ?? false;
+        final settings = await _ref.read(settingsProvider.future);
+        allowLan = settings.allowLanAccess;
       } catch (e) {
         logInfo('Could not read LAN access setting: $e');
       }
@@ -2817,11 +2818,25 @@ catch_workers_output = yes
       passwordFile.path,
     ];
 
-    logInfo('Running initdb: $initdbPath ${args.join(' ')}');
-    final result = await runner(initdbPath, args);
+    try {
+      logInfo('Running initdb: $initdbPath ${args.join(' ')}');
+      final result = await runner(initdbPath, args);
 
-    if (result.exitCode != 0) {
-      // Clean up the temp dir before throwing.
+      if (result.exitCode != 0) {
+        logInfo('initdb stdout: ${result.stdout}');
+        logInfo('initdb stderr: ${result.stderr}');
+        throw Exception(
+          'initdb failed (exit code ${result.exitCode}): ${result.stderr}',
+        );
+      }
+
+      final destPasswordFile = File(
+        p.join(dataDir.path, 'postgres-password.txt'),
+      );
+      if (!destPasswordFile.existsSync()) {
+        await passwordFile.copy(destPasswordFile.path);
+      }
+    } finally {
       try {
         if (tempDir.existsSync()) {
           await tempDir.delete(recursive: true);
@@ -2829,25 +2844,6 @@ catch_workers_output = yes
       } catch (e) {
         logInfo('Warning: Could not clean up temp password dir: $e');
       }
-      throw Exception('initdb failed: ${result.stderr}');
-    }
-
-    // After initdb succeeds, copy postgres-password.txt into the data dir
-    // so it is available alongside the cluster for restarts/management.
-    final destPasswordFile = File(
-      p.join(dataDir.path, 'postgres-password.txt'),
-    );
-    if (!destPasswordFile.existsSync()) {
-      await passwordFile.copy(destPasswordFile.path);
-    }
-
-    // Clean up the temp dir after the password file has been copied.
-    try {
-      if (tempDir.existsSync()) {
-        await tempDir.delete(recursive: true);
-      }
-    } catch (e) {
-      logInfo('Warning: Could not clean up temp password dir: $e');
     }
 
     final confFile = File(p.join(dataDir.path, 'postgresql.conf'));

@@ -247,6 +247,109 @@ void main() {
       expect(content, contains("listen_addresses = '*'"));
     });
 
+    test('cleans up temp password dir when runner throws ProcessException', () async {
+      final app = AppModel(
+        appId: 'postgresql',
+        name: 'PostgreSQL',
+        categories: ['database'],
+        groupName: 'database',
+      );
+
+      final fakeInitdb = File(p.join(tempBaseDir.path, 'initdb_throw'))..createSync();
+
+      final existingTempDirs = Directory.systemTemp
+          .listSync()
+          .whereType<Directory>()
+          .map((d) => d.path)
+          .where((name) => p.basename(name).startsWith('ponta-pg-pw-'))
+          .toSet();
+
+      String? capturedPwFilePath;
+
+      await expectLater(
+        installer.configureIsolatedPostgresql(
+          app,
+          '19',
+          fakeInitdb.path,
+          (msg) {},
+          isLinux: true,
+          runProcess: (exec, args) async {
+            if (args.contains('--pwfile')) {
+              capturedPwFilePath = args[args.indexOf('--pwfile') + 1];
+            }
+            throw const ProcessException('initdb', ['-D'], 'Permission denied', 13);
+          },
+        ),
+        throwsA(isA<ProcessException>()),
+      );
+
+      expect(capturedPwFilePath, isNotNull);
+      final pwDir = Directory(p.dirname(capturedPwFilePath!));
+      expect(pwDir.existsSync(), isFalse);
+
+      final remainingTempDirs = Directory.systemTemp
+          .listSync()
+          .whereType<Directory>()
+          .map((d) => d.path)
+          .where((name) => p.basename(name).startsWith('ponta-pg-pw-'))
+          .toSet();
+
+      final newDirs = remainingTempDirs.difference(existingTempDirs);
+      expect(newDirs, isEmpty);
+    });
+
+    test('reports stdout and stderr with exit code on initdb failure', () async {
+      final app = AppModel(
+        appId: 'postgresql',
+        name: 'PostgreSQL',
+        categories: ['database'],
+        groupName: 'database',
+      );
+
+      final fakeInitdb = File(p.join(tempBaseDir.path, 'initdb_fail'))..createSync();
+      final logs = <String>[];
+
+      await expectLater(
+        installer.configureIsolatedPostgresql(
+          app,
+          '20',
+          fakeInitdb.path,
+          logs.add,
+          isLinux: true,
+          runProcess: (exec, args) async {
+            if (exec == fakeInitdb.path) {
+              return ProcessResult(
+                1234,
+                42,
+                'initdb: distinctive standard output',
+                'initdb: fatal error occurred',
+              );
+            }
+            return ProcessResult(2, 0, '', '');
+          },
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(
+              contains('(exit code 42)'),
+              contains('initdb: fatal error occurred'),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        logs,
+        contains('initdb stdout: initdb: distinctive standard output'),
+      );
+      expect(
+        logs,
+        contains('initdb stderr: initdb: fatal error occurred'),
+      );
+    });
+
     test('ensurePostgresUnixSocketDirectory adds or replaces socket directory', () {
       const commented = "#unix_socket_directories = '/var/run/postgresql'\nport = 5432\n";
       final updated = AppInstallerService.ensurePostgresUnixSocketDirectory(commented);
