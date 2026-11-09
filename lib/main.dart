@@ -64,8 +64,20 @@ void main(List<String> args) async {
   whenCurrentWindow((window) {
     // The header bar is drawn by AppHeader, so the native one goes away and the
     // window keeps no caption buttons of its own.
-    window.titleBarStyle = TitleBarStyle.hidden;
-    window.isWindowControlButtonsVisible = false;
+    //
+    // On Linux that is the runner's job: it creates the window undecorated (see
+    // `linux/runner/my_application.cc`). Setting the title bar style through
+    // nativeapi there instead switches on its custom-shadow mode, and 0.5.10
+    // gets the geometry of that mode wrong — the shadow gutter expands the
+    // surface, but the input region it registers is offset by the gutter without
+    // accounting for GDK's surface margin. The result is a dead band along the
+    // right and bottom of the window: the caption buttons, refresh, pagination
+    // and other page actions stop taking clicks. It also shrinks the window's
+    // minimum size and paints an opaque band around the content.
+    if (!Platform.isLinux) {
+      window.titleBarStyle = TitleBarStyle.hidden;
+      window.isWindowControlButtonsVisible = false;
+    }
     window.title = title;
     window.setSize(const Size(1080, 720).toNative(), false);
     window.minimumSize = const Size(720, 520).toNative();

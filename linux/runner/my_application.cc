@@ -45,10 +45,14 @@ static void my_application_activate(GApplication* application) {
   gtk_window_set_title(window, "Ponta DevStack");
 
   // The application renders its own cross-platform header bar in Flutter
-  // (AppHeader) and asks for the frameless title bar from Dart, through
-  // window_manager's native API (nativeapi has no GTK plugin of its own). We
-  // intentionally do not attach a GtkHeaderBar here so no native titlebar can
-  // flash before the first frame.
+  // (AppHeader), so the window carries no decoration of its own. This is done
+  // here rather than from Dart: on Linux, asking nativeapi for a hidden title
+  // bar switches on its custom-shadow mode, which in 0.5.10 registers an input
+  // region offset from the real content area and leaves a dead band along the
+  // right and bottom of the window (see the comment in `lib/main.dart`).
+  // Setting it before the window is realized also means no native title bar can
+  // flash before the first frame, and no GtkHeaderBar is attached.
+  gtk_window_set_decorated(window, FALSE);
 
   // Load and set application icon from bundle assets if available.
   char exe_path[PATH_MAX];
