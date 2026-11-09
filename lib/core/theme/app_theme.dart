@@ -18,6 +18,14 @@ class AppTheme {
         secondary: AppColors.secondary,
         surface: AppColors.surface,
         error: AppColors.error,
+        // Material derives `ThemeData.dividerColor` from `outline` when it is
+        // not given one, and falls back from there to `onBackground` — which
+        // `ColorScheme.dark` defaults to pure white. window_manager's
+        // VirtualWindowFrame paints the window's own border with
+        // `dividerColor`, so leaving it unset drew a 1px white outline around
+        // the window.
+        outline: AppColors.border,
+        outlineVariant: AppColors.border,
         onPrimary: AppColors.textOnColor,
         onSecondary: AppColors.textOnColor,
         onSurface: AppColors.textPrimary,

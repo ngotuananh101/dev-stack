@@ -24,4 +24,15 @@ void main() {
     expect(border.borderRadius, BorderRadius.circular(AppRadius.md));
     expect(theme.cardTheme.shape, isA<RoundedRectangleBorder>());
   });
+
+  test('AppTheme darkTheme keeps window-frame colours on the palette', () {
+    final theme = AppTheme.darkTheme;
+    // window_manager's VirtualWindowFrame borders the whole window with
+    // `ThemeData.dividerColor`, which Material derives from
+    // `ColorScheme.outline`. Leaving `outline` unset makes both fall back to
+    // `onBackground`, and `ColorScheme.dark` defaults that to pure white.
+    expect(theme.dividerColor, AppColors.border);
+    expect(theme.colorScheme.outline, AppColors.border);
+    expect(theme.colorScheme.outlineVariant, AppColors.border);
+  });
 }
