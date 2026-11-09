@@ -53,6 +53,10 @@ jobs:
   build-windows:
     name: Build Windows
     runs-on: windows-latest
+    # Skip the whole job when no Windows artifact was requested: otherwise it
+    # would still check out, install Flutter and run `flutter build windows`
+    # only to upload nothing.
+    if: ${{ github.event.inputs.build_windows_portable == 'true' || github.event.inputs.build_windows_portable == true || github.event.inputs.build_windows_installer == 'true' || github.event.inputs.build_windows_installer == true }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -134,6 +138,9 @@ jobs:
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
+    # Same rule as the Windows job: no Linux artifact requested means no
+    # Linux job at all.
+    if: ${{ github.event.inputs.build_linux_appimage == 'true' || github.event.inputs.build_linux_appimage == true || github.event.inputs.build_linux_deb == 'true' || github.event.inputs.build_linux_deb == true || github.event.inputs.build_linux_rpm == 'true' || github.event.inputs.build_linux_rpm == true || github.event.inputs.build_linux_archive == 'true' || github.event.inputs.build_linux_archive == true }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -390,7 +397,9 @@ jobs:
   release:
     name: Create GitHub Release
     needs: [build-windows, build-linux]
-    if: ${{ always() && (github.event.inputs.create_release == 'true' || github.event.inputs.create_release == true) }}
+    # Both build jobs may be skipped when nothing was selected, so gate on a
+    # successful build rather than on `always()` alone.
+    if: ${{ !cancelled() && (github.event.inputs.create_release == 'true' || github.event.inputs.create_release == true) && (needs.build-windows.result == 'success' || needs.build-linux.result == 'success') }}
     runs-on: ubuntu-latest
     # Publishing a release writes to the repository's releases, which the
     # read-only workflow baseline does not permit.
