@@ -230,7 +230,17 @@ class PathService {
     ];
   }
 
-  /// Creates a Linux executable symlink or fallback shell wrapper in [binDir].
+  /// Creates a Linux executable symlink or shell wrapper in [binDir] for
+  /// [targetPath].
+  ///
+  /// A symlink is the cheaper choice and is what ELF binaries get: the kernel
+  /// runs them the same way whichever path was used. A shell script is
+  /// different. The runtime bundles ship launchers that compute where the
+  /// bundle lives from `$0`, so invoking `~/.ponta/bin/php` — a symlink to
+  /// `<bundle>/bin/php` — makes the launcher look for `<bundle>` next to the
+  /// link and fail with `/home/&lt;user&gt;/.ponta/libexec/launch.sh: No such
+  /// file or directory`. Those targets get a wrapper that `exec`s the real
+  /// path, which keeps `$0` inside the bundle.
   static Future<void> createLinuxSymlinkOrShim(
     String binDir,
     String commandName,
@@ -247,15 +257,47 @@ class PathService {
       fileEntity.deleteSync();
     }
 
+    if (_startsWithShebang(targetPath)) {
+      await _writeShellWrapper(fileEntity, linkPath, targetPath);
+      return;
+    }
+
     try {
       linkEntity.createSync(targetPath);
     } catch (_) {
       // If symlink creation fails (e.g. unsupported filesystem), fallback to shell wrapper script
-      final script = '#!/usr/bin/env sh\nexec ${shellSingleQuote(targetPath)} "\$@"\n';
-      await fileEntity.writeAsString(script);
-      if (Platform.isLinux) {
-        await Process.run('chmod', ['755', linkPath]);
+      await _writeShellWrapper(fileEntity, linkPath, targetPath);
+    }
+  }
+
+  /// Whether [path] is a script, i.e. starts with a `#!` line.
+  ///
+  /// Reading the file follows symlinks, so a link to a launcher script is
+  /// recognised too. An unreadable or missing target answers false, which
+  /// leaves the caller on the symlink path it took before.
+  static bool _startsWithShebang(String path) {
+    try {
+      final handle = File(path).openSync();
+      try {
+        final header = handle.readSync(2);
+        return header.length == 2 && header[0] == 0x23 && header[1] == 0x21;
+      } finally {
+        handle.closeSync();
       }
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> _writeShellWrapper(
+    File fileEntity,
+    String linkPath,
+    String targetPath,
+  ) async {
+    final script = '#!/usr/bin/env sh\nexec ${shellSingleQuote(targetPath)} "\$@"\n';
+    await fileEntity.writeAsString(script);
+    if (Platform.isLinux) {
+      await Process.run('chmod', ['755', linkPath]);
     }
   }
 

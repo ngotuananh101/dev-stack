@@ -170,5 +170,74 @@ void main() {
         isTrue,
       );
     });
+
+    test('createLinuxSymlinkOrShim symlinks a binary target', () async {
+      final binDir = Directory(p.join(tempDir.path, 'bin'))..createSync(recursive: true);
+      final targetFile = File(p.join(tempDir.path, 'node'))
+        ..writeAsBytesSync(const [0x7f, 0x45, 0x4c, 0x46, 0, 0, 0, 0]);
+
+      await PathService.createLinuxSymlinkOrShim(
+        binDir.path,
+        'node',
+        targetFile.path,
+      );
+
+      final createdPath = p.join(binDir.path, 'node');
+      expect(
+        FileSystemEntity.typeSync(createdPath, followLinks: false),
+        equals(FileSystemEntityType.link),
+      );
+    });
+
+    test(
+      r'createLinuxSymlinkOrShim wraps a script target so its $0 keeps the real path',
+      () async {
+        // Runtime launchers compute the bundle root from `$0`; going through a
+        // symlink would move that root out of the bundle.
+        final binDir = Directory(p.join(tempDir.path, 'bin'))..createSync(recursive: true);
+        final targetFile = File(p.join(tempDir.path, 'launcher'))
+          ..writeAsStringSync('#!/bin/sh\nprintf "%s\\n" launcher-ran\n');
+        await Process.run('chmod', ['755', targetFile.path]);
+
+        await PathService.createLinuxSymlinkOrShim(
+          binDir.path,
+          'php',
+          targetFile.path,
+        );
+
+        final createdPath = p.join(binDir.path, 'php');
+        expect(
+          FileSystemEntity.typeSync(createdPath, followLinks: false),
+          equals(FileSystemEntityType.file),
+        );
+
+        final result = await Process.run(createdPath, const []);
+        expect(result.exitCode, equals(0));
+        expect(result.stdout, equals('launcher-ran\n'));
+      },
+    );
+
+    test('createLinuxSymlinkOrShim shims a target that is already a link', () async {
+      final binDir = Directory(p.join(tempDir.path, 'bin'))..createSync(recursive: true);
+      final targetFile = File(p.join(tempDir.path, 'launcher'))
+        ..writeAsStringSync('#!/bin/sh\nprintf "%s\\n" launcher-ran\n');
+      await Process.run('chmod', ['755', targetFile.path]);
+      final targetLink = Link(p.join(tempDir.path, 'launcher-link'))
+        ..createSync(targetFile.path);
+
+      await PathService.createLinuxSymlinkOrShim(
+        binDir.path,
+        'php',
+        targetLink.path,
+      );
+
+      final createdPath = p.join(binDir.path, 'php');
+      expect(
+        FileSystemEntity.typeSync(createdPath, followLinks: false),
+        equals(FileSystemEntityType.file),
+      );
+      final result = await Process.run(createdPath, const []);
+      expect(result.stdout, equals('launcher-ran\n'));
+    });
   });
 }
