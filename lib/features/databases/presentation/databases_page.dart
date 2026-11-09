@@ -17,6 +17,7 @@ import 'widgets/add_database_modal.dart';
 import 'widgets/add_redis_key_modal.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:dev_stack/shared/widgets/app_button.dart';
+import 'package:dev_stack/shared/widgets/page_toolbar.dart';
 
 class DatabasesPage extends ConsumerStatefulWidget {
   const DatabasesPage({super.key});
@@ -126,8 +127,9 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                         isMongo:
                             selectedEngine?.appId.contains('mongodb') == true,
                         heidiSql: heidiSql.appId.isNotEmpty ? heidiSql : null,
-                        mongoCompass:
-                            mongoCompass.appId.isNotEmpty ? mongoCompass : null,
+                        mongoCompass: mongoCompass.appId.isNotEmpty
+                            ? mongoCompass
+                            : null,
                         hasPhpMyAdmin: phpMyAdmin.appId.isNotEmpty,
                       ),
                       const SizedBox(height: 16),
@@ -142,79 +144,76 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                                 },
                               )
                             : selectedEngine?.appId.contains('mongodb') == true
-                                ? _buildMongoGuidance(
-                                    mongoCompass: mongoCompass.appId.isNotEmpty
-                                        ? mongoCompass
-                                        : null,
-                                  )
-                                : databasesAsync.when(
-                                    data: (dbs) {
-                                      final filtered = dbs
-                                          .where(
-                                            (d) => d.name.toLowerCase().contains(
-                                                  _searchQuery,
-                                                ),
-                                          )
-                                          .toList();
-                                      final totalPages = filtered.isEmpty
-                                          ? 1
-                                          : (filtered.length / _itemsPerPage)
-                                              .ceil();
-                                      // Deleting the last row of the last page
-                                      // (or narrowing a search) used to leave
-                                      // _currentPage past the end, which
-                                      // paginated to an empty list and printed
-                                      // "Showing 11-10 of 10 items".
-                                      if (_currentPage > totalPages) {
-                                        _currentPage = totalPages;
-                                      }
-                                      final paginated = _paginateDatabases(
-                                        filtered,
-                                      );
-                                      final startItem = filtered.isEmpty
-                                          ? 0
-                                          : (_currentPage - 1) * _itemsPerPage +
-                                              1;
-                                      final endItem = filtered.isEmpty
-                                          ? 0
-                                          : (_currentPage * _itemsPerPage)
-                                              .clamp(
-                                              0,
-                                              filtered.length,
-                                            );
+                            ? _buildMongoGuidance(
+                                mongoCompass: mongoCompass.appId.isNotEmpty
+                                    ? mongoCompass
+                                    : null,
+                              )
+                            : databasesAsync.when(
+                                data: (dbs) {
+                                  final filtered = dbs
+                                      .where(
+                                        (d) => d.name.toLowerCase().contains(
+                                          _searchQuery,
+                                        ),
+                                      )
+                                      .toList();
+                                  final totalPages = filtered.isEmpty
+                                      ? 1
+                                      : (filtered.length / _itemsPerPage)
+                                            .ceil();
+                                  // Deleting the last row of the last page
+                                  // (or narrowing a search) used to leave
+                                  // _currentPage past the end, which
+                                  // paginated to an empty list and printed
+                                  // "Showing 11-10 of 10 items".
+                                  if (_currentPage > totalPages) {
+                                    _currentPage = totalPages;
+                                  }
+                                  final paginated = _paginateDatabases(
+                                    filtered,
+                                  );
+                                  final startItem = filtered.isEmpty
+                                      ? 0
+                                      : (_currentPage - 1) * _itemsPerPage + 1;
+                                  final endItem = filtered.isEmpty
+                                      ? 0
+                                      : (_currentPage * _itemsPerPage).clamp(
+                                          0,
+                                          filtered.length,
+                                        );
 
-                                      return Column(
-                                        children: [
-                                          Expanded(
-                                            child: DatabaseTable(
-                                              databases: paginated,
-                                              engineId:
-                                                  selectedEngine?.appId ?? '',
-                                              onDelete: (record) =>
-                                                  _handleDelete(record),
-                                              onEdit: (record) =>
-                                                  _handleEditDatabase(record),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          CompactPagination(
-                                            currentPage: _currentPage,
-                                            totalPages: totalPages,
-                                            startItem: startItem,
-                                            endItem: endItem,
-                                            totalItems: filtered.length,
-                                            onPageChanged: (page) => setState(
-                                                () => _currentPage = page),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                    loading: () => const Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                    error: (e, s) =>
-                                        Center(child: Text('Error: $e')),
-                                  ),
+                                  return Column(
+                                    children: [
+                                      Expanded(
+                                        child: DatabaseTable(
+                                          databases: paginated,
+                                          engineId: selectedEngine?.appId ?? '',
+                                          onDelete: (record) =>
+                                              _handleDelete(record),
+                                          onEdit: (record) =>
+                                              _handleEditDatabase(record),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      CompactPagination(
+                                        currentPage: _currentPage,
+                                        totalPages: totalPages,
+                                        startItem: startItem,
+                                        endItem: endItem,
+                                        totalItems: filtered.length,
+                                        onPageChanged: (page) =>
+                                            setState(() => _currentPage = page),
+                                      ),
+                                    ],
+                                  );
+                                },
+                                loading: () => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                                error: (e, s) =>
+                                    Center(child: Text('Error: $e')),
+                              ),
                       ),
                     ],
                   ),
@@ -306,9 +305,9 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                   AppButton(
                     label: 'Go to Apps to Install',
                     onPressed: () {
-                      ref.read(navigationProvider.notifier).setTab(
-                            NavigationTab.apps,
-                          );
+                      ref
+                          .read(navigationProvider.notifier)
+                          .setTab(NavigationTab.apps);
                     },
                     icon: const Icon(LucideIcons.download, size: 18),
                     style: AppButtonStyle.outline,
@@ -330,7 +329,10 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           const SizedBox(height: 16),
           const Text(
             'No database engines installed',
-            style: TextStyle(color: AppColors.textPrimary, fontSize: AppTextSize.lg),
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: AppTextSize.lg,
+            ),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -407,91 +409,103 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     bool hasPhpMyAdmin = false,
   }) {
     // Every action carries a label, so the group wraps onto a second line at a
-    // narrow window instead of being squeezed past it. The search field is the
-    // one element that can give up width without becoming unusable.
-    return Row(
-      children: [
-        Expanded(
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              if (!isRedis && !isMongo)
-                AppButton(
-                  label: 'Add DB',
-                  icon: const Icon(LucideIcons.plus, size: 14),
-                  style: AppButtonStyle.success,
-                  onPressed: _showAddDatabaseDialog,
-                ),
-              // phpMyAdmin only speaks the MySQL wire protocol, so the button
-              // is limited to the MySQL/MariaDB family — PostgreSQL,
-              // Meilisearch, Elasticsearch and the like have no phpMyAdmin
-              // front end.
-              if (!isRedis && !isMongo && hasPhpMyAdmin && _isMySqlFamily)
-                _buildActionButton(
-                  'phpMyAdmin',
-                  LucideIcons.externalLink,
-                  onTap: _launchPhpMyAdmin,
-                ),
-              if (isRedis)
-                _buildActionButton(
-                  'Add Key',
-                  LucideIcons.plus,
-                  color: AppColors.successStrong,
-                  onTap: _showAddRedisKeyDialog,
-                ),
-              if (heidiSql != null &&
-                  (selectedEngine?.appId.contains('mysql') == true ||
-                      selectedEngine?.appId.contains('mariadb') == true))
-                _buildActionButton(
-                  'HeidiSQL',
-                  LucideIcons.externalLink,
-                  color: AppColors.warningStrong,
-                  onTap: () =>
-                      ref.read(appsProvider.notifier).openApp(heidiSql),
-                ),
-              if (mongoCompass != null &&
-                  selectedEngine?.appId.contains('mongodb') == true)
-                _buildActionButton(
-                  'Compass',
-                  LucideIcons.externalLink,
-                  color: AppColors.successStrong,
-                  onTap: () =>
-                      ref.read(appsProvider.notifier).openApp(mongoCompass),
-                ),
-              if (!isMongo)
-                _buildActionButton(
-                  'Sync DB',
-                  LucideIcons.refreshCw,
-                  color: AppColors.accentStrong,
-                  onTap: () {
-                    if (selectedEngine != null) {
-                      if (isRedis) {
-                        ref.invalidate(redisDbStatsProvider(selectedEngine!));
-                        ref.read(redisProvider.notifier).fetchKeys(
-                          selectedEngine!,
-                          _selectedRedisDb,
-                          query: _searchQuery,
-                        );
-                      } else {
-                        ref
-                            .read(databasesProvider.notifier)
-                            .syncDatabases(selectedEngine!);
-                      }
-                    }
-                  },
-                ),
-            ],
-          ),
+    // narrow window instead of being squeezed past it; the search field stays
+    // pinned to the right edge. See PageToolbar for why this is not a bare
+    // Row with a Flexible search field.
+    return PageToolbar(
+      actions: [
+        ..._buildActionButtons(
+          isRedis,
+          isMongo: isMongo,
+          heidiSql: heidiSql,
+          mongoCompass: mongoCompass,
+          hasPhpMyAdmin: hasPhpMyAdmin,
         ),
-        const SizedBox(width: 12),
         _buildServiceStatusButton(),
-        const SizedBox(width: 12),
-        if (!isMongo) Flexible(child: _buildSearchField(isRedis)),
       ],
+      searchField: isMongo
+          ? const SizedBox.shrink()
+          : _buildSearchField(isRedis),
     );
   }
 
+  /// The action buttons, without the service status control PageToolbar adds
+  /// after them.
+  List<Widget> _buildActionButtons(
+    bool isRedis, {
+    required bool isMongo,
+    AppModel? heidiSql,
+    AppModel? mongoCompass,
+    required bool hasPhpMyAdmin,
+  }) {
+    return [
+      if (!isRedis && !isMongo)
+        AppButton(
+          label: 'Add DB',
+          icon: const Icon(LucideIcons.plus, size: 14),
+          style: AppButtonStyle.success,
+          onPressed: _showAddDatabaseDialog,
+        ),
+      // phpMyAdmin only speaks the MySQL wire protocol, so the button
+      // is limited to the MySQL/MariaDB family — PostgreSQL,
+      // Meilisearch, Elasticsearch and the like have no phpMyAdmin
+      // front end.
+      if (!isRedis && !isMongo && hasPhpMyAdmin && _isMySqlFamily)
+        _buildActionButton(
+          'phpMyAdmin',
+          LucideIcons.externalLink,
+          onTap: _launchPhpMyAdmin,
+        ),
+      if (isRedis)
+        _buildActionButton(
+          'Add Key',
+          LucideIcons.plus,
+          color: AppColors.successStrong,
+          onTap: _showAddRedisKeyDialog,
+        ),
+      if (heidiSql != null &&
+          (selectedEngine?.appId.contains('mysql') == true ||
+              selectedEngine?.appId.contains('mariadb') == true))
+        _buildActionButton(
+          'HeidiSQL',
+          LucideIcons.externalLink,
+          color: AppColors.warningStrong,
+          onTap: () => ref.read(appsProvider.notifier).openApp(heidiSql),
+        ),
+      if (mongoCompass != null &&
+          selectedEngine?.appId.contains('mongodb') == true)
+        _buildActionButton(
+          'Compass',
+          LucideIcons.externalLink,
+          color: AppColors.successStrong,
+          onTap: () => ref.read(appsProvider.notifier).openApp(mongoCompass),
+        ),
+      if (!isMongo)
+        _buildActionButton(
+          'Sync DB',
+          LucideIcons.refreshCw,
+          color: AppColors.accentStrong,
+          onTap: () {
+            if (selectedEngine != null) {
+              if (isRedis) {
+                ref.invalidate(redisDbStatsProvider(selectedEngine!));
+                ref
+                    .read(redisProvider.notifier)
+                    .fetchKeys(
+                      selectedEngine!,
+                      _selectedRedisDb,
+                      query: _searchQuery,
+                    );
+              } else {
+                ref
+                    .read(databasesProvider.notifier)
+                    .syncDatabases(selectedEngine!);
+              }
+            }
+          },
+        ),
+    ];
+  }
 
   Widget _buildServiceStatusButton() {
     if (selectedEngine == null) return const SizedBox.shrink();
@@ -505,17 +519,11 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       offset: const Offset(0, 40),
       onSelected: (value) async {
         if (value == 'start') {
-          await ref
-              .read(appsProvider.notifier)
-              .startService(selectedEngine!);
+          await ref.read(appsProvider.notifier).startService(selectedEngine!);
         } else if (value == 'stop') {
-          await ref
-              .read(appsProvider.notifier)
-              .stopService(selectedEngine!);
+          await ref.read(appsProvider.notifier).stopService(selectedEngine!);
         } else if (value == 'restart') {
-          await ref
-              .read(appsProvider.notifier)
-              .restartService(selectedEngine!);
+          await ref.read(appsProvider.notifier).restartService(selectedEngine!);
         }
       },
       itemBuilder: (context) => [
@@ -523,7 +531,10 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
           enabled: false,
           child: Text(
             'Version: $version',
-            style: const TextStyle(fontSize: AppTextSize.xs, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontSize: AppTextSize.xs,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         const PopupMenuDivider(),
@@ -623,52 +634,41 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
   }
 
   Widget _buildSearchField(bool isRedis) {
-    // The search field shrinks with the window rather than pushing the rest of
-    // the toolbar out of reach.
-    return ConstrainedBox(
-      constraints: const BoxConstraints(
-        minWidth: 120,
-        maxWidth: 280,
-        minHeight: 36,
-        maxHeight: 36,
+    // The PageToolbar around this field decides its width, so the field just
+    // fills what it is given.
+    return TextField(
+      controller: _searchController,
+      style: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: AppTextSize.sm,
       ),
-      child: TextField(
-        controller: _searchController,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: AppTextSize.sm,
+      decoration: InputDecoration(
+        hintText: isRedis ? 'Search key' : 'Database search',
+        hintStyle: const TextStyle(
+          color: AppColors.textMuted,
+          fontSize: AppTextSize.xs,
         ),
-        decoration: InputDecoration(
-          hintText: isRedis ? 'Search key' : 'Database search',
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: AppTextSize.xs,
-          ),
-          prefixIcon: const Icon(
-            LucideIcons.search,
-            size: 14,
-            color: AppColors.textMuted,
-          ),
-          filled: true,
-          fillColor: AppColors.surface,
-          isDense: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.primary),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 8,
-            horizontal: 12,
-          ),
+        prefixIcon: const Icon(
+          LucideIcons.search,
+          size: 14,
+          color: AppColors.textMuted,
         ),
+        filled: true,
+        fillColor: AppColors.surface,
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primary),
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       ),
     );
   }

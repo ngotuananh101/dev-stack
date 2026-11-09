@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/page_toolbar.dart';
 import 'widgets/site_table.dart';
 import '../domain/site_model.dart';
 import '../domain/batch_models.dart';
@@ -87,91 +88,68 @@ class _SitesPageState extends ConsumerState<SitesPage> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      children: [
-        // The toolbar holds buttons with natural (label-driven) widths, so it
-        // wraps onto a second line instead of squeezing their text.
-        Expanded(
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              AppButton(
-                label: 'Add Site',
-                icon: const Icon(LucideIcons.plus, size: 16),
-                style: AppButtonStyle.success,
-                onPressed: () => _showSiteDialog(),
-              ),
-              AppButton(
-                label: 'Batch Create',
-                style: AppButtonStyle.outline,
-                icon: const Icon(LucideIcons.folderPlus, size: 16),
-                onPressed: () => _handleBatchCreateSites(),
-              ),
-              if (_selectedSiteIds.isNotEmpty)
-                AppButton(
-                  label: 'Delete (${_selectedSiteIds.length})',
-                  style: AppButtonStyle.danger,
-                  icon: const Icon(LucideIcons.trash2, size: 16),
-                  onPressed: () => _handleBulkDelete(),
-                ),
-            ],
-          ),
+    return PageToolbar(
+      actions: [
+        AppButton(
+          label: 'Add Site',
+          icon: const Icon(LucideIcons.plus, size: 16),
+          style: AppButtonStyle.success,
+          onPressed: () => _showSiteDialog(),
         ),
-        const SizedBox(width: 12),
-        Flexible(child: _buildSearchField()),
+        AppButton(
+          label: 'Batch Create',
+          style: AppButtonStyle.outline,
+          icon: const Icon(LucideIcons.folderPlus, size: 16),
+          onPressed: () => _handleBatchCreateSites(),
+        ),
+        if (_selectedSiteIds.isNotEmpty)
+          AppButton(
+            label: 'Delete (${_selectedSiteIds.length})',
+            style: AppButtonStyle.danger,
+            icon: const Icon(LucideIcons.trash2, size: 16),
+            onPressed: () => _handleBulkDelete(),
+          ),
       ],
+      searchField: _buildSearchField(),
     );
   }
 
   Widget _buildSearchField() {
-    // The search field is the one element that can give up width without
-    // becoming unusable, so it shrinks (down to 180) rather than pushing the
-    // toolbar past the window.
-    return ConstrainedBox(
-      constraints: const BoxConstraints(
-        minWidth: 180,
-        maxWidth: 280,
-        minHeight: 36,
-        maxHeight: 36,
+    // The PageToolbar around this field decides its width, so the field just
+    // fills what it is given.
+    return TextField(
+      controller: _searchController,
+      style: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: AppTextSize.sm,
       ),
-      child: TextField(
-        controller: _searchController,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: AppTextSize.sm,
+      decoration: InputDecoration(
+        hintText: 'Search sites...',
+        hintStyle: const TextStyle(
+          color: AppColors.textMuted,
+          fontSize: AppTextSize.xs,
         ),
-        decoration: InputDecoration(
-          hintText: 'Search sites...',
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: AppTextSize.xs,
-          ),
-          prefixIcon: const Icon(
-            LucideIcons.search,
-            size: 14,
-            color: AppColors.textMuted,
-          ),
-          filled: true,
-          fillColor: AppColors.surface,
-          isDense: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.primary),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 8,
-            horizontal: 12,
-          ),
+        prefixIcon: const Icon(
+          LucideIcons.search,
+          size: 14,
+          color: AppColors.textMuted,
         ),
+        filled: true,
+        fillColor: AppColors.surface,
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primary),
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       ),
     );
   }

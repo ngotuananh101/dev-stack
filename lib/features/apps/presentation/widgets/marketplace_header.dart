@@ -7,11 +7,7 @@ class MarketplaceHeader extends StatelessWidget {
   final VoidCallback onUpdate;
   final Widget? actions;
 
-  const MarketplaceHeader({
-    super.key,
-    required this.onUpdate,
-    this.actions,
-  });
+  const MarketplaceHeader({super.key, required this.onUpdate, this.actions});
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +37,20 @@ class MarketplaceHeader extends StatelessWidget {
             ),
           ],
         ),
-        const Spacer(),
-        // Actions (e.g. Category Bar). The bar scrolls horizontally, so it may
-        // take whatever width is left — but it must not demand more than
-        // that, or the row overflows on a narrow window.
-        Flexible(child: actions ?? const SizedBox.shrink()),
+        // The title is the only non-flex child on the left, so everything the
+        // row has left after it goes here. A `Spacer` beside the bar would
+        // make two flex children, and a Row splits free space evenly between
+        // them: the bar got half the width, cut its last categories off at
+        // that point, and left a dead gap before the refresh button.
+        //
+        // Right-aligning the bar keeps it next to the refresh button when it
+        // fits; when it does not, it takes the full width and scrolls.
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: actions ?? const SizedBox.shrink(),
+          ),
+        ),
         const SizedBox(width: 16),
         // Update Button
         IconButton(
