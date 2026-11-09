@@ -15,6 +15,10 @@ class FlutterWindow : public Win32Window {
   explicit FlutterWindow(const flutter::DartProject& project);
   virtual ~FlutterWindow();
 
+  // When false, the window is created but not shown on the first Flutter
+  // frame (used for `--minimized` auto-start).
+  void set_show_on_first_frame(bool value) { show_on_first_frame_ = value; }
+
  protected:
   // Win32Window:
   bool OnCreate() override;
@@ -28,6 +32,11 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // False when `--minimized` was passed (auto-start): the first frame must not
+  // present the window, which would pop it over the user's work. The tray icon
+  // is what the user clicks to bring it back.
+  bool show_on_first_frame_ = true;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

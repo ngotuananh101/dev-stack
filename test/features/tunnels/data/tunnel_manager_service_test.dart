@@ -236,4 +236,58 @@ void main() {
     await manager.cancelStart(tunnel.id);
     expect(manager.getSession(tunnel.id), isNull);
   });
+
+  test('a cancel that lands while the launch is in flight stops the process',
+      () async {
+    // The launch can take a while (exec on a cold page cache). A cancel in
+    // that window used to be lost: the process was registered afterwards and
+    // the session stayed "connecting" with a live tunnel behind it.
+    final launchStarted = Completer<void>();
+    final releaseLaunch = Completer<void>();
+    final stoppedPids = <int>[];
+    final late = TunnelManagerService(
+      downloader: downloader,
+      startProcessFn: (exec, args) async {
+        launchStarted.complete();
+        await releaseLaunch.future;
+        return FakeManagedProcess(4242);
+      },
+      stopProcessFn: (pid) async => stoppedPids.add(pid),
+    );
+    addTearDown(() => late.dispose());
+
+    final tunnel = TunnelModel(id: 11, name: 'Racy Tunnel', targetPort: 80);
+    final startFuture = late.startTunnel(tunnel);
+    await launchStarted.future;
+
+    await late.cancelStart(11);
+    releaseLaunch.complete();
+    await startFuture;
+
+    expect(stoppedPids, contains(4242),
+        reason: 'the just-launched process must be stopped, not registered');
+    expect(late.getSession(11)?.status, equals(TunnelStatus.stopped));
+    expect(late.getSession(11)?.pid, isNull);
+  });
+
+  test('dispose cancels launches that are still in flight', () async {
+    // Disposing while a binary download or spawn is pending must not leak a
+    // process that nothing tracks any more.
+    final blocking = BlockingDownloader();
+    final late = TunnelManagerService(
+      downloader: blocking,
+      startProcessFn: (exec, args) async => FakeManagedProcess(1),
+      stopProcessFn: (pid) async {},
+    );
+
+    final tunnel = TunnelModel(id: 12, name: 'Disposed Tunnel', targetPort: 80);
+    final startFuture = late.startTunnel(tunnel);
+    await blocking.downloadStarted.future;
+
+    await late.dispose().timeout(const Duration(seconds: 5));
+    await startFuture;
+
+    expect(late.getSession(12), isNull,
+        reason: 'the session map is cleared on dispose');
+  });
 }

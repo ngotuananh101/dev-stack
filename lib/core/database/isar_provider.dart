@@ -81,16 +81,27 @@ class IsarInstance {
         rethrow;
       }
 
-      // Backup and delete DB on schema mismatch or corruption
+      // Backup and delete DB on schema mismatch or corruption. The backup is
+      // the only copy of the user's data at this point, so a failed backup
+      // aborts the reset instead of deleting the database: better a startup
+      // error the user can report than silently losing every record.
       final isarFile = File('${dir.path}/default.isar');
       final lockFile = File('${dir.path}/default.isar.lock');
 
       // Create backup before deleting
       if (isarFile.existsSync()) {
         final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final backupPath = '${dir.path}/default.isar.bak.$timestamp';
         try {
-          isarFile.copySync('${dir.path}/default.isar.bak.$timestamp');
-        } catch (_) {}
+          isarFile.copySync(backupPath);
+        } catch (backupError) {
+          // ignore: avoid_print
+          print(
+            '[Isar] Backup failed, refusing to reset the database: '
+            '$backupError',
+          );
+          rethrow;
+        }
         isarFile.deleteSync();
       }
       if (lockFile.existsSync()) lockFile.deleteSync();

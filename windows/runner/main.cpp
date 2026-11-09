@@ -53,6 +53,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
+  // The runner shows the window on the first frame; `--minimized` (auto-start
+  // at login) must stay in the tray instead of popping over the user's work.
+  for (const auto& argument : command_line_arguments) {
+    if (argument == "--minimized") {
+      window.set_show_on_first_frame(false);
+      break;
+    }
+  }
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
   if (!window.Create(L"Ponta DevStack", origin, size)) {

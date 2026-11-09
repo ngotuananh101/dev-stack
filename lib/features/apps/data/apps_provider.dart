@@ -244,6 +244,13 @@ class Apps extends _$Apps {
         final installer = ref.read(appInstallerServiceProvider);
         var dataCarried = false;
         var wasInPath = app.isAddedToPath;
+        // `installer.install` rewrites the detected binary paths in place
+        // before the update can still fail (download/extract/config/restart).
+        // Keep the old ones so a failed or cancelled update does not leave the
+        // app pointing at the new version's binaries while `installedVersion`
+        // and `location` are rolled back to the old install.
+        final oldExecFilePath = app.execFilePath;
+        final oldCliFilePath = app.cliFilePath;
 
         try {
           app.status = 'installing';
@@ -317,18 +324,9 @@ class Apps extends _$Apps {
             app.isAddedToPath = true;
           }
 
-          // 4. Delete old version folder. Never delete data directories here:
-          // this is a version swap, not an uninstall.
-          if (oldPath != null) {
-            await installer.delete(
-              oldPath,
-              app.appId,
-              oldVersion,
-              deleteData: false,
-            );
-          }
-
-          // 5. Update state
+          // 4. Update state and persist BEFORE deleting anything. If the write
+          // fails, the old install is still on disk and the rollback below can
+          // point the app back at it.
           app.isInstalled = true;
           app.status = 'installed';
           app.location = newInstallPath;
@@ -340,8 +338,26 @@ class Apps extends _$Apps {
 
           await repository.save(app);
 
+          // 5. Delete old version folder. Never delete data directories here:
+          // this is a version swap, not an uninstall. The new version is now
+          // the persisted one, so the old binaries are safe to remove.
+          if (oldPath != null) {
+            await installer.delete(
+              oldPath,
+              app.appId,
+              oldVersion,
+              deleteData: false,
+            );
+          }
+
           // The upgrade is committed: the app now points at $newVersion, so the
-          // carried data is where it belongs and must not be rolled back.
+          // carried data is where it belongs and must not be rolled back. Keep
+          // the outcome itself: only a data dir that was actually carried over
+          // may be cleaned up below. A `false` here can mean the old cluster
+          // was deliberately preserved (PostgreSQL major change) or that a
+          // non-empty destination already existed — deleting it would destroy
+          // the user's only copy.
+          final dataWasCarried = dataCarried;
           dataCarried = false;
 
           // Post-install orchestration
@@ -357,7 +373,13 @@ class Apps extends _$Apps {
           // data dir is now a stale, orphaned copy — remove it so disk usage
           // matches the running version. A rename-style carry-over already
           // vacated this path, so this is a no-op for it.
-          if (oldVersion != null &&
+          //
+          // Only when data was actually carried: `carryOverDataDir` returns
+          // false when it deliberately left the old dir in place (PostgreSQL
+          // major-version change, non-empty destination), and that directory is
+          // the user's only data.
+          if (dataWasCarried &&
+              oldVersion != null &&
               AppInstallerService.hasVersionedDataDir(app.appId)) {
             final oldDataDir = Directory(
               p.join(AppConfig.dataDir, '${app.appId}-$oldVersion'),
@@ -412,6 +434,11 @@ class Apps extends _$Apps {
             app.location = oldPath;
           }
           app.installedVersion = oldVersion;
+          // installer.install() may already have repointed these at the new
+          // version's files before the cancel; the old install is still what
+          // `installedVersion` and `location` describe now.
+          app.execFilePath = oldExecFilePath;
+          app.cliFilePath = oldCliFilePath;
           app.selectedVersion = null;
           // Clear the logs: the modal treats "installed + non-empty logs" as the
           // just-finished completion screen, and a cancelled update should fall
@@ -454,6 +481,10 @@ class Apps extends _$Apps {
             app.location = oldPath;
           }
           app.installedVersion = oldVersion;
+          // Same reason as the cancelled branch: the binary paths belong to
+          // the install that `location`/`installedVersion` still describe.
+          app.execFilePath = oldExecFilePath;
+          app.cliFilePath = oldCliFilePath;
           app.selectedVersion = null;
 
           ref.read(appErrorProvider.notifier).setError(userMessage);

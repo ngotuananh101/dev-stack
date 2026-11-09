@@ -859,21 +859,36 @@ class _LogTabState extends ConsumerState<_LogTab> {
   Map<String, String> _logs = {};
   bool _isLoading = true;
 
+  /// Guards against a stale read overwriting a newer one: switching the log
+  /// dropdown while a read is in flight used to paint the previous log's
+  /// content under the new title.
+  int _loadGeneration = 0;
+
   @override
   void initState() {
     super.initState();
     _refreshLogs();
   }
 
-  Future<void> _refreshLogs() async {
+  /// Reads only the selected log, not all six.
+  Future<void> _refreshLogs({String? logId}) async {
+    final id = logId ?? _selectedLog;
+    final generation = ++_loadGeneration;
     setState(() => _isLoading = true);
-    final logs = await ref
+    final content = await ref
         .read(sitesProvider.notifier)
-        .getLogs(widget.site);
+        .getLogContent(widget.site, id);
+    if (!mounted || generation != _loadGeneration) return;
     setState(() {
-      _logs = logs;
+      _logs = {..._logs, id: content};
       _isLoading = false;
     });
+  }
+
+  void _selectLog(String id) {
+    if (id == _selectedLog) return;
+    setState(() => _selectedLog = id);
+    _refreshLogs(logId: id);
   }
 
   @override
@@ -934,9 +949,7 @@ class _LogTabState extends ConsumerState<_LogTab> {
 
   Widget _buildLogButton(String id, String label, bool isSelected) {
     return InkWell(
-      onTap: () {
-        setState(() => _selectedLog = id);
-      },
+      onTap: () => _selectLog(id),
       borderRadius: BorderRadius.circular(8),
       child: Container(
         height: 36,

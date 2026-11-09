@@ -70,6 +70,18 @@ abstract final class BackgroundProcess {
     return (executable: 'kill', arguments: ['-TERM', '--', '-$pid']);
   }
 
+  /// Builds the argv that force-kills the whole process group.
+  ///
+  /// Used once the graceful [buildLinuxKillArgs] signal has gone unanswered:
+  /// a server that ignores `SIGTERM` must not stay alive holding its port while
+  /// the UI claims it stopped.
+  @visibleForTesting
+  static ({String executable, List<String> arguments}) buildLinuxForceKillArgs(
+    int pid,
+  ) {
+    return (executable: 'kill', arguments: ['-KILL', '--', '-$pid']);
+  }
+
   /// Builds the argv that asks a running php-fpm master to reload in place.
   ///
   /// Unlike [buildLinuxKillArgs], the PID is **not** negated. `SIGUSR2` must be
@@ -98,6 +110,40 @@ abstract final class BackgroundProcess {
         }
       } catch (_) {
         process.kill(ProcessSignal.sigterm);
+      }
+      return;
+    }
+
+    final childPid = await process.childPid.timeout(
+      const Duration(seconds: 3),
+      onTimeout: () => process.pid,
+    );
+    await run('taskkill', ['/F', '/T', '/PID', '$childPid']);
+  }
+
+  /// Force-kills a managed process after [stopManaged]'s graceful signal was
+  /// not answered in time.
+  ///
+  /// On POSIX this signals the process group with `SIGKILL` (the same group
+  /// [buildLinuxKillArgs] targets), falling back to the process handle; on
+  /// Windows it is the same `taskkill /F /T` as [stopManaged]. Failure is
+  /// swallowed — a process that already exited makes every kill fail.
+  static Future<void> forceStopManaged(
+    ManagedBackgroundProcess process, {
+    bool? isWindows,
+    Future<ProcessResult> Function(String, List<String>)? runProcess,
+  }) async {
+    final onWindows = isWindows ?? Platform.isWindows;
+    if (!onWindows) {
+      final killCmd = buildLinuxForceKillArgs(process.pid);
+      final runner = runProcess ?? Process.run;
+      try {
+        final res = await runner(killCmd.executable, killCmd.arguments);
+        if (res.exitCode != 0) {
+          process.kill(ProcessSignal.sigkill);
+        }
+      } catch (_) {
+        process.kill(ProcessSignal.sigkill);
       }
       return;
     }
@@ -165,6 +211,82 @@ abstract final class BackgroundProcess {
     } finally {
       await files.dispose();
     }
+  }
+
+  /// Runs a command to completion, keeping at most [maxChars] of its combined
+  /// output.
+  ///
+  /// The output is capped **while streaming** on POSIX instead of being
+  /// collected by [run] and truncated afterwards: a command that prints
+  /// hundreds of megabytes would otherwise build the entire string in RAM
+  /// before the cap applied. Output past the cap is still drained, so the
+  /// child is never blocked writing into a full pipe.
+  ///
+  /// Windows keeps the hidden-launcher path (which captures through temp
+  /// files) and applies the cap to the result; the console must stay hidden
+  /// there, which a raw [Process.start] cannot guarantee.
+  static Future<({int exitCode, String output, bool truncated})> runCapped(
+    String executable,
+    List<String> arguments, {
+    required int maxChars,
+    String? workingDirectory,
+    Encoding? stdoutEncoding,
+  }) async {
+    if (Platform.isWindows || maxChars <= 0) {
+      final result = await run(
+        executable,
+        arguments,
+        workingDirectory: workingDirectory,
+        stdoutEncoding: stdoutEncoding,
+      );
+      final combined = '${result.stdout}${result.stderr}'.trim();
+      final truncated = combined.length > maxChars;
+      return (
+        exitCode: result.exitCode,
+        output: truncated ? combined.substring(0, maxChars) : combined,
+        truncated: truncated,
+      );
+    }
+
+    final process = await Process.start(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+    );
+    final buffer = StringBuffer();
+    var truncated = false;
+
+    void collect(String chunk) {
+      if (truncated) return;
+      final remaining = maxChars - buffer.length;
+      if (remaining <= 0) {
+        truncated = true;
+        return;
+      }
+      if (chunk.length <= remaining) {
+        buffer.write(chunk);
+      } else {
+        buffer.write(chunk.substring(0, remaining));
+        truncated = true;
+      }
+    }
+
+    final encoder = stdoutEncoding ?? systemEncoding;
+    final stdoutDone =
+        process.stdout.transform(encoder.decoder).listen(collect).asFuture<void>();
+    final stderrDone =
+        process.stderr.transform(encoder.decoder).listen(collect).asFuture<void>();
+    final exitCode = await process.exitCode;
+    // Draining must finish before the caller reads the output; a stream error
+    // here just means the pipe broke, which is not worth propagating.
+    await Future.wait([stdoutDone, stderrDone])
+        .catchError((_) => const <void>[]);
+
+    return (
+      exitCode: exitCode,
+      output: buffer.toString().trim(),
+      truncated: truncated,
+    );
   }
 
   @visibleForTesting
@@ -392,9 +514,14 @@ try {
   \$process = New-Object Diagnostics.Process
   \$process.StartInfo = \$info
   [void]\$process.Start()
-  \$stdout = \$process.StandardOutput.ReadToEnd()
-  \$stderr = \$process.StandardError.ReadToEnd()
+  # Read both pipes concurrently. Reading stdout to completion before touching
+  # stderr deadlocks as soon as the child fills the stderr pipe (it blocks on
+  # write, never closes stdout, and the first ReadToEnd never returns).
+  \$stdoutTask = \$process.StandardOutput.ReadToEndAsync()
+  \$stderrTask = \$process.StandardError.ReadToEndAsync()
   \$process.WaitForExit()
+  \$stdout = \$stdoutTask.Result
+  \$stderr = \$stderrTask.Result
   [IO.File]::WriteAllText(${_powerShellLiteral(files.stdout.path)}, \$stdout, \$utf8)
   [IO.File]::WriteAllText(${_powerShellLiteral(files.stderr.path)}, \$stderr, \$utf8)
   [IO.File]::WriteAllText(${_powerShellLiteral(files.exitCode.path)}, [string]\$process.ExitCode)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
@@ -6,10 +7,32 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text_size.dart';
 import 'app_modal_header.dart';
 
+/// A bottom-anchored, lazily built log viewer.
+///
+/// Performance notes — these are the reasons the widget is shaped this way:
+///
+/// * The list is `reverse: true`, so offset 0 *is* the tail. Opening a log
+///   therefore needs no `jumpTo(maxScrollExtent)`: with a lazy builder and no
+///   `itemExtent`, Flutter cannot know `maxScrollExtent` without building and
+///   laying out **every** row, which is what made the first open of a large
+///   log freeze for seconds. A reversed list starts at its own origin, so the
+///   first frame builds only the visible rows.
+/// * `SelectionArea` + a plain `Text` replaces a `SelectableText` per line.
+///   `SelectableText` spins up a full `EditableText` / `RenderEditable` /
+///   text-input pipeline per row, which is far more expensive than a `Text`
+///   under one shared selection scope.
+/// * Absurdly long lines are clipped for rendering. A single multi-megabyte
+///   line would otherwise produce one enormous paragraph on every frame; the
+///   full line is still what "Copy all" and text selection read from.
 class TerminalLogView extends StatefulWidget {
   final String title;
   final IconData icon;
   final List<String> lines;
+
+  /// Optional monotonic counter for callers whose `lines` list is stable and
+  /// capped in length, so a new line neither changes the identity nor the
+  /// length. Without it, auto-scroll cannot tell that anything was appended.
+  final int revision;
   final VoidCallback? onClear;
   final VoidCallback? onCopy;
   final VoidCallback? onOpenFile;
@@ -18,11 +41,16 @@ class TerminalLogView extends StatefulWidget {
   final bool isModal;
   final String emptyMessage;
 
+  /// Maximum characters rendered per row. Longer lines are truncated; the
+  /// copy action still uses the complete text.
+  static const int maxRenderedLineLength = 4000;
+
   const TerminalLogView({
     super.key,
     required this.title,
     this.icon = LucideIcons.terminal,
     required this.lines,
+    this.revision = 0,
     this.onClear,
     this.onCopy,
     this.onOpenFile,
@@ -40,23 +68,26 @@ class _TerminalLogViewState extends State<TerminalLogView> {
   final ScrollController _scrollController = ScrollController();
   bool _autoScroll = true;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-  }
+  double get _tailOffset => 0; // `reverse: true` puts the tail at offset 0.
 
   @override
   void didUpdateWidget(TerminalLogView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_autoScroll && widget.lines.length != oldWidget.lines.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    final changed = widget.revision != oldWidget.revision ||
+        widget.lines.length != oldWidget.lines.length ||
+        !identical(widget.lines, oldWidget.lines);
+    if (_autoScroll && changed) {
+      // Cheap and idempotent in a reversed list: no maxScrollExtent lookup,
+      // so this never forces a full layout of the list.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToTail());
     }
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+  void _scrollToTail() {
+    if (!mounted || !_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.hasPixels && position.pixels != _tailOffset) {
+      _scrollController.jumpTo(_tailOffset);
     }
   }
 
@@ -123,7 +154,10 @@ class _TerminalLogViewState extends State<TerminalLogView> {
             color: _autoScroll ? AppColors.success : AppColors.textMuted,
           ),
           tooltip: _autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF',
-          onPressed: () => setState(() => _autoScroll = !_autoScroll),
+          onPressed: () {
+            setState(() => _autoScroll = !_autoScroll);
+            if (_autoScroll) _scrollToTail();
+          },
         ),
         if (widget.onClear != null)
           IconButton(
@@ -160,35 +194,45 @@ class _TerminalLogViewState extends State<TerminalLogView> {
       );
     }
 
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(12),
-      itemCount: widget.lines.length,
-      itemBuilder: (context, index) {
-        final line = widget.lines[index];
-        final isError = line.contains('[ERROR]') || line.contains('Error:');
-        final isWarning = line.contains('[WARN]') || line.contains('Warning:');
-        final isInfo = line.contains('[INFO]') || line.contains('Service started');
-
-        Color textColor = AppColors.textPrimary;
-        if (isError) {
-          textColor = AppColors.error;
-        } else if (isWarning) {
-          textColor = AppColors.warning;
-        } else if (isInfo) {
-          textColor = AppColors.primary;
-        }
-
-        return SelectableText(
-          line,
-          style: TextStyle(
-            fontFamily: 'monospace',
-            fontSize: AppTextSize.xs,
-            color: textColor,
-            height: 1.4,
-          ),
-        );
-      },
+    final count = widget.lines.length;
+    return SelectionArea(
+      child: ListView.builder(
+        controller: _scrollController,
+        reverse: true,
+        padding: const EdgeInsets.all(12),
+        itemCount: count,
+        // Keep a little extra materialised around the viewport so a wheel
+        // notch doesn't show an empty strip before the next rows build.
+        scrollCacheExtent: const ScrollCacheExtent.pixels(600),
+        itemBuilder: (context, index) {
+          // Row 0 sits at the bottom: index 0 is the newest line.
+          final line = widget.lines[count - 1 - index];
+          return Text(
+            line.length > TerminalLogView.maxRenderedLineLength
+                ? '${line.substring(0, TerminalLogView.maxRenderedLineLength)}…'
+                : line,
+            style: TextStyle(
+              fontFamily: 'monospace',
+              fontSize: AppTextSize.xs,
+              color: _colorFor(line),
+              height: 1.4,
+            ),
+          );
+        },
+      ),
     );
+  }
+
+  static Color _colorFor(String line) {
+    if (line.contains('[ERROR]') || line.contains('Error:')) {
+      return AppColors.error;
+    }
+    if (line.contains('[WARN]') || line.contains('Warning:')) {
+      return AppColors.warning;
+    }
+    if (line.contains('[INFO]') || line.contains('Service started')) {
+      return AppColors.primary;
+    }
+    return AppColors.textPrimary;
   }
 }

@@ -82,4 +82,61 @@ void main() {
     // Must not throw: the process may have exited on its own.
     await expectLater(killProcessTree(999999), completes);
   });
+
+  test('reads the process table once, not once per node', () async {
+    // A 3-level chain plus a sibling: a recursive `ps --ppid` walk would run
+    // one scan per node plus one for the group id, all before the first await.
+    const table = '''
+  10   1  10
+  20  10  20
+  30  20  30
+  40  30  40
+  11   1  11
+''';
+    final calls = <List<String>>[];
+    await killProcessTree(
+      10,
+      runProcess: (executable, arguments) async {
+        calls.add([executable, ...arguments]);
+        if (executable == 'ps') {
+          return ProcessResult(0, 0, table, '');
+        }
+        return ProcessResult(0, 0, '', '');
+      },
+    );
+
+    final psCalls = calls.where((call) => call.first == 'ps').toList();
+    expect(psCalls, hasLength(1), reason: 'one snapshot, not one per node');
+    expect(psCalls.single, contains('-e'));
+
+    final killed = calls
+        .where((call) => call.first == 'kill')
+        .map((call) => call.last)
+        .toList();
+    for (final pid in ['20', '30', '40']) {
+      expect(killed, contains(pid),
+          reason: 'descendant $pid must be signalled');
+    }
+    expect(killed, isNot(contains('11')),
+        reason: 'siblings are not descendants');
+  });
+
+  test('parses ps rows and walks the tree in memory', () {
+    final table = parseProcessTable('''
+  10   1  10
+  20  10  20
+  30  20  20
+  junk
+  40  30  40
+''');
+    expect(table, hasLength(4));
+    expect(
+      descendantsIn(10, table),
+      unorderedEquals([20, 30, 40]),
+      reason: 'every level below the root, once',
+    );
+    expect(processGroupIdIn(20, table), 20);
+    expect(processGroupIdIn(30, table), 20);
+    expect(processGroupIdIn(99, table), isNull);
+  });
 }

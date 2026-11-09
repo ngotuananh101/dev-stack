@@ -24,16 +24,33 @@ class ProgramLogsModal extends StatefulWidget {
 }
 
 class _ProgramLogsModalState extends State<ProgramLogsModal> {
-  late List<String> _lines;
+  /// The modal keeps its own bounded copy of the stream: the manager's
+  /// circular buffer caps at 1,000 lines, and `[..._lines, line]` per
+  /// incoming line copies the whole list every time (quadratic once a chatty
+  /// program fills the buffer). A queue with a matching cap keeps appends
+  /// O(1) and the list the same size the underlying buffer would be.
+  static const int _maxLines = 1000;
+  final List<String> _lines = [];
+
+  /// Bumped on every append so the viewer knows the stable list changed even
+  /// when its length is pinned at [_maxLines].
+  int _revision = 0;
   StreamSubscription<String>? _subscription;
 
   @override
   void initState() {
     super.initState();
-    _lines = widget.manager.getLogBuffer(widget.program.id);
+    _lines.addAll(widget.manager.getLogBuffer(widget.program.id));
+    if (_lines.length > _maxLines) {
+      _lines.removeRange(0, _lines.length - _maxLines);
+    }
     _subscription = widget.manager.getLogStream(widget.program.id).listen((line) {
       if (!mounted) return;
-      setState(() => _lines = [..._lines, line]);
+      _lines.add(line);
+      if (_lines.length > _maxLines) {
+        _lines.removeRange(0, _lines.length - _maxLines);
+      }
+      setState(() => _revision++);
     });
   }
 
@@ -55,9 +72,11 @@ class _ProgramLogsModalState extends State<ProgramLogsModal> {
         child: TerminalLogView(
           title: 'Logs - ${widget.program.name}',
           lines: _lines,
+          revision: _revision,
           onClear: () => setState(() {
             widget.manager.clearLogs(widget.program.id);
-            _lines = const [];
+            _lines.clear();
+            _revision++;
           }),
           onClose: () => Navigator.of(context).pop(),
         ),

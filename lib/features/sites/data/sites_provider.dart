@@ -17,6 +17,7 @@ import '../../settings/data/settings_provider.dart';
 import '../../hosts/data/hosts_repository.dart';
 import '../../../core/services/log_service.dart';
 import '../../../shared/utils/bounded_runner.dart';
+import '../../../shared/utils/log_tail_reader.dart';
 import 'cli_process_manager.dart';
 
 part 'sites_provider.g.dart';
@@ -340,13 +341,12 @@ class Sites extends _$Sites {
     }
   }
 
-  /// Generates the SSL cert for [site]; retries once immediately if the cert or
-  /// key file is missing after mkcert returns. Disables SSL on the site (and
-  /// persists that) if generation still fails.
-  Future<void> _generateSslWithRetry(SiteModel site) async {
+  /// Generates the cert for [site] and retries once immediately if the cert or
+  /// key file is missing after mkcert returns. Returns whether both files exist
+  /// afterwards; callers decide what a missing certificate means for them.
+  Future<bool> _ensureSslCert(SiteModel site, {bool force = false}) async {
     final sslNotifier = ref.read(sslServiceProvider.notifier);
     final logger = ref.read(logServiceProvider);
-    final isar = await ref.read(isarProvider.future);
 
     bool certPresent() {
       final certFile = File(sslNotifier.getSiteCertPath(site.domain));
@@ -354,21 +354,30 @@ class Sites extends _$Sites {
       return certFile.existsSync() && keyFile.existsSync();
     }
 
-    await sslNotifier.generateSiteCert(site.domain);
+    await sslNotifier.generateSiteCert(site.domain, force: force);
     if (!certPresent()) {
       logger.warning(
         'Certificate missing for ${site.domain}, retrying once...',
       );
       await sslNotifier.generateSiteCert(site.domain, force: true);
     }
+    return certPresent();
+  }
 
-    if (!certPresent()) {
-      logger.error('Failed to generate SSL for ${site.domain}, disabling SSL');
-      site.useSsl = false;
-      isar.write((_) {
-        isar.siteModels.put(site);
-      });
-    }
+  /// Generates the SSL cert for [site]; retries once immediately if the cert or
+  /// key file is missing after mkcert returns. Disables SSL on the site (and
+  /// persists that) if generation still fails.
+  Future<void> _generateSslWithRetry(SiteModel site) async {
+    final isar = await ref.read(isarProvider.future);
+    if (await _ensureSslCert(site)) return;
+
+    ref
+        .read(logServiceProvider)
+        .error('Failed to generate SSL for ${site.domain}, disabling SSL');
+    site.useSsl = false;
+    isar.write((_) {
+      isar.siteModels.put(site);
+    });
   }
 
   /// Creates many sites efficiently: persists all new sites in one transaction,
@@ -453,27 +462,53 @@ class Sites extends _$Sites {
     var completed = 0;
     final failed = <String>[];
 
-    await runBounded<SiteModel, void>(toCreate, 8, (site, index) async {
-      try {
-        if (site.useSsl) {
-          await _generateSslWithRetry(site);
+    final handled = await runBounded<SiteModel, bool>(
+      toCreate,
+      8,
+      (site, index) async {
+        try {
+          if (site.useSsl) {
+            await _generateSslWithRetry(site);
+          }
+          await _generateVhostFiles(site);
+          return true;
+        } catch (e) {
+          logger.error('Batch create failed for ${site.domain}: $e');
+          failed.add(site.domain);
+          return false;
+        } finally {
+          completed++;
+          onProgress?.call(
+            BatchProgress(
+              current: completed,
+              total: total,
+              currentLabel: site.domain,
+              phase: BatchPhase.processing,
+            ),
+          );
         }
-        await _generateVhostFiles(site);
-      } catch (e) {
-        logger.error('Batch create failed for ${site.domain}: $e');
-        failed.add(site.domain);
-      } finally {
-        completed++;
-        onProgress?.call(
-          BatchProgress(
-            current: completed,
-            total: total,
-            currentLabel: site.domain,
-            phase: BatchPhase.processing,
-          ),
-        );
-      }
-    }, cancel: cancel);
+      },
+      cancel: cancel,
+    );
+
+    // Sites are persisted before their vhost/SSL files are generated (the
+    // generation reads the row back). A cancel leaves the never-started ones
+    // as database rows with no vhost and no certificate — a domain that
+    // appears in the list but serves nothing. Remove exactly those: started
+    // sites have either completed or failed and are reported through
+    // [failed], so they stay.
+    final unstarted = <SiteModel>[];
+    for (var i = 0; i < toCreate.length; i++) {
+      if (handled[i] == null) unstarted.add(toCreate[i]);
+    }
+    if (unstarted.isNotEmpty) {
+      final ids = unstarted.map((s) => s.id).toList();
+      isar.write((_) => isar.siteModels.deleteAll(ids));
+      logger.warning(
+        'Batch create cancelled: rolled back ${ids.length} site(s) whose '
+        'configuration was never generated',
+      );
+    }
 
     // Finalize once (even on cancel — reflect what was actually created).
     onProgress?.call(
@@ -488,7 +523,7 @@ class Sites extends _$Sites {
 
     return BatchResult(
       succeeded: completed - failed.length,
-      skipped: skipped,
+      skipped: skipped + unstarted.length,
       failed: failed,
       cancelled: cancel?.isCancelled ?? false,
     );
@@ -554,13 +589,28 @@ class Sites extends _$Sites {
       createdAt: oldSite.createdAt,
     );
 
+    // SSL before persistence: a site must never be stored with `useSsl: true`
+    // while its certificate is missing. `generateSiteCert` no longer reports
+    // failure as success, so check the files it was supposed to write and fall
+    // back to plain HTTP instead of writing a vhost that cannot serve TLS.
+    var sslReady = false;
+    if (useSsl) {
+      sslReady = await _ensureSslCert(updatedSite);
+      if (!sslReady) {
+        ref
+            .read(logServiceProvider)
+            .error(
+              'Failed to generate SSL for $domain, keeping the site on HTTP',
+            );
+        updatedSite.useSsl = false;
+      }
+    }
+
     isar.write((_) {
       isar.siteModels.put(updatedSite);
     });
 
-    if (useSsl) {
-      await ref.read(sslServiceProvider.notifier).generateSiteCert(domain);
-    } else if (oldSite.useSsl && oldSite.domain == domain) {
+    if (!useSsl && oldSite.useSsl && oldSite.domain == domain) {
       // SSL was toggled off and the domain didn't change (a domain change is
       // already handled by _removeVhostFiles above). Clean up the stale cert
       // files for the current domain so they don't linger or get reused when
@@ -748,38 +798,59 @@ class Sites extends _$Sites {
     await restartWebservers();
   }
 
-  Future<Map<String, String>> getLogs(SiteModel site) async {
-    validateDomain(site.domain);
-    final logsDir = p.join(AppConfig.baseDir, 'logs', site.domain);
-
-    final nAccess = File(p.join(logsDir, 'nginx_access.log'));
-    final nError = File(p.join(logsDir, 'nginx_error.log'));
-    final aAccess = File(p.join(logsDir, 'apache_access.log'));
-    final aError = File(p.join(logsDir, 'apache_error.log'));
-    final cAccess = File(p.join(logsDir, 'caddy_access.log'));
-    final cError = File(p.join(AppConfig.logsDir, 'caddy_error.log'));
-
-    Future<String> readLastLines(File file, [int lines = 100]) async {
-      if (!await file.exists()) return 'Log file not found';
-      final content = await file.readAsLines();
-      if (content.length <= lines) return content.join('\n');
-      return content.sublist(content.length - lines).join('\n');
+  /// Absolute path of one of a site's log files.
+  ///
+  /// Kept next to [getLogContent] so the UI never has to know where each
+  /// webserver puts its logs. Unknown ids fall back to the nginx access log.
+  @visibleForTesting
+  static File logFileFor(String domain, String logId, {String? baseDir, String? logsDir}) {
+    final siteLogsDir = p.join(baseDir ?? AppConfig.baseDir, 'logs', domain);
+    final globalLogsDir = logsDir ?? AppConfig.logsDir;
+    switch (logId) {
+      case 'nginx_error':
+        return File(p.join(siteLogsDir, 'nginx_error.log'));
+      case 'apache_access':
+        return File(p.join(siteLogsDir, 'apache_access.log'));
+      case 'apache_error':
+        return File(p.join(siteLogsDir, 'apache_error.log'));
+      case 'caddy_access':
+        return File(p.join(siteLogsDir, 'caddy_access.log'));
+      case 'caddy_error':
+        return File(p.join(globalLogsDir, 'caddy_error.log'));
+      case 'nginx_access':
+      default:
+        return File(p.join(siteLogsDir, 'nginx_access.log'));
     }
+  }
 
-    return {
-      'nginx_access': await readLastLines(nAccess),
-      'nginx_error': await readLastLines(nError),
-      'apache_access': await readLastLines(aAccess),
-      'apache_error': await readLastLines(aError),
-      'caddy_access': await readLastLines(cAccess),
-      'caddy_error': await readLastLines(cError),
-    };
+  /// Reads the tail of a single site log.
+  ///
+  /// This used to read *all six* log files (`readAsLines()` each, whole file)
+  /// just to show the last 100 lines of one of them, so opening the Logs tab
+  /// on a busy site decoded megabytes it never displayed.
+  Future<String> getLogContent(SiteModel site, String logId, {int lines = 100}) async {
+    validateDomain(site.domain);
+    final file = logFileFor(site.domain, logId);
+    if (!await file.exists()) return 'Log file not found';
+    final tail = await readLogTail(
+      file,
+      maxBytes: kLogTailMaxBytes,
+      maxLines: lines,
+    );
+    if (tail.lines.isEmpty) return 'Log file is empty';
+    return tail.lines.join('\n');
   }
 
   Future<void> regenerateSsl(SiteModel site) async {
-    await ref
-        .read(sslServiceProvider.notifier)
-        .generateSiteCert(site.domain, force: true);
+    final present = await _ensureSslCert(site, force: true);
+    if (!present) {
+      // Do not restart the webservers around a certificate that was never
+      // written: the vhost keeps referencing the previous files, and the UI
+      // must be told the regeneration failed.
+      throw Exception(
+        'Could not regenerate the SSL certificate for ${site.domain}',
+      );
+    }
     await restartWebservers();
   }
 

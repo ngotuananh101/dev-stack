@@ -214,8 +214,12 @@ class SslService extends _$SslService {
       await dir.create(recursive: true);
     }
 
+    // `Process.run` reports an ordinary non-zero exit as a result, not as a
+    // thrown error, so the exit code has to be checked: mkcert failing (no CA,
+    // permission denied, bad domain) used to log success and let the caller
+    // write an SSL vhost pointing at files that were never created.
     try {
-      await BackgroundProcess.run(_mkcertPath, [
+      final result = await BackgroundProcess.run(_mkcertPath, [
         '-cert-file',
         'cert.pem',
         '-key-file',
@@ -225,6 +229,20 @@ class SslService extends _$SslService {
         '127.0.0.1',
         '::1',
       ], workingDirectory: dir.path);
+      if (result.exitCode != 0) {
+        AppLogger.error(
+          'Failed to generate certificate for $domain: mkcert exited with '
+          'code ${result.exitCode}: ${result.stderr}',
+        );
+        return;
+      }
+      if (!File(certPath).existsSync() || !File(keyPath).existsSync()) {
+        AppLogger.error(
+          'mkcert reported success for $domain but did not write '
+          'cert.pem/key.pem in ${dir.path}',
+        );
+        return;
+      }
       AppLogger.info('Successfully generated certificate for $domain');
     } catch (e) {
       AppLogger.error('Failed to generate certificate for $domain: $e');

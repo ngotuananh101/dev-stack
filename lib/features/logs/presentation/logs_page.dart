@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
 import '../../../core/config/app_config.dart';
 import '../../../shared/utils/app_dialogs.dart';
+import '../../../shared/utils/log_tail_reader.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/terminal_log_view.dart';
 import '../../apps/data/apps_provider.dart';
@@ -25,14 +26,15 @@ final logFilesProvider = FutureProvider<List<File>>((ref) async {
     ..sort((a, b) => b.path.compareTo(a.path)); // Latest first
 });
 
-// Provider to read file content
-final logFileContentProvider = FutureProvider.family<List<String>, String>((
+// Provider to read file content.
+//
+// Only the tail is read: the viewer shows a bounded window of history, and
+// `readAsLines()` on a multi-megabyte log blocked the first paint for seconds.
+final logFileContentProvider = FutureProvider.family<LogTail, String>((
   ref,
   path,
 ) async {
-  final file = File(path);
-  if (!await file.exists()) return ['Error: File not found'];
-  return await file.readAsLines();
+  return readLogTail(File(path));
 });
 
 class LogsPage extends ConsumerStatefulWidget {
@@ -45,6 +47,18 @@ class LogsPage extends ConsumerStatefulWidget {
 class _LogsPageState extends ConsumerState<LogsPage> {
   String? _selectedId; // Can be appId (service) or filePath (file)
   bool _isService = true;
+
+  /// Re-reads both the directory listing and the open file. Invalidating only
+  /// the listing (the old behaviour) left the visible file frozen on its first
+  /// read.
+  void _refresh() {
+    ref.invalidate(logFilesProvider);
+    final id = _selectedId;
+    if (id != null && !_isService) {
+      ref.invalidate(logFileContentProvider(id));
+    }
+    setState(() {});
+  }
 
   Future<void> _deleteLogFile(String path) async {
     await AppDialogs.showConfirm(
@@ -137,6 +151,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           AppModel? currentApp;
           List<String> currentLogs = [];
           String currentTitle = 'Console';
+          bool truncated = false;
 
           if (_isService) {
             currentApp = serviceApps.firstWhere(
@@ -146,10 +161,13 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             currentLogs = currentApp.serviceLogs;
             currentTitle = '${currentApp.name.toLowerCase()}.log';
           } else {
+            // REFRESH re-reads the open file as well as the listing.
             final fileContent = ref.watch(
               logFileContentProvider(_selectedId ?? ''),
             );
-            currentLogs = fileContent.value ?? ['Loading...'];
+            final tail = fileContent.value;
+            currentLogs = tail?.lines ?? ['Loading...'];
+            truncated = tail?.truncated ?? false;
             currentTitle = p.basename(_selectedId ?? 'unknown.log');
           }
 
@@ -339,7 +357,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                         AppButton(
                           label: 'REFRESH',
                           icon: const Icon(Icons.refresh_rounded, size: 14),
-                          onPressed: () => ref.invalidate(logFilesProvider),
+                          onPressed: _refresh,
                           style: AppButtonStyle.secondary,
                         ),
                         const SizedBox(width: 8),
@@ -351,9 +369,12 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                               size: 14,
                             ),
                             onPressed: () {
-                              setState(() {
-                                currentApp?.serviceLogs.clear();
-                              });
+                              // Clear the shared buffer in place (the service
+                              // appends to the same list) and let
+                              // updateShouldNotify rebuild the view; copying
+                              // the model list only here would desync it.
+                              currentApp?.serviceLogs.clear();
+                              setState(() {});
                             },
                             style: AppButtonStyle.danger,
                           ),
@@ -379,6 +400,15 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                   title: currentTitle,
                   lines: currentLogs,
                   isModal: false,
+                  statusWidget: truncated
+                      ? const Text(
+                          'showing the tail of the file',
+                          style: TextStyle(
+                            fontSize: AppTextSize.xxs,
+                            color: AppColors.textMuted,
+                          ),
+                        )
+                      : null,
                   onCopy: () => _copyToClipboard(currentLogs),
                 ),
               ),

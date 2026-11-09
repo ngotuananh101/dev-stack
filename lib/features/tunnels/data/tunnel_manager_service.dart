@@ -65,6 +65,12 @@ class TunnelManagerService {
   final StreamController<Map<int, TunnelSession>> _sessionsController =
       StreamController<Map<int, TunnelSession>>.broadcast();
 
+  /// Set by [dispose]. A start that is still awaiting its launch must not
+  /// register the process or touch the closed session controller afterwards.
+  bool _disposed = false;
+  int _inFlightStarts = 0;
+  Completer<void>? _startsIdle;
+
   TunnelManagerService({
     TunnelDownloaderService? downloader,
     LogService? logger,
@@ -108,11 +114,29 @@ class TunnelManagerService {
   TunnelSession? getSession(int tunnelId) => _sessions[tunnelId];
 
   void _updateSession(int tunnelId, TunnelSession session) {
+    if (_disposed) return;
     _sessions[tunnelId] = session;
     _sessionsController.add(Map.unmodifiable(_sessions));
   }
 
   Future<void> startTunnel(TunnelModel tunnel, {String? defaultToken}) async {
+    _inFlightStarts++;
+    try {
+      await _startTunnel(tunnel, defaultToken: defaultToken);
+    } finally {
+      _inFlightStarts--;
+      if (_inFlightStarts == 0) {
+        final idle = _startsIdle;
+        _startsIdle = null;
+        if (idle != null && !idle.isCompleted) idle.complete();
+      }
+    }
+  }
+
+  Future<void> _startTunnel(
+    TunnelModel tunnel, {
+    String? defaultToken,
+  }) async {
     final driver = _drivers[tunnel.provider.toLowerCase()];
     if (driver == null) {
       throw ArgumentError('Unsupported driver: ${tunnel.provider}');
@@ -200,6 +224,33 @@ class TunnelManagerService {
         pid = process.pid;
       } else {
         throw StateError('Unknown process type: ${process.runtimeType}');
+      }
+
+      // The user may have cancelled (or the service may have been disposed)
+      // while the launch was in flight. In that case the process is running
+      // but nobody will ever stop it: tear it down here rather than
+      // registering a session the UI will show as "connected" forever.
+      if (cancelToken.isCancelled || _disposed) {
+        try {
+          if (process is ManagedBackgroundProcess) {
+            // The default stopper walks `_activeProcesses`, and this process
+            // is not in it yet — stop the handle directly.
+            await BackgroundProcess.stopManaged(process);
+          } else {
+            await _stopProcess(pid);
+            if (process is FakeManagedProcess) {
+              await process.stdoutController.close();
+              await process.stderrController.close();
+            }
+          }
+        } catch (e) {
+          _logger?.error('Error stopping cancelled tunnel process $pid: $e');
+        }
+        _updateSession(
+          tunnel.id,
+          TunnelSession(tunnelId: tunnel.id, status: TunnelStatus.stopped),
+        );
+        return;
       }
 
       _activeProcesses[tunnel.id] = process;
@@ -335,6 +386,9 @@ class TunnelManagerService {
       token.cancel('Tunnel start cancelled by user');
     }
 
+    // The launch may still be in flight: `startTunnel` re-checks the token
+    // after `_startProcess` and stops whatever it launched. Settle the session
+    // at "stopped" here so the UI does not keep showing "connecting".
     final session = _sessions[tunnelId];
     if (session == null) return;
 
@@ -347,6 +401,11 @@ class TunnelManagerService {
       }
       _activeProcesses.remove(tunnelId);
       _cleanupLogSubscriptions(tunnelId);
+      _updateSession(
+        tunnelId,
+        TunnelSession(tunnelId: tunnelId, status: TunnelStatus.stopped),
+      );
+    } else if (token != null) {
       _updateSession(
         tunnelId,
         TunnelSession(tunnelId: tunnelId, status: TunnelStatus.stopped),
@@ -403,7 +462,9 @@ class TunnelManagerService {
       });
     }
     _sessions.remove(id);
-    _sessionsController.add(Map.unmodifiable(_sessions));
+    if (!_disposed) {
+      _sessionsController.add(Map.unmodifiable(_sessions));
+    }
   }
 
   void _cleanupLogSubscriptions(int tunnelId) {
@@ -416,6 +477,22 @@ class TunnelManagerService {
   }
 
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
+
+    // Abort launches that are still downloading or spawning: `startTunnel`
+    // re-checks the token after the launch and stops whatever it started, so
+    // no process is left running with nobody tracking it.
+    for (final token in _startCancelTokens.values) {
+      if (!token.isCancelled) token.cancel('Tunnel manager disposed');
+    }
+    _startCancelTokens.clear();
+    if (_inFlightStarts > 0) {
+      final idle = Completer<void>();
+      _startsIdle = idle;
+      await idle.future.timeout(const Duration(seconds: 10), onTimeout: () {});
+    }
+
     for (final entry in _activeProcesses.entries) {
       final session = _sessions[entry.key];
       final pid = session?.pid;

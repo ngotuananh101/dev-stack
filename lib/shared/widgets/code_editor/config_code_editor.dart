@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -117,15 +118,34 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   int _fileBytes = 0;
   String? _loadError;
 
+  /// Incremented on every edit. `_save` compares it across the await so a
+  /// keystroke typed while the write was in flight is not marked clean.
+  int _editRevision = 0;
+
+  /// Incremented per [_loadFile] call; a load that finishes late must not
+  /// clobber the content of a newer one.
+  int _loadGeneration = 0;
+
   @override
   void initState() {
     super.initState();
-    _controller = CodeLineEditingController.fromText(widget.content ?? '');
+    // Build the line model exactly once. Calling `_loadFile()` for the
+    // content branch used to assign `_controller.text` right after
+    // `fromText()`, parsing the whole document twice on every open.
+    final initialContent = widget.content;
+    _controller = CodeLineEditingController.fromText(initialContent ?? '');
     _findController = CodeFindController(_controller);
     _focusNode = widget.focusNode ?? FocusNode();
     _controller.addListener(_onChanged);
-    _loadFile();
+    if (initialContent != null) {
+      _fileBytes = _byteLength(initialContent);
+      _isLoading = false;
+    } else {
+      _loadFile();
+    }
   }
+
+  static int _byteLength(String text) => utf8.encode(text).length;
 
   @override
   void didUpdateWidget(ConfigCodeEditor oldWidget) {
@@ -133,7 +153,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
     if (widget.content != null && widget.content != oldWidget.content) {
       if (_controller.text != widget.content!) {
         _controller.text = widget.content!;
-        _fileBytes = utf8.encode(widget.content!).length;
+        _fileBytes = _byteLength(widget.content!);
         _dirty = false;
       }
     } else if (widget.filePath != oldWidget.filePath && widget.content == null) {
@@ -155,6 +175,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   }
 
   void _onChanged() {
+    _editRevision++;
     if (_dirty) return;
     _dirty = true;
     // re_editor's CodeEditor sets the controller's delegate during its own
@@ -173,11 +194,12 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
   }
 
   Future<void> _loadFile() async {
+    final generation = ++_loadGeneration;
     if (widget.content != null) {
       _controller.text = widget.content!;
-      _fileBytes = utf8.encode(widget.content!).length;
+      _fileBytes = _byteLength(widget.content!);
       _dirty = false;
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 
@@ -188,6 +210,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
           await file.parent.create(recursive: true);
           await file.writeAsString('');
         } else {
+          if (!mounted || generation != _loadGeneration) return;
           setState(() {
             _isLoading = false;
             _loadError = 'File does not exist: ${widget.filePath}';
@@ -196,24 +219,43 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
         }
       }
       final bytes = await file.readAsBytes();
+      if (!mounted || generation != _loadGeneration) return;
       _fileBytes = bytes.length;
-      String text;
-      try {
-        text = widget.encoding.decode(bytes);
-      } catch (_) {
-        text = (widget.decodeFallback ?? (b) => String.fromCharCodes(b)).call(
-          bytes,
-        );
-      }
+      final text = await _decode(bytes);
+      if (!mounted || generation != _loadGeneration) return;
       _controller.text = text;
       _dirty = false;
       setState(() => _isLoading = false);
     } catch (e) {
       AppLogger.error('ConfigCodeEditor load failed: $e');
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _isLoading = false;
         _loadError = 'Failed to load file: $e';
       });
+    }
+  }
+
+  /// Decodes [bytes] with the configured encoding.
+  ///
+  /// Files above [_isolateDecodeThreshold] are decoded on a background
+  /// isolate when the encoding is plain UTF-8: decoding several megabytes
+  /// allocates as many string bytes and stalled the frame that opened the
+  /// editor. Small files (and the Windows hosts file, which needs
+  /// [systemEncoding] and a custom fallback) stay inline.
+  static const int _isolateDecodeThreshold = 1024 * 1024;
+
+  Future<String> _decode(List<int> bytes) async {
+    final fallback = widget.decodeFallback ?? (b) => String.fromCharCodes(b);
+    if (bytes.length > _isolateDecodeThreshold &&
+        widget.encoding == utf8 &&
+        widget.decodeFallback == null) {
+      return Isolate.run(() => utf8.decode(bytes, allowMalformed: true));
+    }
+    try {
+      return widget.encoding.decode(bytes);
+    } catch (_) {
+      return fallback(bytes);
     }
   }
 
@@ -227,12 +269,16 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
 
   Future<void> _save() async {
     if (widget.readOnly || _isSaving || widget.onSave == null) return;
+    final revisionAtSave = _editRevision;
+    final text = _controller.text;
     setState(() => _isSaving = true);
     try {
-      final ok = await widget.onSave!(_controller.text);
+      final ok = await widget.onSave!(text);
       if (ok) {
-        _dirty = false;
+        // Only mark clean if nothing was typed while the write was in flight.
+        if (_editRevision == revisionAtSave) _dirty = false;
         if (mounted) {
+          setState(() {});
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Saved successfully'),

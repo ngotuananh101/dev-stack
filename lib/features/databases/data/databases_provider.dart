@@ -41,6 +41,51 @@ class Databases extends _$Databases {
     }
   }
 
+  /// A detached copy of [record] with its password decrypted for display.
+  ///
+  /// Isar hands back managed objects, and the UI edits the records it is given.
+  /// Decrypting in place would leave plaintext passwords on those objects, and
+  /// any later `put(record)` — renaming a user, editing a note — would write
+  /// them to disk unencrypted.
+  static DatabaseRecord _forDisplay(
+    DatabaseRecord record,
+    LocalSecretVault? vault,
+  ) {
+    final copy = DatabaseRecord()
+      ..id = record.id
+      ..name = record.name
+      ..username = record.username
+      ..password = record.password
+      ..engineAppId = record.engineAppId
+      ..note = record.note
+      ..createdAt = record.createdAt;
+    decryptRecordPassword(copy, vault: vault);
+    return copy;
+  }
+
+  /// A detached copy of [record] with its password encrypted for storage.
+  ///
+  /// Records rendered by the UI carry a decrypted password; writing one back
+  /// without this would persist the plaintext.
+  static DatabaseRecord _forStorage(
+    DatabaseRecord record,
+    LocalSecretVault vault,
+  ) {
+    final copy = DatabaseRecord()
+      ..id = record.id
+      ..name = record.name
+      ..username = record.username
+      ..password = record.password
+      ..engineAppId = record.engineAppId
+      ..note = record.note
+      ..createdAt = record.createdAt;
+    if (copy.password.isNotEmpty &&
+        !copy.password.startsWith(LocalSecretVault.prefix)) {
+      copy.password = vault.encrypt(copy.password);
+    }
+    return copy;
+  }
+
   Future<void> fetchByEngine(String engineAppId) async {
     state = const AsyncValue.loading();
     try {
@@ -51,11 +96,11 @@ class Databases extends _$Databases {
           .findAll();
 
       final vault = await LocalSecretVault.getInstance();
-      for (final record in records) {
-        decryptRecordPassword(record, vault: vault);
-      }
-
-      state = AsyncValue.data(records);
+      // Return copies: the Isar objects must keep the ciphertext so a later
+      // write can never store the decrypted value.
+      state = AsyncValue.data([
+        for (final record in records) _forDisplay(record, vault),
+      ]);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -265,7 +310,10 @@ class Databases extends _$Databases {
       // password). A rename preserves the password, so the existing stored
       // password stays correct.
       record.username = newUser;
-      isar.write((_) => isar.databaseRecords.put(record));
+      final vault = await LocalSecretVault.getInstance();
+      isar.write(
+        (_) => isar.databaseRecords.put(_forStorage(record, vault)),
+      );
     }
 
     // Update user password if changed and engine supports it
@@ -296,12 +344,14 @@ class Databases extends _$Databases {
 
     // Update Isar record — only fields whose server-side change succeeded.
     // Password is persisted only if the ALTER above ran and succeeded.
+    final vault = await LocalSecretVault.getInstance();
     if (newPassword.isNotEmpty) {
-      final vault = await LocalSecretVault.getInstance();
-      record.password = vault.encrypt(newPassword);
+      record.password = newPassword;
     }
     record.note = newNote;
-    isar.write((_) => isar.databaseRecords.put(record));
+    // `record` came from the UI with a decrypted password, so store a copy
+    // with the ciphertext: a note-only edit must not write the plaintext back.
+    isar.write((_) => isar.databaseRecords.put(_forStorage(record, vault)));
     await fetchByEngine(app.appId);
   }
 

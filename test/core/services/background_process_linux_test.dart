@@ -149,4 +149,50 @@ void main() {
       ]));
     });
   });
+
+  group('runCapped', () {
+    test('keeps only the cap and reports truncation', () async {
+      final result = await BackgroundProcess.runCapped(
+        '/bin/sh',
+        ['-c', 'yes 0123456789 | head -n 5000'],
+        maxChars: 100,
+      );
+
+      expect(result.exitCode, 0);
+      expect(result.output.length, lessThanOrEqualTo(100));
+      expect(result.truncated, isTrue);
+    });
+
+    test('drains stdout and stderr concurrently without deadlocking',
+        () async {
+      // Writing more than a pipe buffer to both streams deadlocks if one is
+      // read only after the other finishes.
+      final result = await BackgroundProcess.runCapped(
+        '/bin/sh',
+        [
+          '-c',
+          'i=0; while [ \$i -lt 400 ]; do '
+              'echo 0123456789012345678901234567890123456789; '
+              'echo 9876543210987654321098765432109876543210 >&2; '
+              'i=\$((i+1)); done',
+        ],
+        maxChars: 32 * 1024,
+      ).timeout(const Duration(seconds: 20));
+
+      expect(result.exitCode, 0);
+      expect(result.output, contains('0123456789'));
+    }, skip: Platform.isWindows);
+
+    test('propagates the exit code for a failing command', () async {
+      final result = await BackgroundProcess.runCapped(
+        '/bin/sh',
+        ['-c', 'echo boom; exit 3'],
+        maxChars: 1000,
+      );
+
+      expect(result.exitCode, 3);
+      expect(result.output, contains('boom'));
+      expect(result.truncated, isFalse);
+    }, skip: Platform.isWindows);
+  });
 }

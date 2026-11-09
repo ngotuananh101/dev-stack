@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dev_stack/features/settings/data/settings_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -67,6 +69,29 @@ void main() {
         ),
         r'root "C:\DevStack\site"; alias "C:\DevStack\site2";',
       );
+    });
+  });
+
+  group('settings migration skips binaries', () {
+    test('recognises extensionless executables by name', () {
+      expect(Settings.looksLikeBinaryName('php'), isTrue);
+      expect(Settings.looksLikeBinaryName('mysqld'), isTrue);
+      expect(Settings.looksLikeBinaryName('PHP-FPM'), isTrue);
+      expect(Settings.looksLikeBinaryName('php-cgi-ponta-shim'), isFalse);
+      expect(Settings.looksLikeBinaryName('mysql-start'), isFalse);
+    });
+
+    test('sniffs a NUL byte in the first KB of a file', () async {
+      final dir = await Directory.systemTemp.createTemp('settings_bin_test_');
+      addTearDown(() => dir.delete(recursive: true));
+
+      final text = File('${dir.path}/shim')
+        ..writeAsStringSync('#!/bin/sh\nexec /old/dir/bin/php "\$@"\n');
+      final binary = File('${dir.path}/elf')..writeAsBytesSync([0x7f, 0x45, 0x4c, 0x46, 0x00, 0x01]);
+
+      expect(await Settings.looksLikeBinaryFile(text), isFalse,
+          reason: 'plain shell shims must still be rewritten');
+      expect(await Settings.looksLikeBinaryFile(binary), isTrue);
     });
   });
 }

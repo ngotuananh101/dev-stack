@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:nativeapi/nativeapi.dart' show Application;
@@ -39,7 +40,14 @@ void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (Platform.isLinux) {
-    await LinuxDesktopService.ensureDesktopIntegration();
+    // Writes ~/.local/share/applications/<appId>.desktop and installs the
+    // hicolor icon. On a first run that is a bundle read plus up to three
+    // subprocesses (chmod, update-desktop-database, gtk-update-icon-cache),
+    // and awaiting it here held the first frame back for all of it. Nothing
+    // before the first build depends on the installed files: both the window
+    // and the tray icon fall back to the bundled asset until
+    // `_cachedIconPath` is filled in, so the work just runs alongside startup.
+    unawaited(LinuxDesktopService.ensureDesktopIntegration());
   }
 
   // Load persisted baseDir from Isar before anything else

@@ -120,27 +120,21 @@ class CronSchedulerService {
   /// executable name, so `echo hi` would look for a program literally named
   /// `echo hi` and exit 127. Wrapping in `sh -c` / `cmd.exe /c` mirrors how the
   /// supervisor spawns and makes arguments work.
+  ///
+  /// The output cap is applied while the command runs (see
+  /// [BackgroundProcess.runCapped]): collecting the whole stream first made a
+  /// chatty job allocate its entire output in RAM before the 8 KB cap applied.
   static Future<CronRunResult> _defaultRunner(CronJob job) async {
-    final workingDirectory =
-        job.workingDir.isEmpty ? null : job.workingDir;
-    final ProcessResult result;
-    if (Platform.isWindows) {
-      result = await BackgroundProcess.run(
-        'cmd.exe',
-        ['/c', job.command],
-        workingDirectory: workingDirectory,
-      );
-    } else {
-      result = await BackgroundProcess.run(
-        '/bin/sh',
-        ['-c', job.command],
-        workingDirectory: workingDirectory,
-      );
-    }
-    final combined = '${result.stdout}${result.stderr}'.trim();
-    final output = combined.length > maxOutputChars
-        ? '${combined.substring(0, maxOutputChars)}\n…[output truncated]'
-        : combined;
+    final workingDirectory = job.workingDir.isEmpty ? null : job.workingDir;
+    final result = await BackgroundProcess.runCapped(
+      Platform.isWindows ? 'cmd.exe' : '/bin/sh',
+      [Platform.isWindows ? '/c' : '-c', job.command],
+      maxChars: maxOutputChars,
+      workingDirectory: workingDirectory,
+    );
+    final output = result.truncated
+        ? '${result.output}\n…[output truncated]'
+        : result.output;
     return CronRunResult(exitCode: result.exitCode, output: output);
   }
 

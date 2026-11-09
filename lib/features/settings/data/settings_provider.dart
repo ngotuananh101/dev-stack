@@ -155,8 +155,25 @@ class Settings extends _$Settings {
       final name = p.basename(entity.path);
       final newPath = p.join(target.path, name);
       if (entity is Link) {
-        // Skip symlinks to avoid circular references
-        continue;
+        // Recreate the link instead of silently dropping it: the old code
+        // skipped every symlink, so after a migration the new data dir was
+        // missing whatever the user (or an installer) had linked in. The link
+        // is not followed, so there is no risk of recursing into a cycle; a
+        // target that points into the old tree is rewritten to follow the move.
+        if (FileSystemEntity.typeSync(newPath) != FileSystemEntityType.notFound) {
+          continue; // Already present (a re-run).
+        }
+        try {
+          final rawTarget = await entity.target();
+          final absoluteTarget = p.isAbsolute(rawTarget)
+              ? rawTarget
+              : p.normalize(p.join(entity.parent.path, rawTarget));
+          final rewritten =
+              replacePathPrefix(absoluteTarget, source.path, target.path);
+          await Link(newPath).create(rewritten);
+        } catch (e) {
+          AppLogger.warning('Skipping symlink (unreadable): ${entity.path}: $e');
+        }
       } else if (entity is File) {
         final isLegacyPowerShellShim =
             p.basename(target.path).toLowerCase() == 'bin' &&
@@ -193,6 +210,11 @@ class Settings extends _$Settings {
 
   /// Scan all config files in [dir] and replace old paths with new paths.
   /// Handles both Windows backslash and Unix forward-slash path formats.
+  ///
+  /// Extensionless files are only inspected when they are plausibly text: the
+  /// empty-string entry in [_configExtensions] used to match every ELF binary
+  /// in `bin/` (php, nginx, mysql, ...), so the migration `readAsString()`ed
+  /// tens of megabytes of binaries that can never contain a rewritable path.
   Future<void> _rewriteConfigPaths(
     Directory dir,
     String oldDir,
@@ -201,9 +223,19 @@ class Settings extends _$Settings {
     await for (final entity in dir.list(recursive: true)) {
       if (entity is! File) continue;
 
-      final ext = p.extension(p.basename(entity.path)).toLowerCase();
+      final name = p.basename(entity.path);
+      final ext = p.extension(name).toLowerCase();
 
       if (!_configExtensions.contains(ext)) continue;
+
+      if (ext.isEmpty) {
+        if (looksLikeBinaryName(name)) continue;
+        try {
+          if (await looksLikeBinaryFile(entity)) continue;
+        } catch (_) {
+          continue;
+        }
+      }
 
       try {
         String content = await entity.readAsString();
@@ -221,6 +253,37 @@ class Settings extends _$Settings {
         // Skip binary or unreadable files
         AppLogger.info('Skipping file (unreadable): ${entity.path}');
       }
+    }
+  }
+
+  /// Names of extensionless executables that are never text shims.
+  @visibleForTesting
+  static bool looksLikeBinaryName(String name) {
+    const known = {
+      'php', 'php-cgi', 'php-fpm', 'nginx', 'apache', 'httpd', 'mysqld',
+      'mysql', 'mariadbd', 'mariadb', 'mongod', 'mongosh', 'redis-server',
+      'redis-cli', 'postgres', 'pg_ctl', 'initdb', 'psql', 'caddy',
+      'meilisearch', 'minio', 'rustfs', 'supervisord', 'certutil',
+    };
+    return known.contains(name.toLowerCase());
+  }
+
+  /// Cheap content probe: a NUL byte in the first 4 KB is the standard
+  /// heuristic for a binary file (and every ELF starts with one).
+  @visibleForTesting
+  static Future<bool> looksLikeBinaryFile(File file) async {
+    const probeBytes = 4096;
+    RandomAccessFile? handle;
+    try {
+      handle = await file.open();
+      final bytes = await handle.read(probeBytes);
+      return bytes.contains(0);
+    } catch (_) {
+      return true;
+    } finally {
+      try {
+        await handle?.close();
+      } catch (_) {}
     }
   }
 

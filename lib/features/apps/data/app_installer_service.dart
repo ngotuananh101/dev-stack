@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
@@ -825,6 +826,39 @@ class AppInstallerService {
     String targetPath,
     InstallationLogCallback? onLog,
   ) async {
+    // Decoding and inflating an archive is pure CPU work over the whole
+    // payload (tens to hundreds of MB for a PHP bundle) plus thousands of
+    // file writes. Doing it on the UI isolate froze the window for the whole
+    // extraction, which is the longest step of an install.
+    //
+    // Only a small summary crosses back: emitting one log line per entry
+    // would send tens of thousands of strings out of the isolate and trigger
+    // as many UI rebuilds in one frame.
+    final summary = await Isolate.run(
+      () => extractZipToDirectory(bytes, targetPath),
+    );
+    if (onLog != null) {
+      onLog(
+        'Extracted ${summary.fileCount} files'
+        '${summary.directoryCount > 0 ? ' and ${summary.directoryCount} directories' : ''}',
+      );
+      for (final skipped in summary.skippedEntries) {
+        onLog('Skipped unsafe entry: $skipped');
+      }
+    }
+  }
+
+  /// Extracts a ZIP archive into [targetPath].
+  ///
+  /// Top-level and isolate-safe (no Flutter/Dart-UI dependencies) so it can
+  /// run via [Isolate.run]. Unsafe entries are skipped rather than aborting
+  /// the install, matching the previous behaviour.
+  @visibleForTesting
+  static ({int fileCount, int directoryCount, List<String> skippedEntries})
+      extractZipToDirectory(List<int> bytes, String targetPath) {
+    var fileCount = 0;
+    var directoryCount = 0;
+    final skipped = <String>[];
     final archive = ZipDecoder().decodeBytes(bytes);
     final canonicalTarget = p.canonicalize(targetPath);
     final targetPrefix = canonicalTarget.endsWith(p.separator)
@@ -835,24 +869,30 @@ class AppInstallerService {
       // Path traversal protection: reject absolute paths and ".." segments.
       final parts = p.split(filename);
       if (p.isAbsolute(filename) || parts.contains('..')) {
-        if (onLog != null) onLog('Skipping unsafe entry: $filename');
+        skipped.add(filename);
         continue;
       }
       final destPath = p.canonicalize(p.join(targetPath, filename));
       if (destPath != canonicalTarget && !destPath.startsWith(targetPrefix)) {
-        if (onLog != null) onLog('Skipping entry outside target: $filename');
+        skipped.add(filename);
         continue;
       }
-      if (onLog != null) onLog('Extracting: $filename');
       if (file.isFile) {
         final data = file.content as List<int>;
         final f = File(destPath);
-        await f.create(recursive: true);
-        await f.writeAsBytes(data);
+        f.createSync(recursive: true);
+        f.writeAsBytesSync(data);
+        fileCount++;
       } else {
-        await Directory(destPath).create(recursive: true);
+        Directory(destPath).createSync(recursive: true);
+        directoryCount++;
       }
     }
+    return (
+      fileCount: fileCount,
+      directoryCount: directoryCount,
+      skippedEntries: skipped,
+    );
   }
 
   Future<void> _flattenDirectory(

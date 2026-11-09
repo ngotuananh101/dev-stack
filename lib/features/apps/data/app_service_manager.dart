@@ -617,10 +617,21 @@ class AppServiceManager {
         );
       });
 
-      if (!runsDetached) {
-        final stdoutSubscription = process.stdout
-            .transform(utf8.decoder)
-            .listen((data) {
+      // Drain stdout/stderr for every managed process.
+      //
+      // `runsDetached` only records the start policy: on POSIX
+      // `BackgroundProcess.start` still uses a normal `Process.start`, so the
+      // child gets two OS pipes. A webserver writing to an unread pipe blocks
+      // once the kernel buffer fills (Caddy logs to stderr, nginx/httpd to
+      // stdout/error log) — it would stall requests and then ignore shutdown.
+      // Detached webservers therefore have their output discarded rather than
+      // rendered: it is already teed to their own log files, and the 100-entry
+      // service buffer would only churn the UI.
+      final stdoutSubscription = process.stdout
+          .transform(utf8.decoder)
+          .listen(
+            (data) {
+              if (runsDetached) return;
               final lines = data.split('\n');
               for (final line in lines) {
                 if (line.trim().isNotEmpty) {
@@ -630,11 +641,18 @@ class AppServiceManager {
                   onStatusChange?.call();
                 }
               }
-            });
+            },
+            onError: (Object e) => _logger.warning(
+              'stdout read failed for ${app.name}: $e',
+            ),
+            cancelOnError: false,
+          );
 
-        final stderrSubscription = process.stderr
-            .transform(utf8.decoder)
-            .listen((data) {
+      final stderrSubscription = process.stderr
+          .transform(utf8.decoder)
+          .listen(
+            (data) {
+              if (runsDetached) return;
               final lines = data.split('\n');
               for (final line in lines) {
                 if (line.trim().isNotEmpty) {
@@ -654,9 +672,13 @@ class AppServiceManager {
                   onStatusChange?.call();
                 }
               }
-            });
-        _logSubscriptions[app.appId] = [stdoutSubscription, stderrSubscription];
-      }
+            },
+            onError: (Object e) => _logger.warning(
+              'stderr read failed for ${app.name}: $e',
+            ),
+            cancelOnError: false,
+          );
+      _logSubscriptions[app.appId] = [stdoutSubscription, stderrSubscription];
     } catch (e) {
       _logger.error('Failed to start service ${app.name}: $e');
       AppLogger.error('[${app.name}] CRITICAL ERROR: $e');
@@ -670,6 +692,7 @@ class AppServiceManager {
     _logger.info('Stopping service: ${app.name}');
     app.serviceStatus = 'stopping';
 
+    var exited = false;
     try {
       final process = _processes[app.appId];
       if (process != null) {
@@ -683,7 +706,27 @@ class AppServiceManager {
 
         try {
           await process.exitCode.timeout(const Duration(seconds: 3));
-        } catch (_) {}
+          exited = true;
+        } catch (_) {
+          // `SIGTERM` was ignored or the server is taking too long to flush.
+          // Escalate: dropping the handle here would claim the service stopped
+          // while it keeps the port and its CPU/IO, and restart would then fail
+          // on a port that is still bound.
+          _logger.warning(
+            'Service ${app.name} ignored SIGTERM, force-killing the tree',
+          );
+          try {
+            await BackgroundProcess.forceStopManaged(process);
+            await process.exitCode.timeout(const Duration(seconds: 3));
+            exited = true;
+          } catch (e) {
+            _logger.error(
+              'Force kill of ${app.name} did not confirm exit: $e',
+            );
+          }
+        }
+      } else {
+        exited = true;
       }
     } finally {
       // Drop the process from the map BEFORE finalizing so the (possibly
@@ -696,8 +739,15 @@ class AppServiceManager {
         }
       }
       final activeApp = _activeApps[app.appId] ?? app;
-      activeApp.serviceStatus = 'stopped';
-      activeApp.servicePid = null;
+      if (exited) {
+        activeApp.serviceStatus = 'stopped';
+        activeApp.servicePid = null;
+      } else {
+        // The process is still alive after SIGKILL. Report that instead of a
+        // clean stop, and keep the PID so the user can see what is holding the
+        // port (the OS may still fail to terminate an uninterruptible process).
+        activeApp.serviceStatus = 'failed';
+      }
       _activeApps.remove(app.appId);
     }
   }

@@ -156,13 +156,21 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                                                 ),
                                           )
                                           .toList();
-                                      final paginated = _paginateDatabases(
-                                        filtered,
-                                      );
                                       final totalPages = filtered.isEmpty
                                           ? 1
                                           : (filtered.length / _itemsPerPage)
                                               .ceil();
+                                      // Deleting the last row of the last page
+                                      // (or narrowing a search) used to leave
+                                      // _currentPage past the end, which
+                                      // paginated to an empty list and printed
+                                      // "Showing 11-10 of 10 items".
+                                      if (_currentPage > totalPages) {
+                                        _currentPage = totalPages;
+                                      }
+                                      final paginated = _paginateDatabases(
+                                        filtered,
+                                      );
                                       final startItem = filtered.isEmpty
                                           ? 0
                                           : (_currentPage - 1) * _itemsPerPage +
