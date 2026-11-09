@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:window_manager/window_manager.dart';
+import '../../core/services/window_api.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_size.dart';
 
@@ -14,45 +15,76 @@ class AppHeader extends StatefulWidget {
   State<AppHeader> createState() => _AppHeaderState();
 }
 
-class _AppHeaderState extends State<AppHeader> with WindowListener {
+class _AppHeaderState extends State<AppHeader> {
   bool _isMaximized = false;
+  ListenerId? _windowListenerId;
+  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
+    // The window may not be discoverable yet when this builds on Windows, so
+    // the listener is attached once it exists. `whenCurrentWindow` runs the
+    // callback immediately when the window is already there.
+    whenCurrentWindow((window) {
+      if (_disposed) return;
+      final isMaximized = window.isMaximized;
+      _windowListenerId = window.addListener(_onWindowEvent);
+      // Immediately, inside initState, the first build picks this up anyway;
+      // on Windows the window is adopted later, and then the icon has to be
+      // redrawn to match.
+      if (mounted && isMaximized != _isMaximized) {
+        setState(() => _isMaximized = isMaximized);
+      } else {
+        _isMaximized = isMaximized;
+      }
+    });
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    _disposed = true;
+    final listenerId = _windowListenerId;
+    if (listenerId != null) {
+      currentWindow()?.removeListener(listenerId);
+    }
     super.dispose();
   }
 
-  @override
-  void onWindowMaximize() {
-    if (mounted) setState(() => _isMaximized = true);
-  }
-
-  @override
-  void onWindowUnmaximize() {
-    if (mounted) setState(() => _isMaximized = false);
+  // nativeapi reports a restore for both "no longer maximized" and "no longer
+  // minimized", so the new state is read back from the window rather than
+  // inferred from the event alone.
+  void _onWindowEvent(WindowEvent event) {
+    switch (event) {
+      case WindowMaximizedEvent():
+      case WindowRestoredEvent():
+        final isMaximized = currentWindow()?.isMaximized ?? false;
+        if (mounted && isMaximized != _isMaximized) {
+          setState(() => _isMaximized = isMaximized);
+        }
+      default:
+        break;
+    }
   }
 
   void _handleMinimize() {
-    windowManager.minimize();
+    currentWindow()?.minimize();
   }
 
   void _handleMaximizeToggle() {
+    final window = currentWindow();
+    if (window == null) return;
     if (_isMaximized) {
-      windowManager.unmaximize();
+      window.unmaximize();
     } else {
-      windowManager.maximize();
+      window.maximize();
     }
   }
 
   void _handleClose() {
-    windowManager.close();
+    // `close()` asks the window's close listeners first, which is where
+    // WindowService decides between hiding to the tray and quitting.
+    currentWindow()?.close();
   }
 
   @override

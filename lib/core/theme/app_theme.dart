@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_radius.dart';
 import 'app_text_size.dart';
+import 'text_theme_bridge.dart';
 
 class AppTheme {
   static ThemeData get darkTheme {
@@ -21,18 +22,24 @@ class AppTheme {
         onSecondary: AppColors.textOnColor,
         onSurface: AppColors.textPrimary,
       ),
-      textTheme: GoogleFonts.interTextTheme(
-        const TextTheme(
-          headlineLarge: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
+      // google_fonts 9 speaks `material_ui`'s `TextTheme`; the bridge hands the
+      // styles back in the type `package:flutter/material.dart` builds with.
+      textTheme: toFlutterTextTheme(
+        GoogleFonts.interTextTheme(
+          toMaterialUiTextTheme(
+            const TextTheme(
+              headlineLarge: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+              headlineMedium: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+              bodyLarge: TextStyle(color: AppColors.textPrimary),
+              bodyMedium: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
-          headlineMedium: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-          bodyLarge: TextStyle(color: AppColors.textPrimary),
-          bodyMedium: TextStyle(color: AppColors.textSecondary),
         ),
       ),
       appBarTheme: const AppBarTheme(

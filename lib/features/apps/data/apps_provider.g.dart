@@ -71,7 +71,7 @@ final class AppsProvider extends $AsyncNotifierProvider<Apps, List<AppModel>> {
   Apps create() => Apps();
 }
 
-String _$appsHash() => r'54df4087523f7a3f1ee856b337c7d33aa17d0e16';
+String _$appsHash() => r'8539616555d3a4d51701772e0f77a2153a1d215b';
 
 abstract class _$Apps extends $AsyncNotifier<List<AppModel>> {
   FutureOr<List<AppModel>> build();

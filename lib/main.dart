@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:nativeapi/nativeapi.dart' show Application;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar_plus/isar_plus.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/config/app_config.dart';
 import 'core/database/isar_provider.dart';
+import 'core/services/window_api.dart';
 import 'core/theme/app_theme.dart';
 
 import 'shared/providers/navigation_provider.dart';
@@ -47,39 +49,63 @@ void main(List<String> args) async {
     AppConfig.initialize(baseDir: settings.baseDir);
   }
 
-  await windowManager.ensureInitialized();
+  // window_manager 0.6 has no `ensureInitialized`/`waitUntilReadyToShow`: the
+  // window already exists by the time Dart runs (the runner creates it), so the
+  // properties are simply set on it and `show()` decides when it becomes
+  // visible. `whenCurrentWindow` waits for the window on the platforms where it
+  // is not discoverable before it is shown (Windows looks the active window up);
+  // with no window at all — a unit test — nothing here runs.
   final packageInfo = await PackageInfo.fromPlatform();
   final appVersion = packageInfo.version;
-
-  WindowOptions windowOptions = WindowOptions(
-    size: const Size(1080, 720),
-    minimumSize: const Size(720, 520),
-    center: true,
-    backgroundColor: Colors.transparent,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
-    windowButtonVisibility: false,
-    title: 'Ponta DevStack v$appVersion',
-  );
+  final title = 'Ponta DevStack v$appVersion';
 
   final isMinimized = args.contains('--minimized');
 
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    // Set icon for the window taskbar
-    final iconPath = Platform.isWindows
-        ? 'assets/images/icon.ico'
-        : (Platform.isLinux
-              ? LinuxDesktopService.resolveIconPath()
-              : 'assets/images/icon.png');
-    await windowManager.setIcon(iconPath);
+  whenCurrentWindow((window) {
+    // The header bar is drawn by AppHeader, so the native one goes away and the
+    // window keeps no caption buttons of its own.
+    window.titleBarStyle = TitleBarStyle.hidden;
+    window.isWindowControlButtonsVisible = false;
+    window.title = title;
+    window.setSize(const Size(1080, 720).toNative(), false);
+    window.minimumSize = const Size(720, 520).toNative();
+    window.backgroundColor = Colors.transparent.toNative();
+    window.center();
 
+    // The taskbar icon is an application property, not a window one. A relative
+    // path is an asset path, which is only readable from the bundle the runner
+    // copied next to the executable.
+    Application.instance.setIcon(_resolveIconPath());
+
+    // `--minimized` (auto-start) leaves the window hidden in the tray; the
+    // runner's own first-frame show is what normally makes it visible.
     if (!isMinimized) {
-      await windowManager.show();
-      await windowManager.focus();
+      window.show();
+      window.focus();
     }
   });
 
   runApp(ProviderScope(child: MyApp(appVersion: appVersion)));
+}
+
+/// Resolves [iconPath] to a path the native side can open.
+///
+/// The Linux resolver already returns an absolute path when it finds an
+/// installed icon, but falls back to the bundled asset path, which is relative
+/// to `data/flutter_assets` rather than to the working directory.
+String _resolveIconPath() {
+  final iconPath = Platform.isWindows
+      ? 'assets/images/icon.ico'
+      : (Platform.isLinux
+            ? LinuxDesktopService.resolveIconPath()
+            : 'assets/images/icon.png');
+  if (File(iconPath).isAbsolute) return iconPath;
+
+  final assetsDir = Directory(
+    '${File(Platform.resolvedExecutable).parent.path}'
+    '${Platform.pathSeparator}data${Platform.pathSeparator}flutter_assets',
+  );
+  return '${assetsDir.path}${Platform.pathSeparator}$iconPath';
 }
 
 class MyApp extends StatelessWidget {

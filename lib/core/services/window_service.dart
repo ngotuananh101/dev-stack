@@ -1,8 +1,13 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:window_manager/window_manager.dart';
+// window_manager 0.6 re-exports nativeapi's windowing API; the tray and window
+// types here all come from nativeapi, so this file names its source directly
+// instead of going through the re-export.
 import 'package:nativeapi/nativeapi.dart';
+// `ImageAsset.fromAsset` lives in `nativeapi_flutter` since nativeapi 0.4;
+// the tray icon still resolves its image through it.
+import 'package:nativeapi_flutter/nativeapi_flutter.dart' show ImageAsset;
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../features/apps/domain/app_model.dart';
@@ -14,24 +19,44 @@ import '../../features/sites/data/cli_process_manager.dart';
 import '../../features/supervisor/data/supervisor_manager.dart';
 import '../../features/cron/data/cron_scheduler_service.dart';
 import 'linux_desktop_service.dart';
+import 'window_api.dart';
 
 part 'window_service.g.dart';
 
 @Riverpod(keepAlive: true)
-class WindowService extends _$WindowService with WindowListener {
+class WindowService extends _$WindowService {
   Timer? _updateTimer;
   TrayIcon? _trayIcon;
   Image? _trayIconImage;
   ListenerId? _trayListenerId;
   _TrayMenu? _trayMenu;
+  ListenerId? _windowListenerId;
+
+  /// True while a quit this app started is closing the window, so the close
+  /// listener lets the request through instead of hiding to the tray.
+  bool _isQuitting = false;
 
   @override
   Future<void> build() async {
-    windowManager.addListener(this);
+    // Close requests reach only the window's own listeners. Registering there
+    // is how 0.6 replaces `setPreventClose(true)` + `onWindowClose`: the request
+    // is deferred until this callback finishes, so a cancelled request keeps the
+    // window open and an accepted one closes it.
+    //
+    // `whenCurrentWindow` is what makes this reliable on Windows, where the
+    // window is not discoverable until the runner shows it on the first frame.
+    whenCurrentWindow((window) {
+      _windowListenerId = window.addListener(_onWindowEvent);
+    });
 
     ref.onDispose(() {
       _updateTimer?.cancel();
-      windowManager.removeListener(this);
+
+      final windowListenerId = _windowListenerId;
+      if (windowListenerId != null) {
+        currentWindow()?.removeListener(windowListenerId);
+      }
+      _windowListenerId = null;
 
       final listenerId = _trayListenerId;
       if (listenerId != null) {
@@ -47,9 +72,6 @@ class WindowService extends _$WindowService with WindowListener {
       _trayIconImage?.dispose();
       _trayIconImage = null;
     });
-
-    // Prevent app from closing when X is pressed, we will handle it in onWindowClose
-    await windowManager.setPreventClose(true);
 
     _initSystemTray();
     await _initAutoStart();
@@ -130,7 +152,7 @@ class WindowService extends _$WindowService with WindowListener {
       _trayListenerId = icon.addListener((event) {
         switch (event) {
           case TrayIconClickedEvent():
-            Timer.run(windowManager.show);
+            Timer.run(_showWindow);
           case TrayIconRightClickedEvent():
             Timer.run(icon.openContextMenu);
           case TrayIconDoubleClickedEvent():
@@ -162,7 +184,7 @@ class WindowService extends _$WindowService with WindowListener {
             .toList();
 
         final menu = _TrayMenu();
-        menu.addAction('Show App', windowManager.show);
+        menu.addAction('Show App', _showWindow);
         menu.addSeparator();
         menu.addLabel('Running Services (${runningApps.length})');
 
@@ -198,18 +220,37 @@ class WindowService extends _$WindowService with WindowListener {
   }
 
   Future<void> _quit() async {
-    // Dừng tất cả dịch vụ nhưng không lưu trạng thái (giữ nguyên auto-start)
-    await ref.read(appsProvider.notifier).stopAllServicesQuietly();
-    // Stop all CLI site processes so spawned dev servers are reaped on quit.
-    await ref.read(cliProcessManagerProvider).stopAll();
-    // Reap supervised programs and stop the in-app cron scheduler.
-    await ref.read(supervisorManagerProvider).stopAll();
-    ref.read(cronSchedulerProvider).stop();
-    // The window is about to be destroyed: the trees are killed synchronously
-    // so a child cannot outlive the app that started it.
-    ref.read(cliProcessManagerProvider).stopAllSync();
-    ref.read(supervisorManagerProvider).shutdown();
-    await windowManager.destroy();
+    _isQuitting = true;
+    await _stopEverything();
+    _closeWindow();
+  }
+
+  /// Brings the window back from the tray.
+  ///
+  /// `show()` alone leaves a minimized window minimized, so a window the user
+  /// minimized rather than hid would stay out of sight.
+  void _showWindow() {
+    final window = currentWindow();
+    if (window == null) return;
+    if (window.isMinimized) window.restore();
+    window.show();
+    window.focus();
+  }
+
+  /// Closes the window for good, past the tray preference.
+  ///
+  /// A close request the app starts itself still travels through the window's
+  /// close listeners, so [_isQuitting] is what makes [_onWindowEvent] accept it.
+  void _closeWindow() {
+    _isQuitting = true;
+    final window = currentWindow();
+    if (window == null) {
+      // No native window to close (nothing to put the request through); end the
+      // process instead, which is what closing the last window does anyway.
+      Application.instance.quit(0);
+      return;
+    }
+    window.close();
   }
 
   Future<void> _stopService(AppModel app) =>
@@ -252,30 +293,63 @@ class WindowService extends _$WindowService with WindowListener {
     }
   }
 
-  @override
-  void onWindowClose() async {
-    final settings = await ref.read(settingsProvider.future);
-    if (settings.minimizeToTray) {
-      await windowManager.hide();
-    } else {
-      // Dừng tất cả dịch vụ nhưng không lưu trạng thái (giữ nguyên auto-start)
-      await ref.read(appsProvider.notifier).stopAllServicesQuietly();
-      // Stop all CLI site processes so spawned dev servers are reaped on exit.
-      await ref.read(cliProcessManagerProvider).stopAll();
-      // Reap supervised programs and stop the in-app cron scheduler.
-      await ref.read(supervisorManagerProvider).stopAll();
-      ref.read(cronSchedulerProvider).stop();
-      // The window is about to be destroyed: the trees are killed
-      // synchronously so a child cannot outlive the app that started it.
-      ref.read(cliProcessManagerProvider).stopAllSync();
-      ref.read(supervisorManagerProvider).shutdown();
-      await windowManager.destroy();
+  /// Handles the window events this service cares about.
+  ///
+  /// The return type matters: nativeapi keeps a close request pending until the
+  /// listener's future completes, and accepts it when it does. Returning
+  /// [_handleCloseRequest] is therefore what defers the close until the tray
+  /// preference has been read.
+  FutureOr<void> _onWindowEvent(WindowEvent event) {
+    switch (event) {
+      case WindowCloseRequestedEvent():
+        return _handleCloseRequest(event.request);
+      default:
+        break;
     }
   }
 
-  @override
-  void onWindowFocus() {
-    // Force a redraw if needed
+  /// Decides what the title bar's close button does.
+  ///
+  /// The tray preference is read asynchronously, hence the Future: the request
+  /// is held until the answer is in, then accepted by simply returning, or
+  /// cancelled and answered with a hide / a full shutdown.
+  Future<void> _handleCloseRequest(EventRequest request) async {
+    // A close this app started itself (`_closeWindow`) is already the decision.
+    if (_isQuitting) return;
+
+    final settings = await ref.read(settingsProvider.future);
+    if (_isQuitting) return;
+
+    if (settings.minimizeToTray) {
+      request.cancel();
+      currentWindow()?.hide();
+      return;
+    }
+
+    // Not minimizing to the tray means the close really quits — but only after
+    // the services are down, so the window is kept open for now and closed
+    // again once the teardown has finished.
+    request.cancel();
+    await _stopEverything();
+    // Let this event finish dispatching first: closing the window from inside
+    // its own close callback would re-enter a close that is still pending.
+    Timer.run(_closeWindow);
+  }
+
+  /// Tears down everything the app started, in the order that guarantees no
+  /// child outlives the process.
+  Future<void> _stopEverything() async {
+    // Dừng tất cả dịch vụ nhưng không lưu trạng thái (giữ nguyên auto-start)
+    await ref.read(appsProvider.notifier).stopAllServicesQuietly();
+    // Stop all CLI site processes so spawned dev servers are reaped on quit.
+    await ref.read(cliProcessManagerProvider).stopAll();
+    // Reap supervised programs and stop the in-app cron scheduler.
+    await ref.read(supervisorManagerProvider).stopAll();
+    ref.read(cronSchedulerProvider).stop();
+    // The window is about to be destroyed: the trees are killed synchronously
+    // so a child cannot outlive the app that started it.
+    ref.read(cliProcessManagerProvider).stopAllSync();
+    ref.read(supervisorManagerProvider).shutdown();
   }
 }
 

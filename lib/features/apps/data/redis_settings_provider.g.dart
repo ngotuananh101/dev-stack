@@ -41,7 +41,7 @@ final class RedisSettingsProvider
   }
 }
 
-String _$redisSettingsHash() => r'1cbfa041ada9b9fa4743a32a383ddbd798a3e082';
+String _$redisSettingsHash() => r'8fb3ff558b14facc286d6b8cde822b1351cb8263';
 
 abstract class _$RedisSettings extends $Notifier<void> {
   void build();

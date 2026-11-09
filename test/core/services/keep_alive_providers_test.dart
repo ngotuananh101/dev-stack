@@ -36,7 +36,7 @@ void main() {
     await expectKeptAlive(
       container,
       container.listen(logServiceProvider, (previous, next) {}),
-      () => container.exists(logServiceProvider),
+      () => container.read(logServiceProvider.exists),
     );
   });
 
@@ -45,7 +45,7 @@ void main() {
     await expectKeptAlive(
       container,
       container.listen(appErrorProvider, (previous, next) {}),
-      () => container.exists(appErrorProvider),
+      () => container.read(appErrorProvider.exists),
     );
   });
 
@@ -54,7 +54,7 @@ void main() {
     await expectKeptAlive(
       container,
       container.listen(pathServiceProvider, (previous, next) {}),
-      () => container.exists(pathServiceProvider),
+      () => container.read(pathServiceProvider.exists),
     );
   });
 
@@ -63,7 +63,7 @@ void main() {
     await expectKeptAlive(
       container,
       container.listen(appInstallerServiceProvider, (previous, next) {}),
-      () => container.exists(appInstallerServiceProvider),
+      () => container.read(appInstallerServiceProvider.exists),
     );
   });
 
@@ -72,7 +72,7 @@ void main() {
     await expectKeptAlive(
       container,
       container.listen(meilisearchSettingsProvider, (previous, next) {}),
-      () => container.exists(meilisearchSettingsProvider),
+      () => container.read(meilisearchSettingsProvider.exists),
     );
   });
 
@@ -81,7 +81,7 @@ void main() {
     await expectKeptAlive(
       container,
       container.listen(rustFSSettingsProvider, (previous, next) {}),
-      () => container.exists(rustFSSettingsProvider),
+      () => container.read(rustFSSettingsProvider.exists),
     );
   });
 }

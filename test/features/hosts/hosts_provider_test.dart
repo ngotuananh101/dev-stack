@@ -44,7 +44,7 @@ void main() {
     final saving = notifier.save();
 
     await container.pump();
-    expect(container.exists(hostsProvider), isFalse);
+    expect(container.read(hostsProvider.exists), isFalse);
 
     repository.finishSave();
     expect(await saving, isTrue);

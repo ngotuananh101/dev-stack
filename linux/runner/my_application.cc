@@ -45,9 +45,10 @@ static void my_application_activate(GApplication* application) {
   gtk_window_set_title(window, "Ponta DevStack");
 
   // The application renders its own cross-platform header bar in Flutter
-  // (AppHeader) and initializes frameless via window_manager. We intentionally
-  // do not attach a GtkHeaderBar here to avoid a native titlebar flashing on
-  // first frame before Dart hides it.
+  // (AppHeader) and asks for the frameless title bar from Dart, through
+  // window_manager's native API (nativeapi has no GTK plugin of its own). We
+  // intentionally do not attach a GtkHeaderBar here so no native titlebar can
+  // flash before the first frame.
 
   // Load and set application icon from bundle assets if available.
   char exe_path[PATH_MAX];

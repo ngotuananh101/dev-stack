@@ -32,7 +32,7 @@ final class HostsProvider extends $AsyncNotifierProvider<Hosts, String> {
   Hosts create() => Hosts();
 }
 
-String _$hostsHash() => r'0061757b65c423bc7ae0c3a48f62ea6e3b2b6322';
+String _$hostsHash() => r'1d20578200c1062d5de501e075ca2699fe69087d';
 
 abstract class _$Hosts extends $AsyncNotifier<String> {
   FutureOr<String> build();
