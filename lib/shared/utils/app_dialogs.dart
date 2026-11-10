@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:quickalert/quickalert.dart';
 import 'package:toastification/toastification.dart';
@@ -109,6 +111,89 @@ class AppDialogs {
     return showError(context, title: title, message: '$error');
   }
 
+  /// Asks the user to allow a command that needs administrator rights, naming
+  /// exactly what will run. Returns true only when they confirm.
+  ///
+  /// The command is shown as-is rather than described, because the prompt is
+  /// the user's chance to see what is about to happen before the system
+  /// authentication dialog appears.
+  static Future<bool> showPermissionRequest(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String command,
+  }) {
+    final confirmed = Completer<bool>();
+    var settled = false;
+
+    void finish(bool value) {
+      if (settled) return;
+      settled = true;
+      confirmed.complete(value);
+    }
+
+    QuickAlert.show(
+      context: context,
+      type: QuickAlertType.confirm,
+      title: title,
+      text: message,
+      widget: Container(
+        width: kModalWidthSm,
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTextSize.sm,
+          vertical: AppTextSize.xs,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: SelectableText(
+          command,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+            fontFamily: 'monospace',
+          ),
+        ),
+      ),
+      confirmBtnText: 'ALLOW',
+      cancelBtnText: 'CANCEL',
+      confirmBtnColor: AppColors.successStrong,
+      backgroundColor: AppColors.surface,
+      titleColor: AppColors.textPrimary,
+      textColor: AppColors.textSecondary,
+      width: kModalWidthSm,
+      confirmBtnTextStyle: const TextStyle(
+        color: AppColors.textOnColor,
+        fontSize: AppTextSize.xs,
+        fontWeight: FontWeight.w700,
+      ),
+      cancelBtnTextStyle: const TextStyle(
+        color: AppColors.textSecondary,
+        fontSize: AppTextSize.xs,
+        fontWeight: FontWeight.w600,
+      ),
+      // The whole point is the answer, so a tap outside must not dismiss the
+      // dialog without one: it counts as "no".
+      barrierDismissible: true,
+      onConfirmBtnTap: () {
+        Navigator.of(context).pop();
+        finish(true);
+      },
+      onCancelBtnTap: () {
+        Navigator.of(context).pop();
+        finish(false);
+      },
+    ).then((_) {
+      // Dismissed by the barrier or a back gesture rather than a button.
+      finish(false);
+    });
+
+    return confirmed.future;
+  }
+
   /// One toast shape for every non-blocking message: the app's palette on the
   /// app's own surface. The package's stock styles take their background from
   /// `Colors.white`/`Colors.black` regardless of the app's brightness, so the
@@ -125,7 +210,10 @@ class AppDialogs {
       context: context,
       type: type,
       style: ToastificationStyle.flat,
-      alignment: Alignment.bottomRight,
+      // Top right, under the app's own title bar: a toast anchored at the
+      // bottom would sit against the window edge and cover the footer, far
+      // from where the user is looking after an action.
+      alignment: Alignment.topRight,
       title: Text(
         message,
         style: const TextStyle(

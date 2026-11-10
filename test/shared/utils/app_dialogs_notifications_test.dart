@@ -50,6 +50,20 @@ void main() {
     expect(find.text('Saved'), findsOneWidget);
     expect(find.byType(SnackBar), findsNothing);
 
+    // Top right: above the vertical middle, and against the right edge.
+    final toast = tester.getRect(find.text('Saved'));
+    final screen = tester.getRect(find.byType(Scaffold));
+    expect(
+      toast.top,
+      lessThan(screen.center.dy),
+      reason: 'the toast must sit in the top half of the window',
+    );
+    expect(
+      toast.right,
+      greaterThan(screen.center.dx),
+      reason: 'the toast must sit in the right half of the window',
+    );
+
     await drainToastTimers(tester);
   });
 
@@ -112,5 +126,73 @@ void main() {
 
     expect(find.textContaining('boom'), findsOneWidget);
     expect(find.byType(SnackBar), findsNothing);
+  });
+
+  group('showPermissionRequest', () {
+    Future<bool?> askAndTap(
+      WidgetTester tester,
+      String buttonText, {
+      bool tapBarrier = false,
+    }) async {
+      bool? answer;
+      await tester.pumpWidget(
+        host(tester, (c) async {
+          answer = await AppDialogs.showPermissionRequest(
+            c,
+            title: 'Allow package installation?',
+            message: 'Ponta needs certutil to trust its certificate.',
+            command: 'sudo dnf install -y nss-tools',
+          );
+        }),
+      );
+      await tester.tap(find.text('act'));
+      await tester.pumpAndSettle();
+
+      if (tapBarrier) {
+        await tester.tapAt(const Offset(5, 5));
+        await tester.pumpAndSettle();
+      } else {
+        await tester.tap(find.text(buttonText));
+        await tester.pumpAndSettle();
+      }
+      return answer;
+    }
+
+    testWidgets('shows the exact command before asking', (tester) async {
+      bool? answer;
+      await tester.pumpWidget(
+        host(tester, (c) async {
+          answer = await AppDialogs.showPermissionRequest(
+            c,
+            title: 'Allow package installation?',
+            message: 'Ponta needs certutil to trust its certificate.',
+            command: 'sudo dnf install -y nss-tools',
+          );
+        }),
+      );
+      await tester.tap(find.text('act'));
+      await tester.pumpAndSettle();
+
+      // The user has to be able to read what will run, not just be told that
+      // something will.
+      expect(find.text('sudo dnf install -y nss-tools'), findsOneWidget);
+      expect(find.text('ALLOW'), findsOneWidget);
+      expect(find.text('CANCEL'), findsOneWidget);
+      expect(answer, isNull);
+    });
+
+    testWidgets('ALLOW answers true', (tester) async {
+      expect(await askAndTap(tester, 'ALLOW'), isTrue);
+    });
+
+    testWidgets('CANCEL answers false', (tester) async {
+      expect(await askAndTap(tester, 'CANCEL'), isFalse);
+    });
+
+    testWidgets('dismissing by tapping outside answers false', (tester) async {
+      // Anything but an explicit ALLOW must count as "no": a stray click
+      // must not be able to install a system package.
+      expect(await askAndTap(tester, 'ALLOW', tapBarrier: true), isFalse);
+    });
   });
 }

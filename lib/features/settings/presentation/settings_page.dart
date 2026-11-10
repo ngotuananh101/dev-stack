@@ -186,9 +186,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 color: AppColors.accentStrong,
                                 onTap: () => _handleSslAction(
                                   'Reinstall',
+                                  // The user pressed Reinstall, so the
+                                  // privileged step is already sanctioned;
+                                  // asking again would be a second yes for
+                                  // the same action.
                                   () => ref
                                       .read(sslServiceProvider.notifier)
-                                      .initializeRootCA(),
+                                      .initializeRootCA(
+                                        askPermission: (_) async => true,
+                                      ),
                                 ),
                               ),
                               _StatusAction(
@@ -205,7 +211,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   'Install',
                                   () => ref
                                       .read(sslServiceProvider.notifier)
-                                      .initializeRootCA(),
+                                      .initializeRootCA(
+                                        askPermission: (_) async => true,
+                                      ),
                                 ),
                               ),
                             ],

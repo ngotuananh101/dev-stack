@@ -31,6 +31,7 @@ import 'features/cron/presentation/cron_page.dart';
 import 'features/cron/data/cron_scheduler_service.dart';
 import 'features/tunnels/domain/tunnel_model.dart';
 import 'core/services/window_service.dart';
+import 'shared/utils/app_dialogs.dart';
 import 'core/services/ssl_service.dart';
 import 'core/services/linux_desktop_service.dart';
 import 'features/apps/data/app_installer_service.dart';
@@ -163,7 +164,25 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     super.initState();
     // Initialize SSL Root CA if not already installed
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      ref.read(sslServiceProvider.notifier).initializeRootCA();
+      // Startup never installs anything privileged on its own: the service
+      // asks through this callback, and a "no" is remembered so the question
+      // does not come back on every launch.
+      //
+      // Deliberately not awaited: this can wait on a dialog, and the tunnels,
+      // supervisor and scheduler below must start regardless of how long the
+      // user takes to answer.
+      unawaited(
+        ref
+            .read(sslServiceProvider.notifier)
+            .initializeRootCA(
+              askPermission: (prompt) => AppDialogs.showPermissionRequest(
+                context,
+                title: prompt.title,
+                message: prompt.message,
+                command: prompt.command,
+              ),
+            ),
+      );
 
       // Auto-start tunnels with autoStart == true
       final isar = await IsarInstance.getInstance();
