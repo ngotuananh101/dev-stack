@@ -194,6 +194,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       .read(sslServiceProvider.notifier)
                                       .initializeRootCA(
                                         askPermission: (_) async => true,
+                                        onProgress: _showSslProgress,
                                       ),
                                 ),
                               ),
@@ -213,6 +214,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       .read(sslServiceProvider.notifier)
                                       .initializeRootCA(
                                         askPermission: (_) async => true,
+                                        onProgress: _showSslProgress,
                                       ),
                                 ),
                               ),
@@ -1039,6 +1041,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         context,
         'Successfully ${actionName.toLowerCase()}ed SSL Root Certificate.',
       );
+    }
+  }
+
+  /// Surfaces what a privileged SSL step is doing: the install can wait on
+  /// the system's authentication dialog, and a step that ran silently left
+  /// the user unable to tell whether anything happened at all.
+  void _showSslProgress(SslInstallProgress progress) {
+    if (!mounted) return;
+    switch (progress.status) {
+      case InstallStatus.starting:
+        AppDialogs.showInfoToast(context, progress.message);
+      case InstallStatus.succeeded:
+        AppDialogs.showToast(context, progress.message);
+      case InstallStatus.failed:
+        AppDialogs.showError(
+          context,
+          title: 'SSL setup failed',
+          message: progress.message,
+        );
     }
   }
 

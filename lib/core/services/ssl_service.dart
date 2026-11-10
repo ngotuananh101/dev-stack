@@ -350,6 +350,26 @@ class SslService extends _$SslService {
     }
   }
 
+  /// What to tell the user when a privileged install exits non-zero.
+  ///
+  /// [detail] is the command's stderr when there is any: it usually names the
+  /// real cause (a lock, a mirror, no network). An exit code on its own tells
+  /// the user nothing actionable, and pkexec's 126 has a meaning worth
+  /// spelling out — they dismissed the authentication dialog themselves.
+  @visibleForTesting
+  static String describeInstallFailure(
+    String what,
+    int exitCode, {
+    String detail = '',
+  }) {
+    if (exitCode == 126 || exitCode == 127) {
+      return 'Could not install $what: the authentication dialog was '
+          'cancelled.';
+    }
+    if (detail.isNotEmpty) return 'Could not install $what: $detail';
+    return 'Could not install $what (exit code $exitCode).';
+  }
+
   /// A privileged step waiting on the user's approval.
   ///
   /// [command] is the real command line, not a description: the prompt exists
@@ -494,8 +514,13 @@ class SslService extends _$SslService {
   /// function returning true. When null, privileged steps are skipped
   /// entirely: installing a root CA or a system package must never happen
   /// without the user saying yes.
+  /// [onProgress] receives the start and the outcome of every privileged
+  /// install so the caller can tell the user what is happening: these commands
+  /// are not instant, and one that runs and finishes silently leaves the user
+  /// unable to tell whether anything was installed at all.
   Future<void> initializeRootCA({
     Future<bool> Function(SslInstallPrompt prompt)? askPermission,
+    void Function(SslInstallProgress progress)? onProgress,
   }) async {
     // Wait for the build process to finish so we have the correct state
     await future;
@@ -529,7 +554,10 @@ class SslService extends _$SslService {
       await generateSiteCert('localhost');
       // The NSS store is a separate trust store from the system one: the CA
       // can be installed and trusted everywhere except Firefox and Chrome.
-      await _ensureCertutil(askPermission: askPermission);
+      await _ensureCertutil(
+        askPermission: askPermission,
+        onProgress: onProgress,
+      );
       return;
     }
 
@@ -575,6 +603,12 @@ class SslService extends _$SslService {
           );
         } else {
           AppLogger.info('SSL not found, running mkcert -install...');
+          onProgress?.call(
+            const SslInstallProgress(
+              status: InstallStatus.starting,
+              message: 'Installing the root certificate...',
+            ),
+          );
           final result = await BackgroundProcess.runElevated(
             elevatedCmd.executable,
             elevatedCmd.arguments,
@@ -585,6 +619,16 @@ class SslService extends _$SslService {
           if (result.exitCode != 0) {
             AppLogger.error(
               'mkcert -install failed with exit code ${result.exitCode}',
+            );
+            onProgress?.call(
+              SslInstallProgress(
+                status: InstallStatus.failed,
+                message: describeInstallFailure(
+                  'the root certificate',
+                  result.exitCode,
+                  detail: result.stderr.toString().trim(),
+                ),
+              ),
             );
             state = AsyncValue.error(
               Exception(
@@ -608,9 +652,21 @@ class SslService extends _$SslService {
         await settingsNotifier.updateField(isSslInstalled: true);
         await generateSiteCert('localhost');
         AppLogger.info('SSL Root CA successfully installed and trusted');
+        // Reported before the package step below: that step has its own start
+        // and result, and a success toast arriving after its error alert would
+        // read as a contradiction.
+        onProgress?.call(
+          const SslInstallProgress(
+            status: InstallStatus.succeeded,
+            message: 'Root certificate installed and trusted.',
+          ),
+        );
         // The user approved one privileged command; the second one gets its
         // own prompt rather than riding along on the first approval.
-        await _ensureCertutil(askPermission: askPermission);
+        await _ensureCertutil(
+          askPermission: askPermission,
+          onProgress: onProgress,
+        );
       } else if (wroteToSystemStore) {
         AppLogger.error(
           'mkcert -install succeeded but checkStatus() still returns false',
@@ -649,6 +705,7 @@ class SslService extends _$SslService {
   /// trusted inside those browsers.
   Future<void> _ensureCertutil({
     required Future<bool> Function(SslInstallPrompt prompt)? askPermission,
+    void Function(SslInstallProgress progress)? onProgress,
   }) async {
     if (!Platform.isLinux || askPermission == null) return;
     await ensureCertutil(
@@ -657,6 +714,8 @@ class SslService extends _$SslService {
       certutilAvailable: await isCertutilAvailable(),
       package: nssToolsPackageManager(),
       runElevated: BackgroundProcess.runElevated,
+      onProgress: onProgress,
+      certutilAfterwards: isCertutilAvailable,
     );
   }
 
@@ -674,6 +733,13 @@ class SslService extends _$SslService {
       List<String> arguments,
     )
     runElevated,
+    void Function(SslInstallProgress progress)? onProgress,
+
+    // Answers whether `certutil` is on the PATH now, after the install. A
+    // package manager can exit 0 and still leave the binary unavailable to
+    // the process that already inherited its PATH; reporting that as installed
+    // would be a claim the user is about to see contradicted in the browser.
+    Future<bool> Function()? certutilAfterwards,
   }) async {
     if (certutilAvailable) return;
 
@@ -713,6 +779,16 @@ class SslService extends _$SslService {
       return;
     }
 
+    // pkexec can take a while — it may be waiting on the desktop's
+    // authentication dialog — so the caller is told the work started rather
+    // than being left looking at a silent screen until the process exits.
+    onProgress?.call(
+      SslInstallProgress(
+        status: InstallStatus.starting,
+        message: 'Installing ${package.packageName}...',
+      ),
+    );
+
     if (refreshArgs.isNotEmpty) {
       final refresh = await runElevated(package.packageManager, refreshArgs);
       AppLogger.info(
@@ -724,11 +800,51 @@ class SslService extends _$SslService {
       '${package.packageManager} install ${package.packageName} exit code: '
       '${install.exitCode}',
     );
+
     if (install.exitCode != 0) {
       AppLogger.warning(
         'Could not install ${package.packageName}: ${install.stderr}',
       );
+      onProgress?.call(
+        SslInstallProgress(
+          status: InstallStatus.failed,
+          message: describeInstallFailure(
+            package.packageName,
+            install.exitCode,
+            detail: install.stderr.toString().trim(),
+          ),
+        ),
+      );
+      return;
     }
+
+    // A package manager can exit 0 and still leave the binary unavailable to
+    // this process (its PATH was inherited before the install), so success is
+    // what `certutil` being there says, not what the exit code says.
+    if (certutilAfterwards != null && !await certutilAfterwards()) {
+      AppLogger.warning(
+        '${package.packageManager} reported success installing '
+        '${package.packageName} but certutil is still not on the PATH',
+      );
+      onProgress?.call(
+        SslInstallProgress(
+          status: InstallStatus.failed,
+          message:
+              '${package.packageName} was installed, but certutil is still not '
+              'available. Restart Ponta to pick up the new package.',
+        ),
+      );
+      return;
+    }
+
+    onProgress?.call(
+      SslInstallProgress(
+        status: InstallStatus.succeeded,
+        message:
+            '${package.packageName} installed. Firefox and Chrome will now '
+            'trust Ponta\'s certificate.',
+      ),
+    );
   }
 
   Future<void> uninstallRootCA() async {
@@ -800,4 +916,23 @@ class SslInstallPrompt {
   final String title;
   final String message;
   final String command;
+}
+
+/// Where a privileged install is: the caller shows [message] to the user, and
+/// [status] tells it which shape to use — a toast for the start and the
+/// success, an alert for a failure.
+@immutable
+class SslInstallProgress {
+  const SslInstallProgress({required this.status, required this.message});
+
+  final InstallStatus status;
+  final String message;
+}
+
+enum InstallStatus {
+  /// The command has been started; it may still be waiting on the desktop's
+  /// authentication dialog.
+  starting,
+  succeeded,
+  failed,
 }

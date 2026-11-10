@@ -181,6 +181,23 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 message: prompt.message,
                 command: prompt.command,
               ),
+              onProgress: (progress) {
+                // The install outlives any dialog the user may have closed, so
+                // a late result must not reach a context that is already gone.
+                if (!mounted) return;
+                switch (progress.status) {
+                  case InstallStatus.starting:
+                    AppDialogs.showInfoToast(context, progress.message);
+                  case InstallStatus.succeeded:
+                    AppDialogs.showToast(context, progress.message);
+                  case InstallStatus.failed:
+                    AppDialogs.showError(
+                      context,
+                      title: 'SSL setup failed',
+                      message: progress.message,
+                    );
+                }
+              },
             ),
       );
 
