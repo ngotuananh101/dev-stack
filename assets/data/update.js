@@ -241,6 +241,71 @@ async function fetchGithubReleases({ repoPath, platform, options = {} }) {
 
 // === CÁC HÀM FETCH DỮ LIỆU WINDOWS ===
 
+/**
+ * Helper lấy danh sách Go stable từ go.dev, kèm checksum chính thức.
+ * `include=all` trả về cả bản unstable; chỉ giữ bản stable và cắt xuống
+ * patch mới nhất của mỗi minor.
+ */
+async function fetchGoReleases(os) {
+  const res = await fetch("https://go.dev/dl/?mode=json&include=all");
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new Error("Malformed Go release index");
+
+  const versions = {};
+  const sha256 = {};
+  for (const release of data) {
+    if (!release?.stable) continue;
+    const file = release.files?.find(
+      (f) => f.kind === "archive" && f.os === os && f.arch === "amd64",
+    );
+    if (!file?.filename || !/^[a-f0-9]{64}$/i.test(file.sha256 ?? "")) continue;
+    const version = String(release.version).replace(/^go/, "");
+    versions[version] = `https://go.dev/dl/${file.filename}`;
+    sha256[version] = file.sha256.toLowerCase();
+  }
+  return { versions, sha256 };
+}
+
+/**
+ * Helper lấy danh sách Flutter stable từ flutter_infra_release, kèm checksum.
+ * Chỉ nhận version dạng `x.y.z` (các bản Flutter 1.x đời đầu không dùng được
+ * làm SDK hiện tại) và giữ patch mới nhất của mỗi minor.
+ */
+async function fetchFlutterReleases(os) {
+  const file = os === "windows" ? "releases_windows.json" : "releases_linux.json";
+  const res = await fetch(
+    `https://storage.googleapis.com/flutter_infra_release/releases/${file}`,
+  );
+  const data = await res.json();
+  if (!Array.isArray(data?.releases) || !data.base_url) {
+    throw new Error("Malformed Flutter release index");
+  }
+
+  const baseUrl = String(data.base_url).replace(/\/+$/, "");
+  const versions = {};
+  const sha256 = {};
+  for (const release of data.releases) {
+    if (release?.channel !== "stable" || !/^\d+\.\d+\.\d+$/.test(release.version ?? "")) continue;
+    if (!release.archive || !/^[a-f0-9]{64}$/i.test(release.sha256 ?? "")) continue;
+    versions[release.version] = `${baseUrl}/${release.archive}`;
+    sha256[release.version] = release.sha256.toLowerCase();
+  }
+  return { versions, sha256 };
+}
+
+/**
+ * Sắp xếp và cắt xuống patch mới nhất mỗi minor, giữ nguyên checksum của
+ * những version còn lại.
+ */
+function selectLatestPatches(result) {
+  const versions = sortVersionsObject(result.versions ?? {});
+  const sha256 = {};
+  for (const version of Object.keys(versions)) {
+    if (result.sha256?.[version]) sha256[version] = result.sha256[version];
+  }
+  return { versions, sha256 };
+}
+
 const fetchersWindows = {
   nodejs() {
     return fetchNodejsReleases({
@@ -248,6 +313,14 @@ const fetchersWindows = {
       urlBuilder: (ver) =>
         `https://nodejs.org/dist/v${ver}/node-v${ver}-win-x64.zip`,
     });
+  },
+
+  async go() {
+    return selectLatestPatches(await fetchGoReleases("windows"));
+  },
+
+  async flutter() {
+    return selectLatestPatches(await fetchFlutterReleases("windows"));
   },
 
   async php(prefix) {
@@ -530,6 +603,14 @@ const fetchersLinux = {
       urlBuilder: (ver) =>
         `https://nodejs.org/dist/v${ver}/node-v${ver}-linux-x64.tar.gz`,
     });
+  },
+
+  async go() {
+    return selectLatestPatches(await fetchGoReleases("linux"));
+  },
+
+  async flutter() {
+    return selectLatestPatches(await fetchFlutterReleases("linux"));
   },
 
   async caddy() {
@@ -852,6 +933,20 @@ const COMMON_APP_DEFINITIONS = {
     group_name: "deno",
     repo: "denoland/deno",
   },
+  go: {
+    id: "go",
+    name: "Go",
+    description: "Go toolchain and standard library from go.dev.",
+    category: "runtime",
+    group_name: "go",
+  },
+  flutter: {
+    id: "flutter",
+    name: "Flutter",
+    description: "Flutter SDK with its bundled Dart SDK.",
+    category: "runtime",
+    group_name: "flutter",
+  },
 };
 
 function makeBinaryApp(base, execFile, cliFile, extra = {}) {
@@ -958,6 +1053,18 @@ const baseWindowsApps = [
   ),
   makeBinaryApp(COMMON_APP_DEFINITIONS.bun, "bun.exe", "bun.exe"),
   makeBinaryApp(COMMON_APP_DEFINITIONS.deno, "deno.exe", "deno.exe"),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.go,
+    "go.exe",
+    "go.exe",
+    { repo: "golang/go" },
+  ),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.flutter,
+    "flutter.bat",
+    "dart.bat",
+    { repo: "flutter/flutter" },
+  ),
 ];
 
 const baseLinuxApps = [
@@ -1001,6 +1108,13 @@ const baseLinuxApps = [
   ),
   makeBinaryApp(COMMON_APP_DEFINITIONS.bun, "bun", "bun"),
   makeBinaryApp(COMMON_APP_DEFINITIONS.deno, "deno", "deno"),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.go, "go", "go", { repo: "golang/go" }),
+  makeBinaryApp(
+    COMMON_APP_DEFINITIONS.flutter,
+    "flutter",
+    "dart",
+    { repo: "flutter/flutter" },
+  ),
 ];
 
 // === HÀM THỰC THI CHÍNH ===
@@ -1089,6 +1203,20 @@ function applyFetchedVersions(app, fetchedResult) {
     return;
   }
 
+  // Fetchers that also report checksums return { versions, sha256 }; the
+  // generic branch below would otherwise publish `sha256` as a version key.
+  if (fetchedResult.versions && fetchedResult.sha256) {
+    app.versions = sortVersionsObject(fetchedResult.versions);
+    const sha256 = {};
+    for (const version of Object.keys(app.versions)) {
+      if (fetchedResult.sha256[version]) {
+        sha256[version] = fetchedResult.sha256[version];
+      }
+    }
+    if (Object.keys(sha256).length > 0) app.sha256 = sha256;
+    return;
+  }
+
   if (
     typeof fetchedResult === "object" &&
     Object.keys(fetchedResult).length > 0
@@ -1129,6 +1257,20 @@ function applyFallbackVersions(app, oldData, fetchedResult = null) {
         .filter(([, url]) => typeof url === "string" && url.startsWith("https://")));
       if (oldApp.lts_labels) app.lts_labels = oldApp.lts_labels;
     }
+  }
+
+  // A checksum is only meaningful for the exact file it was published for: carry
+  // it over only where the URL is unchanged, so a stale digest never rejects a
+  // fresh download.
+  if (app.versions && oldApp?.sha256) {
+    const sha256 = { ...(app.sha256 ?? {}) };
+    for (const [version, url] of Object.entries(app.versions)) {
+      const oldHash = oldApp.sha256[version];
+      if (!sha256[version] && oldApp.versions?.[version] === url && /^[a-f0-9]{64}$/i.test(oldHash ?? "")) {
+        sha256[version] = oldHash.toLowerCase();
+      }
+    }
+    if (Object.keys(sha256).length > 0) app.sha256 = sha256;
   }
 }
 

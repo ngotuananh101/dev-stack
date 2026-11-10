@@ -45,9 +45,10 @@
 - **Robust Database Engine Support**:
   - Run and manage **MySQL**, **MariaDB**, **PostgreSQL**, **MongoDB**, **Redis**, **Elasticsearch**, **Meilisearch**, and **RustFS** (S3-compatible object storage).
   - Built-in GUI tool integrations (**phpMyAdmin**, **HeidiSQL**, **MongoDB Compass**) with single-click access.
-- **Modern Language Runtimes (Node.js, Bun, Deno, Python)**:
-  - One-click installation and management for **Node.js** (including npm, npx, corepack shims), **Bun** (with bunx), and **Deno**.
-  - Automatically configures isolated global package directories (`~/.bun/bin`, `~/.deno/bin`, `%APPDATA%\npm`, `~/.npm-global/bin`) merged into the User PATH.
+- **Modern Language Runtimes (Node.js, Bun, Deno, Go, Flutter, Python)**:
+  - One-click installation and management for **Node.js** (including npm, npx, corepack shims), **Bun** (with bunx), **Deno**, the **Go toolchain** (`go`, `gofmt`) and the **Flutter SDK** (with its bundled Dart SDK).
+  - Every version on go.dev and the newest patch of each stable Flutter minor is installable; both are verified against the SHA-256 their publisher reports before anything is unpacked.
+  - Automatically configures isolated global package directories (`~/.bun/bin`, `~/.deno/bin`, `%APPDATA%\npm`, `~/.npm-global/bin`) merged into the User PATH. Go also gets `GOROOT`; Flutter gets its `bin/` on PATH and one launcher run during install so a damaged extraction fails there rather than on the user's first command.
   - Python runtime management via **pyenv**.
 - **Supervisor**: Register long-running programs, start/stop/restart them, follow their output live, and let the watchdog restart a crashed program after an exponential backoff — up to 5 restarts per 60-second window by default, all configurable per program. Auto-start entries are honoured on launch and every process tree is killed on shutdown.
 - **Cron Scheduler**: Schedule shell jobs with a 5-field cron expression or a preset (`@hourly`, `@daily`, …), preview the next run, and keep a per-job run history. The in-app scheduler never overlaps two runs of the same job: a tick that finds the previous run still going is skipped.
@@ -95,9 +96,9 @@
 | <img src="assets/images/caddy.png" width="40"/><br/>**Caddy** | <img src="assets/images/nodejs.png" width="40"/><br/>**Node.js** | <img src="assets/images/mariadb.png" width="40"/><br/>**MariaDB** | <img src="assets/images/heidisql.png" width="40"/><br/>**HeidiSQL** ¹ |
 | <img src="assets/images/apache.png" width="40"/><br/>**Apache** | <img src="assets/images/bun.png" width="40"/><br/>**Bun (bunx)** | <img src="assets/images/postgre.png" width="40"/><br/>**PostgreSQL** | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB Compass** ¹ |
 | | <img src="assets/images/deno.png" width="40"/><br/>**Deno** | <img src="assets/images/redis.png" width="40"/><br/>**Redis** | 🌐<br/>**Cloudflare Tunnel** |
-| | <img src="assets/images/python.png" width="40"/><br/>**Python (pyenv)** | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB** | 🚇<br/>**ngrok** |
-| | | <img src="assets/images/elasticsearch.png" width="40"/><br/>**Elasticsearch** | |
-| | | <img src="assets/images/meilisearch.png" width="40"/><br/>**Meilisearch** | |
+| | <img src="assets/images/go.png" width="40"/><br/>**Go** | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB** | 🚇<br/>**ngrok** |
+| | <img src="assets/images/flutter.png" width="40"/><br/>**Flutter** | <img src="assets/images/elasticsearch.png" width="40"/><br/>**Elasticsearch** | |
+| | <img src="assets/images/python.png" width="40"/><br/>**Python (pyenv)** | <img src="assets/images/meilisearch.png" width="40"/><br/>**Meilisearch** | |
 | | | <img src="assets/images/rustfs.png" width="40"/><br/>**RustFS** | |
 
 </div>
@@ -113,6 +114,7 @@
   - Automatic distribution detection via `LinuxDistroResolver` (it resolves catalog placeholders such as `{mongo_distro}`).
   - Data and apps live under `~/.ponta` by default.
   - Portable runtimes: musl-dynamic bundles from `devstack-app-builder` (PHP, Apache, PostgreSQL), a static musl bundle for Redis, and Jakub Jirutka's static nginx binaries.
+  - The Go and Flutter SDKs come from their own publishers (`go.dev/dl`, `flutter_infra_release`), so the catalog's SHA-256 checks are the ones those projects publish; a mismatched download is rejected before extraction.
   - The `.deb`/`.rpm` packages install to `/opt/dev-stack` and expose `dev_stack` (and `dev-stack`) on `PATH`; the `.desktop` entry launches that symlink.
 
 ---

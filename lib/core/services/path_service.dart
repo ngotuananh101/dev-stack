@@ -139,6 +139,15 @@ class PathService {
     if (id.contains('nodejs') || id == 'node') {
       return ['nodejs', 'node'];
     }
+    // Both SDKs expose more than their launcher, and neither is reachable by
+    // the generic `appId + cli_file` rule below: Flutter's CLI is `dart`, not
+    // `flutter`, and Go's is `gofmt`, not `go`.
+    if (id == 'go') {
+      return ['go', 'gofmt'];
+    }
+    if (id == 'flutter') {
+      return ['flutter', 'dart'];
+    }
 
     // Generic apps (php, httpd, psql, redis-cli, etc.)
     final names = <String>[appId];
@@ -149,6 +158,34 @@ class PathService {
       }
     }
     return names;
+  }
+
+  /// Returns the file a shim named [shimName] must execute for [appId].
+  ///
+  /// Most apps have one CLI, so every shim points at [cliPath]. Go and Flutter
+  /// ship several executables side by side in `bin/`, and pointing `gofmt` or
+  /// `flutter` at the CLI path (`go`, `dart`) would run the wrong tool.
+  @visibleForTesting
+  static String shimTargetFor(
+    String appId,
+    String shimName,
+    String cliPath, {
+    bool? isWindows,
+  }) {
+    final id = appId.toLowerCase();
+    final windows = isWindows ?? Platform.isWindows;
+    final isSiblingTool =
+        (id == 'go' && shimName == 'gofmt') ||
+        (id == 'flutter' && shimName == 'flutter');
+    if (!isSiblingTool) return cliPath;
+
+    final binDir = cliPath.contains(r'\')
+        ? p.windows.dirname(cliPath)
+        : p.posix.dirname(cliPath);
+    // The install path may be a Windows path even when this runs on Linux
+    // (tests, cross-platform config editing), so join with the matching style.
+    final context = windows ? p.windows : p.posix;
+    return context.join(binDir, windows ? '$shimName.bat' : shimName);
   }
 
   /// Builds the PowerShell arguments and environment map to set a User environment variable on Windows.
@@ -644,7 +681,11 @@ class PathService {
 
     if (Platform.isLinux) {
       for (final name in shimNames) {
-        await createLinuxSymlinkOrShim(binDir, name, app.cliFilePath!);
+        await createLinuxSymlinkOrShim(
+          binDir,
+          name,
+          shimTargetFor(app.appId, name, app.cliFilePath!),
+        );
       }
 
       // Special handling for Node.js on Linux: configure npm prefix to ~/.npm-global
@@ -701,7 +742,12 @@ class PathService {
     for (final name in shimNames) {
       // On Windows, bunx should target bunx.exe if it exists, otherwise
       // fall back to the cliFilePath (which may be bun.exe).
-      String targetPath = app.cliFilePath!;
+      String targetPath = shimTargetFor(
+        app.appId,
+        name,
+        app.cliFilePath!,
+        isWindows: true,
+      );
       if (name == 'bunx') {
         final appDir = p.dirname(app.cliFilePath!);
         final bunxExe = p.join(appDir, 'bunx.exe');

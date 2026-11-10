@@ -13,6 +13,11 @@ void main() {
         expect(AppBrandResolver.iconFileName('nodejs'), equals('nodejs'));
       });
 
+      test('resolves the Go and Flutter SDK icons', () {
+        expect(AppBrandResolver.iconFileName('go'), equals('go'));
+        expect(AppBrandResolver.iconFileName('flutter'), equals('flutter'));
+      });
+
       test('resolves php variants including php84', () {
         expect(AppBrandResolver.iconFileName('php84'), equals('php'));
         expect(
@@ -109,6 +114,17 @@ void main() {
         expect(
           AppBrandResolver.iconColor('unknown'),
           equals(const Color(0xFF000000)),
+        );
+      });
+
+      test('resolves Go and Flutter brand colors', () {
+        expect(
+          AppBrandResolver.iconColor('go'),
+          equals(const Color(0xFF00ACD7)),
+        );
+        expect(
+          AppBrandResolver.iconColor('flutter'),
+          equals(const Color(0xFF54C5F8)),
         );
       });
 

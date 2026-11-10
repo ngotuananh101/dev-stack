@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
 import 'package:archive/archive.dart';
+import 'package:archive/archive_io.dart' show extractFileToDisk;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
@@ -21,6 +22,7 @@ import '../../../core/services/path_service.dart';
 import '../../../core/services/linux_distro_resolver.dart';
 import 'php_runtime_bundle.dart';
 import 'runtime_bundle.dart';
+import 'runtime_sdk_config.dart';
 import '../../settings/data/settings_provider.dart';
 import 'apps_provider.dart';
 
@@ -566,7 +568,10 @@ class AppInstallerService {
     logInfo('Extracting tar archive for ${app.name}');
     onProgress?.call(0.82, 'Extracting...');
 
-    // Validate archive entries against Path Traversal (VULN-08)
+    // Validate the entry list against path traversal (VULN-08) before writing
+    // anything. The listing needs a `tar` binary; when it is missing, the
+    // extractor still refuses entries that resolve outside the target, so the
+    // install degrades to a slower check instead of failing outright.
     try {
       final entries = await listTarEntries(tempFile.path);
       if (!validateTarEntries(entries)) {
@@ -575,22 +580,35 @@ class AppInstallerService {
           'Security error: Tar archive contains unsafe entry paths (path traversal attempt)',
         );
       }
+      await Directory(installPath).create(recursive: true);
+      final args = buildTarExtractArgs(tempFile.path, installPath);
+      final result = await Process.run('tar', args);
+      if (result.exitCode != 0) {
+        logError(
+          'Tar extraction failed (exit code ${result.exitCode}): ${result.stderr}',
+        );
+        throw Exception('Tar extraction failed: ${result.stderr}');
+      }
     } catch (e) {
       if (e is Exception && e.toString().contains('Security error')) {
         rethrow;
       }
-      logInfo('Tar entry pre-validation skipped or failed: $e');
+      if (e is Exception && e.toString().contains('Tar extraction failed')) {
+        rethrow;
+      }
+      // No system tar: `archive` decodes .tar.gz/.tar.xz/.tar.bz2 itself and
+      // writes entries through the same path-traversal checks.
+      logInfo('System tar unavailable ($e); extracting with the built-in decoder');
+      final summary = await _extractArchiveInBackground(
+        tempFile.path,
+        installPath,
+      );
+      logInfo('Extracted ${summary.fileCount} files from the archive');
+      for (final skipped in summary.skippedEntries) {
+        logInfo('Skipped unsafe entry: $skipped');
+      }
     }
 
-    await Directory(installPath).create(recursive: true);
-    final args = buildTarExtractArgs(tempFile.path, installPath);
-    final result = await Process.run('tar', args);
-    if (result.exitCode != 0) {
-      logError(
-        'Tar extraction failed (exit code ${result.exitCode}): ${result.stderr}',
-      );
-      throw Exception('Tar extraction failed: ${result.stderr}');
-    }
     if (Platform.isLinux) {
       await ensureLinuxPermissions(installPath, logInfo: logInfo);
     }
@@ -607,8 +625,19 @@ class AppInstallerService {
   }) async {
     logInfo('Extracting ZIP for ${app.name}');
     onProgress?.call(0.82, 'Extracting...');
-    final bytes = await tempFile.readAsBytes();
-    await _extractZip(bytes, installPath, onLog);
+    // Streams entries out of the file on disk: a Flutter SDK zip is ~1.9 GB,
+    // and holding it (plus the inflated copy) in memory exhausted the isolate.
+    final summary = await _extractArchiveInBackground(
+      tempFile.path,
+      installPath,
+    );
+    onLog?.call(
+      'Extracted ${summary.fileCount} files'
+      '${summary.directoryCount > 0 ? ' and ${summary.directoryCount} directories' : ''}',
+    );
+    for (final skipped in summary.skippedEntries) {
+      onLog?.call('Skipped unsafe entry: $skipped');
+    }
     if (Platform.isLinux) {
       await ensureLinuxPermissions(installPath, logInfo: logInfo);
     }
@@ -676,6 +705,93 @@ class AppInstallerService {
       await configureIsolatedRedis(app, logInfo);
     }
   }
+
+  /// Wires a Go or Flutter SDK into the user's environment.
+  ///
+  /// Both archives extract to a single top-level directory that
+  /// [_flattenDirectory] removes, so everything lands directly in
+  /// [installPath]. Go then needs `GOROOT` and its `bin/` on `PATH`; Flutter
+  /// needs its `bin/` on `PATH` and one successful launcher run to prove the
+  /// extraction is complete.
+  ///
+  /// Environment wiring happens first and is never rolled back when the check
+  /// fails: the SDK is on disk either way, and a `PATH` the user can retry
+  /// against beats an unpacked SDK nothing points at.
+  @visibleForTesting
+  static Future<void> configureSdkRuntime({
+    required String appId,
+    required String installPath,
+    required bool isWindows,
+    required void Function(String) logInfo,
+    required Future<void> Function(String, String) setEnvVar,
+    required Future<void> Function(String) addPathDir,
+    Future<ProcessResult> Function(
+      String,
+      List<String>, {
+      bool runInShell,
+    })
+    run = _runProcess,
+  }) async {
+    final config = RuntimeSdkConfig.forApp(appId, installPath);
+    if (config == null) return;
+
+    for (final entry in config.envVars.entries) {
+      await setEnvVar(entry.key, entry.value);
+    }
+    for (final dir in config.pathDirs) {
+      await addPathDir(dir);
+    }
+
+    final launcher = p.join(
+      installPath,
+      'bin',
+      isWindows ? '$appId.bat' : appId,
+    );
+    final warmup = RuntimeSdkConfig.warmupCommand(
+      appId,
+      launcher,
+      isWindows: isWindows,
+    );
+    if (warmup == null) {
+      logInfo('${config.shims.join(", ")} added to PATH.');
+      return;
+    }
+
+    if (!File(launcher).existsSync()) {
+      logInfo(
+        'Warning: expected the $appId launcher at $launcher but it is missing; '
+        'the archive may be incomplete.',
+      );
+      return;
+    }
+
+    logInfo('Checking that $appId starts...');
+    try {
+      final result = await run(
+        warmup.executable,
+        warmup.arguments,
+        runInShell: warmup.runInShell,
+      );
+      if (result.exitCode == 0) {
+        logInfo('$appId is ready.');
+      } else {
+        logInfo(
+          'Warning: "$appId --version" exited with ${result.exitCode}; '
+          'run it once manually to see the details.',
+        );
+      }
+    } catch (e) {
+      logInfo('Warning: could not start $appId: $e');
+    }
+  }
+
+  /// Default launcher runner; named so tests can inject one without
+  /// reimplementing [Process.run]'s optional arguments.
+  static Future<ProcessResult> _runProcess(
+    String executable,
+    List<String> arguments, {
+    bool runInShell = false,
+  }) => Process.run(executable, arguments, runInShell: runInShell);
 
   /// On Windows, Bun ships `bun.exe` but not `bunx.exe`. `bunx` is the package
   /// runner that many scripts and wrappers invoke; create a copy (alias) so
@@ -752,6 +868,21 @@ class AppInstallerService {
       );
     }
 
+    // Go and Flutter ship SDK archives, not self-registering binaries: they
+    // need environment wiring before any of their tools can be found.
+    if (RuntimeSdkConfig.forApp(app.appId, installPath) != null) {
+      onProgress?.call(0.97, 'Configuring ${app.name}...');
+      final pathService = _ref.read(pathServiceProvider);
+      await configureSdkRuntime(
+        appId: app.appId,
+        installPath: installPath,
+        isWindows: Platform.isWindows,
+        logInfo: logInfo,
+        setEnvVar: pathService.setUserEnvVar,
+        addPathDir: pathService.addRawPathToUserPath,
+      );
+    }
+
     if (app.groupName == 'php') {
       onProgress?.call(0.97, 'Configuring PHP...');
       final phpIniDev = File(p.join(installPath, 'php.ini-development'));
@@ -820,31 +951,20 @@ class AppInstallerService {
     }
   }
 
-  Future<void> _extractZip(
-    List<int> bytes,
-    String targetPath,
-    InstallationLogCallback? onLog,
-  ) async {
-    // Decoding and inflating an archive is pure CPU work over the whole
-    // payload (tens to hundreds of MB for a PHP bundle) plus thousands of
-    // file writes. Doing it on the UI isolate froze the window for the whole
-    // extraction, which is the longest step of an install.
-    //
-    // Only a small summary crosses back: emitting one log line per entry
-    // would send tens of thousands of strings out of the isolate and trigger
-    // as many UI rebuilds in one frame.
-    final summary = await Isolate.run(
-      () => extractZipToDirectory(bytes, targetPath),
+  /// Decoding and writing an archive is pure CPU and file work over the whole
+  /// payload: thousands to tens of thousands of entries, and up to a couple of
+  /// gigabytes of data. Running it on the UI isolate freezes the window for
+  /// the longest step of an install, so it runs in a background isolate.
+  ///
+  /// Only the small summary crosses back; emitting one log line per entry
+  /// would send tens of thousands of strings out and trigger as many rebuilds.
+  Future<
+    ({int fileCount, int directoryCount, List<String> skippedEntries})
+  >
+  _extractArchiveInBackground(String archivePath, String targetPath) {
+    return Isolate.run(
+      () => extractArchiveToDirectory(archivePath, targetPath),
     );
-    if (onLog != null) {
-      onLog(
-        'Extracted ${summary.fileCount} files'
-        '${summary.directoryCount > 0 ? ' and ${summary.directoryCount} directories' : ''}',
-      );
-      for (final skipped in summary.skippedEntries) {
-        onLog('Skipped unsafe entry: $skipped');
-      }
-    }
   }
 
   /// Extracts a ZIP archive into [targetPath].
@@ -887,6 +1007,58 @@ class AppInstallerService {
         directoryCount++;
       }
     }
+    return (
+      fileCount: fileCount,
+      directoryCount: directoryCount,
+      skippedEntries: skipped,
+    );
+  }
+
+  /// Extracts the ZIP or tar archive at [archivePath] into [targetPath].
+  ///
+  /// The archive stays on disk and entries are streamed out of it, so a
+  /// multi-gigabyte payload (a Flutter SDK is ~1.9 GB zipped) costs a file
+  /// handle and a per-entry buffer instead of being inflated into memory.
+  /// Compressed archives are decoded through `archive`'s lazy decoders, so
+  /// `.tar.xz`, `.tar.gz` and `.tar.bz2` work without the system `tar`
+  /// binary being installed.
+  ///
+  /// Entries that would escape [targetPath] are skipped and reported rather
+  /// than aborting the install, matching [extractZipToDirectory].
+  @visibleForTesting
+  static Future<({int fileCount, int directoryCount, List<String> skippedEntries})>
+  extractArchiveToDirectory(String archivePath, String targetPath) async {
+    final canonicalTarget = p.canonicalize(targetPath);
+    final targetPrefix = canonicalTarget.endsWith(p.separator)
+        ? canonicalTarget
+        : '$canonicalTarget${p.separator}';
+    var fileCount = 0;
+    var directoryCount = 0;
+    final skipped = <String>[];
+
+    Directory(targetPath).createSync(recursive: true);
+
+    await extractFileToDisk(
+      archivePath,
+      targetPath,
+      callback: (file) {
+        final name = file.name;
+        // `extractFileToDisk` already refuses entries outside the target; this
+        // keeps the same accounting the in-memory extractor reports.
+        final destination = p.canonicalize(p.join(targetPath, name));
+        if (destination != canonicalTarget &&
+            !destination.startsWith(targetPrefix)) {
+          skipped.add(name);
+          return;
+        }
+        if (file.isFile) {
+          fileCount++;
+        } else {
+          directoryCount++;
+        }
+      },
+    );
+
     return (
       fileCount: fileCount,
       directoryCount: directoryCount,
@@ -944,6 +1116,26 @@ class AppInstallerService {
     isLinuxOverride: isLinuxOverride,
   );
 
+  /// Whether [candidate] should replace the already-detected [current].
+  ///
+  /// A recursive scan returns entries in filesystem order, which for an SDK
+  /// archive is not the order you want: Flutter ships `bin/dart` (the launcher
+  /// that bootstraps the SDK) next to `bin/cache/dart-sdk/bin/dart` (the
+  /// binary it manages). Registering the nested copy would point every shim at
+  /// a file the launcher itself owns. The shallowest match wins; ties keep the
+  /// first entry found.
+  @visibleForTesting
+  static bool isPreferredCandidate(
+    String candidate,
+    String current,
+    String installPath,
+  ) {
+    int depth(String path) =>
+        p.split(p.relative(path, from: installPath)).length;
+    return depth(candidate) < depth(current);
+  }
+
+  /// Detects the executable and CLI paths inside [installPath].
   Future<Map<String, String?>> _detectFiles(
     String installPath,
     String? execName,
@@ -998,12 +1190,26 @@ class AppInstallerService {
             }
             final filename = p.basename(entity.path);
 
-            if (needExec && filename == execName && result['exec'] == null) {
+            if (needExec &&
+                filename == execName &&
+                (result['exec'] == null ||
+                    isPreferredCandidate(
+                      entity.path,
+                      result['exec']!,
+                      installPath,
+                    ))) {
               result['exec'] = entity.path;
               logInfo('Detected executable: ${entity.path}');
             }
 
-            if (needCli && filename == cliName && result['cli'] == null) {
+            if (needCli &&
+                filename == cliName &&
+                (result['cli'] == null ||
+                    isPreferredCandidate(
+                      entity.path,
+                      result['cli']!,
+                      installPath,
+                    ))) {
               result['cli'] = entity.path;
               logInfo('Detected CLI: ${entity.path}');
             }

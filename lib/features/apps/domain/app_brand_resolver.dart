@@ -19,6 +19,9 @@ class AppBrandResolver {
     if (id.contains('bun')) return 'bun';
     if (id.contains('deno')) return 'deno';
     if (id.contains('nodejs')) return 'nodejs';
+    // Exact match only: `contains('go')` would also claim mongodb, django, etc.
+    if (id == 'go') return 'go';
+    if (id.contains('flutter')) return 'flutter';
     if (id == 'phpmyadmin') return 'phpmyadmin';
     if (id.contains('php')) return 'php';
     if (id.contains('mysql')) return 'mysql';
@@ -71,6 +74,8 @@ class AppBrandResolver {
       return const Color(0xFF3776AB);
     }
     if (id.contains('node')) return const Color(0xFF68A063);
+    if (id == 'go') return const Color(0xFF00ACD7);
+    if (id.contains('flutter')) return const Color(0xFF54C5F8);
 
     return fallback;
   }
@@ -80,6 +85,7 @@ class AppBrandResolver {
     final id = appId.toLowerCase();
     if (id.contains('python') || id.contains('pyenv')) return Icons.code;
     if (id.contains('node')) return Icons.javascript;
+    if (id == 'go' || id.contains('flutter')) return Icons.code;
     if (id.contains('php')) return Icons.code;
     if (id.contains('mysql')) return Icons.storage;
     if (id.contains('caddy')) return Icons.dns;

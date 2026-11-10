@@ -47,6 +47,17 @@ void main() {
       expect(shims.where((s) => s == 'redis-cli').length, 1);
     });
 
+    test('shimNamesForApp includes the Go toolchain for go', () {
+      final shims = PathService.shimNamesForApp('go', 'go.exe');
+      expect(shims, containsAll(['go', 'gofmt']));
+      expect(shims.where((s) => s == 'go').length, 1);
+    });
+
+    test('shimNamesForApp includes flutter and dart for flutter', () {
+      final shims = PathService.shimNamesForApp('flutter', 'flutter.bat');
+      expect(shims, containsAll(['flutter', 'dart']));
+    });
+
     test('shimNamesForApp returns [appId] when cliFile is null', () {
       final shims = PathService.shimNamesForApp('php84');
       expect(shims, equals(['php84']));
