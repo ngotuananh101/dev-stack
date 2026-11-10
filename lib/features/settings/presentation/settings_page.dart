@@ -109,8 +109,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           .updateField(minimizeToTray: val),
                     ),
                     const Divider(color: AppColors.border, height: 32),
+                    // Named for what the switch does, not for one platform:
+                    // `launch_at_startup` writes an autostart entry on Linux
+                    // too, so "on Windows" sent Linux users looking elsewhere.
                     _buildSwitchSetting(
-                      title: 'Auto Start on Windows',
+                      title: 'Auto Start on Sign-in',
                       subtitle:
                           'Launch DevStack automatically when you sign in',
                       value: settings.autoStartWithWindows,
