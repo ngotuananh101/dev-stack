@@ -1,7 +1,10 @@
 import 'package:intl/intl.dart';
 
+import 'build_info.dart';
+
 class SystemInfo {
   final String rawOutput;
+  final BuildInfo buildInfo;
   final String appVersion;
   final String frameworkVersion;
   final String dartVersion;
@@ -13,6 +16,7 @@ class SystemInfo {
 
   SystemInfo({
     required this.rawOutput,
+    required this.buildInfo,
     required this.appVersion,
     required this.frameworkVersion,
     required this.dartVersion,
@@ -34,7 +38,8 @@ class SystemInfo {
     );
     buffer.writeln();
 
-    // Display raw output exactly as it comes from Windows
+    // Display raw output exactly as it comes from the platform: the verbatim
+    // `systeminfo` dump on Windows, the structured probe report on Linux.
     buffer.writeln(rawOutput);
     buffer.writeln();
 
@@ -49,6 +54,10 @@ class SystemInfo {
     buffer.writeln('Engine              : $engineVersion');
     buffer.writeln('App Path            : $appPath');
     buffer.writeln('User Data           : $userDataPath');
+    buffer.writeln();
+    buffer.writeln('[BUILD]');
+    buffer.writeln('Build Time          : ${buildInfo.buildTimeLabel}');
+    buffer.writeln('Build SHA           : ${buildInfo.shaLabel}');
     buffer.writeln();
 
     buffer.writeln(

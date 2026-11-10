@@ -156,6 +156,10 @@
 
 ### Packaging
 
+Both packaging paths embed build metadata — the build timestamp, the git commit, the Flutter/engine revisions — by running `scripts/gen_build_info.dart` and passing its output to `flutter build --dart-define-from-file=.dart_tool/build_info.json`. Plain `flutter build` skips this, and the in-app System Diagnostics modal reports such a binary as a development build instead of inventing a timestamp.
+
+The same modal shows the platform report: on Windows the verbatim `systeminfo` dump, on Linux a structured block built by `LinuxSystemProbe` from `/etc/os-release`, procfs, `/sys/class/dmi/id`, and whichever of `uname`, `getconf`, `lscpu`, `df`, `ip` and `lspci` are installed. A section whose sources are all missing is omitted rather than filled with placeholders.
+
 **Windows installer (Inno Setup)** — install **Inno Setup 6 or 7** from [jrsoftware.org](https://jrsoftware.org/isdl.php), then:
 
 ```powershell

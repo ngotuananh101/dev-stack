@@ -11,8 +11,11 @@ if [ -d "/tmp/ayatana/root/usr/lib64/pkgconfig" ]; then
   export PKG_CONFIG_PATH="/tmp/ayatana/root/usr/lib64/pkgconfig:${PKG_CONFIG_PATH}"
 fi
 
+echo "Collecting build metadata..."
+dart run scripts/gen_build_info.dart
+
 echo "Building DevStack for Linux..."
-flutter build linux --release
+flutter build linux --release --dart-define-from-file=.dart_tool/build_info.json
 
 mkdir -p dist
 

@@ -77,8 +77,11 @@ jobs:
       - name: Enable Windows desktop
         run: flutter config --enable-windows-desktop
 
+      - name: Collect build metadata
+        run: dart run scripts/gen_build_info.dart
+
       - name: Build Windows Release
-        run: flutter build windows --release
+        run: flutter build windows --release --dart-define-from-file=.dart_tool/build_info.json
 
       - name: Package Windows Portable (.zip)
         if: ${{ github.event.inputs.build_windows_portable == 'true' || github.event.inputs.build_windows_portable == true }}
@@ -178,8 +181,11 @@ jobs:
       - name: Enable Linux desktop
         run: flutter config --enable-linux-desktop
 
+      - name: Collect build metadata
+        run: dart run scripts/gen_build_info.dart
+
       - name: Build Linux Release
-        run: flutter build linux --release
+        run: flutter build linux --release --dart-define-from-file=.dart_tool/build_info.json
 
       - name: Setup Linux package staging directory
         if: ${{ github.event.inputs.build_linux_appimage == 'true' || github.event.inputs.build_linux_appimage == true || github.event.inputs.build_linux_deb == 'true' || github.event.inputs.build_linux_deb == true || github.event.inputs.build_linux_rpm == 'true' || github.event.inputs.build_linux_rpm == true }}

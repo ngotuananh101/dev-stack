@@ -6,7 +6,12 @@ $InnoSetupScript = Join-Path $ProjectRoot "innosetup\installer.iss"
 $BuildDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
 
 Write-Host "--- 1. Building Flutter Windows App (Release) ---" -ForegroundColor Cyan
-flutter build windows --release
+dart run scripts/gen_build_info.dart
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Error: build metadata generation failed." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+flutter build windows --release --dart-define-from-file=.dart_tool/build_info.json
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: Flutter build failed." -ForegroundColor Red
