@@ -533,7 +533,19 @@ class Apps extends _$Apps {
           await installer.cleanupPyenv(app.location!, (m) => app.addLog(m));
         }
 
+        // Remove the files first. A delete can fail on Windows while a binary
+        // is still in use; unwiring `JAVA_HOME` / `GOROOT` before that would
+        // leave the app listed and installed but unable to start, which is
+        // worse than the stale variables this cleanup exists to remove.
         await installer.delete(app.location!, app.appId, app.installedVersion);
+
+        // Only now undo the SDK wiring, with the path still in hand:
+        // `app.location` is cleared a few lines below.
+        await installer.cleanupSdkRuntime(
+          appId: app.appId,
+          installPath: app.location!,
+          logInfo: (m) => app.addLog(m),
+        );
       }
 
       app.isInstalled = false;

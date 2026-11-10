@@ -294,6 +294,81 @@ async function fetchFlutterReleases(os) {
 }
 
 /**
+ * Chuyển tên bản phát hành của Adoptium thành khoá version của catalog.
+ *
+ * Hai dạng tồn tại: `jdk8u512-b09` (JDK 8 chưa dùng version có dấu chấm) và
+ * `jdk-21.0.13+9`. Không dùng `version_data.semver` vì trường đó bị lệch với
+ * bản thật ở các JDK mới: JDK 27 báo `27.0.1` trong khi gói là `27.0.1.0.2`.
+ */
+function javaVersionFromReleaseName(releaseName) {
+  const name = String(releaseName ?? "").trim();
+  const legacy = /^jdk(\d+)u(\d+)(?:-b\d+)?$/i.exec(name);
+  if (legacy) return `${legacy[1]}.0.${legacy[2]}`;
+  const dotted = /^jdk-(\d+(?:\.\d+)*)(?:\+\d+)?$/i.exec(name);
+  if (dotted) return dotted[1];
+  return null;
+}
+
+/**
+ * Chọn những feature version còn dùng được: toàn bộ bản LTS cộng với các bản
+ * feature từ LTS mới nhất trở đi. Các bản trung gian đã hết hỗ trợ (16, 18–24)
+ * chỉ làm dài danh sách mà không ai cài.
+ */
+function javaFeatureVersions(index) {
+  const lts = (index?.available_lts_releases ?? [])
+    .map((n) => Number.parseInt(n, 10))
+    .filter(Number.isFinite);
+  const newestLts = Number.parseInt(index?.most_recent_lts, 10) || Math.max(0, ...lts);
+  const current = (index?.available_releases ?? [])
+    .map((n) => Number.parseInt(n, 10))
+    .filter((n) => Number.isFinite(n) && n >= newestLts);
+  return [...new Set([...lts, ...current])].sort((a, b) => b - a);
+}
+
+/**
+ * Helper lấy JDK (Temurin) từ API của Eclipse Adoptium.
+ *
+ * Adoptium không có một release index duy nhất: phải hỏi danh sách feature
+ * version rồi hỏi bản GA mới nhất của từng version. Chỉ lấy gói `jdk` (không
+ * phải `jre`) cho `x64` đúng hệ điều hành, kèm SHA-256 do Adoptium công bố.
+ */
+async function fetchJavaReleases(os) {
+  const indexRes = await fetch("https://api.adoptium.net/v3/info/available_releases");
+  const index = await indexRes.json();
+  if (!Array.isArray(index?.available_releases) || !Array.isArray(index?.available_lts_releases)) {
+    throw new Error("Malformed Adoptium release index");
+  }
+
+  const versions = {};
+  const sha256 = {};
+  for (const feature of javaFeatureVersions(index)) {
+    const res = await fetch(
+      `https://api.adoptium.net/v3/assets/latest/${feature}/hotspot?architecture=x64&image_type=jdk&os=${os}&vendor=eclipse`,
+    );
+    const assets = await res.json();
+    if (!Array.isArray(assets)) throw new Error(`Malformed Adoptium assets for Java ${feature}`);
+
+    const binary = assets.find(
+      (asset) =>
+        asset?.binary?.image_type === "jdk" &&
+        asset?.binary?.jvm_impl === "hotspot" &&
+        asset?.binary?.architecture === "x64" &&
+        asset?.binary?.os === os &&
+        typeof asset?.binary?.package?.link === "string",
+    );
+    if (!binary) continue;
+
+    const version = javaVersionFromReleaseName(binary.release_name);
+    const checksum = binary.binary.package.checksum;
+    if (!version || !/^[a-f0-9]{64}$/i.test(checksum ?? "")) continue;
+
+    versions[version] = binary.binary.package.link;
+    sha256[version] = checksum.toLowerCase();
+  }
+  return { versions, sha256 };
+}
+
+/**
  * Sắp xếp và cắt xuống patch mới nhất mỗi minor, giữ nguyên checksum của
  * những version còn lại.
  */
@@ -321,6 +396,10 @@ const fetchersWindows = {
 
   async flutter() {
     return selectLatestPatches(await fetchFlutterReleases("windows"));
+  },
+
+  async java() {
+    return selectLatestPatches(await fetchJavaReleases("windows"));
   },
 
   async php(prefix) {
@@ -611,6 +690,10 @@ const fetchersLinux = {
 
   async flutter() {
     return selectLatestPatches(await fetchFlutterReleases("linux"));
+  },
+
+  async java() {
+    return selectLatestPatches(await fetchJavaReleases("linux"));
   },
 
   async caddy() {
@@ -947,6 +1030,13 @@ const COMMON_APP_DEFINITIONS = {
     category: "runtime",
     group_name: "flutter",
   },
+  java: {
+    id: "java",
+    name: "Java",
+    description: "Eclipse Temurin JDK from Adoptium.",
+    category: "runtime",
+    group_name: "java",
+  },
 };
 
 function makeBinaryApp(base, execFile, cliFile, extra = {}) {
@@ -1065,6 +1155,7 @@ const baseWindowsApps = [
     "dart.bat",
     { repo: "flutter/flutter" },
   ),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.java, "java.exe", "javac.exe"),
 ];
 
 const baseLinuxApps = [
@@ -1115,6 +1206,7 @@ const baseLinuxApps = [
     "dart",
     { repo: "flutter/flutter" },
   ),
+  makeBinaryApp(COMMON_APP_DEFINITIONS.java, "java", "javac"),
 ];
 
 // === HÀM THỰC THI CHÍNH ===

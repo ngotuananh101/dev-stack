@@ -115,6 +115,7 @@
   - Data and apps live under `~/.ponta` by default.
   - Portable runtimes: musl-dynamic bundles from `devstack-app-builder` (PHP, Apache, PostgreSQL), a static musl bundle for Redis, and Jakub Jirutka's static nginx binaries.
   - The Go and Flutter SDKs come from their own publishers (`go.dev/dl`, `flutter_infra_release`), so the catalog's SHA-256 checks are the ones those projects publish; a mismatched download is rejected before extraction.
+  - The JDK comes from Eclipse Adoptium (Temurin). It is a single `java` app carrying every supported release line (8, 11, 17, 21, 25 and the current feature), so one install is active at a time exactly like Node.js; `JAVA_HOME` follows the installed version and `bin/` is put on `PATH`.
   - The `.deb`/`.rpm` packages install to `/opt/dev-stack` and expose `dev_stack` (and `dev-stack`) on `PATH`; the `.desktop` entry launches that symlink.
 
 ---

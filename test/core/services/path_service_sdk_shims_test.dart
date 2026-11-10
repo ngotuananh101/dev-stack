@@ -50,5 +50,31 @@ void main() {
         '/opt/php/bin/php',
       );
     });
+
+    test('Java shims each point at their own tool in bin/', () {
+      const javac = '/opt/ponta/apps/java/21.0.13/bin/javac';
+      expect(
+        PathService.shimTargetFor('java', 'java', javac),
+        '/opt/ponta/apps/java/21.0.13/bin/java',
+        reason: 'a `java` shim pointing at javac would compile instead of run',
+      );
+      expect(PathService.shimTargetFor('java', 'javac', javac), javac);
+      expect(
+        PathService.shimTargetFor('java', 'jar', javac),
+        '/opt/ponta/apps/java/21.0.13/bin/jar',
+      );
+    });
+
+    test('Java on Windows targets the .exe tools', () {
+      const javac = r'C:\Ponta\apps\java\21.0.13\bin\javac.exe';
+      expect(
+        PathService.shimTargetFor('java', 'java', javac, isWindows: true),
+        r'C:\Ponta\apps\java\21.0.13\bin\java.exe',
+      );
+      expect(
+        PathService.shimTargetFor('java', 'jar', javac, isWindows: true),
+        r'C:\Ponta\apps\java\21.0.13\bin\jar.exe',
+      );
+    });
   });
 }

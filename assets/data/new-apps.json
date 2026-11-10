@@ -1175,6 +1175,33 @@
         "1.20.4": "8b52de9ae41bc2d51ca5ceb752c5fac52cd468fde5e8524a0238319d357ceaa1",
         "1.17.5": "690946999d8a88ddf41247e516d74debac11743b94c192afdc8587c2ec48a817"
       }
+    },
+    {
+      "id": "java",
+      "name": "Java",
+      "description": "Eclipse Temurin JDK from Adoptium.",
+      "category": "runtime",
+      "group_name": "java",
+      "exec_file": "java.exe",
+      "cli_file": "javac.exe",
+      "versions": {
+        "27.0.1.0.2": "https://github.com/adoptium/temurin27-binaries/releases/download/jdk-27.0.1.0.2%2B1/OpenJDK27U-jdk_x64_windows_hotspot_27.0.1.0.2_1.zip",
+        "26.0.2.1": "https://github.com/adoptium/temurin26-binaries/releases/download/jdk-26.0.2.1%2B1/OpenJDK26U-jdk_x64_windows_hotspot_26.0.2.1_1.zip",
+        "25.0.5": "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.5%2B8/OpenJDK25U-jdk_x64_windows_hotspot_25.0.5_8.zip",
+        "21.0.13": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_x64_windows_hotspot_21.0.13_9.zip",
+        "17.0.21": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.21%2B9/OpenJDK17U-jdk_x64_windows_hotspot_17.0.21_9.zip",
+        "11.0.33": "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.33%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.33_10.zip",
+        "8.0.512": "https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u512-b09/OpenJDK8U-jdk_x64_windows_hotspot_8u512b09.zip"
+      },
+      "sha256": {
+        "27.0.1.0.2": "5fac419f00d2256941a6b1253a827bb8b904da215a1ec0667035e5592811c1dc",
+        "26.0.2.1": "cf914bf4cc6bf9cedcabec216165bafd10331c5b4d4f2e424b55f6a2e68a1cf5",
+        "25.0.5": "636bdc13dc649ddc7d5921c5c7d23cca6e44fd19d662b45cc9c02135a6c96c42",
+        "21.0.13": "a4dbaa05fca4bd89d84584e58c459bd732efebb1722af80ab13c6516832004f9",
+        "17.0.21": "98518ecf554465057ee5509462631deeee374bc368c12a411d225cd29381f84b",
+        "11.0.33": "cff2e75657c96a718974732b4a7b2c81a245a0b2ea44e6d8ea08cd0248d8fa9d",
+        "8.0.512": "20f248ddd600f900cd9b235d50d54cdb27e7b750f140d381176a7612c53663cd"
+      }
     }
   ]
 }

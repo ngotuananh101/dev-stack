@@ -148,6 +148,15 @@ class PathService {
     if (id == 'flutter') {
       return ['flutter', 'dart'];
     }
+    // The JDK has no single launcher: `java` runs programs, `javac` compiles
+    // and `jar` packages. Registering `appId` would create a `java21` command
+    // nobody types, and the generic rule would point `java21` at `javac`.
+    // Exact match only: the catalog ships one `java` app, and a prefix rule
+    // here would disagree with [shimTargetFor], which cannot tell a `java21`
+    // shim what to execute.
+    if (id == 'java') {
+      return ['java', 'javac', 'jar'];
+    }
 
     // Generic apps (php, httpd, psql, redis-cli, etc.)
     final names = <String>[appId];
@@ -162,9 +171,10 @@ class PathService {
 
   /// Returns the file a shim named [shimName] must execute for [appId].
   ///
-  /// Most apps have one CLI, so every shim points at [cliPath]. Go and Flutter
-  /// ship several executables side by side in `bin/`, and pointing `gofmt` or
-  /// `flutter` at the CLI path (`go`, `dart`) would run the wrong tool.
+  /// Most apps have one CLI, so every shim points at [cliPath]. Go, Flutter
+  /// and the JDK ship several executables side by side in `bin/`, and pointing
+  /// `gofmt`, `flutter` or `java` at the CLI path (`go`, `dart`, `javac`)
+  /// would run the wrong tool.
   @visibleForTesting
   static String shimTargetFor(
     String appId,
@@ -176,7 +186,8 @@ class PathService {
     final windows = isWindows ?? Platform.isWindows;
     final isSiblingTool =
         (id == 'go' && shimName == 'gofmt') ||
-        (id == 'flutter' && shimName == 'flutter');
+        (id == 'flutter' && shimName == 'flutter') ||
+        (id == 'java' && (shimName == 'java' || shimName == 'jar'));
     if (!isSiblingTool) return cliPath;
 
     final binDir = cliPath.contains(r'\')
@@ -185,7 +196,11 @@ class PathService {
     // The install path may be a Windows path even when this runs on Linux
     // (tests, cross-platform config editing), so join with the matching style.
     final context = windows ? p.windows : p.posix;
-    return context.join(binDir, windows ? '$shimName.bat' : shimName);
+    // Flutter's Windows launcher is a batch file; Go and the JDK ship .exe.
+    final suffix = !windows
+        ? ''
+        : (id == 'flutter' ? '.bat' : '.exe');
+    return context.join(binDir, '$shimName$suffix');
   }
 
   /// Builds the PowerShell arguments and environment map to set a User environment variable on Windows.
@@ -213,6 +228,28 @@ class PathService {
         r'[Environment]::SetEnvironmentVariable($env:DEVSTACK_ENVVAR, $null, "User")',
       ],
       environment: {'DEVSTACK_ENVVAR': name},
+    );
+  }
+
+  /// Builds the PowerShell arguments that clear [name] only when it still
+  /// holds [value].
+  ///
+  /// [windowsRemoveUserEnvCommand] clears the variable unconditionally, which
+  /// would discard a `JAVA_HOME` the user set themselves before installing
+  /// through Ponta. The comparison has to happen where the real User value
+  /// lives, so it is a guard inside the same PowerShell call.
+  @visibleForTesting
+  static ({List<String> arguments, Map<String, String> environment})
+  windowsRemoveUserEnvVarValueCommand(String name, String value) {
+    return (
+      arguments: [
+        '-NoProfile',
+        '-Command',
+        r'$current = [Environment]::GetEnvironmentVariable($env:DEVSTACK_ENVVAR, "User"); '
+            r'if ($current -eq $env:DEVSTACK_SETVALUE) { '
+            r'[Environment]::SetEnvironmentVariable($env:DEVSTACK_ENVVAR, $null, "User") }',
+      ],
+      environment: {'DEVSTACK_ENVVAR': name, 'DEVSTACK_SETVALUE': value},
     );
   }
 
@@ -262,6 +299,37 @@ class PathService {
       p.join(homeDir, '.zshrc'),
       p.join(homeDir, '.profile'),
     ];
+  }
+
+  /// Returns [lines] without the `export $name=` line that sets [value].
+  ///
+  /// Removal is scoped to the value Ponta wrote. A user who pointed
+  /// `JAVA_HOME` at their own JDK before installing through Ponta gets to keep
+  /// it: clearing every definition of the name would silently break the
+  /// toolchain they were already using. Commented-out history is preserved for
+  /// the same reason — it is the user's text, not Ponta's.
+  ///
+  /// Quoted and unquoted spellings all count, since the file may have been
+  /// hand-edited between install and uninstall.
+  @visibleForTesting
+  static List<String> pruneEnvVarLines(
+    List<String> lines,
+    String name,
+    String value,
+  ) {
+    final export = RegExp(r'^\s*export\s+' + RegExp.escape(name) + r'=(.*)$');
+    return lines.where((line) {
+      if (line.trimLeft().startsWith('#')) return true;
+      final match = export.firstMatch(line);
+      if (match == null) return true;
+      var assigned = match.group(1)!.trim();
+      if (assigned.length >= 2 &&
+          ((assigned.startsWith('"') && assigned.endsWith('"')) ||
+              (assigned.startsWith("'") && assigned.endsWith("'")))) {
+        assigned = assigned.substring(1, assigned.length - 1);
+      }
+      return assigned != value;
+    }).toList();
   }
 
   /// Creates a Linux executable symlink or shell wrapper in [binDir] for
@@ -665,6 +733,49 @@ class PathService {
       }
     } catch (e) {
       _logger.error('Error removing environment variable $name: $e');
+    }
+  }
+
+  /// Clears [name] only if it still holds [value].
+  ///
+  /// This is what uninstall needs: it undoes exactly the assignment Ponta
+  /// made, and leaves a value the user set themselves. See
+  /// [pruneEnvVarLines] for the Linux half and
+  /// [windowsRemoveUserEnvVarValueCommand] for the Windows half.
+  Future<void> removeUserEnvVarValue(String name, String value) async {
+    try {
+      _logger.info('Removing User Environment Variable $name=$value');
+      if (!_isWindows()) {
+        final home = Platform.environment['HOME'] ?? '';
+        if (home.isEmpty) return;
+        for (final profilePath in linuxShellProfilePaths(home)) {
+          final file = File(profilePath);
+          if (!file.existsSync()) continue;
+          final lines = await file.readAsLines();
+          final pruned = pruneEnvVarLines(lines, name, value);
+          if (pruned.length == lines.length) continue;
+          final content = pruned.isEmpty ? '' : '${pruned.join('\n')}\n';
+          await file.writeAsString(content);
+        }
+        return;
+      }
+
+      final cmd = windowsRemoveUserEnvVarValueCommand(name, value);
+      final result = await _run(
+        'powershell',
+        cmd.arguments,
+        environment: cmd.environment,
+      );
+
+      if (result.exitCode == 0) {
+        _logger.info('Cleared $name if it still pointed at $value.');
+      } else {
+        _logger.error(
+          'Failed to clear environment variable $name: ${result.stderr}',
+        );
+      }
+    } catch (e) {
+      _logger.error('Error clearing environment variable $name: $e');
     }
   }
 

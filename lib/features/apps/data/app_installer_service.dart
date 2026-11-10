@@ -706,13 +706,13 @@ class AppInstallerService {
     }
   }
 
-  /// Wires a Go or Flutter SDK into the user's environment.
+  /// Wires a Go, Flutter or JDK SDK into the user's environment.
   ///
-  /// Both archives extract to a single top-level directory that
+  /// All three archives extract to a single top-level directory that
   /// [_flattenDirectory] removes, so everything lands directly in
-  /// [installPath]. Go then needs `GOROOT` and its `bin/` on `PATH`; Flutter
-  /// needs its `bin/` on `PATH` and one successful launcher run to prove the
-  /// extraction is complete.
+  /// [installPath]. Go then needs `GOROOT` and its `bin/` on `PATH`; the JDK
+  /// needs `JAVA_HOME` and its `bin/`; Flutter needs its `bin/` on `PATH` and
+  /// one successful launcher run to prove the extraction is complete.
   ///
   /// Environment wiring happens first and is never rolled back when the check
   /// fails: the SDK is on disk either way, and a `PATH` the user can retry
@@ -745,7 +745,7 @@ class AppInstallerService {
     final launcher = p.join(
       installPath,
       'bin',
-      isWindows ? '$appId.bat' : appId,
+      RuntimeSdkConfig.launcherFile(appId, isWindows: isWindows) ?? appId,
     );
     final warmup = RuntimeSdkConfig.warmupCommand(
       appId,
@@ -792,6 +792,35 @@ class AppInstallerService {
     List<String> arguments, {
     bool runInShell = false,
   }) => Process.run(executable, arguments, runInShell: runInShell);
+
+  /// Reverses [configureSdkRuntime] when the SDK is uninstalled.
+  ///
+  /// Leaving `JAVA_HOME` or `GOROOT` behind after the directory is gone is
+  /// worse than not setting them at all: Gradle, Maven and `go` read the
+  /// variable, find nothing, and fail with a message about a JDK or toolchain
+  /// the user never chose. The PATH entry is dead weight in the same way.
+  ///
+  /// Only a real uninstall calls this. A version swap deletes the old
+  /// directory with `deleteData: false` and wires the new one immediately
+  /// after, so removing the variables there would break the new install.
+  Future<void> cleanupSdkRuntime({
+    required String appId,
+    required String installPath,
+    required void Function(String) logInfo,
+  }) async {
+    final config = RuntimeSdkConfig.forApp(appId, installPath);
+    if (config == null) return;
+
+    final pathService = _ref.read(pathServiceProvider);
+    for (final entry in config.envVars.entries) {
+      await pathService.removeUserEnvVarValue(entry.key, entry.value);
+      logInfo('Removed ${entry.key} from the environment.');
+    }
+    for (final dir in config.pathDirs) {
+      await pathService.removeRawPathFromUserPath(dir);
+      logInfo('Removed $dir from PATH.');
+    }
+  }
 
   /// On Windows, Bun ships `bun.exe` but not `bunx.exe`. `bunx` is the package
   /// runner that many scripts and wrappers invoke; create a copy (alias) so
@@ -868,8 +897,9 @@ class AppInstallerService {
       );
     }
 
-    // Go and Flutter ship SDK archives, not self-registering binaries: they
-    // need environment wiring before any of their tools can be found.
+    // Go, Flutter and the JDK ship SDK archives, not self-registering
+    // binaries: they need environment wiring before any of their tools can be
+    // found.
     if (RuntimeSdkConfig.forApp(app.appId, installPath) != null) {
       onProgress?.call(0.97, 'Configuring ${app.name}...');
       final pathService = _ref.read(pathServiceProvider);

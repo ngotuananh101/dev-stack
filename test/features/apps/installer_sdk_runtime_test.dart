@@ -83,6 +83,31 @@ void main() {
       expect(commands.single.$3, isTrue);
     });
 
+    test('Java gets JAVA_HOME, bin/ on PATH, and a version check', () async {
+      final installPath = installWithLauncher('java');
+      await configure('java', installPath);
+
+      expect(envVars, ['JAVA_HOME=$installPath']);
+      expect(pathDirs, [p.join(installPath, 'bin')]);
+      expect(commands, hasLength(1));
+      expect(commands.single.$1, p.join(installPath, 'bin', 'java'));
+      expect(commands.single.$2, ['-version']);
+    });
+
+    test('the JDK is checked through java.exe, not a guessed .bat', () async {
+      final installPath = installWithLauncher('java.exe');
+
+      await configure('java', installPath, isWindows: true);
+
+      expect(
+        commands.single.$1,
+        p.join(installPath, 'bin', 'java.exe'),
+        reason: 'a guessed java.bat would report a complete install as broken',
+      );
+      expect(commands.single.$3, isTrue);
+      expect(logs.any((l) => l.contains('missing')), isFalse);
+    });
+
     test('a missing launcher is reported without running anything', () async {
       await configure('flutter', tempDir.path);
 

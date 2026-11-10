@@ -18,6 +18,15 @@ void main() {
         expect(AppBrandResolver.iconFileName('flutter'), equals('flutter'));
       });
 
+      test('resolves the JDK icon without claiming other java-prefixed ids', () {
+        expect(AppBrandResolver.iconFileName('java'), equals('java'));
+        // `contains('java')` would also match JavaScript-flavoured ids.
+        expect(
+          AppBrandResolver.iconFileName('javascript'),
+          isNot(equals('java')),
+        );
+      });
+
       test('resolves php variants including php84', () {
         expect(AppBrandResolver.iconFileName('php84'), equals('php'));
         expect(
@@ -128,6 +137,13 @@ void main() {
         );
       });
 
+      test('resolves the JDK brand color', () {
+        expect(
+          AppBrandResolver.iconColor('java'),
+          equals(const Color(0xFFED8B00)),
+        );
+      });
+
       test('uses custom fallback color', () {
         expect(
           AppBrandResolver.iconColor('unknown', fallback: AppColors.primary),
@@ -146,6 +162,7 @@ void main() {
           equals(Icons.javascript),
         );
         expect(AppBrandResolver.fallbackIcon('php'), equals(Icons.code));
+        expect(AppBrandResolver.fallbackIcon('java'), equals(Icons.coffee));
         expect(AppBrandResolver.fallbackIcon('mysql'), equals(Icons.storage));
         expect(AppBrandResolver.fallbackIcon('caddy'), equals(Icons.dns));
         expect(AppBrandResolver.fallbackIcon('nginx'), equals(Icons.cloud));

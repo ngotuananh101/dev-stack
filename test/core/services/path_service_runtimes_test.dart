@@ -58,6 +58,26 @@ void main() {
       expect(shims, containsAll(['flutter', 'dart']));
     });
 
+    test('shimNamesForApp gives Java its toolchain, not java21', () {
+      final shims = PathService.shimNamesForApp('java', 'javac');
+      expect(shims, equals(['java', 'javac', 'jar']));
+      expect(
+        shims.where((s) => s == 'javac').length,
+        1,
+        reason: 'the CLI name must not be added twice',
+      );
+    });
+
+    test('shimNamesForApp leaves java-prefixed ids alone', () {
+      // The catalog carries a single `java` app with every release line inside
+      // it, so `java21` is not a real app id. Claiming it here would produce
+      // shims that [shimTargetFor] cannot route to the right executable.
+      expect(
+        PathService.shimNamesForApp('java21', 'javac'),
+        equals(['java21', 'javac']),
+      );
+    });
+
     test('shimNamesForApp returns [appId] when cliFile is null', () {
       final shims = PathService.shimNamesForApp('php84');
       expect(shims, equals(['php84']));
