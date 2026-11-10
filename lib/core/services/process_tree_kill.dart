@@ -25,11 +25,12 @@ Future<void> killProcessTree(
   Future<ProcessResult> Function(String, List<String>)? runProcess,
 }) async {
   if (Platform.isWindows) {
-    await _run(
-      'taskkill',
-      ['/F', '/T', '/PID', '$pid'],
-      runProcess: runProcess,
-    );
+    await _run('taskkill', [
+      '/F',
+      '/T',
+      '/PID',
+      '$pid',
+    ], runProcess: runProcess);
     return;
   }
 
@@ -149,7 +150,15 @@ Future<List<ProcessTableEntry>> _processTable({
 }) async {
   final runner = runProcess ?? Process.run;
   try {
-    final result = await runner('ps', ['-e', '-o', 'pid=', '-o', 'ppid=', '-o', 'pgid=']);
+    final result = await runner('ps', [
+      '-e',
+      '-o',
+      'pid=',
+      '-o',
+      'ppid=',
+      '-o',
+      'pgid=',
+    ]);
     if (result.exitCode != 0) return const [];
     return parseProcessTable(result.stdout.toString());
   } catch (_) {

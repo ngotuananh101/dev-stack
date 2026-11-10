@@ -38,14 +38,8 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appsProvider.overrideWith(() => _StaticAppsNotifier([])),
-          ],
-          child: const MaterialApp(
-            home: Scaffold(
-              body: AddSiteModal(),
-            ),
-          ),
+          overrides: [appsProvider.overrideWith(() => _StaticAppsNotifier([]))],
+          child: const MaterialApp(home: Scaffold(body: AddSiteModal())),
         ),
       );
       await tester.pumpAndSettle();
@@ -72,9 +66,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appsProvider.overrideWith(() => _StaticAppsNotifier([])),
-          ],
+          overrides: [appsProvider.overrideWith(() => _StaticAppsNotifier([]))],
           child: MaterialApp(
             home: Scaffold(
               body: EditSiteModal(site: site, onClose: () {}),
@@ -104,9 +96,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appsProvider.overrideWith(() => _StaticAppsNotifier([])),
-          ],
+          overrides: [appsProvider.overrideWith(() => _StaticAppsNotifier([]))],
           child: MaterialApp(
             home: Scaffold(
               body: AppSettingsModal(app: app, onClose: () {}),
@@ -137,9 +127,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appsProvider.overrideWith(() => _StaticAppsNotifier([])),
-          ],
+          overrides: [appsProvider.overrideWith(() => _StaticAppsNotifier([]))],
           child: MaterialApp(
             home: Scaffold(
               body: PyenvManageModal(app: app, onClose: () {}),
@@ -170,9 +158,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appsProvider.overrideWith(() => _StaticAppsNotifier([])),
-          ],
+          overrides: [appsProvider.overrideWith(() => _StaticAppsNotifier([]))],
           child: MaterialApp(
             home: Scaffold(
               body: AddDatabaseModal(engine: engine, onClose: () {}),
@@ -202,12 +188,14 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appsProvider.overrideWith(() => _StaticAppsNotifier([])),
-          ],
+          overrides: [appsProvider.overrideWith(() => _StaticAppsNotifier([]))],
           child: MaterialApp(
             home: Scaffold(
-              body: AddRedisKeyModal(engine: engine, dbIndex: 0, onClose: () {}),
+              body: AddRedisKeyModal(
+                engine: engine,
+                dbIndex: 0,
+                onClose: () {},
+              ),
             ),
           ),
         ),
@@ -221,20 +209,16 @@ void main() {
       expect(header.iconSize, 20.0);
     });
 
-    testWidgets('CreateTunnelModal has standard AppModalHeader', (tester) async {
+    testWidgets('CreateTunnelModal has standard AppModalHeader', (
+      tester,
+    ) async {
       await tester.binding.setSurfaceSize(const Size(1080, 720));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appsProvider.overrideWith(() => _StaticAppsNotifier([])),
-          ],
-          child: const MaterialApp(
-            home: Scaffold(
-              body: CreateTunnelModal(),
-            ),
-          ),
+          overrides: [appsProvider.overrideWith(() => _StaticAppsNotifier([]))],
+          child: const MaterialApp(home: Scaffold(body: CreateTunnelModal())),
         ),
       );
       await tester.pumpAndSettle();
@@ -282,13 +266,9 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appsProvider.overrideWith(() => _StaticAppsNotifier([])),
-          ],
+          overrides: [appsProvider.overrideWith(() => _StaticAppsNotifier([]))],
           child: MaterialApp(
-            home: Scaffold(
-              body: SiteTunnelDialog(site: site),
-            ),
+            home: Scaffold(body: SiteTunnelDialog(site: site)),
           ),
         ),
       );
@@ -301,7 +281,9 @@ void main() {
       expect(header.iconSize, 20.0);
     });
 
-    testWidgets('BatchProgressDialog has standard AppModalHeader', (tester) async {
+    testWidgets('BatchProgressDialog has standard AppModalHeader', (
+      tester,
+    ) async {
       await tester.binding.setSurfaceSize(const Size(1080, 720));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 

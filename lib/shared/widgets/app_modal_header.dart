@@ -34,10 +34,7 @@ class AppModalHeader extends StatelessWidget {
     this.subtitleStyle,
     this.actions,
     this.onClose,
-    this.padding = const EdgeInsets.symmetric(
-      horizontal: 24.0,
-      vertical: 12.0,
-    ),
+    this.padding = const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
     this.showDivider = true,
   });
 
@@ -73,10 +70,7 @@ class AppModalHeader extends StatelessWidget {
           padding: padding,
           child: Row(
             children: [
-              if (leading != null) ...[
-                leading,
-                const SizedBox(width: 12),
-              ],
+              if (leading != null) ...[leading, const SizedBox(width: 12)],
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -115,11 +109,7 @@ class AppModalHeader extends StatelessWidget {
             ],
           ),
         ),
-        if (showDivider)
-          const Divider(
-            color: AppColors.border,
-            height: 1,
-          ),
+        if (showDivider) const Divider(color: AppColors.border, height: 1),
       ],
     );
   }

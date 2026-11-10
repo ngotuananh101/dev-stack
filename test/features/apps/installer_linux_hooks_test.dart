@@ -11,7 +11,10 @@ void main() {
       );
       expect(
         got,
-        equals(r'C:\Users\u\AppData\Roaming' r'\Composer\vendor\bin'),
+        equals(
+          r'C:\Users\u\AppData\Roaming'
+          r'\Composer\vendor\bin',
+        ),
       );
     });
 

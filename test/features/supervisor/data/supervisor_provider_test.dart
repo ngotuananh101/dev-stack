@@ -38,37 +38,39 @@ void main() {
     expect(supervisorStatusProvider, isA<NotifierProvider<dynamic, dynamic>>());
   });
 
-  test('seeds status from the manager for an already-running program (I4)',
-      () async {
-    final tempDir = Directory.systemTemp.createTempSync('sup_provider_test_');
-    addTearDown(() {
-      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
-    });
+  test(
+    'seeds status from the manager for an already-running program (I4)',
+    () async {
+      final tempDir = Directory.systemTemp.createTempSync('sup_provider_test_');
+      addTearDown(() {
+        if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+      });
 
-    var nextPid = 500;
-    final manager = SupervisorManager(
-      logsDirectory: tempDir.path,
-      spawner: (_) async => _FakeProcess(nextPid++),
-      treeKiller: (_) async {},
-      delay: (_) async {},
-    );
-    addTearDown(manager.stopAll);
+      var nextPid = 500;
+      final manager = SupervisorManager(
+        logsDirectory: tempDir.path,
+        spawner: (_) async => _FakeProcess(nextPid++),
+        treeKiller: (_) async {},
+        delay: (_) async {},
+      );
+      addTearDown(manager.stopAll);
 
-    // The program is already running before the provider is ever read — as it
-    // would be after an auto-start at launch.
-    await manager.start(
-      SupervisorProgram(id: 1, name: 'Queue', command: 'sleep 30'),
-    );
-    expect(manager.statusOf(1), SupervisorStatus.running);
+      // The program is already running before the provider is ever read — as it
+      // would be after an auto-start at launch.
+      await manager.start(
+        SupervisorProgram(id: 1, name: 'Queue', command: 'sleep 30'),
+      );
+      expect(manager.statusOf(1), SupervisorStatus.running);
 
-    final container = ProviderContainer.test(
-      overrides: [supervisorManagerProvider.overrideWithValue(manager)],
-    );
-    addTearDown(container.dispose);
+      final container = ProviderContainer.test(
+        overrides: [supervisorManagerProvider.overrideWithValue(manager)],
+      );
+      addTearDown(container.dispose);
 
-    // No status event is emitted after subscription; the map must still be
-    // seeded with the running status.
-    final statuses = container.read(supervisorStatusProvider);
-    expect(statuses[1], SupervisorStatus.running);
-  });
+      // No status event is emitted after subscription; the map must still be
+      // seeded with the running status.
+      final statuses = container.read(supervisorStatusProvider);
+      expect(statuses[1], SupervisorStatus.running);
+    },
+  );
 }

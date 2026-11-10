@@ -32,10 +32,7 @@ class _CancelAwareAdapter implements HttpClientAdapter {
     });
     await cancelled.future;
 
-    throw DioException(
-      requestOptions: options,
-      type: DioExceptionType.cancel,
-    );
+    throw DioException(requestOptions: options, type: DioExceptionType.cancel);
   }
 
   @override
@@ -52,30 +49,29 @@ void main() {
     installer = AppInstallerService(LogService(), testRef());
   });
 
-  test('cancelling during download aborts with InstallationCancelledException',
-      () async {
-    final adapter = _CancelAwareAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final service = AppInstallerService(LogService(), testRef(), dio: dio);
+  test(
+    'cancelling during download aborts with InstallationCancelledException',
+    () async {
+      final adapter = _CancelAwareAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final service = AppInstallerService(LogService(), testRef(), dio: dio);
 
-    final app = AppModel(
-      appId: 'testapp',
-      name: 'Test App',
-      categories: const ['tools'],
-      versionLinksJson: '{"1.0.0":"https://example.com/testapp.tar.gz"}',
-    );
-    final token = CancelToken();
+      final app = AppModel(
+        appId: 'testapp',
+        name: 'Test App',
+        categories: const ['tools'],
+        versionLinksJson: '{"1.0.0":"https://example.com/testapp.tar.gz"}',
+      );
+      final token = CancelToken();
 
-    final future = service.install(app, '1.0.0', cancelToken: token);
+      final future = service.install(app, '1.0.0', cancelToken: token);
 
-    await adapter.started.future;
-    token.cancel();
+      await adapter.started.future;
+      token.cancel();
 
-    await expectLater(
-      future,
-      throwsA(isA<InstallationCancelledException>()),
-    );
-  });
+      await expectLater(future, throwsA(isA<InstallationCancelledException>()));
+    },
+  );
 
   test('install completes without a cancel token (no regression)', () async {
     // A missing URL is a plain failure, not a cancellation — it must still be

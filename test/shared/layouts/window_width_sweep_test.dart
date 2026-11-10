@@ -31,25 +31,24 @@ class _StaticSidebar extends SidebarCollapsed {
 }
 
 void main() {
-  Widget host(Widget page, {required bool sidebarCollapsed}) =>
-      ProviderScope(
-        overrides: [
-          appsProvider.overrideWith(_StaticAppsNotifier.new),
-          sidebarCollapsedProvider.overrideWith(
-            () => _StaticSidebar(collapsed: sidebarCollapsed),
-          ),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: Row(
-              children: [
-                const Sidebar(),
-                Expanded(child: page),
-              ],
-            ),
-          ),
+  Widget host(Widget page, {required bool sidebarCollapsed}) => ProviderScope(
+    overrides: [
+      appsProvider.overrideWith(_StaticAppsNotifier.new),
+      sidebarCollapsedProvider.overrideWith(
+        () => _StaticSidebar(collapsed: sidebarCollapsed),
+      ),
+    ],
+    child: MaterialApp(
+      home: Scaffold(
+        body: Row(
+          children: [
+            const Sidebar(),
+            Expanded(child: page),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
   final pages = <String, Widget>{
     'apps': const AppsPage(),
@@ -64,7 +63,9 @@ void main() {
   };
 
   for (final entry in pages.entries) {
-    testWidgets('the ${entry.key} page fits every window width', (tester) async {
+    testWidgets('the ${entry.key} page fits every window width', (
+      tester,
+    ) async {
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
       // The window can be resized to any width, so every width must work. The
@@ -89,8 +90,11 @@ void main() {
         }
       }
 
-      expect(failures, isEmpty,
-          reason: 'the ${entry.key} page must fit every window width');
+      expect(
+        failures,
+        isEmpty,
+        reason: 'the ${entry.key} page must fit every window width',
+      );
     });
   }
 }

@@ -61,8 +61,10 @@ abstract final class ApacheConfigBuilder {
 
     if (toInsert.isNotEmpty) {
       final insertText = toInsert.join('\n');
-      final srvRootMatch =
-          RegExp(r'^Define\s+SRVROOT\s+.*$', multiLine: true).firstMatch(result);
+      final srvRootMatch = RegExp(
+        r'^Define\s+SRVROOT\s+.*$',
+        multiLine: true,
+      ).firstMatch(result);
       if (srvRootMatch != null) {
         var index = srvRootMatch.end;
         if (index < result.length && result[index] == '\r') index++;
@@ -167,9 +169,7 @@ abstract final class ApacheConfigBuilder {
       'LoadModule proxy_module modules/mod_proxy.so',
     );
     content = content.replaceFirst(
-      RegExp(
-        r'#\s*LoadModule\s+proxy_fcgi_module\s+modules/mod_proxy_fcgi.so',
-      ),
+      RegExp(r'#\s*LoadModule\s+proxy_fcgi_module\s+modules/mod_proxy_fcgi.so'),
       'LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so',
     );
     // Enable mod_proxy_http for ProxyPass to http:// backends
@@ -204,7 +204,8 @@ abstract final class ApacheConfigBuilder {
       final cleanCert = certPath != null ? _path(certPath) : '';
       final cleanKey = keyPath != null ? _path(keyPath) : '';
 
-      final sslVhost = '''
+      final sslVhost =
+          '''
 $sslVhostMarker
 <IfModule mod_ssl.c>
 <VirtualHost $bindAddress:443>
@@ -252,8 +253,9 @@ $sslVhostMarker
     int phpPort = 9000,
   }) {
     final cleanPmaPath = _path(pmaPathUnix);
-    final trailingSlashPmaPath =
-        cleanPmaPath.endsWith('/') ? cleanPmaPath : '$cleanPmaPath/';
+    final trailingSlashPmaPath = cleanPmaPath.endsWith('/')
+        ? cleanPmaPath
+        : '$cleanPmaPath/';
     return '''
 # phpMyAdmin Configuration
 Alias /phpmyadmin "$trailingSlashPmaPath"

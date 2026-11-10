@@ -24,7 +24,9 @@ Mode languageForConfigPath(String path) {
   final name = p.basename(normalized);
 
   // Path or file-name based webserver mapping (including vhosts).
-  if (name == 'nginx.conf' || normalized.contains('/nginx/') || name.startsWith('nginx_')) {
+  if (name == 'nginx.conf' ||
+      normalized.contains('/nginx/') ||
+      name.startsWith('nginx_')) {
     return langNginx;
   }
   if (name == 'httpd.conf' ||
@@ -34,7 +36,9 @@ Mode languageForConfigPath(String path) {
       name.startsWith('apache_')) {
     return langApache;
   }
-  if (name == 'caddyfile' || normalized.contains('/caddy/') || name.startsWith('caddy_')) {
+  if (name == 'caddyfile' ||
+      normalized.contains('/caddy/') ||
+      name.startsWith('caddy_')) {
     return langPlaintext;
   }
   if (name == 'hosts') return langPlaintext;

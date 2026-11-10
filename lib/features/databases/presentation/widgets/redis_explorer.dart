@@ -244,7 +244,10 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             flex: 3,
             child: Text(
               item.key,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: AppTextSize.xs),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -253,7 +256,10 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             flex: 4,
             child: Text(
               item.value,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppTextSize.xs,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -262,7 +268,10 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             flex: 1,
             child: Text(
               item.type,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppTextSize.xs,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -270,7 +279,10 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             flex: 1,
             child: Text(
               item.length.toString(),
-              style: TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppTextSize.xs,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -278,7 +290,10 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
             flex: 2,
             child: Text(
               item.ttl,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppTextSize.xs,
+              ),
             ),
           ),
           const SizedBox(width: 12),

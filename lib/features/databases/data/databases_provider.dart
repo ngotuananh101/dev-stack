@@ -205,31 +205,23 @@ class Databases extends _$Databases {
       }
     } else if (app.appId.contains('postgresql')) {
       // 1. Create Database
-      final createDb = await runPostgres(
-        cliPath,
-        [
-          '-U',
-          'postgres',
-          '-c',
-          'CREATE DATABASE "$name";',
-        ],
-        app,
-      );
+      final createDb = await runPostgres(cliPath, [
+        '-U',
+        'postgres',
+        '-c',
+        'CREATE DATABASE "$name";',
+      ], app);
       if (createDb.exitCode != 0) {
         throw Exception('Create DB error: ${createDb.stderr}');
       }
 
       // 2. Create User and GRANT
-      final grantRes = await runPostgres(
-        cliPath,
-        [
-          '-U',
-          'postgres',
-          '-c',
-          'CREATE USER "$user" WITH PASSWORD \'$safePassword\'; GRANT ALL PRIVILEGES ON DATABASE "$name" TO "$user";',
-        ],
-        app,
-      );
+      final grantRes = await runPostgres(cliPath, [
+        '-U',
+        'postgres',
+        '-c',
+        'CREATE USER "$user" WITH PASSWORD \'$safePassword\'; GRANT ALL PRIVILEGES ON DATABASE "$name" TO "$user";',
+      ], app);
       if (grantRes.exitCode != 0) {
         // Same orphan-DB concern as MySQL: roll back the created database.
         await _safeDropDatabase(cliPath, name, isPostgres: true, app: app);
@@ -290,16 +282,12 @@ class Databases extends _$Databases {
           throw Exception('Rename user error: ${res.stderr}');
         }
       } else {
-        final res = await runPostgres(
-          cliPath,
-          [
-            '-U',
-            'postgres',
-            '-c',
-            renameSql,
-          ],
-          app,
-        );
+        final res = await runPostgres(cliPath, [
+          '-U',
+          'postgres',
+          '-c',
+          renameSql,
+        ], app);
         if (res.exitCode != 0) {
           throw Exception('Rename user error: ${res.stderr}');
         }
@@ -311,9 +299,7 @@ class Databases extends _$Databases {
       // password stays correct.
       record.username = newUser;
       final vault = await LocalSecretVault.getInstance();
-      isar.write(
-        (_) => isar.databaseRecords.put(_forStorage(record, vault)),
-      );
+      isar.write((_) => isar.databaseRecords.put(_forStorage(record, vault)));
     }
 
     // Update user password if changed and engine supports it
@@ -331,11 +317,12 @@ class Databases extends _$Databases {
     } else if (app.appId.contains('postgresql')) {
       if (newPassword.isNotEmpty) {
         final sql = "ALTER USER \"$newUser\" WITH PASSWORD '$safeNewPassword';";
-        final res = await runPostgres(
-          cliPath,
-          ['-U', 'postgres', '-c', sql],
-          app,
-        );
+        final res = await runPostgres(cliPath, [
+          '-U',
+          'postgres',
+          '-c',
+          sql,
+        ], app);
         if (res.exitCode != 0) {
           throw Exception('Update password error: ${res.stderr}');
         }
@@ -388,16 +375,12 @@ class Databases extends _$Databases {
       }
     } else if (app.appId.contains('postgresql')) {
       // Drop the database first
-      final dropRes = await runPostgres(
-        cliPath,
-        [
-          '-U',
-          'postgres',
-          '-c',
-          'DROP DATABASE IF EXISTS "${record.name}";',
-        ],
-        app,
-      );
+      final dropRes = await runPostgres(cliPath, [
+        '-U',
+        'postgres',
+        '-c',
+        'DROP DATABASE IF EXISTS "${record.name}";',
+      ], app);
       if (dropFailed(dropRes)) {
         throw Exception(
           'Failed to drop database "${record.name}": ${dropRes.stderr}',
@@ -406,16 +389,12 @@ class Databases extends _$Databases {
 
       // Drop the associated user
       if (username.isNotEmpty && username != 'postgres') {
-        await runPostgres(
-          cliPath,
-          [
-            '-U',
-            'postgres',
-            '-c',
-            'DROP USER IF EXISTS "$username";',
-          ],
-          app,
-        );
+        await runPostgres(cliPath, [
+          '-U',
+          'postgres',
+          '-c',
+          'DROP USER IF EXISTS "$username";',
+        ], app);
       }
     } else if (app.appId.contains('redis')) {
       // Extract DB index from name (e.g., "db0" -> "0"). Strip a leading
@@ -458,16 +437,12 @@ class Databases extends _$Databases {
   }) async {
     try {
       if (isPostgres) {
-        await runPostgres(
-          cliPath,
-          [
-            '-U',
-            'postgres',
-            '-c',
-            'DROP DATABASE IF EXISTS "$name";',
-          ],
-          app,
-        );
+        await runPostgres(cliPath, [
+          '-U',
+          'postgres',
+          '-c',
+          'DROP DATABASE IF EXISTS "$name";',
+        ], app);
       } else {
         await Process.run(cliPath, [
           '-u',
@@ -647,19 +622,12 @@ class Databases extends _$Databases {
     );
   }
 
-  Future<List<String>> _getPostgresNames(
-    String cliPath,
-    AppModel app,
-  ) async {
-    final result = await runPostgres(
-      cliPath,
-      [
-        '-U', 'postgres',
-        '-l', // list databases
-        '-t', // tuples only
-      ],
-      app,
-    );
+  Future<List<String>> _getPostgresNames(String cliPath, AppModel app) async {
+    final result = await runPostgres(cliPath, [
+      '-U', 'postgres',
+      '-l', // list databases
+      '-t', // tuples only
+    ], app);
     if (result.exitCode != 0) return [];
 
     final lines = result.stdout.toString().split('\n');

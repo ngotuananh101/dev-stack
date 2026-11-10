@@ -4,6 +4,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text_size.dart';
 
 enum AppButtonStyle { primary, secondary, success, ghost, outline, danger }
+
 enum AppButtonSize { sm, md, lg }
 
 class AppButton extends StatelessWidget {
@@ -85,7 +86,8 @@ class AppButton extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final hasExplicitWidth =
-                    width != null || constraints.minWidth == constraints.maxWidth;
+                    width != null ||
+                    constraints.minWidth == constraints.maxWidth;
                 final labelWidget = Text(
                   label,
                   overflow: TextOverflow.ellipsis,
@@ -97,8 +99,9 @@ class AppButton extends StatelessWidget {
                   ),
                 );
                 return Row(
-                  mainAxisSize:
-                      hasExplicitWidth ? MainAxisSize.max : MainAxisSize.min,
+                  mainAxisSize: hasExplicitWidth
+                      ? MainAxisSize.max
+                      : MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (isLoading)
@@ -180,13 +183,17 @@ class AppButton extends StatelessWidget {
   Border? _getBorder(bool isEnabled) {
     if (style == AppButtonStyle.outline || style == AppButtonStyle.secondary) {
       return Border.all(
-        color: isEnabled ? AppColors.border : AppColors.border.withValues(alpha: 0.5),
+        color: isEnabled
+            ? AppColors.border
+            : AppColors.border.withValues(alpha: 0.5),
         width: 0.5,
       );
     }
     if (style == AppButtonStyle.danger) {
       return Border.all(
-        color: isEnabled ? AppColors.error.withValues(alpha: 0.4) : AppColors.border,
+        color: isEnabled
+            ? AppColors.error.withValues(alpha: 0.4)
+            : AppColors.border,
         width: 0.5,
       );
     }

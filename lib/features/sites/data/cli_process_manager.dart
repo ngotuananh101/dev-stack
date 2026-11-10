@@ -203,9 +203,7 @@ class CliProcessManager {
     _processes[site.id] = managed;
     _notifyStatus(site.id);
     unawaited(
-      AppLogger.info(
-        'Started CLI site ${site.domain} (port ${site.port})',
-      ),
+      AppLogger.info('Started CLI site ${site.domain} (port ${site.port})'),
     );
 
     void handleLine(String line) {

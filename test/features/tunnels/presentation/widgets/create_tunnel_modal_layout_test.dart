@@ -29,7 +29,9 @@ void main() {
   });
 
   group('CreateTunnelModal Layout and Field Standardization', () {
-    testWidgets('renders standard labels, inputs, and 36px controls', (tester) async {
+    testWidgets('renders standard labels, inputs, and 36px controls', (
+      tester,
+    ) async {
       await tester.binding.setSurfaceSize(const Size(1080, 720));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -48,11 +50,7 @@ void main() {
             appsProvider.overrideWith(() => _StaticAppsNotifier()),
             sitesProvider.overrideWith(() => _StaticSitesNotifier(testSites)),
           ],
-          child: const MaterialApp(
-            home: Scaffold(
-              body: CreateTunnelModal(),
-            ),
-          ),
+          child: const MaterialApp(home: Scaffold(body: CreateTunnelModal())),
         ),
       );
       await tester.pumpAndSettle();

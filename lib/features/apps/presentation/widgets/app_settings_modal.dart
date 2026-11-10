@@ -269,7 +269,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       return false;
     }
     try {
-      final success = await BackgroundProcess.writeStringElevated(path, content);
+      final success = await BackgroundProcess.writeStringElevated(
+        path,
+        content,
+      );
       if (success) {
         AppLogger.info('Saved config: $path');
         return true;
@@ -296,19 +299,14 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       await _loadExtensions();
 
       if (mounted && note != null && note.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(note), backgroundColor: AppColors.success),
-        );
+        AppDialogs.showToast(context, note);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to ${value ? 'enable' : 'disable'} ${ext.name}: $e',
-            ),
-            backgroundColor: AppColors.error,
-          ),
+        AppDialogs.showError(
+          context,
+          title: 'Could not ${value ? 'enable' : 'disable'} ${ext.name}',
+          message: '$e',
         );
       }
     } finally {
@@ -366,17 +364,10 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
             onPressed: () async {
               // Route through Apps so service status changes
               // notify the apps table/provider, not only AppServiceManager.
-              await ref
-                  .read(appsProvider.notifier)
-                  .restartService(widget.app);
+              await ref.read(appsProvider.notifier).restartService(widget.app);
               if (mounted) {
                 setState(() {});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Service restarted successfully'),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
+                AppDialogs.showToast(context, 'Service restarted successfully');
               }
             },
             style: AppButtonStyle.outline,
@@ -747,9 +738,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(
-                          color: AppColors.primary,
-                        ),
+                        borderSide: const BorderSide(color: AppColors.primary),
                       ),
                     ),
                   ),
@@ -855,8 +844,9 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                   child: Text(
                     ext.name,
                     style: TextStyle(
-                      fontWeight:
-                          ext.isEnabled ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: ext.isEnabled
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                       fontSize: AppTextSize.xs,
                       color: ext.isEnabled
                           ? AppColors.textPrimary
@@ -1094,21 +1084,15 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                     : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: AppColors.border,
-                  ),
+                  borderSide: const BorderSide(color: AppColors.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: AppColors.border,
-                  ),
+                  borderSide: const BorderSide(color: AppColors.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                  ),
+                  borderSide: const BorderSide(color: AppColors.primary),
                 ),
                 filled: true,
                 fillColor: AppColors.surface,

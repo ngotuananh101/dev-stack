@@ -4,11 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('AppModel - Version Comparison', () {
     test('isVersionNewer returns true when new version is higher', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       expect(app.isVersionNewer('8.2.5', '8.2.3'), isTrue);
       expect(app.isVersionNewer('8.3.0', '8.2.9'), isTrue);
@@ -16,11 +12,7 @@ void main() {
     });
 
     test('isVersionNewer returns false when new version is lower', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       expect(app.isVersionNewer('8.2.3', '8.2.5'), isFalse);
       expect(app.isVersionNewer('8.2.9', '8.3.0'), isFalse);
@@ -28,22 +20,14 @@ void main() {
     });
 
     test('isVersionNewer returns false when versions are equal', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       expect(app.isVersionNewer('8.2.5', '8.2.5'), isFalse);
       expect(app.isVersionNewer('9.0.0', '9.0.0'), isFalse);
     });
 
     test('isVersionNewer handles different version lengths', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       expect(app.isVersionNewer('8.2.5.1', '8.2.5'), isTrue);
       expect(app.isVersionNewer('8.2.5', '8.2.5.1'), isFalse);
@@ -51,11 +35,7 @@ void main() {
     });
 
     test('isVersionNewer handles non-numeric version parts gracefully', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       // Should treat non-numeric as 0
       expect(app.isVersionNewer('8.2.x', '8.2.5'), isFalse);
@@ -175,7 +155,6 @@ void main() {
       expect(app.isService, isTrue);
     });
 
-
     test('isService returns true for webserver category', () {
       final app = AppModel(
         appId: 'nginx',
@@ -217,21 +196,13 @@ void main() {
     });
 
     test('isService returns false for non-service categories', () {
-      final app = AppModel(
-        appId: 'git',
-        name: 'Git',
-        categories: ['tool'],
-      );
+      final app = AppModel(appId: 'git', name: 'Git', categories: ['tool']);
 
       expect(app.isService, isFalse);
     });
 
     test('isService returns false for empty categories', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       expect(app.isService, isFalse);
     });
@@ -239,11 +210,7 @@ void main() {
 
   group('AppModel - Log Management', () {
     test('addServiceLog adds timestamped log', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       app.addServiceLog('Test message');
 
@@ -253,11 +220,7 @@ void main() {
     });
 
     test('addServiceLog limits to maxServiceLogEntries', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       // Add more than max entries
       for (var i = 0; i < AppModel.maxServiceLogEntries + 10; i++) {
@@ -273,11 +236,7 @@ void main() {
     });
 
     test('addLog adds install log without timestamp', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       app.addLog('Install message');
 
@@ -286,11 +245,7 @@ void main() {
     });
 
     test('addLog limits to maxInstallLogEntries', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       // Add more than max entries
       for (var i = 0; i < AppModel.maxInstallLogEntries + 5; i++) {
@@ -320,11 +275,7 @@ void main() {
     });
 
     test('extraInfo returns empty map when extraInfoJson is null', () {
-      final app = AppModel(
-        appId: 'test',
-        name: 'Test',
-        categories: [],
-      );
+      final app = AppModel(appId: 'test', name: 'Test', categories: []);
 
       expect(app.extraInfo, isEmpty);
     });

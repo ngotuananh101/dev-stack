@@ -258,11 +258,10 @@ class _AddRedisKeyModalState extends ConsumerState<AddRedisKeyModal> {
       widget.onClose();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: AppColors.error,
-          ),
+        AppDialogs.showError(
+          context,
+          title: 'Could not add the key',
+          message: '$e',
         );
       }
     } finally {

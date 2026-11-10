@@ -50,7 +50,9 @@ void main() {
         // Process spawning might fail on dummy file; we are asserting the preflight check.
       }
 
-      final chmodCalls = recorded.where((call) => call.first == 'chmod').toList();
+      final chmodCalls = recorded
+          .where((call) => call.first == 'chmod')
+          .toList();
       expect(chmodCalls, isNotEmpty);
       expect(chmodCalls.first, equals(['chmod', 'u+x', binFile.path]));
     });
@@ -83,7 +85,9 @@ void main() {
         // Process spawning might fail on dummy file; we are asserting the preflight check.
       }
 
-      final chmodCalls = recorded.where((call) => call.first == 'chmod').toList();
+      final chmodCalls = recorded
+          .where((call) => call.first == 'chmod')
+          .toList();
       expect(chmodCalls, isEmpty);
     });
   });

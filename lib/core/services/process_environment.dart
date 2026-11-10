@@ -37,8 +37,9 @@ Map<String, String> buildEnrichedEnvironment({Map<String, String>? extra}) {
     ]);
   }
 
-  final validExtras =
-      extraPaths.where((path) => Directory(path).existsSync()).toList();
+  final validExtras = extraPaths
+      .where((path) => Directory(path).existsSync())
+      .toList();
   if (validExtras.isNotEmpty) {
     env['PATH'] =
         '${validExtras.join(pathSeparator)}$pathSeparator$currentPath';

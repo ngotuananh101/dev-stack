@@ -18,14 +18,13 @@ void main() {
     String schedule = '* * * * *',
     bool enabled = true,
     String command = 'echo hi',
-  }) =>
-      CronJob(
-        id: id,
-        name: 'job$id',
-        schedule: schedule,
-        command: command,
-        enabled: enabled,
-      );
+  }) => CronJob(
+    id: id,
+    name: 'job$id',
+    schedule: schedule,
+    command: command,
+    enabled: enabled,
+  );
 
   setUp(() {
     now = DateTime(2026, 10, 12, 8, 30);
@@ -202,8 +201,10 @@ void main() {
 
       final record = real.historyFor(8).first;
       expect(record.exitCode, 0);
-      expect(record.output.length,
-          lessThanOrEqualTo(CronSchedulerService.maxOutputChars + 32));
+      expect(
+        record.output.length,
+        lessThanOrEqualTo(CronSchedulerService.maxOutputChars + 32),
+      );
       expect(record.output, endsWith('[output truncated]'));
     });
   });

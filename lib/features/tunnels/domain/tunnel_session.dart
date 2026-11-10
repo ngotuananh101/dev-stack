@@ -1,10 +1,4 @@
-enum TunnelStatus {
-  stopped,
-  downloadingBinary,
-  connecting,
-  running,
-  error,
-}
+enum TunnelStatus { stopped, downloadingBinary, connecting, running, error }
 
 class TunnelSession {
   final int tunnelId;

@@ -44,7 +44,9 @@ class _ProgramLogsModalState extends State<ProgramLogsModal> {
     if (_lines.length > _maxLines) {
       _lines.removeRange(0, _lines.length - _maxLines);
     }
-    _subscription = widget.manager.getLogStream(widget.program.id).listen((line) {
+    _subscription = widget.manager.getLogStream(widget.program.id).listen((
+      line,
+    ) {
       if (!mounted) return;
       _lines.add(line);
       if (_lines.length > _maxLines) {

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('AppButton renders label, icon and fires onPressed', (tester) async {
+  testWidgets('AppButton renders label, icon and fires onPressed', (
+    tester,
+  ) async {
     bool pressed = false;
     await tester.pumpWidget(
       MaterialApp(
@@ -30,15 +32,13 @@ void main() {
     expect(pressed, true);
   });
 
-  testWidgets('AppButton renders loading indicator when isLoading is true', (tester) async {
+  testWidgets('AppButton renders loading indicator when isLoading is true', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: AppButton(
-            label: 'Loading',
-            isLoading: true,
-            onPressed: () {},
-          ),
+          body: AppButton(label: 'Loading', isLoading: true, onPressed: () {}),
         ),
       ),
     );
@@ -47,7 +47,9 @@ void main() {
     expect(find.text('Loading'), findsNothing);
   });
 
-  testWidgets('AppButton applies custom backgroundColor and textColor', (tester) async {
+  testWidgets('AppButton applies custom backgroundColor and textColor', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -63,67 +65,79 @@ void main() {
 
     expect(find.text('Install'), findsOneWidget);
 
-    final material = tester.widget<Material>(find
-        .descendant(
-          of: find.byType(AppButton),
-          matching: find.byType(Material),
-        )
-        .first);
+    final material = tester.widget<Material>(
+      find
+          .descendant(
+            of: find.byType(AppButton),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
     expect(material.color, Colors.green);
   });
 
-  testWidgets('AppButton disabled state uses muted text color with custom colors', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: AppButton(
-            label: 'Disabled',
-            onPressed: null,
-            backgroundColor: Colors.green,
-            textColor: Colors.white,
+  testWidgets(
+    'AppButton disabled state uses muted text color with custom colors',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AppButton(
+              label: 'Disabled',
+              onPressed: null,
+              backgroundColor: Colors.green,
+              textColor: Colors.white,
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Disabled'), findsOneWidget);
+      expect(find.text('Disabled'), findsOneWidget);
 
-    final material = tester.widget<Material>(find
-        .descendant(
-          of: find.byType(AppButton),
-          matching: find.byType(Material),
-        )
-        .first);
-    expect(material.color, Colors.green.withValues(alpha: 0.5));
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(AppButton),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(material.color, Colors.green.withValues(alpha: 0.5));
 
-    final text = tester.widget<Text>(find.text('Disabled'));
-    expect(text.style!.color, AppColors.textMuted);
-  });
+      final text = tester.widget<Text>(find.text('Disabled'));
+      expect(text.style!.color, AppColors.textMuted);
+    },
+  );
 
-  testWidgets('AppButton style success uses successStrong background and textOnColor', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: AppButton(
-            label: 'Add DB',
-            style: AppButtonStyle.success,
-            onPressed: () {},
+  testWidgets(
+    'AppButton style success uses successStrong background and textOnColor',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AppButton(
+              label: 'Add DB',
+              style: AppButtonStyle.success,
+              onPressed: () {},
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Add DB'), findsOneWidget);
+      expect(find.text('Add DB'), findsOneWidget);
 
-    final material = tester.widget<Material>(find
-        .descendant(
-          of: find.byType(AppButton),
-          matching: find.byType(Material),
-        )
-        .first);
-    expect(material.color, AppColors.successStrong);
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(AppButton),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(material.color, AppColors.successStrong);
 
-    final text = tester.widget<Text>(find.text('Add DB'));
-    expect(text.style!.color, AppColors.textOnColor);
-  });
+      final text = tester.widget<Text>(find.text('Add DB'));
+      expect(text.style!.color, AppColors.textOnColor);
+    },
+  );
 }

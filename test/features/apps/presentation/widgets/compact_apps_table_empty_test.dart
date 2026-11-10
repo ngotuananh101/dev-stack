@@ -5,30 +5,33 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   Widget host(List<AppModel> apps) => MaterialApp(
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(children: [
-              Expanded(
-                child: CompactAppsTable(
-                  apps: apps,
-                  onToggleInstall: (_) async {},
-                  onTogglePath: (_) async {},
-                  onStartService: (_) async {},
-                  onStopService: (_) async {},
-                  onRestartService: (_) async {},
-                  onChangeDefault: (_) async {},
-                  onOpen: (_) async {},
-                  onCancelInstall: (_) {},
-                ),
+    home: Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Expanded(
+              child: CompactAppsTable(
+                apps: apps,
+                onToggleInstall: (_) async {},
+                onTogglePath: (_) async {},
+                onStartService: (_) async {},
+                onStopService: (_) async {},
+                onRestartService: (_) async {},
+                onChangeDefault: (_) async {},
+                onOpen: (_) async {},
+                onCancelInstall: (_) {},
               ),
-            ]),
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
-  testWidgets('the OPERATE header stays visible in an empty table',
-      (tester) async {
+  testWidgets('the OPERATE header stays visible in an empty table', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1163, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 

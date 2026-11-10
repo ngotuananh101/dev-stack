@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
+import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../shared/utils/modal_sizing.dart';
 import '../../domain/app_model.dart';
 import '../../data/pyenv_provider.dart';
@@ -32,8 +33,9 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
   Future<void> _loadInstallableVersions() async {
     setState(() => _isLoadingVersions = true);
     try {
-      final versions =
-          await ref.read(pyenvProvider.notifier).getInstallableVersions();
+      final versions = await ref
+          .read(pyenvProvider.notifier)
+          .getInstallableVersions();
       if (mounted) {
         setState(() {
           _installableVersions = versions;
@@ -76,7 +78,9 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                   flex: 1,
                   child: Container(
                     decoration: const BoxDecoration(
-                      border: Border(right: BorderSide(color: AppColors.border)),
+                      border: Border(
+                        right: BorderSide(color: AppColors.border),
+                      ),
                     ),
                     child: _buildInstalledSection(stateAsync),
                   ),
@@ -84,7 +88,9 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                 // Right: Installable Versions
                 Expanded(
                   flex: 1,
-                  child: _buildInstallableSection(stateAsync.value?.installedVersions ?? []),
+                  child: _buildInstallableSection(
+                    stateAsync.value?.installedVersions ?? [],
+                  ),
                 ),
               ],
             ),
@@ -126,7 +132,10 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                 return const Center(
                   child: Text(
                     'No versions installed',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: AppTextSize.xxs),
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: AppTextSize.xxs,
+                    ),
                   ),
                 );
               }
@@ -136,7 +145,11 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                 itemBuilder: (context, index) {
                   final v = state.installedVersions[index];
                   final isActive = v == state.activeVersion;
-                  return _buildVersionTile(v, isInstalled: true, isActive: isActive);
+                  return _buildVersionTile(
+                    v,
+                    isInstalled: true,
+                    isActive: isActive,
+                  );
                 },
               );
             },
@@ -244,29 +257,49 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                     if (isActive)
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: Icon(Icons.verified_rounded, size: 16, color: AppColors.success),
+                        child: Icon(
+                          Icons.verified_rounded,
+                          size: 16,
+                          color: AppColors.success,
+                        ),
                       )
                     else
                       IconButton(
-                        icon: const Icon(Icons.check_circle_outline, size: 16, color: AppColors.textMuted),
+                        icon: const Icon(
+                          Icons.check_circle_outline,
+                          size: 16,
+                          color: AppColors.textMuted,
+                        ),
                         onPressed: () => _setGlobal(version),
                         tooltip: 'Set as Global',
                       ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: AppColors.error,
+                      ),
                       onPressed: () => _uninstall(version),
                       tooltip: 'Uninstall',
                     ),
                   ] else if (!isAlreadyInstalled)
                     IconButton(
-                      icon: const Icon(Icons.download, size: 16, color: AppColors.primary),
+                      icon: const Icon(
+                        Icons.download,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
                       onPressed: () => _install(version),
                       tooltip: 'Install',
                     )
                   else
                     const Padding(
                       padding: EdgeInsets.all(8.0),
-                      child: Icon(Icons.check, size: 16, color: AppColors.textMuted),
+                      child: Icon(
+                        Icons.check,
+                        size: 16,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                 ],
               ),
@@ -279,14 +312,14 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
     try {
       await ref.read(pyenvProvider.notifier).installVersion(version);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Python $version installed successfully')),
-        );
+        AppDialogs.showToast(context, 'Python $version installed successfully');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to install Python $version: $e'), backgroundColor: AppColors.error),
+        AppDialogs.showError(
+          context,
+          title: 'Python $version install failed',
+          message: '$e',
         );
       }
     } finally {
@@ -299,9 +332,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
       await ref.read(pyenvProvider.notifier).uninstallVersion(version);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to uninstall: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, title: 'Uninstall failed', message: '$e');
       }
     }
   }
@@ -310,14 +341,14 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
     try {
       await ref.read(pyenvProvider.notifier).globalVersion(version);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Set Python $version as global')),
-        );
+        AppDialogs.showToast(context, 'Set Python $version as global');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to set global: $e'), backgroundColor: AppColors.error),
+        AppDialogs.showError(
+          context,
+          title: 'Could not set the global version',
+          message: '$e',
         );
       }
     }

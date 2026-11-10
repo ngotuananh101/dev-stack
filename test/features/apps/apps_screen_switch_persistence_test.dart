@@ -15,7 +15,8 @@ String? _isarLibraryPath() {
       : (Platform.isLinux ? 'libisar_plus.so' : null);
   if (libName == null) return null;
 
-  final pubCache = Platform.environment['PUB_CACHE'] ??
+  final pubCache =
+      Platform.environment['PUB_CACHE'] ??
       (Platform.isWindows
           ? '${Platform.environment['LOCALAPPDATA']}\\Pub\\Cache'
           : '${Platform.environment['HOME']}/.pub-cache');
@@ -39,7 +40,9 @@ void main() {
   final libraryPath = _isarLibraryPath();
 
   setUp(() {
-    final tempDir = Directory.systemTemp.createTempSync('devstack_screen_switch_test_');
+    final tempDir = Directory.systemTemp.createTempSync(
+      'devstack_screen_switch_test_',
+    );
     addTearDown(() => tempDir.deleteSync(recursive: true));
 
     Isar.initialize(libraryPath);
@@ -110,7 +113,10 @@ void main() {
       // Verify that the database still retains both installed apps
       final isarAppsAfter = isar.installedApps.where().findAll();
       expect(isarAppsAfter.length, equals(2));
-      expect(isarAppsAfter.map((a) => a.appId).toSet(), equals({'nginx', 'php82'}));
+      expect(
+        isarAppsAfter.map((a) => a.appId).toSet(),
+        equals({'nginx', 'php82'}),
+      );
     },
     skip: libraryPath == null ? 'Isar native library not available' : false,
   );

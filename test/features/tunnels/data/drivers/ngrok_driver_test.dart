@@ -52,13 +52,15 @@ void main() {
     });
 
     test('parses public URL from json log', () {
-      const jsonLine = '{"lvl":"info","msg":"started tunnel","obj":"tunnels","name":"command_line","addr":"http://localhost:3000","url":"https://1234-5678.ngrok-free.app"}';
+      const jsonLine =
+          '{"lvl":"info","msg":"started tunnel","obj":"tunnels","name":"command_line","addr":"http://localhost:3000","url":"https://1234-5678.ngrok-free.app"}';
       final url = driver.parsePublicUrl(jsonLine);
       expect(url, equals('https://1234-5678.ngrok-free.app'));
     });
 
     test('extracts inspector URL', () {
-      const inspectLine = '{"lvl":"info","msg":"starting web service","obj":"web","addr":"127.0.0.1:4040"}';
+      const inspectLine =
+          '{"lvl":"info","msg":"starting web service","obj":"web","addr":"127.0.0.1:4040"}';
       final inspector = driver.parseInspectorUrl(inspectLine);
       expect(inspector, equals('http://127.0.0.1:4040'));
     });

@@ -78,7 +78,10 @@ class AppTheme {
         fillColor: AppColors.surface,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: AppTextSize.xs),
+        hintStyle: const TextStyle(
+          color: AppColors.textMuted,
+          fontSize: AppTextSize.xs,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: const BorderSide(color: AppColors.border),
@@ -99,7 +102,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        errorStyle: const TextStyle(color: AppColors.error, fontSize: AppTextSize.xxs),
+        errorStyle: const TextStyle(
+          color: AppColors.error,
+          fontSize: AppTextSize.xxs,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

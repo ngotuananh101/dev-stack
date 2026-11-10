@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/core/theme/app_text_size.dart';
+import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:dev_stack/shared/widgets/app_button.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_model.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_session.dart';
@@ -46,7 +47,8 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
                   onCancel: _cancel,
                   onEdit: _edit,
                   onDelete: _delete,
-                  onViewLogs: (tunnel) => _viewLogs(tunnel, sessions[tunnel.id]),
+                  onViewLogs: (tunnel) =>
+                      _viewLogs(tunnel, sessions[tunnel.id]),
                   onOpenUrl: _openUrl,
                   onCopyUrl: _copyUrl,
                   onOpenQr: _openQr,
@@ -108,59 +110,36 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.5),
-      builder: (context) => const Center(
-        child: CreateTunnelModal(),
-      ),
+      builder: (context) => const Center(child: CreateTunnelModal()),
     );
   }
 
   void _start(TunnelModel tunnel) {
     ref.read(tunnelSessionsProvider.notifier).start(tunnel);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Starting tunnel "${tunnel.name}"...'),
-        backgroundColor: AppColors.surfaceLight,
-      ),
-    );
+    AppDialogs.showInfoToast(context, 'Starting tunnel "${tunnel.name}"...');
   }
 
   void _stop(int tunnelId) {
     ref.read(tunnelSessionsProvider.notifier).stop(tunnelId);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Stopping tunnel...'),
-        backgroundColor: AppColors.surfaceLight,
-      ),
-    );
+    AppDialogs.showInfoToast(context, 'Stopping tunnel...');
   }
 
   void _cancel(int tunnelId) {
     ref.read(tunnelSessionsProvider.notifier).cancelStart(tunnelId);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cancelling tunnel start...'),
-        backgroundColor: AppColors.surfaceLight,
-      ),
-    );
+    AppDialogs.showInfoToast(context, 'Cancelling tunnel start...');
   }
 
   void _delete(TunnelModel tunnel) {
     ref.read(tunnelSessionsProvider.notifier).delete(tunnel.id);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Deleting tunnel "${tunnel.name}"...'),
-        backgroundColor: AppColors.surfaceLight,
-      ),
-    );
+    AppDialogs.showInfoToast(context, 'Deleting tunnel "${tunnel.name}"...');
   }
 
   void _edit(TunnelModel tunnel) {
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.5),
-      builder: (context) => Center(
-        child: CreateTunnelModal(initialTunnel: tunnel),
-      ),
+      builder: (context) =>
+          Center(child: CreateTunnelModal(initialTunnel: tunnel)),
     );
   }
 
@@ -169,10 +148,7 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Center(
-        child: TunnelLogsModal(
-          tunnelName: tunnel.name,
-          session: session,
-        ),
+        child: TunnelLogsModal(tunnelName: tunnel.name, session: session),
       ),
     );
   }
@@ -186,9 +162,7 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
 
   void _copyUrl(String url) {
     Clipboard.setData(ClipboardData(text: url));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Public URL copied to clipboard')),
-    );
+    AppDialogs.showToast(context, 'Public URL copied to clipboard');
   }
 
   void _openQr(TunnelModel tunnel, String url) {
@@ -196,10 +170,7 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Center(
-        child: TunnelQrModal(
-          tunnelName: tunnel.name,
-          publicUrl: url,
-        ),
+        child: TunnelQrModal(tunnelName: tunnel.name, publicUrl: url),
       ),
     );
   }

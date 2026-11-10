@@ -36,10 +36,10 @@ void main() {
 
     test('the first icon of a cluster gets an extra 6px inset', () {
       // Tables show a 6px inset before the first icon button (cron, tunnels).
-      final withInset = measureRowActions(
-        const [RowAction.icon('Edit', null), RowAction.icon('Delete', null)],
-        firstGap: 6,
-      );
+      final withInset = measureRowActions(const [
+        RowAction.icon('Edit', null),
+        RowAction.icon('Delete', null),
+      ], firstGap: 6);
       // No inset: 28*2 + 4 = 60.
       expect(withInset, 66);
     });
@@ -80,20 +80,22 @@ void main() {
       expect(rowActionsOverflow(actions, 60), isTrue);
     });
 
-    test('the supervisor cluster overflows at the 180px a 700px window leaves',
-        () {
-      // Supervisor: Start (button) + 4 icon buttons, with the 6px first inset.
-      const actions = [
-        RowAction.button('Start', null),
-        RowAction.icon('Restart', null),
-        RowAction.icon('Logs', null),
-        RowAction.icon('Edit', null),
-        RowAction.icon('Delete', null),
-      ];
+    test(
+      'the supervisor cluster overflows at the 180px a 700px window leaves',
+      () {
+        // Supervisor: Start (button) + 4 icon buttons, with the 6px first inset.
+        const actions = [
+          RowAction.button('Start', null),
+          RowAction.icon('Restart', null),
+          RowAction.icon('Logs', null),
+          RowAction.icon('Edit', null),
+          RowAction.icon('Delete', null),
+        ];
 
-      expect(rowActionsOverflow(actions, 180, firstGap: 6), isTrue);
-      expect(rowActionsOverflow(actions, 1000, firstGap: 6), isFalse);
-    });
+        expect(rowActionsOverflow(actions, 180, firstGap: 6), isTrue);
+        expect(rowActionsOverflow(actions, 1000, firstGap: 6), isFalse);
+      },
+    );
 
     test('a disabled action still occupies layout space', () {
       // A disabled button renders at its label width, so it must be measured.
@@ -109,13 +111,10 @@ void main() {
       // One row has a single 28px icon, the other two (28*2 + 4 gap = 60). The
       // column takes the widest so every row's cluster is right-aligned inside
       // the same box, which is what keeps the data columns aligned.
-      final plan = planActionColumn(
-        [
-          const [RowAction.icon('Edit', null)],
-          const [RowAction.icon('Edit', null), RowAction.icon('Delete', null)],
-        ],
-        availableWidth: 300,
-      );
+      final plan = planActionColumn([
+        const [RowAction.icon('Edit', null)],
+        const [RowAction.icon('Edit', null), RowAction.icon('Delete', null)],
+      ], availableWidth: 300);
 
       expect(plan.collapsed, isFalse);
       expect(plan.width, 60);

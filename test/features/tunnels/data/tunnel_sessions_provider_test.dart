@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// skips the download step.
 class _FakeDownloader extends TunnelDownloaderService {
   _FakeDownloader()
-      : super(baseDirResolver: () => '', isWindowsResolver: () => true);
+    : super(baseDirResolver: () => '', isWindowsResolver: () => true);
 
   @override
   Future<bool> isBinaryDownloaded(String provider) async => true;
@@ -19,34 +19,36 @@ class _FakeDownloader extends TunnelDownloaderService {
 }
 
 void main() {
-  test('build() seeds from currentSessions and then follows sessionsStream',
-      () async {
-    final manager = TunnelManagerService(
-      downloader: _FakeDownloader(),
-      startProcessFn: (exec, args) async => FakeManagedProcess(0),
-      stopProcessFn: (pid) async {},
-    );
-    addTearDown(manager.dispose);
+  test(
+    'build() seeds from currentSessions and then follows sessionsStream',
+    () async {
+      final manager = TunnelManagerService(
+        downloader: _FakeDownloader(),
+        startProcessFn: (exec, args) async => FakeManagedProcess(0),
+        stopProcessFn: (pid) async {},
+      );
+      addTearDown(manager.dispose);
 
-    final container = ProviderContainer.test(
-      overrides: [tunnelManagerServiceProvider.overrideWithValue(manager)],
-    );
+      final container = ProviderContainer.test(
+        overrides: [tunnelManagerServiceProvider.overrideWithValue(manager)],
+      );
 
-    // Nothing has started yet.
-    expect(container.read(tunnelSessionsProvider), isEmpty);
+      // Nothing has started yet.
+      expect(container.read(tunnelSessionsProvider), isEmpty);
 
-    await manager.startTunnel(
-      TunnelModel(
-        id: 1,
-        name: 'quick',
-        provider: 'cloudflare',
-        targetPort: 8080,
-      ),
-    );
-    await container.pump();
+      await manager.startTunnel(
+        TunnelModel(
+          id: 1,
+          name: 'quick',
+          provider: 'cloudflare',
+          targetPort: 8080,
+        ),
+      );
+      await container.pump();
 
-    // The broadcast stream does not replay, so this only holds if build()
-    // both seeded from currentSessions and subscribed before the emit.
-    expect(container.read(tunnelSessionsProvider), contains(1));
-  });
+      // The broadcast stream does not replay, so this only holds if build()
+      // both seeded from currentSessions and subscribed before the emit.
+      expect(container.read(tunnelSessionsProvider), contains(1));
+    },
+  );
 }

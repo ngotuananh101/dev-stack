@@ -4,7 +4,9 @@ import 'hosts_repository.dart';
 
 part 'hosts_provider.g.dart';
 
-final hostsRepositoryProvider = Provider<HostsRepository>((ref) => HostsRepository());
+final hostsRepositoryProvider = Provider<HostsRepository>(
+  (ref) => HostsRepository(),
+);
 
 @riverpod
 class Hosts extends _$Hosts {

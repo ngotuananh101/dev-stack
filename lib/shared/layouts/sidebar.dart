@@ -38,8 +38,9 @@ class Sidebar extends ConsumerWidget {
             'Apps',
             collapsed: collapsed,
             isActive: currentTab == NavigationTab.apps,
-            onTap: () =>
-                ref.read(navigationProvider.notifier).setTab(NavigationTab.apps),
+            onTap: () => ref
+                .read(navigationProvider.notifier)
+                .setTab(NavigationTab.apps),
           ),
           _buildNavItem(
             LucideIcons.globe,
@@ -161,8 +162,9 @@ class Sidebar extends ConsumerWidget {
                         color: isActive
                             ? AppColors.textPrimary
                             : AppColors.textSecondary,
-                        fontWeight:
-                            isActive ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isActive
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                         fontSize: AppTextSize.sm,
                       ),
                     ),
@@ -177,9 +179,7 @@ class Sidebar extends ConsumerWidget {
 
     // Collapsed, the label is gone, so the icon alone carries the entry: the
     // tooltip is what makes it usable.
-    return collapsed
-        ? Tooltip(message: label, child: item)
-        : item;
+    return collapsed ? Tooltip(message: label, child: item) : item;
   }
 }
 
@@ -187,7 +187,10 @@ class _SidebarToggleButton extends StatelessWidget {
   final bool collapsed;
   final VoidCallback onPressed;
 
-  const _SidebarToggleButton({required this.collapsed, required this.onPressed});
+  const _SidebarToggleButton({
+    required this.collapsed,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {

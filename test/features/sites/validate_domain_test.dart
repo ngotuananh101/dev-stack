@@ -11,10 +11,7 @@ void main() {
 
     test('rejects empty and overlong', () {
       expect(() => Sites.validateDomain(''), throwsArgumentError);
-      expect(
-        () => Sites.validateDomain('a' * 260),
-        throwsArgumentError,
-      );
+      expect(() => Sites.validateDomain('a' * 260), throwsArgumentError);
     });
 
     test('rejects path-traversal and separator characters', () {

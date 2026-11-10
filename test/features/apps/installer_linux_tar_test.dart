@@ -65,10 +65,19 @@ void main() {
         AppInstallerService.isTarArchive('https://example.com/package.tar'),
         isTrue,
       );
-      expect(AppInstallerService.isTarArchive('/local/path/file.tar.gz'), isTrue);
-      expect(AppInstallerService.isTarArchive('/local/path/file.tar.xz'), isTrue);
+      expect(
+        AppInstallerService.isTarArchive('/local/path/file.tar.gz'),
+        isTrue,
+      );
+      expect(
+        AppInstallerService.isTarArchive('/local/path/file.tar.xz'),
+        isTrue,
+      );
       expect(AppInstallerService.isTarArchive('/local/path/file.tgz'), isTrue);
-      expect(AppInstallerService.isTarArchive('/local/path/file.tar.bz2'), isTrue);
+      expect(
+        AppInstallerService.isTarArchive('/local/path/file.tar.bz2'),
+        isTrue,
+      );
       expect(AppInstallerService.isTarArchive('/local/path/file.tar'), isTrue);
     });
 
@@ -96,12 +105,30 @@ void main() {
     });
 
     test('returns false for non-tar archives', () {
-      expect(AppInstallerService.isTarArchive('https://example.com/app.zip'), isFalse);
-      expect(AppInstallerService.isTarArchive('https://example.com/setup.exe'), isFalse);
-      expect(AppInstallerService.isTarArchive('https://example.com/app.dmg'), isFalse);
-      expect(AppInstallerService.isTarArchive('https://example.com/app.7z'), isFalse);
-      expect(AppInstallerService.isTarArchive('https://example.com/tar.txt'), isFalse);
-      expect(AppInstallerService.isTarArchive('https://example.com/avatar.png'), isFalse);
+      expect(
+        AppInstallerService.isTarArchive('https://example.com/app.zip'),
+        isFalse,
+      );
+      expect(
+        AppInstallerService.isTarArchive('https://example.com/setup.exe'),
+        isFalse,
+      );
+      expect(
+        AppInstallerService.isTarArchive('https://example.com/app.dmg'),
+        isFalse,
+      );
+      expect(
+        AppInstallerService.isTarArchive('https://example.com/app.7z'),
+        isFalse,
+      );
+      expect(
+        AppInstallerService.isTarArchive('https://example.com/tar.txt'),
+        isFalse,
+      );
+      expect(
+        AppInstallerService.isTarArchive('https://example.com/avatar.png'),
+        isFalse,
+      );
       expect(AppInstallerService.isTarArchive(''), isFalse);
     });
 
@@ -139,11 +166,11 @@ void main() {
         AppInstallerService.ensureLinuxPermissions(
           '/nonexistent/path',
           runProcess: (exec, args) async {
-            throw const ProcessException(
-              'chmod',
-              ['-R', 'u+rwX,go+rX,go-w', '/nonexistent/path'],
-              'Operation not permitted',
-            );
+            throw const ProcessException('chmod', [
+              '-R',
+              'u+rwX,go+rX,go-w',
+              '/nonexistent/path',
+            ], 'Operation not permitted');
           },
         ),
         completes,

@@ -38,7 +38,9 @@ class RedisSettings extends _$RedisSettings {
     }
 
     // Default fallback
-    return File(Platform.isWindows ? candidates.last : p.join(location, 'redis.conf'));
+    return File(
+      Platform.isWindows ? candidates.last : p.join(location, 'redis.conf'),
+    );
   }
 
   Future<String> readConfig(AppModel app) async {

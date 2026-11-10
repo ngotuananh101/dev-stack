@@ -4,21 +4,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   Widget host(double width) => MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: width,
-              child: const StatusChip(
-                type: StatusType.restarting,
-                label: 'Restarting',
-              ),
-            ),
+    home: Scaffold(
+      body: Center(
+        child: SizedBox(
+          width: width,
+          child: const StatusChip(
+            type: StatusType.restarting,
+            label: 'Restarting',
           ),
         ),
-      );
+      ),
+    ),
+  );
 
-  testWidgets('renders its label without wrapping at a narrow width',
-      (tester) async {
+  testWidgets('renders its label without wrapping at a narrow width', (
+    tester,
+  ) async {
     await tester.pumpWidget(host(200));
     await tester.pumpAndSettle();
     final roomyHeight = tester.getSize(find.byType(StatusChip)).height;

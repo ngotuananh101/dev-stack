@@ -29,10 +29,7 @@ void main() {
 
       expect(env['PYENV'], equals(r'C:\Ponta\apps\pyenv\pyenv-win'));
       expect(env['PYENV_ROOT'], equals(r'C:\Ponta\apps\pyenv\pyenv-win'));
-      expect(
-        env['Path'],
-        contains(r'C:\Ponta\apps\pyenv\pyenv-win\bin'),
-      );
+      expect(env['Path'], contains(r'C:\Ponta\apps\pyenv\pyenv-win\bin'));
     });
   });
 
@@ -50,7 +47,8 @@ void main() {
     });
 
     test('prefers libexec/pyenv on Linux if present', () {
-      final libexecDir = Directory('${tmpDir.path}/libexec')..createSync(recursive: true);
+      final libexecDir = Directory('${tmpDir.path}/libexec')
+        ..createSync(recursive: true);
       File('${libexecDir.path}/pyenv').writeAsStringSync('#!/bin/sh\n');
 
       final resolved = Pyenv.resolvePyenvExecutable(
@@ -94,7 +92,10 @@ Available versions:
       final versions = Pyenv.parseInstallableVersions(mockLinuxOutput);
 
       // Should only keep standard CPython versions, latest patch per line, sorted descending
-      expect(versions, equals(['3.13.2', '3.12.9', '3.11.11', '3.10.16', '2.7.18']));
+      expect(
+        versions,
+        equals(['3.13.2', '3.12.9', '3.11.11', '3.10.16', '2.7.18']),
+      );
     });
 
     test('parses Windows pyenv-win install -l output', () {

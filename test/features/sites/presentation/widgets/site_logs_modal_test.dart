@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('SiteLogsModal displays site domain and action buttons', (tester) async {
+  testWidgets('SiteLogsModal displays site domain and action buttons', (
+    tester,
+  ) async {
     final site = SiteModel(
       id: 1,
       domain: 'my-cli-app.test',
@@ -18,9 +20,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
-          home: Scaffold(
-            body: SiteLogsModal(site: site),
-          ),
+          home: Scaffold(body: SiteLogsModal(site: site)),
         ),
       ),
     );

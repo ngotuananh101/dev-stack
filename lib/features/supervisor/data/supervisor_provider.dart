@@ -8,8 +8,9 @@ import '../domain/supervisor_program.dart';
 import 'supervisor_manager.dart';
 
 /// Live list of supervised programs, watched straight from Isar.
-final supervisorProgramsProvider =
-    StreamProvider<List<SupervisorProgram>>((ref) async* {
+final supervisorProgramsProvider = StreamProvider<List<SupervisorProgram>>((
+  ref,
+) async* {
   final isarAsync = ref.watch(isarProvider);
   final isar = isarAsync.value;
   if (isar == null) {
@@ -22,8 +23,8 @@ final supervisorProgramsProvider =
 /// Live status per program id, following the manager's broadcast stream.
 final supervisorStatusProvider =
     NotifierProvider<SupervisorStatusNotifier, Map<int, SupervisorStatus>>(
-  SupervisorStatusNotifier.new,
-);
+      SupervisorStatusNotifier.new,
+    );
 
 class SupervisorStatusNotifier extends Notifier<Map<int, SupervisorStatus>> {
   late SupervisorManager _manager;
@@ -71,7 +72,9 @@ class SupervisorProgramsRepository {
   }
 }
 
-final supervisorRepositoryProvider = Provider<SupervisorProgramsRepository>((ref) {
+final supervisorRepositoryProvider = Provider<SupervisorProgramsRepository>((
+  ref,
+) {
   final isar = ref.watch(isarProvider).value;
   if (isar == null) {
     throw StateError('Isar is not open yet');

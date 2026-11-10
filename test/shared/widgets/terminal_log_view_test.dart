@@ -3,57 +3,64 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('TerminalLogView renders title, logs, error color and auto-scroll button', (tester) async {
-    bool cleared = false;
-    final logs = [
-      'Server started on port 3000',
-      '[ERROR] Failed to connect to upstream',
-    ];
+  testWidgets(
+    'TerminalLogView renders title, logs, error color and auto-scroll button',
+    (tester) async {
+      bool cleared = false;
+      final logs = [
+        'Server started on port 3000',
+        '[ERROR] Failed to connect to upstream',
+      ];
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: TerminalLogView(
-            title: 'Logs: myapp.test',
-            lines: logs,
-            onClear: () => cleared = true,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TerminalLogView(
+              title: 'Logs: myapp.test',
+              lines: logs,
+              onClear: () => cleared = true,
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Logs: myapp.test'), findsOneWidget);
-    expect(find.text('Server started on port 3000'), findsOneWidget);
-    expect(find.text('[ERROR] Failed to connect to upstream'), findsOneWidget);
+      expect(find.text('Logs: myapp.test'), findsOneWidget);
+      expect(find.text('Server started on port 3000'), findsOneWidget);
+      expect(
+        find.text('[ERROR] Failed to connect to upstream'),
+        findsOneWidget,
+      );
 
-    // Test clear
-    await tester.tap(find.byTooltip('Clear'));
-    expect(cleared, true);
+      // Test clear
+      await tester.tap(find.byTooltip('Clear'));
+      expect(cleared, true);
 
-    // Test Auto-scroll toggle
-    expect(find.byTooltip('Auto-scroll ON'), findsOneWidget);
-    await tester.tap(find.byTooltip('Auto-scroll ON'));
-    await tester.pump();
-    expect(find.byTooltip('Auto-scroll OFF'), findsOneWidget);
-  });
+      // Test Auto-scroll toggle
+      expect(find.byTooltip('Auto-scroll ON'), findsOneWidget);
+      await tester.tap(find.byTooltip('Auto-scroll ON'));
+      await tester.pump();
+      expect(find.byTooltip('Auto-scroll OFF'), findsOneWidget);
+    },
+  );
 
-  testWidgets('TerminalLogView displays empty state message when lines is empty', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: TerminalLogView(
-            title: 'Logs: empty',
-            lines: [],
+  testWidgets(
+    'TerminalLogView displays empty state message when lines is empty',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: TerminalLogView(title: 'Logs: empty', lines: []),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('No logs available yet.'), findsOneWidget);
-  });
+      expect(find.text('No logs available yet.'), findsOneWidget);
+    },
+  );
 
-  testWidgets('opens at the tail of a huge log without laying out every row',
-      (tester) async {
+  testWidgets('opens at the tail of a huge log without laying out every row', (
+    tester,
+  ) async {
     // The regression this guards: a non-reversed ListView had to build and lay
     // out all rows to find maxScrollExtent for the initial jumpTo, which froze
     // the first open of a large log. A reversed list starts at the tail, so
@@ -76,8 +83,9 @@ void main() {
     expect(find.text('line number 0'), findsNothing);
   });
 
-  testWidgets('shrinks an over-long line and keeps the full text for copy',
-      (tester) async {
+  testWidgets('shrinks an over-long line and keeps the full text for copy', (
+    tester,
+  ) async {
     final longLine = 'x' * (TerminalLogView.maxRenderedLineLength + 500);
     await tester.pumpWidget(
       MaterialApp(
@@ -91,12 +99,16 @@ void main() {
         .widgetList<Text>(find.byType(Text))
         .map((t) => t.data ?? '')
         .firstWhere((text) => text.startsWith('xxx'));
-    expect(rendered.length, TerminalLogView.maxRenderedLineLength + 1,
-        reason: 'trailing ellipsis replaces the clipped remainder');
+    expect(
+      rendered.length,
+      TerminalLogView.maxRenderedLineLength + 1,
+      reason: 'trailing ellipsis replaces the clipped remainder',
+    );
   });
 
-  testWidgets('re-follows the tail when a capped list appends a line',
-      (tester) async {
+  testWidgets('re-follows the tail when a capped list appends a line', (
+    tester,
+  ) async {
     // With a stable, length-capped list the viewer cannot detect an append
     // through identity or length; `revision` is what carries it.
     final lines = List.generate(1000, (i) => 'l$i');

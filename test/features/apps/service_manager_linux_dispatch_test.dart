@@ -28,15 +28,18 @@ void main() {
       expect(args.last, contains(ApacheConfigBuilder.mainConfigFileName));
     });
 
-    test('redis-server receives isolated redis.conf from ~/.ponta/data/redis', () {
-      final args = AppServiceManager.argumentsForExecutable(
-        'redis-server',
-        '/usr/bin',
-        isLinux: true,
-      );
-      expect(args, hasLength(1));
-      expect(args.first, contains('redis.conf'));
-    });
+    test(
+      'redis-server receives isolated redis.conf from ~/.ponta/data/redis',
+      () {
+        final args = AppServiceManager.argumentsForExecutable(
+          'redis-server',
+          '/usr/bin',
+          isLinux: true,
+        );
+        expect(args, hasLength(1));
+        expect(args.first, contains('redis.conf'));
+      },
+    );
 
     test('php-fpm receives foreground -F and -y config flags', () {
       final args = AppServiceManager.argumentsForExecutable(
@@ -59,20 +62,23 @@ void main() {
       expect(remiArgs.last, contains('php83'));
     });
 
-    test('postgres receives -D with isolated data directory and -k /tmp on linux', () {
-      final args = AppServiceManager.argumentsForExecutable(
-        'postgres',
-        '/usr/lib/postgresql/16/bin',
-        appId: 'postgresql',
-        installedVersion: '16',
-        isLinux: true,
-      );
-      expect(args, contains('-D'));
-      expect(args, contains('-k'));
-      expect(args, contains('/tmp'));
-      expect(args, hasLength(4));
-      expect(args[1], contains('postgresql-16'));
-    });
+    test(
+      'postgres receives -D with isolated data directory and -k /tmp on linux',
+      () {
+        final args = AppServiceManager.argumentsForExecutable(
+          'postgres',
+          '/usr/lib/postgresql/16/bin',
+          appId: 'postgresql',
+          installedVersion: '16',
+          isLinux: true,
+        );
+        expect(args, contains('-D'));
+        expect(args, contains('-k'));
+        expect(args, contains('/tmp'));
+        expect(args, hasLength(4));
+        expect(args[1], contains('postgresql-16'));
+      },
+    );
 
     test('postgres receives only -D on non-linux', () {
       final args = AppServiceManager.argumentsForExecutable(
@@ -88,12 +94,16 @@ void main() {
 
   group('requiredSocketsForExecutable includes database and runtime ports', () {
     test('redis requires 6379', () {
-      final sockets = AppServiceManager.requiredSocketsForExecutable('redis-server');
+      final sockets = AppServiceManager.requiredSocketsForExecutable(
+        'redis-server',
+      );
       expect(sockets.any((s) => s.port == 6379), isTrue);
     });
 
     test('postgres requires 5432', () {
-      final sockets = AppServiceManager.requiredSocketsForExecutable('postgres');
+      final sockets = AppServiceManager.requiredSocketsForExecutable(
+        'postgres',
+      );
       expect(sockets.any((s) => s.port == 5432), isTrue);
     });
 
@@ -167,28 +177,41 @@ void main() {
         'nginx',
         '/opt/ponta/apps/nginx/1.30.4',
       );
-      expect(args, containsAll(['-p', '/opt/ponta/apps/nginx/1.30.4/', '-c', '/opt/ponta/apps/nginx/1.30.4/conf/nginx.conf', '-g', 'daemon off;']));
+      expect(
+        args,
+        containsAll([
+          '-p',
+          '/opt/ponta/apps/nginx/1.30.4/',
+          '-c',
+          '/opt/ponta/apps/nginx/1.30.4/conf/nginx.conf',
+          '-g',
+          'daemon off;',
+        ]),
+      );
     });
   });
 
   group('parseListeningSocketsLinux', () {
-    test('collects LISTEN rows and expands wildcard stars (5-column format)', () {
-      const ss =
-          'State  Recv-Q Send-Q Local Address:Port Peer Address:Port\n'
-          'LISTEN 0      128        127.0.0.1:9082      0.0.0.0:*   \n'
-          'LISTEN 0      511            *:80               *:*     \n'
-          'LISTEN 0      4096       [::]:443            [::]:*     \n'
-          'ESTAB  0      0        10.0.0.2:22         10.0.0.1:5000\n';
-      final sockets = AppServiceManager.parseListeningSocketsLinux(ss);
-      expect(sockets.contains('127.0.0.1:9082'), isTrue);
-      expect(sockets.contains('0.0.0.0:80'), isTrue);
-      expect(
-        sockets.contains('[::]:80'),
-        isTrue,
-      ); // '*' expands to both wildcards
-      expect(sockets.contains('[::]:443'), isTrue);
-      expect(sockets.any((s) => s.contains(':22')), isFalse);
-    });
+    test(
+      'collects LISTEN rows and expands wildcard stars (5-column format)',
+      () {
+        const ss =
+            'State  Recv-Q Send-Q Local Address:Port Peer Address:Port\n'
+            'LISTEN 0      128        127.0.0.1:9082      0.0.0.0:*   \n'
+            'LISTEN 0      511            *:80               *:*     \n'
+            'LISTEN 0      4096       [::]:443            [::]:*     \n'
+            'ESTAB  0      0        10.0.0.2:22         10.0.0.1:5000\n';
+        final sockets = AppServiceManager.parseListeningSocketsLinux(ss);
+        expect(sockets.contains('127.0.0.1:9082'), isTrue);
+        expect(sockets.contains('0.0.0.0:80'), isTrue);
+        expect(
+          sockets.contains('[::]:80'),
+          isTrue,
+        ); // '*' expands to both wildcards
+        expect(sockets.contains('[::]:443'), isTrue);
+        expect(sockets.any((s) => s.contains(':22')), isFalse);
+      },
+    );
 
     test('parses standard 7-column ss -tulpn output with tcp/udp prefix', () {
       const ss =
@@ -206,20 +229,23 @@ void main() {
       expect(sockets.any((s) => s.contains(':22')), isFalse);
     });
 
-    test('handles edge cases such as empty lines, malformed lines, and invalid ports', () {
-      const ss =
-          '\n'
-          '   \n'
-          'LISTEN\n'
-          'LISTEN 0\n'
-          'LISTEN 0 128\n'
-          'tcp LISTEN 0 128 invalid-no-port 0.0.0.0:*\n'
-          'tcp LISTEN 0 128 127.0.0.1:not_a_port 0.0.0.0:*\n'
-          'tcp LISTEN 0 128 :8080 0.0.0.0:*\n'
-          'tcp LISTEN 0 128 0.0.0.0:3306 0.0.0.0:*\n';
-      final sockets = AppServiceManager.parseListeningSocketsLinux(ss);
-      expect(sockets, equals({'0.0.0.0:3306'}));
-    });
+    test(
+      'handles edge cases such as empty lines, malformed lines, and invalid ports',
+      () {
+        const ss =
+            '\n'
+            '   \n'
+            'LISTEN\n'
+            'LISTEN 0\n'
+            'LISTEN 0 128\n'
+            'tcp LISTEN 0 128 invalid-no-port 0.0.0.0:*\n'
+            'tcp LISTEN 0 128 127.0.0.1:not_a_port 0.0.0.0:*\n'
+            'tcp LISTEN 0 128 :8080 0.0.0.0:*\n'
+            'tcp LISTEN 0 128 0.0.0.0:3306 0.0.0.0:*\n';
+        final sockets = AppServiceManager.parseListeningSocketsLinux(ss);
+        expect(sockets, equals({'0.0.0.0:3306'}));
+      },
+    );
   });
 
   group('environmentForExecutable', () {
@@ -229,48 +255,56 @@ void main() {
       expect(AppServiceManager.environmentForExecutable('postgres'), isNull);
     });
 
-    test('returns ELASTIC_PASSWORD for elasticsearch when password file exists', () async {
-      final tempDir = await Directory.systemTemp.createTemp('es_pwd_test');
-      try {
-        final pwdFile = File(p.join(tempDir.path, 'elastic-password.txt'));
-        await pwdFile.writeAsString('my-secret-token-123\n');
+    test(
+      'returns ELASTIC_PASSWORD for elasticsearch when password file exists',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp('es_pwd_test');
+        try {
+          final pwdFile = File(p.join(tempDir.path, 'elastic-password.txt'));
+          await pwdFile.writeAsString('my-secret-token-123\n');
 
-        final env = AppServiceManager.environmentForExecutable(
-          'elasticsearch.bat',
-          elasticPasswordPath: pwdFile.path,
+          final env = AppServiceManager.environmentForExecutable(
+            'elasticsearch.bat',
+            elasticPasswordPath: pwdFile.path,
+          );
+
+          expect(env, isNotNull);
+          expect(env!['ELASTIC_PASSWORD'], equals('my-secret-token-123'));
+        } finally {
+          await tempDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'returns null when elasticsearch password file does not exist or is empty',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'es_pwd_test_empty',
         );
+        try {
+          final nonExistent = p.join(tempDir.path, 'non_existent.txt');
+          expect(
+            AppServiceManager.environmentForExecutable(
+              'elasticsearch',
+              elasticPasswordPath: nonExistent,
+            ),
+            isNull,
+          );
 
-        expect(env, isNotNull);
-        expect(env!['ELASTIC_PASSWORD'], equals('my-secret-token-123'));
-      } finally {
-        await tempDir.delete(recursive: true);
-      }
-    });
-
-    test('returns null when elasticsearch password file does not exist or is empty', () async {
-      final tempDir = await Directory.systemTemp.createTemp('es_pwd_test_empty');
-      try {
-        final nonExistent = p.join(tempDir.path, 'non_existent.txt');
-        expect(
-          AppServiceManager.environmentForExecutable(
-            'elasticsearch',
-            elasticPasswordPath: nonExistent,
-          ),
-          isNull,
-        );
-
-        final emptyFile = File(p.join(tempDir.path, 'empty.txt'));
-        await emptyFile.writeAsString('   \n');
-        expect(
-          AppServiceManager.environmentForExecutable(
-            'elasticsearch',
-            elasticPasswordPath: emptyFile.path,
-          ),
-          isNull,
-        );
-      } finally {
-        await tempDir.delete(recursive: true);
-      }
-    });
+          final emptyFile = File(p.join(tempDir.path, 'empty.txt'));
+          await emptyFile.writeAsString('   \n');
+          expect(
+            AppServiceManager.environmentForExecutable(
+              'elasticsearch',
+              elasticPasswordPath: emptyFile.path,
+            ),
+            isNull,
+          );
+        } finally {
+          await tempDir.delete(recursive: true);
+        }
+      },
+    );
   });
 }

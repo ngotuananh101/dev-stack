@@ -47,18 +47,17 @@ void main() {
     bool autoRestart = true,
     bool enabled = true,
     int restartDelaySeconds = 0,
-  }) =>
-      SupervisorProgram(
-        id: 1,
-        name: 'Queue',
-        command: 'php artisan queue:work',
-        workingDir: tempDir.path,
-        autoRestart: autoRestart,
-        maxRestarts: maxRestarts,
-        restartWindowSeconds: 60,
-        restartDelaySeconds: restartDelaySeconds,
-        enabled: enabled,
-      );
+  }) => SupervisorProgram(
+    id: 1,
+    name: 'Queue',
+    command: 'php artisan queue:work',
+    workingDir: tempDir.path,
+    autoRestart: autoRestart,
+    maxRestarts: maxRestarts,
+    restartWindowSeconds: 60,
+    restartDelaySeconds: restartDelaySeconds,
+    enabled: enabled,
+  );
 
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync('sup_test_');
@@ -176,10 +175,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 20));
       }
 
-      expect(
-        recorded.map((d) => d.inSeconds).toList(),
-        [2, 4, 8, 16, 32, 60],
-      );
+      expect(recorded.map((d) => d.inSeconds).toList(), [2, 4, 8, 16, 32, 60]);
     });
   });
 

@@ -43,7 +43,10 @@ ID=ubuntu
 VERSION_CODENAME=noble
 ''';
       expect(
-        LinuxDistroResolver.resolveMongoDistro(osReleaseContent: osRelease, isLinux: true),
+        LinuxDistroResolver.resolveMongoDistro(
+          osReleaseContent: osRelease,
+          isLinux: true,
+        ),
         equals('ubuntu2404'),
       );
     });
@@ -54,7 +57,10 @@ ID=ubuntu
 VERSION_CODENAME=jammy
 ''';
       expect(
-        LinuxDistroResolver.resolveMongoDistro(osReleaseContent: osRelease, isLinux: true),
+        LinuxDistroResolver.resolveMongoDistro(
+          osReleaseContent: osRelease,
+          isLinux: true,
+        ),
         equals('ubuntu2204'),
       );
     });
@@ -65,7 +71,10 @@ ID=ubuntu
 VERSION_CODENAME=focal
 ''';
       expect(
-        LinuxDistroResolver.resolveMongoDistro(osReleaseContent: osRelease, isLinux: true),
+        LinuxDistroResolver.resolveMongoDistro(
+          osReleaseContent: osRelease,
+          isLinux: true,
+        ),
         equals('ubuntu2004'),
       );
     });
@@ -77,14 +86,20 @@ VERSION_ID="12"
 VERSION_CODENAME=bookworm
 ''';
       expect(
-        LinuxDistroResolver.resolveMongoDistro(osReleaseContent: osRelease, isLinux: true),
+        LinuxDistroResolver.resolveMongoDistro(
+          osReleaseContent: osRelease,
+          isLinux: true,
+        ),
         equals('debian12'),
       );
     });
 
     test('falls back to safe defaults when unknown or empty', () {
       expect(
-        LinuxDistroResolver.resolveMongoDistro(osReleaseContent: '', isLinux: true),
+        LinuxDistroResolver.resolveMongoDistro(
+          osReleaseContent: '',
+          isLinux: true,
+        ),
         equals('ubuntu2204'),
       );
     });
@@ -104,7 +119,9 @@ VERSION_CODENAME=bookworm
 
       expect(
         resolved,
-        equals('https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian12-8.0.4.tgz'),
+        equals(
+          'https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian12-8.0.4.tgz',
+        ),
       );
     });
 
@@ -118,14 +135,12 @@ VERSION_CODENAME=bookworm
         isLinux: true,
       );
 
-      expect(
-        resolved,
-        equals('https://example.com/repo-41.rpm'),
-      );
+      expect(resolved, equals('https://example.com/repo-41.rpm'));
     });
 
     test('leaves standard static URLs without placeholders untouched', () {
-      const url = 'https://jirutka.github.io/nginx-binaries/bin/nginx-1.30.4-x86_64-linux';
+      const url =
+          'https://jirutka.github.io/nginx-binaries/bin/nginx-1.30.4-x86_64-linux';
       expect(LinuxDistroResolver.resolveUrl(url), equals(url));
     });
   });

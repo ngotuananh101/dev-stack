@@ -66,7 +66,9 @@ abstract final class BackgroundProcess {
   }
 
   @visibleForTesting
-  static ({String executable, List<String> arguments}) buildLinuxKillArgs(int pid) {
+  static ({String executable, List<String> arguments}) buildLinuxKillArgs(
+    int pid,
+  ) {
     return (executable: 'kill', arguments: ['-TERM', '--', '-$pid']);
   }
 
@@ -89,7 +91,9 @@ abstract final class BackgroundProcess {
   /// `SIG_DFL` in `fpm_signals_init_child()`, so signalling the whole process
   /// group would terminate every worker instead of triggering a graceful
   /// reload. Upstream systemd uses `ExecReload=/bin/kill -USR2 $MAINPID`.
-  static ({String executable, List<String> arguments}) buildLinuxReloadArgs(int pid) {
+  static ({String executable, List<String> arguments}) buildLinuxReloadArgs(
+    int pid,
+  ) {
     return (executable: 'kill', arguments: ['-USR2', '--', '$pid']);
   }
 
@@ -272,15 +276,21 @@ abstract final class BackgroundProcess {
     }
 
     final encoder = stdoutEncoding ?? systemEncoding;
-    final stdoutDone =
-        process.stdout.transform(encoder.decoder).listen(collect).asFuture<void>();
-    final stderrDone =
-        process.stderr.transform(encoder.decoder).listen(collect).asFuture<void>();
+    final stdoutDone = process.stdout
+        .transform(encoder.decoder)
+        .listen(collect)
+        .asFuture<void>();
+    final stderrDone = process.stderr
+        .transform(encoder.decoder)
+        .listen(collect)
+        .asFuture<void>();
     final exitCode = await process.exitCode;
     // Draining must finish before the caller reads the output; a stream error
     // here just means the pipe broke, which is not worth propagating.
-    await Future.wait([stdoutDone, stderrDone])
-        .catchError((_) => const <void>[]);
+    await Future.wait([
+      stdoutDone,
+      stderrDone,
+    ]).catchError((_) => const <void>[]);
 
     return (
       exitCode: exitCode,

@@ -13,7 +13,7 @@ class DatabaseRecord {
   late String password;
   late String engineAppId; // e.g., 'mysql', 'mariadb', 'mongodb'
   String? note;
-  
+
   late DateTime createdAt;
 
   DatabaseRecord();

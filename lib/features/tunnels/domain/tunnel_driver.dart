@@ -3,10 +3,7 @@ import 'tunnel_model.dart';
 abstract class TunnelDriver {
   String get providerId;
 
-  List<String> buildStartArguments(
-    TunnelModel tunnel, {
-    String? defaultToken,
-  });
+  List<String> buildStartArguments(TunnelModel tunnel, {String? defaultToken});
 
   /// Extracts the public URL from a log line. [customDomain] is the domain the
   /// user configured, used to pick the matching route when several are logged.

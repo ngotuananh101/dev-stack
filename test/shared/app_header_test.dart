@@ -85,32 +85,28 @@ void main() {
         theme: ThemeData.dark().copyWith(
           scaffoldBackgroundColor: AppColors.background,
         ),
-        home: const Scaffold(
-          body: Column(
-            children: [
-              AppHeader(),
-            ],
-          ),
-        ),
+        home: const Scaffold(body: Column(children: [AppHeader()])),
       ),
     );
     await tester.pump();
   }
 
-  testWidgets('AppHeader renders brand icon, title, and three window controls',
-      (tester) async {
-    await pumpHeader(tester);
+  testWidgets(
+    'AppHeader renders brand icon, title, and three window controls',
+    (tester) async {
+      await pumpHeader(tester);
 
-    expect(find.text('Ponta DevStack'), findsOneWidget);
-    expect(find.byType(Image), findsOneWidget);
-    expect(find.byType(DragToMoveArea), findsOneWidget);
-    expect(find.byIcon(LucideIcons.minus), findsOneWidget);
-    expect(find.byIcon(LucideIcons.square), findsOneWidget);
-    expect(find.byIcon(LucideIcons.x), findsOneWidget);
+      expect(find.text('Ponta DevStack'), findsOneWidget);
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.byType(DragToMoveArea), findsOneWidget);
+      expect(find.byIcon(LucideIcons.minus), findsOneWidget);
+      expect(find.byIcon(LucideIcons.square), findsOneWidget);
+      expect(find.byIcon(LucideIcons.x), findsOneWidget);
 
-    final headerBox = tester.renderObject<RenderBox>(find.byType(AppHeader));
-    expect(headerBox.size.height, equals(kAppHeaderHeight));
-  });
+      final headerBox = tester.renderObject<RenderBox>(find.byType(AppHeader));
+      expect(headerBox.size.height, equals(kAppHeaderHeight));
+    },
+  );
 
   testWidgets('tapping minimize button minimizes the window', (tester) async {
     await pumpHeader(tester);
@@ -121,8 +117,9 @@ void main() {
     expect(window.minimizes, 1);
   });
 
-  testWidgets('tapping maximize button maximizes when not maximized',
-      (tester) async {
+  testWidgets('tapping maximize button maximizes when not maximized', (
+    tester,
+  ) async {
     await pumpHeader(tester);
 
     await tester.tap(find.byIcon(LucideIcons.square));
@@ -132,8 +129,9 @@ void main() {
     expect(window.unmaximizes, 0);
   });
 
-  testWidgets('tapping close button closes the window, never destroys it',
-      (tester) async {
+  testWidgets('tapping close button closes the window, never destroys it', (
+    tester,
+  ) async {
     await pumpHeader(tester);
 
     await tester.tap(find.byIcon(LucideIcons.x));
@@ -144,8 +142,9 @@ void main() {
     expect(window.closes, 1);
   });
 
-  testWidgets('maximize and restore events swap the maximize icon',
-      (tester) async {
+  testWidgets('maximize and restore events swap the maximize icon', (
+    tester,
+  ) async {
     await pumpHeader(tester);
 
     expect(find.byIcon(LucideIcons.square), findsOneWidget);

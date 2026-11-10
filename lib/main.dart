@@ -5,6 +5,7 @@ import 'package:nativeapi/nativeapi.dart' show Application;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar_plus/isar_plus.dart';
+import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/config/app_config.dart';
 import 'core/database/isar_provider.dart';
@@ -134,12 +135,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Ponta DevStack v$appVersion',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      builder: VirtualWindowFrameInit(),
-      home: const MainScreen(),
+    // ToastificationWrapper must sit above MaterialApp: it installs the overlay
+    // `toastification.show` draws into and lets that call work without being
+    // handed a context (see AppDialogs).
+    return ToastificationWrapper(
+      child: MaterialApp(
+        title: 'Ponta DevStack v$appVersion',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
+        builder: VirtualWindowFrameInit(),
+        home: const MainScreen(),
+      ),
     );
   }
 }
@@ -223,7 +229,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     collapsed,
                   );
                   if (next != collapsed) {
-                    ref.read(sidebarCollapsedProvider.notifier).setCollapsed(next);
+                    ref
+                        .read(sidebarCollapsedProvider.notifier)
+                        .setCollapsed(next);
                   }
                 });
                 return Row(

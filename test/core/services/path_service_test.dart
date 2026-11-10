@@ -6,8 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('PathService.shimPathsFor', () {
     test('returns all three shim paths for simple command', () {
-      final paths =
-          PathService.shimPathsFor('C:\\Ponta\\bin', 'node', isLinux: false);
+      final paths = PathService.shimPathsFor(
+        'C:\\Ponta\\bin',
+        'node',
+        isLinux: false,
+      );
 
       expect(paths.length, equals(3));
       expect(paths[0], equals('C:\\Ponta\\bin\\node.bat'));
@@ -16,8 +19,11 @@ void main() {
     });
 
     test('handles command names with hyphens', () {
-      final paths =
-          PathService.shimPathsFor('C:\\Ponta\\bin', 'php-cgi', isLinux: false);
+      final paths = PathService.shimPathsFor(
+        'C:\\Ponta\\bin',
+        'php-cgi',
+        isLinux: false,
+      );
 
       expect(paths[0], equals('C:\\Ponta\\bin\\php-cgi.bat'));
       expect(paths[1], equals('C:\\Ponta\\bin\\php-cgi.cmd'));
@@ -37,8 +43,11 @@ void main() {
     });
 
     test('handles forward slash paths', () {
-      final paths =
-          PathService.shimPathsFor('C:/Ponta/bin', 'npm', isLinux: false);
+      final paths = PathService.shimPathsFor(
+        'C:/Ponta/bin',
+        'npm',
+        isLinux: false,
+      );
 
       // path.join normalizes to backslashes on Windows
       expect(paths[0], contains('npm.bat'));
@@ -58,8 +67,9 @@ void main() {
 
   group('PathService.windowsBatchShimContent', () {
     test('generates valid batch script with echo off', () {
-      final content =
-          PathService.windowsBatchShimContent('C:\\Apps\\node\\node.exe');
+      final content = PathService.windowsBatchShimContent(
+        'C:\\Apps\\node\\node.exe',
+      );
 
       expect(content, startsWith('@echo off'));
       expect(content, contains('"C:\\Apps\\node\\node.exe" %*'));
@@ -87,7 +97,8 @@ void main() {
 
     test('quotes target path to handle spaces', () {
       final content = PathService.windowsBatchShimContent(
-          'C:\\Program Files\\app\\tool.exe');
+        'C:\\Program Files\\app\\tool.exe',
+      );
 
       expect(content, contains('"C:\\Program Files\\app\\tool.exe"'));
     });
@@ -199,8 +210,9 @@ void main() {
     });
 
     test('quotes path to handle spaces and special chars', () {
-      final content =
-          PathService.shellShimContent('C:\\Program Files\\app\\tool.exe');
+      final content = PathService.shellShimContent(
+        'C:\\Program Files\\app\\tool.exe',
+      );
 
       // Should use shell quoting
       expect(content, contains("'C:/Program Files/app/tool.exe'"));
@@ -227,8 +239,9 @@ void main() {
     });
 
     test('handles path with multiple backslashes', () {
-      final content =
-          PathService.shellShimContent('C:\\Level1\\Level2\\Level3\\tool.exe');
+      final content = PathService.shellShimContent(
+        'C:\\Level1\\Level2\\Level3\\tool.exe',
+      );
 
       expect(content, contains('C:/Level1/Level2/Level3/tool.exe'));
       expect(content, isNot(contains('\\\\')));
@@ -294,7 +307,8 @@ void main() {
 
   group('PathService Windows operations with runner', () {
     test('setUserEnvVar calls runner with windowsSetUserEnvCommand', () async {
-      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      final calls =
+          <({String exe, List<String> args, Map<String, String>? env})>[];
       final service = PathService(
         LogService(),
         platformIsWindows: () => true,
@@ -312,27 +326,32 @@ void main() {
       expect(calls[0].env?['DEVSTACK_SETVALUE'], equals('MY_VALUE'));
     });
 
-    test('removeUserEnvVar calls runner with windowsRemoveUserEnvCommand', () async {
-      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
-      final service = PathService(
-        LogService(),
-        platformIsWindows: () => true,
-        runProcess: (exe, args, {environment}) async {
-          calls.add((exe: exe, args: args, env: environment));
-          return ProcessResult(1234, 0, '', '');
-        },
-      );
+    test(
+      'removeUserEnvVar calls runner with windowsRemoveUserEnvCommand',
+      () async {
+        final calls =
+            <({String exe, List<String> args, Map<String, String>? env})>[];
+        final service = PathService(
+          LogService(),
+          platformIsWindows: () => true,
+          runProcess: (exe, args, {environment}) async {
+            calls.add((exe: exe, args: args, env: environment));
+            return ProcessResult(1234, 0, '', '');
+          },
+        );
 
-      await service.removeUserEnvVar('MY_VAR');
+        await service.removeUserEnvVar('MY_VAR');
 
-      expect(calls.length, equals(1));
-      expect(calls[0].exe, equals('powershell'));
-      expect(calls[0].env?['DEVSTACK_ENVVAR'], equals('MY_VAR'));
-      expect(calls[0].env?.containsKey('DEVSTACK_SETVALUE'), isFalse);
-    });
+        expect(calls.length, equals(1));
+        expect(calls[0].exe, equals('powershell'));
+        expect(calls[0].env?['DEVSTACK_ENVVAR'], equals('MY_VAR'));
+        expect(calls[0].env?.containsKey('DEVSTACK_SETVALUE'), isFalse);
+      },
+    );
 
     test('ensurePontaBinInPath updates PATH when binDir is missing', () async {
-      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      final calls =
+          <({String exe, List<String> args, Map<String, String>? env})>[];
       final service = PathService(
         LogService(),
         platformIsWindows: () => true,
@@ -355,30 +374,35 @@ void main() {
       );
     });
 
-    test('ensurePontaBinInPath skips update when binDir already present', () async {
-      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
-      final service = PathService(
-        LogService(),
-        platformIsWindows: () => true,
-        runProcess: (exe, args, {environment}) async {
-          calls.add((exe: exe, args: args, env: environment));
-          return ProcessResult(
-            1234,
-            0,
-            'C:\\Other;${PathService.binDir};C:\\More',
-            '',
-          );
-        },
-      );
+    test(
+      'ensurePontaBinInPath skips update when binDir already present',
+      () async {
+        final calls =
+            <({String exe, List<String> args, Map<String, String>? env})>[];
+        final service = PathService(
+          LogService(),
+          platformIsWindows: () => true,
+          runProcess: (exe, args, {environment}) async {
+            calls.add((exe: exe, args: args, env: environment));
+            return ProcessResult(
+              1234,
+              0,
+              'C:\\Other;${PathService.binDir};C:\\More',
+              '',
+            );
+          },
+        );
 
-      await service.ensurePontaBinInPath();
+        await service.ensurePontaBinInPath();
 
-      // Only the GetEnvironmentVariable call should run
-      expect(calls.length, equals(1));
-    });
+        // Only the GetEnvironmentVariable call should run
+        expect(calls.length, equals(1));
+      },
+    );
 
     test('addRawPathToUserPath appends path and invokes runner', () async {
-      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      final calls =
+          <({String exe, List<String> args, Map<String, String>? env})>[];
       final service = PathService(
         LogService(),
         platformIsWindows: () => true,
@@ -402,7 +426,8 @@ void main() {
     });
 
     test('removeRawPathFromUserPath removes targeted path from PATH', () async {
-      final calls = <({String exe, List<String> args, Map<String, String>? env})>[];
+      final calls =
+          <({String exe, List<String> args, Map<String, String>? env})>[];
       final service = PathService(
         LogService(),
         platformIsWindows: () => true,
@@ -420,14 +445,13 @@ void main() {
         },
       );
 
-      await service.removeRawPathFromUserPath(r'C:\Ponta\apps\pyenv\latest\bin');
+      await service.removeRawPathFromUserPath(
+        r'C:\Ponta\apps\pyenv\latest\bin',
+      );
 
       expect(calls.length, equals(2));
       expect(calls[1].env?['DEVSTACK_ENVVAR'], equals('PATH'));
-      expect(
-        calls[1].env?['DEVSTACK_SETVALUE'],
-        equals(r'C:\Keep1;C:\Keep2'),
-      );
+      expect(calls[1].env?['DEVSTACK_SETVALUE'], equals(r'C:\Keep1;C:\Keep2'));
     });
   });
 }

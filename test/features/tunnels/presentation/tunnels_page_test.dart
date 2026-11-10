@@ -17,9 +17,7 @@ void main() {
             () => TunnelSessionsNotifierMock({}),
           ),
         ],
-        child: const MaterialApp(
-          home: Scaffold(body: TunnelsPage()),
-        ),
+        child: const MaterialApp(home: Scaffold(body: TunnelsPage())),
       ),
     );
 
@@ -30,7 +28,9 @@ void main() {
 
     // New Tunnel button is placed on the right side on the same row with the title
     final tunnelsPos = tester.getTopLeft(find.text('Tunnels'));
-    final newTunnelPos = tester.getTopLeft(find.widgetWithText(AppButton, 'New Tunnel'));
+    final newTunnelPos = tester.getTopLeft(
+      find.widgetWithText(AppButton, 'New Tunnel'),
+    );
     expect(newTunnelPos.dx, greaterThan(500.0));
     expect(newTunnelPos.dx, greaterThan(tunnelsPos.dx));
     expect((newTunnelPos.dy - tunnelsPos.dy).abs(), lessThan(35.0));
@@ -47,7 +47,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          tunnelsStreamProvider.overrideWith((ref) => Stream.value([mockTunnel])),
+          tunnelsStreamProvider.overrideWith(
+            (ref) => Stream.value([mockTunnel]),
+          ),
           tunnelSessionsProvider.overrideWith(
             () => TunnelSessionsNotifierMock({
               10: const TunnelSession(
@@ -58,9 +60,7 @@ void main() {
             }),
           ),
         ],
-        child: const MaterialApp(
-          home: Scaffold(body: TunnelsPage()),
-        ),
+        child: const MaterialApp(home: Scaffold(body: TunnelsPage())),
       ),
     );
 

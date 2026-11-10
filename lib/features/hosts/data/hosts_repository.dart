@@ -66,7 +66,9 @@ class HostsRepository {
             );
           }
         } catch (e) {
-          AppLogger.warning('Could not set permissions 0600 on temp hosts file: $e');
+          AppLogger.warning(
+            'Could not set permissions 0600 on temp hosts file: $e',
+          );
         }
 
         final result = await BackgroundProcess.runElevated(
@@ -144,4 +146,3 @@ class HostsRepository {
     return '${hostsContent.trim()}\n\n$newBlock\n';
   }
 }
-

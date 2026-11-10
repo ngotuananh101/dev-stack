@@ -252,18 +252,17 @@ class AppServiceManager {
   /// Lowercases and strips a trailing Windows extension so Windows
   /// (`caddy.exe`) and Linux (`caddy`) dispatch identically.
   @visibleForTesting
-  static String normalizeExecutableName(String fileName) => fileName
-      .toLowerCase()
-      .replaceFirst(RegExp(r'\.(exe|bat|cmd)$'), '');
+  static String normalizeExecutableName(String fileName) =>
+      fileName.toLowerCase().replaceFirst(RegExp(r'\.(exe|bat|cmd)$'), '');
 
   @visibleForTesting
   static bool runsDetachedExecutable(String fileName) => const {
-        'nginx',
-        'httpd',
-        'apache',
-        'apache2',
-        'caddy',
-      }.contains(normalizeExecutableName(fileName));
+    'nginx',
+    'httpd',
+    'apache',
+    'apache2',
+    'caddy',
+  }.contains(normalizeExecutableName(fileName));
 
   @visibleForTesting
   static List<String> argumentsForExecutable(
@@ -287,7 +286,9 @@ class AppServiceManager {
     }
     if (name == 'nginx') {
       final prefix = workingDir.replaceAll('\\', '/');
-      final conf = p.join(workingDir, 'conf', 'nginx.conf').replaceAll('\\', '/');
+      final conf = p
+          .join(workingDir, 'conf', 'nginx.conf')
+          .replaceAll('\\', '/');
       return ['-p', '$prefix/', '-c', conf, '-g', 'daemon off;'];
     }
     if (onLinux && (name == 'apache2' || name == 'httpd')) {
@@ -314,7 +315,12 @@ class AppServiceManager {
     }
     if (name.contains('php-fpm')) {
       final targetAppId = appId ?? 'php82';
-      final conf = p.join(AppConfig.baseDir, 'php', targetAppId, 'php-fpm.conf');
+      final conf = p.join(
+        AppConfig.baseDir,
+        'php',
+        targetAppId,
+        'php-fpm.conf',
+      );
       return ['-F', '-y', conf];
     }
     if (name == 'postgres') {
@@ -335,7 +341,11 @@ class AppServiceManager {
     String? appId,
   }) {
     final name = normalizeExecutableName(fileName);
-    if (name == 'caddy' || name == 'nginx' || name == 'httpd' || name == 'apache' || name == 'apache2') {
+    if (name == 'caddy' ||
+        name == 'nginx' ||
+        name == 'httpd' ||
+        name == 'apache' ||
+        name == 'apache2') {
       return [(host: '*', port: 80), (host: '*', port: 443)];
     }
     if (name == 'redis-server' || name == 'valkey-server') {
@@ -358,7 +368,8 @@ class AppServiceManager {
   }) {
     final name = normalizeExecutableName(fileName);
     if (name == 'elasticsearch') {
-      final path = elasticPasswordPath ??
+      final path =
+          elasticPasswordPath ??
           p.join(AppConfig.dataDir, 'elasticsearch', 'elastic-password.txt');
       final passwordFile = File(path);
       if (passwordFile.existsSync()) {
@@ -642,9 +653,8 @@ class AppServiceManager {
                 }
               }
             },
-            onError: (Object e) => _logger.warning(
-              'stdout read failed for ${app.name}: $e',
-            ),
+            onError: (Object e) =>
+                _logger.warning('stdout read failed for ${app.name}: $e'),
             cancelOnError: false,
           );
 
@@ -673,9 +683,8 @@ class AppServiceManager {
                 }
               }
             },
-            onError: (Object e) => _logger.warning(
-              'stderr read failed for ${app.name}: $e',
-            ),
+            onError: (Object e) =>
+                _logger.warning('stderr read failed for ${app.name}: $e'),
             cancelOnError: false,
           );
       _logSubscriptions[app.appId] = [stdoutSubscription, stderrSubscription];
@@ -720,9 +729,7 @@ class AppServiceManager {
             await process.exitCode.timeout(const Duration(seconds: 3));
             exited = true;
           } catch (e) {
-            _logger.error(
-              'Force kill of ${app.name} did not confirm exit: $e',
-            );
+            _logger.error('Force kill of ${app.name} did not confirm exit: $e');
           }
         }
       } else {
@@ -800,13 +807,15 @@ class AppServiceManager {
     }
     _logger.info('Force killing PID $pid for $appId');
 
-    final effectiveRunner = runProcess ?? (String exec, List<String> args) async {
-      if (_runProcess != null) {
-        final lines = await _runProcess(exec, args);
-        return ProcessResult(pid, 0, lines.join('\n'), '');
-      }
-      return BackgroundProcess.run(exec, args);
-    };
+    final effectiveRunner =
+        runProcess ??
+        (String exec, List<String> args) async {
+          if (_runProcess != null) {
+            final lines = await _runProcess(exec, args);
+            return ProcessResult(pid, 0, lines.join('\n'), '');
+          }
+          return BackgroundProcess.run(exec, args);
+        };
 
     final onWindows = isWindows ?? _isWindows();
     if (!onWindows) {

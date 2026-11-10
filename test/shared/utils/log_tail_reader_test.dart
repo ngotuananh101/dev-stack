@@ -40,15 +40,12 @@ void main() {
 
   test('reads only the requested byte budget from the end', () async {
     // 10k lines of 10 chars: far larger than the 1 KB budget.
-    final content = [
-      for (var i = 0; i < 10000; i++) 'line $i'
-    ].join('\n');
+    final content = [for (var i = 0; i < 10000; i++) 'line $i'].join('\n');
     final file = write('big.log', '$content\n');
 
     final tail = await readLogTail(file, maxBytes: 1024);
 
-    expect(tail.truncated, isTrue,
-        reason: 'older content was skipped');
+    expect(tail.truncated, isTrue, reason: 'older content was skipped');
     expect(tail.bytes, lessThanOrEqualTo(1024));
     expect(tail.lines, isNotEmpty);
     // The newest line must always survive, and no row may be a half-line

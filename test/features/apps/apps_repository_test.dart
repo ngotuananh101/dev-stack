@@ -294,28 +294,31 @@ void main() {
         },
       );
 
-      test('ignores legacy package-manager metadata and keeps only secure URLs', () {
-        final app = AppsRepository.mergeAppsCatalog([
-          {
-            'id': 'php84',
-            'name': 'PHP 8.4',
-            'category': 'runtime',
-            'install_method': 'package_manager',
-            'versions': {
-              '8.4': 'https://example.test/legacy.tar.gz',
-              'insecure': 'http://example.test/insecure.tar.gz',
+      test(
+        'ignores legacy package-manager metadata and keeps only secure URLs',
+        () {
+          final app = AppsRepository.mergeAppsCatalog([
+            {
+              'id': 'php84',
+              'name': 'PHP 8.4',
+              'category': 'runtime',
+              'install_method': 'package_manager',
+              'versions': {
+                '8.4': 'https://example.test/legacy.tar.gz',
+                'insecure': 'http://example.test/insecure.tar.gz',
+              },
+              'package_manager_commands': {
+                'ubuntu': ['sudo apt-get install php'],
+              },
             },
-            'package_manager_commands': {
-              'ubuntu': ['sudo apt-get install php'],
-            },
-          },
-        ], {}).first;
-        expect(app.versions, equals(['8.4']));
-        expect(
-          app.versionLinks,
-          equals({'8.4': 'https://example.test/legacy.tar.gz'}),
-        );
-      });
+          ], {}).first;
+          expect(app.versions, equals(['8.4']));
+          expect(
+            app.versionLinks,
+            equals({'8.4': 'https://example.test/legacy.tar.gz'}),
+          );
+        },
+      );
     });
   });
 }

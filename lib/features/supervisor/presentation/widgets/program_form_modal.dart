@@ -51,8 +51,9 @@ class _ProgramFormModalState extends ConsumerState<ProgramFormModal> {
     _env = TextEditingController(
       text: _envToText(initial?.environmentJson ?? '{}'),
     );
-    _maxRestarts =
-        TextEditingController(text: (initial?.maxRestarts ?? 5).toString());
+    _maxRestarts = TextEditingController(
+      text: (initial?.maxRestarts ?? 5).toString(),
+    );
     _windowSeconds = TextEditingController(
       text: (initial?.restartWindowSeconds ?? 60).toString(),
     );
@@ -83,8 +84,7 @@ class _ProgramFormModalState extends ConsumerState<ProgramFormModal> {
       if (trimmed.isEmpty) continue;
       final eq = trimmed.indexOf('=');
       if (eq <= 0) continue;
-      map[trimmed.substring(0, eq).trim()] =
-          trimmed.substring(eq + 1).trim();
+      map[trimmed.substring(0, eq).trim()] = trimmed.substring(eq + 1).trim();
     }
     return jsonEncode(map);
   }
@@ -142,19 +142,23 @@ class _ProgramFormModalState extends ConsumerState<ProgramFormModal> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: AppTextSize.xs,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.textSecondary,
+        fontSize: AppTextSize.xs,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 
-  Widget _toggle(String title, String subtitle, bool value,
-      ValueChanged<bool> onChanged) {
+  Widget _toggle(
+    String title,
+    String subtitle,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -366,8 +370,7 @@ class _ProgramFormModalState extends ConsumerState<ProgramFormModal> {
             ),
             const Divider(color: AppColors.border, height: 1),
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [

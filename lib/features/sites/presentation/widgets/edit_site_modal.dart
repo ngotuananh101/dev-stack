@@ -13,6 +13,7 @@ import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/code_editor/config_code_editor.dart';
+import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../shared/utils/modal_sizing.dart';
 
 class EditSiteModal extends ConsumerStatefulWidget {
@@ -35,7 +36,8 @@ class _EditSiteModalState extends ConsumerState<EditSiteModal> {
       child: Container(
         width: dims.width,
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * kModalMaxHeightFraction,
+          maxHeight:
+              MediaQuery.of(context).size.height * kModalMaxHeightFraction,
         ),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -188,11 +190,10 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
     if (_siteType == 'php' && _selectedPhpAppId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a PHP version'),
-          backgroundColor: AppColors.error,
-        ),
+      AppDialogs.showError(
+        context,
+        title: 'PHP version required',
+        message: 'Please select a PHP version before saving.',
       );
       return;
     }
@@ -204,17 +205,13 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
           .updateSite(
             id: widget.site.id,
             domain: _domainController.text.trim(),
-            rootDir: _siteType == 'proxy'
-                ? ''
-                : _rootDirController.text.trim(),
+            rootDir: _siteType == 'proxy' ? '' : _rootDirController.text.trim(),
             siteType: _siteType,
             phpAppId: _siteType == 'php' ? _selectedPhpAppId : null,
             proxyTarget: _siteType == 'proxy'
                 ? _proxyTargetController.text.trim()
                 : null,
-            command: _siteType == 'cli'
-                ? _commandController.text.trim()
-                : null,
+            command: _siteType == 'cli' ? _commandController.text.trim() : null,
             port: _siteType == 'cli'
                 ? int.tryParse(_portController.text.trim())
                 : null,
@@ -222,18 +219,11 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
             useSsl: _useSsl,
           );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('General settings updated')),
-        );
+        AppDialogs.showToast(context, 'General settings updated');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppDialogs.showErrorFrom(context, e, title: 'Could not save site');
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -268,220 +258,219 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                _buildLabel('Domain Name'),
-                AppTextField(
-                  controller: _domainController,
-                  enabled: false,
-                  hint: 'e.g. my-project.test',
-                  prefixIcon: LucideIcons.atSign,
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: 20),
-                _buildLabel('Site Type'),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    _buildTypeOption('PHP', 'php', LucideIcons.code),
-                    _buildTypeOption('Static', 'static', LucideIcons.fileCode),
-                    _buildTypeOption('Proxy', 'proxy', LucideIcons.shuffle),
-                    _buildTypeOption('CLI App', 'cli', LucideIcons.terminal),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // --- CLI App options ---
-                // When the site type is CLI, surface the preset (which
-                // auto-fills command + port), the start command, the internal
-                // port and the auto-start toggle that CliProcessManager uses to
-                // spawn and proxy the process.
-                if (_siteType == 'cli') ...[
-                  _buildLabel('Preset'),
-                  _buildPresetDropdown(),
-                  const SizedBox(height: 20),
-                  _buildLabel('Start Command'),
+                  _buildLabel('Domain Name'),
                   AppTextField(
-                    controller: _commandController,
-                    hint: 'e.g. npm run dev',
-                    prefixIcon: LucideIcons.terminal,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a start command';
-                      }
-                      return null;
-                    },
+                    controller: _domainController,
+                    enabled: false,
+                    hint: 'e.g. my-project.test',
+                    prefixIcon: LucideIcons.atSign,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Required' : null,
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Internal Port'),
-                  AppTextField(
-                    controller: _portController,
-                    hint: 'e.g. 3000',
-                    prefixIcon: LucideIcons.server,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a port';
-                      }
-                      final parsed = int.tryParse(value.trim());
-                      if (parsed == null || parsed < 1 || parsed > 65535) {
-                        return 'Enter a valid port (1-65535)';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  _buildLabel('Site Type'),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
                     children: [
-                      Text(
-                        'Auto-start on launch',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: AppTextSize.xs,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      _buildTypeOption('PHP', 'php', LucideIcons.code),
+                      _buildTypeOption(
+                        'Static',
+                        'static',
+                        LucideIcons.fileCode,
                       ),
-                      Switch(
-                        value: _autoStart,
-                        onChanged: (v) => setState(() => _autoStart = v),
-                      ),
+                      _buildTypeOption('Proxy', 'proxy', LucideIcons.shuffle),
+                      _buildTypeOption('CLI App', 'cli', LucideIcons.terminal),
                     ],
                   ),
                   const SizedBox(height: 20),
-                ],
 
-                if (_siteType != 'proxy') ...[
-                  _buildLabel('Root Directory'),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppTextField(
-                          controller: _rootDirController,
-                          hint: 'Path to project',
-                          prefixIcon: LucideIcons.folder,
-                          validator: (v) =>
-                              (v == null || v.isEmpty) ? 'Required' : null,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      AppButton(
-                        style: AppButtonStyle.secondary,
-                        icon: const Icon(
-                          LucideIcons.folderOpen,
-                          size: 18,
-                        ),
-                        onPressed: _pickDirectory,
-                        label: '',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                ],
-
-                if (_siteType == 'proxy') ...[
-                  _buildLabel('Proxy Target URL'),
-                  AppTextField(
-                    controller: _proxyTargetController,
-                    hint: 'e.g. http://localhost:3000',
-                    prefixIcon: LucideIcons.link,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a target URL';
-                      }
-                      try {
-                        Sites.validateProxyTarget(value);
-                      } on ArgumentError catch (e) {
-                        return e.message.toString();
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                ],
-
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_siteType == 'php')
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('PHP Version'),
-                            Container(
-                              height: 36,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: AppColors.border,
-                                ),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _selectedPhpAppId,
-                                  isExpanded: true,
-                                  dropdownColor: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(8),
-                                  icon: const Icon(
-                                    LucideIcons.chevronDown,
-                                    size: 16,
-                                    color: AppColors.textMuted,
-                                  ),
-                                  items: phpApps
-                                      .map(
-                                        (a) => DropdownMenuItem(
-                                          value: a.appId,
-                                          child: Text(
-                                            a.name,
-                                            style: const TextStyle(
-                                              fontSize: AppTextSize.sm,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (v) =>
-                                      setState(() => _selectedPhpAppId = v),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      const Spacer(),
-                    const SizedBox(width: 24),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  // --- CLI App options ---
+                  // When the site type is CLI, surface the preset (which
+                  // auto-fills command + port), the start command, the internal
+                  // port and the auto-start toggle that CliProcessManager uses to
+                  // spawn and proxy the process.
+                  if (_siteType == 'cli') ...[
+                    _buildLabel('Preset'),
+                    _buildPresetDropdown(),
+                    const SizedBox(height: 20),
+                    _buildLabel('Start Command'),
+                    AppTextField(
+                      controller: _commandController,
+                      hint: 'e.g. npm run dev',
+                      prefixIcon: LucideIcons.terminal,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter a start command';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    _buildLabel('Internal Port'),
+                    AppTextField(
+                      controller: _portController,
+                      hint: 'e.g. 3000',
+                      prefixIcon: LucideIcons.server,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter a port';
+                        }
+                        final parsed = int.tryParse(value.trim());
+                        if (parsed == null || parsed < 1 || parsed > 65535) {
+                          return 'Enter a valid port (1-65535)';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildLabel('SSL'),
+                        Text(
+                          'Auto-start on launch',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: AppTextSize.xs,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         Switch(
-                          value: _useSsl,
-                          onChanged: (v) => setState(() => _useSsl = v),
+                          value: _autoStart,
+                          onChanged: (v) => setState(() => _autoStart = v),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 20),
                   ],
-                ),
-                const SizedBox(height: 24),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: AppButton(
-                    label: 'Save General Settings',
-                    icon: const Icon(LucideIcons.save, size: 14),
-                    style: AppButtonStyle.success,
-                    isLoading: _isSaving,
-                    onPressed: _handleSave,
+
+                  if (_siteType != 'proxy') ...[
+                    _buildLabel('Root Directory'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppTextField(
+                            controller: _rootDirController,
+                            hint: 'Path to project',
+                            prefixIcon: LucideIcons.folder,
+                            validator: (v) =>
+                                (v == null || v.isEmpty) ? 'Required' : null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        AppButton(
+                          style: AppButtonStyle.secondary,
+                          icon: const Icon(LucideIcons.folderOpen, size: 18),
+                          onPressed: _pickDirectory,
+                          label: '',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  if (_siteType == 'proxy') ...[
+                    _buildLabel('Proxy Target URL'),
+                    AppTextField(
+                      controller: _proxyTargetController,
+                      hint: 'e.g. http://localhost:3000',
+                      prefixIcon: LucideIcons.link,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a target URL';
+                        }
+                        try {
+                          Sites.validateProxyTarget(value);
+                        } on ArgumentError catch (e) {
+                          return e.message.toString();
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_siteType == 'php')
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('PHP Version'),
+                              Container(
+                                height: 36,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _selectedPhpAppId,
+                                    isExpanded: true,
+                                    dropdownColor: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(8),
+                                    icon: const Icon(
+                                      LucideIcons.chevronDown,
+                                      size: 16,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    items: phpApps
+                                        .map(
+                                          (a) => DropdownMenuItem(
+                                            value: a.appId,
+                                            child: Text(
+                                              a.name,
+                                              style: const TextStyle(
+                                                fontSize: AppTextSize.sm,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (v) =>
+                                        setState(() => _selectedPhpAppId = v),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        const Spacer(),
+                      const SizedBox(width: 24),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('SSL'),
+                          Switch(
+                            value: _useSsl,
+                            onChanged: (v) => setState(() => _useSsl = v),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: AppButton(
+                      label: 'Save General Settings',
+                      icon: const Icon(LucideIcons.save, size: 14),
+                      style: AppButtonStyle.success,
+                      isLoading: _isSaving,
+                      onPressed: _handleSave,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
           ),
         );
       },
@@ -522,11 +511,8 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
               label,
               style: TextStyle(
                 fontSize: AppTextSize.sm,
-                fontWeight:
-                    isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.textSecondary,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? AppColors.primary : AppColors.textSecondary,
               ),
             ),
           ],
@@ -548,7 +534,10 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
         child: DropdownButton<String>(
           value: _selectedPreset,
           isExpanded: true,
-          style: const TextStyle(fontSize: AppTextSize.sm, color: AppColors.textPrimary),
+          style: const TextStyle(
+            fontSize: AppTextSize.sm,
+            color: AppColors.textPrimary,
+          ),
           dropdownColor: AppColors.surface,
           borderRadius: BorderRadius.circular(8),
           icon: const Icon(
@@ -719,18 +708,14 @@ class _SslTabState extends ConsumerState<_SslTab> {
         .read(sitesProvider.notifier)
         .saveSslFile(widget.site, _selectedFile, _controller.text);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('SSL file saved successfully')),
-      );
+      AppDialogs.showToast(context, 'SSL file saved successfully');
     }
   }
 
   Future<void> _regenerate() async {
     await ref.read(sitesProvider.notifier).regenerateSsl(widget.site);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('SSL certificate regenerated')),
-      );
+      AppDialogs.showToast(context, 'SSL certificate regenerated');
       _loadSslFiles();
     }
   }
@@ -749,9 +734,17 @@ class _SslTabState extends ConsumerState<_SslTab> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildTypeButton('cert', 'Certificate', tooltip: 'Certificate (cert.pem)'),
+                      _buildTypeButton(
+                        'cert',
+                        'Certificate',
+                        tooltip: 'Certificate (cert.pem)',
+                      ),
                       const SizedBox(width: 8),
-                      _buildTypeButton('key', 'Private Key', tooltip: 'Private Key (key.pem)'),
+                      _buildTypeButton(
+                        'key',
+                        'Private Key',
+                        tooltip: 'Private Key (key.pem)',
+                      ),
                     ],
                   ),
                 ),
@@ -894,9 +887,15 @@ class _LogTabState extends ConsumerState<_LogTab> {
   @override
   Widget build(BuildContext context) {
     final apps = ref.watch(appsProvider).value ?? [];
-    final hasNginx = apps.any((a) => a.isInstalled && a.appId.toLowerCase().contains('nginx'));
-    final hasApache = apps.any((a) => a.isInstalled && a.appId.toLowerCase().contains('apache'));
-    final hasCaddy = apps.any((a) => a.isInstalled && a.appId.toLowerCase().contains('caddy'));
+    final hasNginx = apps.any(
+      (a) => a.isInstalled && a.appId.toLowerCase().contains('nginx'),
+    );
+    final hasApache = apps.any(
+      (a) => a.isInstalled && a.appId.toLowerCase().contains('apache'),
+    );
+    final hasCaddy = apps.any(
+      (a) => a.isInstalled && a.appId.toLowerCase().contains('caddy'),
+    );
 
     final availableOptions = (hasNginx || hasApache || hasCaddy)
         ? siteLogOptions.where((opt) {
@@ -909,7 +908,9 @@ class _LogTabState extends ConsumerState<_LogTab> {
 
     final effectiveLog = availableOptions.any((opt) => opt.id == _selectedLog)
         ? _selectedLog
-        : (availableOptions.isNotEmpty ? availableOptions.first.id : _selectedLog);
+        : (availableOptions.isNotEmpty
+              ? availableOptions.first.id
+              : _selectedLog);
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -978,7 +979,10 @@ class _LogTabState extends ConsumerState<_LogTab> {
     );
   }
 
-  Widget _buildLogSelect(List<({String id, String label})> options, String currentSelected) {
+  Widget _buildLogSelect(
+    List<({String id, String label})> options,
+    String currentSelected,
+  ) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(

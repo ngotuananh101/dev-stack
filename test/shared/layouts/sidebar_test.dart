@@ -7,20 +7,21 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 void main() {
   Widget host() => ProviderScope(
-        child: MaterialApp(
-          home: Scaffold(
-            body: const Row(
-              children: [
-                Sidebar(),
-                Expanded(child: SizedBox.expand()),
-              ],
-            ),
-          ),
+    child: MaterialApp(
+      home: Scaffold(
+        body: const Row(
+          children: [
+            Sidebar(),
+            Expanded(child: SizedBox.expand()),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
-  testWidgets('starts expanded at 240px with every nav label visible',
-      (tester) async {
+  testWidgets('starts expanded at 240px with every nav label visible', (
+    tester,
+  ) async {
     await tester.pumpWidget(host());
     await tester.pumpAndSettle();
 

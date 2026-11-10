@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import '../../../core/config/app_config.dart';
 
-final tunnelDownloaderServiceProvider = Provider<TunnelDownloaderService>((ref) {
+final tunnelDownloaderServiceProvider = Provider<TunnelDownloaderService>((
+  ref,
+) {
   return TunnelDownloaderService();
 });
 
@@ -19,9 +21,9 @@ class TunnelDownloaderService {
     String Function()? baseDirResolver,
     bool Function()? isWindowsResolver,
     Dio? dio,
-  })  : _baseDirResolver = baseDirResolver ?? (() => AppConfig.baseDir),
-        _isWindowsResolver = isWindowsResolver ?? (() => Platform.isWindows),
-        _dio = dio ?? Dio();
+  }) : _baseDirResolver = baseDirResolver ?? (() => AppConfig.baseDir),
+       _isWindowsResolver = isWindowsResolver ?? (() => Platform.isWindows),
+       _dio = dio ?? Dio();
 
   String get tunnelsDir => p.join(_baseDirResolver(), 'bin', 'tunnels');
 
@@ -119,7 +121,9 @@ class TunnelDownloaderService {
         }
 
         if (binFile == null) {
-          throw StateError('Binary $binName not found inside archive from $url');
+          throw StateError(
+            'Binary $binName not found inside archive from $url',
+          );
         }
 
         final targetFile = File(targetPath);

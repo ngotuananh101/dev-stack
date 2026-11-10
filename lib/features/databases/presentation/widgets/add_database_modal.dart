@@ -6,6 +6,7 @@ import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../shared/utils/modal_sizing.dart';
 import '../../data/databases_provider.dart';
 import '../../domain/database_record.dart';
@@ -106,11 +107,10 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
       widget.onClose();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: AppColors.error,
-          ),
+        AppDialogs.showError(
+          context,
+          title: 'Could not create the database',
+          message: '$e',
         );
       }
     } finally {
@@ -167,7 +167,9 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
                         if (value == null || value.isEmpty) {
                           return 'Please enter a database name';
                         }
-                        if (!RegExp(r'^[A-Za-z][A-Za-z0-9_]*$').hasMatch(value)) {
+                        if (!RegExp(
+                          r'^[A-Za-z][A-Za-z0-9_]*$',
+                        ).hasMatch(value)) {
                           return 'Letters, digits, _ only; must start with a letter';
                         }
                         return null;
@@ -275,5 +277,4 @@ class _AddDatabaseModalState extends ConsumerState<AddDatabaseModal> {
       ),
     );
   }
-
 }

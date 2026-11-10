@@ -100,32 +100,35 @@ void main() {
       expect(calls.first, ['taskkill', '/F', '/T', '/PID', '5678']);
     });
 
-    test('Case 5: PID <= 0: skips kill without executing any commands', () async {
-      final calls = <List<String>>[];
-      final manager = AppServiceManager(AppLogger);
+    test(
+      'Case 5: PID <= 0: skips kill without executing any commands',
+      () async {
+        final calls = <List<String>>[];
+        final manager = AppServiceManager(AppLogger);
 
-      await manager.forceKillPid(
-        'nginx',
-        0,
-        isWindows: false,
-        runProcess: (exec, args) async {
-          calls.add([exec, ...args]);
-          return ProcessResult(0, 0, '', '');
-        },
-      );
+        await manager.forceKillPid(
+          'nginx',
+          0,
+          isWindows: false,
+          runProcess: (exec, args) async {
+            calls.add([exec, ...args]);
+            return ProcessResult(0, 0, '', '');
+          },
+        );
 
-      await manager.forceKillPid(
-        'nginx',
-        -5,
-        isWindows: false,
-        runProcess: (exec, args) async {
-          calls.add([exec, ...args]);
-          return ProcessResult(-5, 0, '', '');
-        },
-      );
+        await manager.forceKillPid(
+          'nginx',
+          -5,
+          isWindows: false,
+          runProcess: (exec, args) async {
+            calls.add([exec, ...args]);
+            return ProcessResult(-5, 0, '', '');
+          },
+        );
 
-      expect(calls, isEmpty);
-    });
+        expect(calls, isEmpty);
+      },
+    );
 
     test(
       'Linux: fallback kill throws exception, caught and logged without crashing',

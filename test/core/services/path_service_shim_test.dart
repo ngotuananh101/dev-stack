@@ -4,8 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('PathService shim helpers', () {
     test('shimPathsFor returns bat, cmd, and extensionless paths', () {
-      final paths =
-          PathService.shimPathsFor(r'C:\Ponta\bin', 'node', isLinux: false);
+      final paths = PathService.shimPathsFor(
+        r'C:\Ponta\bin',
+        'node',
+        isLinux: false,
+      );
 
       expect(paths, [
         r'C:\Ponta\bin\node.bat',
@@ -62,8 +65,11 @@ void main() {
     });
 
     test('shimPathsFor covers remove targets for every generated shim', () {
-      final paths =
-          PathService.shimPathsFor(r'C:\Ponta\bin', 'composer', isLinux: false);
+      final paths = PathService.shimPathsFor(
+        r'C:\Ponta\bin',
+        'composer',
+        isLinux: false,
+      );
 
       expect(paths.map((path) => path.split(r'\').last), [
         'composer.bat',

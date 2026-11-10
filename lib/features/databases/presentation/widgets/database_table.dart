@@ -14,7 +14,7 @@ class DatabaseTable extends StatelessWidget {
   final Function(DatabaseRecord) onEdit;
 
   const DatabaseTable({
-    super.key, 
+    super.key,
     required this.databases,
     required this.engineId,
     required this.onDelete,
@@ -96,7 +96,10 @@ class DatabaseTable extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'No Data',
-              style: TextStyle(color: AppColors.textMuted, fontSize: AppTextSize.sm),
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: AppTextSize.sm,
+              ),
             ),
           ],
         ),
@@ -104,7 +107,10 @@ class DatabaseTable extends StatelessWidget {
     );
   }
 
-  Widget _buildTableHeader(ActionColumnPlan sqlPlan, ActionColumnPlan redisPlan) {
+  Widget _buildTableHeader(
+    ActionColumnPlan sqlPlan,
+    ActionColumnPlan redisPlan,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -114,34 +120,43 @@ class DatabaseTable extends StatelessWidget {
       ),
       child: Row(
         children: isRedis
-        ? [
-            Expanded(flex: 1, child: _buildHeaderCell('DB INDEX')),
-            Expanded(flex: 1, child: _buildHeaderCell('STATUS')),
-            Expanded(flex: 3, child: _buildHeaderCell('NOTE')),
-            SizedBox(
-              width: redisPlan.width.isFinite && redisPlan.width > 0
-                  ? redisPlan.width
-                  : null,
-              child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
-            ),
-          ]
-        : [
-            Expanded(flex: 2, child: _buildHeaderCell('DATABASE NAME')),
-            Expanded(flex: 1, child: _buildHeaderCell('USERNAME')),
-            Expanded(flex: 1, child: _buildHeaderCell('PASSWORD')),
-            Expanded(flex: 2, child: _buildHeaderCell('NOTE')),
-            SizedBox(
-              width: sqlPlan.width.isFinite && sqlPlan.width > 0
-                  ? sqlPlan.width
-                  : null,
-              child: _buildHeaderCell('OPERATE', alignment: TextAlign.right),
-            ),
-          ],
+            ? [
+                Expanded(flex: 1, child: _buildHeaderCell('DB INDEX')),
+                Expanded(flex: 1, child: _buildHeaderCell('STATUS')),
+                Expanded(flex: 3, child: _buildHeaderCell('NOTE')),
+                SizedBox(
+                  width: redisPlan.width.isFinite && redisPlan.width > 0
+                      ? redisPlan.width
+                      : null,
+                  child: _buildHeaderCell(
+                    'OPERATE',
+                    alignment: TextAlign.right,
+                  ),
+                ),
+              ]
+            : [
+                Expanded(flex: 2, child: _buildHeaderCell('DATABASE NAME')),
+                Expanded(flex: 1, child: _buildHeaderCell('USERNAME')),
+                Expanded(flex: 1, child: _buildHeaderCell('PASSWORD')),
+                Expanded(flex: 2, child: _buildHeaderCell('NOTE')),
+                SizedBox(
+                  width: sqlPlan.width.isFinite && sqlPlan.width > 0
+                      ? sqlPlan.width
+                      : null,
+                  child: _buildHeaderCell(
+                    'OPERATE',
+                    alignment: TextAlign.right,
+                  ),
+                ),
+              ],
       ),
     );
   }
 
-  Widget _buildHeaderCell(String label, {TextAlign alignment = TextAlign.left}) {
+  Widget _buildHeaderCell(
+    String label, {
+    TextAlign alignment = TextAlign.left,
+  }) {
     return Text(
       label,
       textAlign: alignment,
@@ -167,11 +182,7 @@ class DatabaseTable extends StatelessWidget {
   List<RowAction> _rowActions(DatabaseRecord db) {
     if (isRedis) {
       return [
-        RowAction.icon(
-          'Flush DB',
-          () {},
-          icon: Icons.refresh_rounded,
-        ),
+        RowAction.icon('Flush DB', () {}, icon: Icons.refresh_rounded),
         RowAction.icon(
           'Clear Record',
           () => onDelete(db),
@@ -197,8 +208,10 @@ class DatabaseTable extends StatelessWidget {
   /// every flexible data column. Redis rows carry one column fewer than SQL
   /// rows (3 vs 4), so they keep their actions inline at a narrower window —
   /// the intended difference, not a shared breakpoint.
-  static const double _operateReservedWidthForRedis = 16 * 2 + _flexColumnMinWidth * 3;
-  static const double _operateReservedWidthForSql = 16 * 2 + _flexColumnMinWidth * 4;
+  static const double _operateReservedWidthForRedis =
+      16 * 2 + _flexColumnMinWidth * 3;
+  static const double _operateReservedWidthForSql =
+      16 * 2 + _flexColumnMinWidth * 4;
 
   Widget _buildTableRow(
     BuildContext context,
@@ -210,125 +223,155 @@ class DatabaseTable extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        border: isLast ? null : Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+        border: isLast
+            ? null
+            : Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Row(
-        children: isRedis 
-        ? [
-            Expanded(
-              flex: 1,
-              child: Text(
-                db.name.toUpperCase(),
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: AppTextSize.xs, fontWeight: FontWeight.bold),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'Active',
-                  style: TextStyle(color: AppColors.success, fontSize: AppTextSize.xxs, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 3,
-              child: Text(
-                db.note ?? '-',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            SizedBox(
-              width: actionColumnWidth(plan),
-              child: RowActionMenu(
-                availableWidth: availableWidth - _operateReservedWidthForRedis,
-                gap: 8,
-                columnWidth: plan.width,
-                collapsed: plan.collapsed,
-                actions: _rowActions(db),
-              ),
-            ),
-          ]
-        : [
-            Expanded(
-              flex: 2,
-              child: Text(
-                db.name,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: AppTextSize.xs, fontWeight: FontWeight.bold),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Text(
-                db.username,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      db.password.isEmpty ? '-' : '********',
-                      style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: AppTextSize.xs),
-                      overflow: TextOverflow.ellipsis,
+        children: isRedis
+            ? [
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    db.name.toUpperCase(),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: AppTextSize.xs,
+                      fontWeight: FontWeight.bold,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  if (db.password.isNotEmpty)
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: db.password));
-                          AppDialogs.showToast(context, 'Password copied!');
-                        },
-                        borderRadius: BorderRadius.circular(4),
-                        child: const Padding(
-                          padding: EdgeInsets.all(4.0),
-                          child: Icon(
-                            Icons.copy_rounded,
-                            size: 14,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'Active',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontSize: AppTextSize.xxs,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                db.note ?? '-',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            SizedBox(
-              width: actionColumnWidth(plan),
-              child: RowActionMenu(
-                availableWidth: availableWidth - _operateReservedWidthForSql,
-                gap: 8,
-                columnWidth: plan.width,
-                collapsed: plan.collapsed,
-                actions: _rowActions(db),
-              ),
-            ),
-          ],
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    db.note ?? '-',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: AppTextSize.xs,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                SizedBox(
+                  width: actionColumnWidth(plan),
+                  child: RowActionMenu(
+                    availableWidth:
+                        availableWidth - _operateReservedWidthForRedis,
+                    gap: 8,
+                    columnWidth: plan.width,
+                    collapsed: plan.collapsed,
+                    actions: _rowActions(db),
+                  ),
+                ),
+              ]
+            : [
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    db.name,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: AppTextSize.xs,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    db.username,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: AppTextSize.xs,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          db.password.isEmpty ? '-' : '********',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: AppTextSize.xs,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (db.password.isNotEmpty)
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              Clipboard.setData(
+                                ClipboardData(text: db.password),
+                              );
+                              AppDialogs.showToast(context, 'Password copied!');
+                            },
+                            borderRadius: BorderRadius.circular(4),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4.0),
+                              child: Icon(
+                                Icons.copy_rounded,
+                                size: 14,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    db.note ?? '-',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: AppTextSize.xs,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                SizedBox(
+                  width: actionColumnWidth(plan),
+                  child: RowActionMenu(
+                    availableWidth:
+                        availableWidth - _operateReservedWidthForSql,
+                    gap: 8,
+                    columnWidth: plan.width,
+                    collapsed: plan.collapsed,
+                    actions: _rowActions(db),
+                  ),
+                ),
+              ],
       ),
     );
   }
-
 }

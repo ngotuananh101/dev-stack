@@ -38,13 +38,18 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
     super.initState();
     final initial = widget.initialTunnel;
     _nameController = TextEditingController(text: initial?.name ?? '');
-    _targetSiteDomainController =
-        TextEditingController(text: initial?.targetSiteDomain ?? '');
-    _targetPortController =
-        TextEditingController(text: initial?.targetPort.toString() ?? '80');
-    _authTokenController = TextEditingController(text: initial?.authToken ?? '');
-    _customDomainController =
-        TextEditingController(text: initial?.customDomain ?? '');
+    _targetSiteDomainController = TextEditingController(
+      text: initial?.targetSiteDomain ?? '',
+    );
+    _targetPortController = TextEditingController(
+      text: initial?.targetPort.toString() ?? '80',
+    );
+    _authTokenController = TextEditingController(
+      text: initial?.authToken ?? '',
+    );
+    _customDomainController = TextEditingController(
+      text: initial?.customDomain ?? '',
+    );
 
     _targetType = initial?.targetType ?? 'site';
     _provider = initial?.provider ?? 'cloudflare';
@@ -66,7 +71,9 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
 
     final isEditing = widget.initialTunnel != null;
     final tunnel = TunnelModel(
-      id: isEditing ? widget.initialTunnel!.id : 0, // isar_plus: 0 signals auto-increment
+      id: isEditing
+          ? widget.initialTunnel!.id
+          : 0, // isar_plus: 0 signals auto-increment
       name: _nameController.text.trim(),
       provider: _provider,
       targetType: _targetType,
@@ -81,10 +88,8 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
           ? null
           : _customDomainController.text.trim(),
       autoStart: _autoStart,
-      createdAt:
-          isEditing ? widget.initialTunnel!.createdAt : DateTime.now(),
-      lastActiveAt:
-          isEditing ? widget.initialTunnel!.lastActiveAt : null,
+      createdAt: isEditing ? widget.initialTunnel!.createdAt : DateTime.now(),
+      lastActiveAt: isEditing ? widget.initialTunnel!.lastActiveAt : null,
     );
 
     await ref.read(tunnelManagerServiceProvider).saveTunnel(tunnel);
@@ -191,7 +196,9 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                           prefixIcon: LucideIcons.hash,
                           keyboardType: TextInputType.number,
                           validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Required';
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Required';
+                            }
                             final n = int.tryParse(v.trim());
                             if (n == null || n < 1 || n > 65535) {
                               return 'Enter a valid port (1-65535)';
@@ -343,8 +350,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                     color: selected
                         ? AppColors.primary
                         : AppColors.textSecondary,
-                    fontWeight:
-                        selected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                     fontSize: AppTextSize.sm,
                   ),
                 ),
@@ -552,11 +558,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
               value: '__custom__',
               child: Row(
                 children: [
-                  Icon(
-                    LucideIcons.plus,
-                    size: 14,
-                    color: AppColors.primary,
-                  ),
+                  Icon(LucideIcons.plus, size: 14, color: AppColors.primary),
                   SizedBox(width: 8),
                   Text(
                     '+ Custom domain...',

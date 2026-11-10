@@ -101,7 +101,9 @@ class LocalSecretVault {
     final payload = ciphertext.substring(prefix.length);
     final parts = payload.split(':');
     if (parts.length != 3) {
-      throw const FormatException('Invalid encrypted format for LocalSecretVault');
+      throw const FormatException(
+        'Invalid encrypted format for LocalSecretVault',
+      );
     }
 
     final iv = base64Url.decode(parts[0]);
@@ -113,7 +115,9 @@ class LocalSecretVault {
     final actualTag = hmacKey.convert([...iv, ...cipherBytes]).bytes;
 
     if (!_constantTimeEquals(actualTag, expectedTag)) {
-      throw const FormatException('Authentication failed: HMAC mismatch in LocalSecretVault');
+      throw const FormatException(
+        'Authentication failed: HMAC mismatch in LocalSecretVault',
+      );
     }
 
     final plainBytes = _cryptStream(cipherBytes, iv);
@@ -137,7 +141,11 @@ class LocalSecretVault {
       ];
       final keyStreamBlock = sha256.convert(blockData).bytes;
 
-      for (var i = 0; i < keyStreamBlock.length && offset < input.length; i++, offset++) {
+      for (
+        var i = 0;
+        i < keyStreamBlock.length && offset < input.length;
+        i++, offset++
+      ) {
         output[offset] = input[offset] ^ keyStreamBlock[i];
       }
       blockIndex++;

@@ -47,7 +47,9 @@ class SupervisorTable extends StatelessWidget {
         // even when rows carry different numbers of actions.
         final plan = planActionColumn(
           [for (final program in programs) _rowActions(program)],
-          availableWidth: operateWidth.isFinite && operateWidth > 0 ? operateWidth : 1,
+          availableWidth: operateWidth.isFinite && operateWidth > 0
+              ? operateWidth
+              : 1,
           firstGap: 6,
         );
 
@@ -312,11 +314,7 @@ class SupervisorTable extends StatelessWidget {
         () => onViewLogs(program),
         icon: LucideIcons.list,
       ),
-      RowAction.icon(
-        'Edit',
-        () => onEdit(program),
-        icon: LucideIcons.edit,
-      ),
+      RowAction.icon('Edit', () => onEdit(program), icon: LucideIcons.edit),
       RowAction.icon(
         'Delete',
         () => onDelete(program),

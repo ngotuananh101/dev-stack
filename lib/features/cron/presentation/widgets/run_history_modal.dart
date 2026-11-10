@@ -63,7 +63,8 @@ class _RunHistoryModalState extends State<RunHistoryModal> {
             AppModalHeader(
               icon: LucideIcons.history,
               title: 'Run History - ${widget.job.name}',
-              subtitle: 'Latest ${records.length} of 20 retained runs (in-memory)',
+              subtitle:
+                  'Latest ${records.length} of 20 retained runs (in-memory)',
               onClose: () => Navigator.of(context).pop(),
             ),
             Expanded(

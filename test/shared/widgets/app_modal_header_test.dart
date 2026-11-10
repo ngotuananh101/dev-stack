@@ -8,72 +8,78 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 void main() {
   group('AppModalHeader', () {
-    testWidgets('renders standard title, subtitle, icon, close button, and divider', (tester) async {
-      var closed = false;
+    testWidgets(
+      'renders standard title, subtitle, icon, close button, and divider',
+      (tester) async {
+        var closed = false;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: AppModalHeader(
-              icon: LucideIcons.globe,
-              title: 'Add New Site',
-              subtitle: 'Configure a new virtual host for your project',
-              onClose: () => closed = true,
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: AppModalHeader(
+                icon: LucideIcons.globe,
+                title: 'Add New Site',
+                subtitle: 'Configure a new virtual host for your project',
+                onClose: () => closed = true,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      // Verify Icon
-      final iconFinder = find.byIcon(LucideIcons.globe);
-      expect(iconFinder, findsOneWidget);
-      final iconWidget = tester.widget<Icon>(iconFinder);
-      expect(iconWidget.size, 20.0);
-      expect(iconWidget.color, AppColors.primary);
+        // Verify Icon
+        final iconFinder = find.byIcon(LucideIcons.globe);
+        expect(iconFinder, findsOneWidget);
+        final iconWidget = tester.widget<Icon>(iconFinder);
+        expect(iconWidget.size, 20.0);
+        expect(iconWidget.color, AppColors.primary);
 
-      // Verify Title text and style
-      final titleFinder = find.text('Add New Site');
-      expect(titleFinder, findsOneWidget);
-      final titleWidget = tester.widget<Text>(titleFinder);
-      expect(titleWidget.style?.fontSize, AppTextSize.sm);
-      expect(titleWidget.style?.fontWeight, FontWeight.bold);
-      expect(titleWidget.style?.color, AppColors.textPrimary);
+        // Verify Title text and style
+        final titleFinder = find.text('Add New Site');
+        expect(titleFinder, findsOneWidget);
+        final titleWidget = tester.widget<Text>(titleFinder);
+        expect(titleWidget.style?.fontSize, AppTextSize.sm);
+        expect(titleWidget.style?.fontWeight, FontWeight.bold);
+        expect(titleWidget.style?.color, AppColors.textPrimary);
 
-      // Verify Subtitle text and style
-      final subtitleFinder = find.text('Configure a new virtual host for your project');
-      expect(subtitleFinder, findsOneWidget);
-      final subtitleWidget = tester.widget<Text>(subtitleFinder);
-      expect(subtitleWidget.style?.fontSize, AppTextSize.xxs);
-      expect(subtitleWidget.style?.color, AppColors.textMuted);
+        // Verify Subtitle text and style
+        final subtitleFinder = find.text(
+          'Configure a new virtual host for your project',
+        );
+        expect(subtitleFinder, findsOneWidget);
+        final subtitleWidget = tester.widget<Text>(subtitleFinder);
+        expect(subtitleWidget.style?.fontSize, AppTextSize.xxs);
+        expect(subtitleWidget.style?.color, AppColors.textMuted);
 
-      // Verify Padding
-      final paddingFinder = find.byWidgetPredicate(
-        (w) =>
-            w is Padding &&
-            w.padding == const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-      );
-      expect(paddingFinder, findsOneWidget);
+        // Verify Padding
+        final paddingFinder = find.byWidgetPredicate(
+          (w) =>
+              w is Padding &&
+              w.padding ==
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+        );
+        expect(paddingFinder, findsOneWidget);
 
-      // Verify Close Button
-      final closeButtonFinder = find.byType(AppIconButton);
-      expect(closeButtonFinder, findsOneWidget);
-      final closeButton = tester.widget<AppIconButton>(closeButtonFinder);
-      expect(closeButton.icon, LucideIcons.x);
-      expect(closeButton.size, AppIconButtonSize.sm);
-      expect(closeButton.tooltip, 'Close');
+        // Verify Close Button
+        final closeButtonFinder = find.byType(AppIconButton);
+        expect(closeButtonFinder, findsOneWidget);
+        final closeButton = tester.widget<AppIconButton>(closeButtonFinder);
+        expect(closeButton.icon, LucideIcons.x);
+        expect(closeButton.size, AppIconButtonSize.sm);
+        expect(closeButton.tooltip, 'Close');
 
-      // Tap close button
-      await tester.tap(closeButtonFinder);
-      await tester.pump();
-      expect(closed, isTrue);
+        // Tap close button
+        await tester.tap(closeButtonFinder);
+        await tester.pump();
+        expect(closed, isTrue);
 
-      // Verify Divider
-      final dividerFinder = find.byType(Divider);
-      expect(dividerFinder, findsOneWidget);
-      final divider = tester.widget<Divider>(dividerFinder);
-      expect(divider.color, AppColors.border);
-      expect(divider.height, 1.0);
-    });
+        // Verify Divider
+        final dividerFinder = find.byType(Divider);
+        expect(dividerFinder, findsOneWidget);
+        final divider = tester.widget<Divider>(dividerFinder);
+        expect(divider.color, AppColors.border);
+        expect(divider.height, 1.0);
+      },
+    );
 
     testWidgets('renders custom iconWidget and actions', (tester) async {
       var actionTapped = false;

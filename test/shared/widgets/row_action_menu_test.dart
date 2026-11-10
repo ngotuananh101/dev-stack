@@ -40,8 +40,9 @@ void main() {
     expect(find.byIcon(LucideIcons.moreHorizontal), findsNothing);
   });
 
-  testWidgets('collapses into one overflow button when it does not fit',
-      (tester) async {
+  testWidgets('collapses into one overflow button when it does not fit', (
+    tester,
+  ) async {
     await tester.pumpWidget(host(150, actions));
 
     expect(find.byIcon(LucideIcons.moreHorizontal), findsOneWidget);
@@ -59,14 +60,23 @@ void main() {
     expect(find.text('Delete'), findsOneWidget);
   });
 
-  testWidgets('a disabled action appears as a disabled menu item', (tester) async {
+  testWidgets('a disabled action appears as a disabled menu item', (
+    tester,
+  ) async {
     await tester.pumpWidget(host(150, actions));
 
     await tester.tap(find.byIcon(LucideIcons.moreHorizontal));
     await tester.pumpAndSettle();
 
     expect(find.text('Run'), findsOneWidget);
-    expect(tester.widget<PopupMenuItem<String>>(find.byType(PopupMenuItem<String>).first).enabled, isFalse);
+    expect(
+      tester
+          .widget<PopupMenuItem<String>>(
+            find.byType(PopupMenuItem<String>).first,
+          )
+          .enabled,
+      isFalse,
+    );
   });
 
   testWidgets('choosing a menu item fires its callback', (tester) async {
@@ -85,12 +95,11 @@ void main() {
     expect(tapped, 1);
   });
 
-  testWidgets('icon actions still fire their callbacks when shown inline',
-      (tester) async {
+  testWidgets('icon actions still fire their callbacks when shown inline', (
+    tester,
+  ) async {
     var tapped = 0;
-    final trackable = <RowAction>[
-      RowAction.icon('Edit', () => tapped++),
-    ];
+    final trackable = <RowAction>[RowAction.icon('Edit', () => tapped++)];
 
     await tester.pumpWidget(host(600, trackable));
     await tester.tap(find.byType(InkWell).last);

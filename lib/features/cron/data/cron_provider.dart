@@ -19,8 +19,9 @@ final cronJobsProvider = StreamProvider<List<CronJob>>((ref) async* {
 });
 
 /// The set of job ids with a run in flight, following the scheduler's stream.
-final cronRunStateProvider =
-    NotifierProvider<CronRunStateNotifier, Set<int>>(CronRunStateNotifier.new);
+final cronRunStateProvider = NotifierProvider<CronRunStateNotifier, Set<int>>(
+  CronRunStateNotifier.new,
+);
 
 class CronRunStateNotifier extends Notifier<Set<int>> {
   late CronSchedulerService _scheduler;

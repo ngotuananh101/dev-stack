@@ -104,13 +104,15 @@ class WindowService extends _$WindowService {
     String iconPath = Platform.isWindows
         ? 'assets/images/icon.ico'
         : (Platform.isLinux
-            ? LinuxDesktopService.resolveIconPath()
-            : 'assets/images/icon.png');
+              ? LinuxDesktopService.resolveIconPath()
+              : 'assets/images/icon.png');
 
     try {
       final icon = TrayIcon.create();
       if (icon == null) {
-        AppLogger.error('Tray initialization failed: TrayIcon.create() returned null');
+        AppLogger.error(
+          'Tray initialization failed: TrayIcon.create() returned null',
+        );
         return;
       }
       _trayIcon = icon;

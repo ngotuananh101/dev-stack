@@ -23,7 +23,8 @@ class PathService {
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
-  })? _runProcess;
+  })?
+  _runProcess;
   final bool Function() _isWindows;
 
   PathService(
@@ -32,10 +33,11 @@ class PathService {
       String executable,
       List<String> arguments, {
       Map<String, String>? environment,
-    })? runProcess,
+    })?
+    runProcess,
     bool Function()? platformIsWindows,
-  })  : _runProcess = runProcess,
-        _isWindows = platformIsWindows ?? (() => Platform.isWindows);
+  }) : _runProcess = runProcess,
+       _isWindows = platformIsWindows ?? (() => Platform.isWindows);
 
   Future<ProcessResult> _run(
     String executable,
@@ -152,33 +154,28 @@ class PathService {
   /// Builds the PowerShell arguments and environment map to set a User environment variable on Windows.
   @visibleForTesting
   static ({List<String> arguments, Map<String, String> environment})
-      windowsSetUserEnvCommand(String name, String value) {
+  windowsSetUserEnvCommand(String name, String value) {
     return (
       arguments: [
         '-NoProfile',
         '-Command',
         r'[Environment]::SetEnvironmentVariable($env:DEVSTACK_ENVVAR, $env:DEVSTACK_SETVALUE, "User")',
       ],
-      environment: {
-        'DEVSTACK_ENVVAR': name,
-        'DEVSTACK_SETVALUE': value,
-      },
+      environment: {'DEVSTACK_ENVVAR': name, 'DEVSTACK_SETVALUE': value},
     );
   }
 
   /// Builds the PowerShell arguments and environment map to remove a User environment variable on Windows.
   @visibleForTesting
   static ({List<String> arguments, Map<String, String> environment})
-      windowsRemoveUserEnvCommand(String name) {
+  windowsRemoveUserEnvCommand(String name) {
     return (
       arguments: [
         '-NoProfile',
         '-Command',
         r'[Environment]::SetEnvironmentVariable($env:DEVSTACK_ENVVAR, $null, "User")',
       ],
-      environment: {
-        'DEVSTACK_ENVVAR': name,
-      },
+      environment: {'DEVSTACK_ENVVAR': name},
     );
   }
 
@@ -294,7 +291,8 @@ class PathService {
     String linkPath,
     String targetPath,
   ) async {
-    final script = '#!/usr/bin/env sh\nexec ${shellSingleQuote(targetPath)} "\$@"\n';
+    final script =
+        '#!/usr/bin/env sh\nexec ${shellSingleQuote(targetPath)} "\$@"\n';
     await fileEntity.writeAsString(script);
     if (Platform.isLinux) {
       await Process.run('chmod', ['755', linkPath]);
@@ -319,8 +317,13 @@ class PathService {
       if (file.existsSync()) {
         final content = await file.readAsString();
         if (!isBinInProfileContent(content, targetBinDir)) {
-          final prefix = (content.isNotEmpty && !content.endsWith('\n')) ? '\n' : '';
-          await file.writeAsString('$prefix$exportLine\n', mode: FileMode.append);
+          final prefix = (content.isNotEmpty && !content.endsWith('\n'))
+              ? '\n'
+              : '';
+          await file.writeAsString(
+            '$prefix$exportLine\n',
+            mode: FileMode.append,
+          );
           _logger.info('Added $targetBinDir to $profilePath');
           modifiedAny = true;
         } else {
@@ -332,7 +335,10 @@ class PathService {
     // If none of the profile files existed, create ~/.profile
     if (!modifiedAny) {
       final defaultProfile = File(p.join(home, '.profile'));
-      await defaultProfile.writeAsString('$exportLine\n', mode: FileMode.append);
+      await defaultProfile.writeAsString(
+        '$exportLine\n',
+        mode: FileMode.append,
+      );
       _logger.info('Created and added $targetBinDir to ${defaultProfile.path}');
     }
   }
@@ -479,7 +485,9 @@ class PathService {
         if (setResult.exitCode == 0) {
           _logger.info('Successfully added $pathToAdd to User PATH.');
         } else {
-          _logger.error('Failed to update PATH with $pathToAdd: ${setResult.stderr}');
+          _logger.error(
+            'Failed to update PATH with $pathToAdd: ${setResult.stderr}',
+          );
         }
       }
     } catch (e) {
@@ -516,7 +524,9 @@ class PathService {
       if (result.exitCode == 0) {
         _logger.info('Successfully set environment variable $name.');
       } else {
-        _logger.error('Failed to set environment variable $name: ${result.stderr}');
+        _logger.error(
+          'Failed to set environment variable $name: ${result.stderr}',
+        );
       }
     } catch (e) {
       _logger.error('Error setting environment variable $name: $e');
@@ -533,7 +543,9 @@ class PathService {
           final file = File(profilePath);
           if (file.existsSync()) {
             final lines = await file.readAsLines();
-            final filtered = lines.where((l) => !l.contains(pathToRemove)).toList();
+            final filtered = lines
+                .where((l) => !l.contains(pathToRemove))
+                .toList();
             await file.writeAsString('${filtered.join('\n')}\n');
           }
         }
@@ -591,7 +603,9 @@ class PathService {
           final file = File(profilePath);
           if (file.existsSync()) {
             final lines = await file.readAsLines();
-            final filtered = lines.where((l) => !l.startsWith('export $name=')).toList();
+            final filtered = lines
+                .where((l) => !l.startsWith('export $name='))
+                .toList();
             await file.writeAsString('${filtered.join('\n')}\n');
           }
         }
@@ -608,7 +622,9 @@ class PathService {
       if (result.exitCode == 0) {
         _logger.info('Successfully removed environment variable $name.');
       } else {
-        _logger.error('Failed to remove environment variable $name: ${result.stderr}');
+        _logger.error(
+          'Failed to remove environment variable $name: ${result.stderr}',
+        );
       }
     } catch (e) {
       _logger.error('Error removing environment variable $name: $e');
@@ -659,7 +675,13 @@ class PathService {
           final npmGlobalDir = home.isNotEmpty
               ? p.join(home, '.npm-global')
               : binDir;
-          await Process.run(npmBin, ['config', 'set', 'prefix', npmGlobalDir, '-g']);
+          await Process.run(npmBin, [
+            'config',
+            'set',
+            'prefix',
+            npmGlobalDir,
+            '-g',
+          ]);
           _logger.info('Set npm global prefix to $npmGlobalDir');
         } catch (e) {
           _logger.error('Failed to set npm global prefix on Linux: $e');

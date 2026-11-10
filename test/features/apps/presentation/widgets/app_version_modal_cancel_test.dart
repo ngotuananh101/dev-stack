@@ -17,12 +17,12 @@ class _StaticAppsNotifier extends Apps {
 class _StaticVersions extends AppVersions {
   @override
   Future<AppVersionInfo> build(String appId) => Future.value(
-        const AppVersionInfo(
-          name: 'Test App',
-          versions: ['latest', '1.0.0'],
-          downloadUrls: {},
-        ),
-      );
+    const AppVersionInfo(
+      name: 'Test App',
+      versions: ['latest', '1.0.0'],
+      downloadUrls: {},
+    ),
+  );
 }
 
 void main() {
@@ -43,13 +43,17 @@ void main() {
     return app;
   }
 
-  testWidgets('AppVersionModal shows a Cancel button while installing', (tester) async {
+  testWidgets('AppVersionModal shows a Cancel button while installing', (
+    tester,
+  ) async {
     var cancelled = false;
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appsProvider.overrideWith(() => _StaticAppsNotifier([installingApp()])),
+          appsProvider.overrideWith(
+            () => _StaticAppsNotifier([installingApp()]),
+          ),
           appVersionsProvider.overrideWith2((_) => _StaticVersions()),
         ],
         child: MaterialApp(
@@ -76,7 +80,9 @@ void main() {
     expect(cancelled, isTrue);
   });
 
-  testWidgets('AppVersionModal shows Finish (not Cancel) once installed', (tester) async {
+  testWidgets('AppVersionModal shows Finish (not Cancel) once installed', (
+    tester,
+  ) async {
     final installed = AppModel(
       appId: 'testapp',
       name: 'Test App',

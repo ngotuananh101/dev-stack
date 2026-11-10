@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('AppTextField renders prefix icon, hint, and handles input', (tester) async {
+  testWidgets('AppTextField renders prefix icon, hint, and handles input', (
+    tester,
+  ) async {
     final controller = TextEditingController();
     await tester.pumpWidget(
       MaterialApp(
@@ -39,7 +41,8 @@ void main() {
             child: AppTextField(
               controller: controller,
               hint: 'Port',
-              validator: (v) => v == null || v.isEmpty ? 'Port is required' : null,
+              validator: (v) =>
+                  v == null || v.isEmpty ? 'Port is required' : null,
             ),
           ),
         ),
@@ -52,14 +55,13 @@ void main() {
     expect(find.text('Port is required'), findsOneWidget);
   });
 
-  testWidgets('AppTextField has standardized benchmark decoration', (tester) async {
+  testWidgets('AppTextField has standardized benchmark decoration', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: AppTextField(
-            hint: 'Search...',
-            prefixIcon: Icons.search,
-          ),
+          body: AppTextField(hint: 'Search...', prefixIcon: Icons.search),
         ),
       ),
     );
@@ -69,7 +71,10 @@ void main() {
 
     expect(decoration.isDense, true);
     expect(decoration.fillColor, AppColors.surface);
-    expect(decoration.contentPadding, const EdgeInsets.symmetric(horizontal: 12, vertical: 8));
+    expect(
+      decoration.contentPadding,
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    );
     expect(decoration.hintStyle?.fontSize, AppTextSize.xs);
 
     final border = decoration.border as OutlineInputBorder;

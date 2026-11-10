@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
+import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../shared/utils/modal_sizing.dart';
 
 class TunnelQrModal extends StatelessWidget {
@@ -72,11 +73,16 @@ class TunnelQrModal extends StatelessWidget {
                     children: [
                       AppButton(
                         label: 'Copy Link',
-                        icon: const Icon(LucideIcons.copy, size: 16, color: AppColors.textOnColor),
+                        icon: const Icon(
+                          LucideIcons.copy,
+                          size: 16,
+                          color: AppColors.textOnColor,
+                        ),
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: publicUrl));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Public URL copied to clipboard')),
+                          AppDialogs.showToast(
+                            context,
+                            'Public URL copied to clipboard',
                           );
                         },
                       ),

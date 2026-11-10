@@ -6,39 +6,42 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 void main() {
   AppModel app({String appId = 'php'}) => AppModel(
-        appId: appId,
-        name: 'PHP 8.3',
-        description: 'PHP interpreter',
-        categories: const ['webserver'],
-        versions: const ['8.3.0'],
-        isInstalled: true,
-      );
+    appId: appId,
+    name: 'PHP 8.3',
+    description: 'PHP interpreter',
+    categories: const ['webserver'],
+    versions: const ['8.3.0'],
+    isInstalled: true,
+  );
 
   Widget host(double width, List<AppModel> apps) => MaterialApp(
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(children: [
-              Expanded(
-                child: CompactAppsTable(
-                  apps: apps,
-                  onToggleInstall: (_) async {},
-                  onTogglePath: (_) async {},
-                  onStartService: (_) async {},
-                  onStopService: (_) async {},
-                  onRestartService: (_) async {},
-                  onChangeDefault: (_) async {},
-                  onOpen: (_) async {},
-                  onCancelInstall: (_) {},
-                ),
+    home: Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Expanded(
+              child: CompactAppsTable(
+                apps: apps,
+                onToggleInstall: (_) async {},
+                onTogglePath: (_) async {},
+                onStartService: (_) async {},
+                onStopService: (_) async {},
+                onRestartService: (_) async {},
+                onChangeDefault: (_) async {},
+                onOpen: (_) async {},
+                onCancelInstall: (_) {},
               ),
-            ]),
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
-  testWidgets('renders every action inline when the row is wide',
-      (tester) async {
+  testWidgets('renders every action inline when the row is wide', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -49,8 +52,9 @@ void main() {
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
   });
 
-  testWidgets('collapses actions into one menu at a ~412px row',
-      (tester) async {
+  testWidgets('collapses actions into one menu at a ~412px row', (
+    tester,
+  ) async {
     // A 700px window leaves ~412px here — narrower than the row's fixed
     // columns plus the ~164px action cluster it used to lay out inside a
     // rigid 140px box.
@@ -73,27 +77,29 @@ void main() {
     expect(find.text('Uninstall'), findsOneWidget);
   });
 
-  testWidgets('a service row fits a narrow window while its status name is long',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(700, 720));
-    addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+  testWidgets(
+    'a service row fits a narrow window while its status name is long',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(700, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-    final service = AppModel(
-      appId: 'mysql',
-      name: 'MySQL',
-      // A 'database' first category is what makes this app a service.
-      categories: const ['database'],
-      isInstalled: true,
-    );
-    // The status string is drawn while the service is starting, when it is long
-    // enough to push the rest of the status cell out of the row.
-    service.serviceStatus = 'installing';
+      final service = AppModel(
+        appId: 'mysql',
+        name: 'MySQL',
+        // A 'database' first category is what makes this app a service.
+        categories: const ['database'],
+        isInstalled: true,
+      );
+      // The status string is drawn while the service is starting, when it is long
+      // enough to push the rest of the status cell out of the row.
+      service.serviceStatus = 'installing';
 
-    await tester.pumpWidget(host(700, [service]));
-    // A fixed pump rather than pumpAndSettle: the status cell draws a spinner
-    // for a starting service, and settling waits for an animation that loops.
-    await tester.pump();
+      await tester.pumpWidget(host(700, [service]));
+      // A fixed pump rather than pumpAndSettle: the status cell draws a spinner
+      // for a starting service, and settling waits for an animation that loops.
+      await tester.pump();
 
-    expect(tester.takeException(), isNull);
-  });
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

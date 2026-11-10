@@ -19,8 +19,8 @@ final tunnelsStreamProvider = StreamProvider<List<TunnelModel>>((ref) async* {
 
 final tunnelSessionsProvider =
     NotifierProvider<TunnelSessionsNotifier, Map<int, TunnelSession>>(
-  TunnelSessionsNotifier.new,
-);
+      TunnelSessionsNotifier.new,
+    );
 
 class TunnelSessionsNotifier extends Notifier<Map<int, TunnelSession>> {
   late TunnelManagerService _manager;

@@ -308,8 +308,7 @@ class AppInstallerService {
     final isExe = extension == '.exe';
     // Raw prebuilt Linux binaries (e.g. meilisearch) arrive with no archive
     // extension; on Windows the legacy fallback treats unknown types as ZIP.
-    final isRawBinary =
-        Platform.isLinux && !isTar && !isZip && !isExe;
+    final isRawBinary = Platform.isLinux && !isTar && !isZip && !isExe;
     final downloadExt = extension.isEmpty ? '.bin' : extension;
 
     final tempDir = await Directory.systemTemp.createTemp(
@@ -855,7 +854,7 @@ class AppInstallerService {
   /// the install, matching the previous behaviour.
   @visibleForTesting
   static ({int fileCount, int directoryCount, List<String> skippedEntries})
-      extractZipToDirectory(List<int> bytes, String targetPath) {
+  extractZipToDirectory(List<int> bytes, String targetPath) {
     var fileCount = 0;
     var directoryCount = 0;
     final skipped = <String>[];

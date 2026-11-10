@@ -32,7 +32,9 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
   });
 
-  testWidgets('SettingsPage input fields and dropdowns adhere to 280x36 standard', (tester) async {
+  testWidgets('SettingsPage input fields and dropdowns adhere to 280x36 standard', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -41,15 +43,13 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          settingsProvider.overrideWith(() => _StaticSettingsNotifier(settings)),
+          settingsProvider.overrideWith(
+            () => _StaticSettingsNotifier(settings),
+          ),
           appsProvider.overrideWith(() => _StaticAppsNotifier()),
           sslServiceProvider.overrideWith(() => _StaticSslService()),
         ],
-        child: const MaterialApp(
-          home: Scaffold(
-            body: SettingsPage(),
-          ),
-        ),
+        child: const MaterialApp(home: Scaffold(body: SettingsPage())),
       ),
     );
     await tester.pumpAndSettle();
@@ -60,7 +60,8 @@ void main() {
 
     // 1. Verify Auto Create Site Template field has width 320 and height 36, and has globe prefix icon
     final templateFieldFinder = find.byWidgetPredicate(
-      (widget) => widget is TextFormField && widget.controller?.text == '{name}.test',
+      (widget) =>
+          widget is TextFormField && widget.controller?.text == '{name}.test',
     );
     expect(templateFieldFinder, findsOneWidget);
     expect(
@@ -75,7 +76,9 @@ void main() {
       of: templateFieldFinder,
       matching: find.byType(SizedBox),
     );
-    final templateSizedBox = tester.widget<SizedBox>(templateSizedBoxFinder.first);
+    final templateSizedBox = tester.widget<SizedBox>(
+      templateSizedBoxFinder.first,
+    );
     expect(templateSizedBox.width, equals(320.0));
     expect(templateSizedBox.height, equals(36.0));
 
@@ -87,7 +90,9 @@ void main() {
       of: dropdownFinder,
       matching: find.byType(Container),
     );
-    final renderBox = tester.renderObject<RenderBox>(dropdownContainerFinder.first);
+    final renderBox = tester.renderObject<RenderBox>(
+      dropdownContainerFinder.first,
+    );
     expect(renderBox.size.width, equals(320.0));
     expect(renderBox.size.height, equals(36.0));
   });

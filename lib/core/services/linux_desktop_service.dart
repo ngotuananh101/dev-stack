@@ -23,7 +23,14 @@ class LinuxDesktopService {
     final dataHome = _resolveXdgDataHome();
     if (dataHome != null) {
       final installedIcon = File(
-        p.join(dataHome.path, 'icons', 'hicolor', '256x256', 'apps', '$appId.png'),
+        p.join(
+          dataHome.path,
+          'icons',
+          'hicolor',
+          '256x256',
+          'apps',
+          '$appId.png',
+        ),
       );
       if (installedIcon.existsSync()) {
         _cachedIconPath = installedIcon.path;
@@ -104,7 +111,8 @@ StartupWMClass=$appId
       }
 
       // 2. Resolve target execution path (prefer APPIMAGE environment variable)
-      final execPath = customExecPath ??
+      final execPath =
+          customExecPath ??
           Platform.environment['APPIMAGE'] ??
           Platform.resolvedExecutable;
 
@@ -136,7 +144,12 @@ StartupWMClass=$appId
         } catch (_) {}
         try {
           final hicolorBase = p.join(dataHome.path, 'icons', 'hicolor');
-          await Process.run('gtk-update-icon-cache', ['-q', '-t', '-f', hicolorBase]);
+          await Process.run('gtk-update-icon-cache', [
+            '-q',
+            '-t',
+            '-f',
+            hicolorBase,
+          ]);
         } catch (_) {}
       }
 

@@ -212,8 +212,7 @@ class Sites extends _$Sites {
   @override
   Future<List<SiteModel>> build() async {
     final isar = await ref.watch(isarProvider.future);
-    final sites =
-        isar.siteModels.where().sortByCreatedAtDesc().findAll();
+    final sites = isar.siteModels.where().sortByCreatedAtDesc().findAll();
 
     // Auto-start CLI sites that were persisted with autoStart == true. This
     // runs after the DB load completes (via microtask) so it does not delay the
@@ -329,15 +328,12 @@ class Sites extends _$Sites {
     // _finalize above, so the webserver restart that just ran will route to
     // the freshly spawned process.
     if (site.siteType == 'cli' && site.autoStart) {
-      ref
-          .read(cliProcessManagerProvider)
-          .startSite(site)
-          .catchError((e) {
-            ref
-                .read(logServiceProvider)
-                .error('Auto-start failed for ${site.domain}: $e');
-            return false;
-          });
+      ref.read(cliProcessManagerProvider).startSite(site).catchError((e) {
+        ref
+            .read(logServiceProvider)
+            .error('Auto-start failed for ${site.domain}: $e');
+        return false;
+      });
     }
   }
 
@@ -462,34 +458,32 @@ class Sites extends _$Sites {
     var completed = 0;
     final failed = <String>[];
 
-    final handled = await runBounded<SiteModel, bool>(
-      toCreate,
-      8,
-      (site, index) async {
-        try {
-          if (site.useSsl) {
-            await _generateSslWithRetry(site);
-          }
-          await _generateVhostFiles(site);
-          return true;
-        } catch (e) {
-          logger.error('Batch create failed for ${site.domain}: $e');
-          failed.add(site.domain);
-          return false;
-        } finally {
-          completed++;
-          onProgress?.call(
-            BatchProgress(
-              current: completed,
-              total: total,
-              currentLabel: site.domain,
-              phase: BatchPhase.processing,
-            ),
-          );
+    final handled = await runBounded<SiteModel, bool>(toCreate, 8, (
+      site,
+      index,
+    ) async {
+      try {
+        if (site.useSsl) {
+          await _generateSslWithRetry(site);
         }
-      },
-      cancel: cancel,
-    );
+        await _generateVhostFiles(site);
+        return true;
+      } catch (e) {
+        logger.error('Batch create failed for ${site.domain}: $e');
+        failed.add(site.domain);
+        return false;
+      } finally {
+        completed++;
+        onProgress?.call(
+          BatchProgress(
+            current: completed,
+            total: total,
+            currentLabel: site.domain,
+            phase: BatchPhase.processing,
+          ),
+        );
+      }
+    }, cancel: cancel);
 
     // Sites are persisted before their vhost/SSL files are generated (the
     // generation reads the row back). A cancel leaves the never-started ones
@@ -635,15 +629,14 @@ class Sites extends _$Sites {
     // config was just regenerated, so a fresh process ensures the webserver
     // routes to the current command/port.
     if (updatedSite.siteType == 'cli' && updatedSite.autoStart) {
-      ref
-          .read(cliProcessManagerProvider)
-          .restartSite(updatedSite)
-          .catchError((e) {
-            ref
-                .read(logServiceProvider)
-                .error('Auto-start failed for ${updatedSite.domain}: $e');
-            return false;
-          });
+      ref.read(cliProcessManagerProvider).restartSite(updatedSite).catchError((
+        e,
+      ) {
+        ref
+            .read(logServiceProvider)
+            .error('Auto-start failed for ${updatedSite.domain}: $e');
+        return false;
+      });
     }
   }
 
@@ -803,7 +796,12 @@ class Sites extends _$Sites {
   /// Kept next to [getLogContent] so the UI never has to know where each
   /// webserver puts its logs. Unknown ids fall back to the nginx access log.
   @visibleForTesting
-  static File logFileFor(String domain, String logId, {String? baseDir, String? logsDir}) {
+  static File logFileFor(
+    String domain,
+    String logId, {
+    String? baseDir,
+    String? logsDir,
+  }) {
     final siteLogsDir = p.join(baseDir ?? AppConfig.baseDir, 'logs', domain);
     final globalLogsDir = logsDir ?? AppConfig.logsDir;
     switch (logId) {
@@ -828,7 +826,11 @@ class Sites extends _$Sites {
   /// This used to read *all six* log files (`readAsLines()` each, whole file)
   /// just to show the last 100 lines of one of them, so opening the Logs tab
   /// on a busy site decoded megabytes it never displayed.
-  Future<String> getLogContent(SiteModel site, String logId, {int lines = 100}) async {
+  Future<String> getLogContent(
+    SiteModel site,
+    String logId, {
+    int lines = 100,
+  }) async {
     validateDomain(site.domain);
     final file = logFileFor(site.domain, logId);
     if (!await file.exists()) return 'Log file not found';
@@ -991,11 +993,9 @@ class Sites extends _$Sites {
       } else if (site.siteType == 'cli') {
         // CLI sites reverse-proxy to the spawned process on site.port.
         config += '    location / {\n';
-        config +=
-            '        proxy_pass http://127.0.0.1:${site.port};\n';
+        config += '        proxy_pass http://127.0.0.1:${site.port};\n';
         config += '        proxy_http_version 1.1;\n';
-        config +=
-            '        proxy_set_header Upgrade \$http_upgrade;\n';
+        config += '        proxy_set_header Upgrade \$http_upgrade;\n';
         config += '        proxy_set_header Connection "upgrade";\n';
         config += '        proxy_set_header Host \$host;\n';
         config += '        proxy_set_header X-Real-IP \$remote_addr;\n';
@@ -1095,8 +1095,7 @@ class Sites extends _$Sites {
         config += '    RewriteCond %{HTTP:Upgrade} !=websocket [NC]\n';
         config +=
             '    RewriteRule /(.*) http://127.0.0.1:${site.port}/\$1 [P,L]\n';
-        config +=
-            '    ProxyPassReverse / http://127.0.0.1:${site.port}/\n';
+        config += '    ProxyPassReverse / http://127.0.0.1:${site.port}/\n';
       } else {
         config += '    <Directory "$rootDirUnix">\n';
         config += '        Options Indexes FollowSymLinks\n';

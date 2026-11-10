@@ -39,39 +39,54 @@ void main() {
       expect(decrypted, secret);
     });
 
-    test('decrypt handles legacy plaintext gracefully without crashing (backward compatible)', () {
-      final vault = LocalSecretVault.withKey('test-secret-key-32-chars-long!!');
-      const legacyPlaintext = 'unencrypted_old_database_password';
+    test(
+      'decrypt handles legacy plaintext gracefully without crashing (backward compatible)',
+      () {
+        final vault = LocalSecretVault.withKey(
+          'test-secret-key-32-chars-long!!',
+        );
+        const legacyPlaintext = 'unencrypted_old_database_password';
 
-      // Plaintext doesn't start with ENC: so it should return verbatim
-      final decrypted = vault.decrypt(legacyPlaintext);
-      expect(decrypted, legacyPlaintext);
-    });
+        // Plaintext doesn't start with ENC: so it should return verbatim
+        final decrypted = vault.decrypt(legacyPlaintext);
+        expect(decrypted, legacyPlaintext);
+      },
+    );
 
-    test('encrypting the same plaintext twice produces different ciphertexts due to random IV', () {
-      final vault = LocalSecretVault.withKey('test-secret-key-32-chars-long!!');
-      const secret = 'identical_password';
+    test(
+      'encrypting the same plaintext twice produces different ciphertexts due to random IV',
+      () {
+        final vault = LocalSecretVault.withKey(
+          'test-secret-key-32-chars-long!!',
+        );
+        const secret = 'identical_password';
 
-      final c1 = vault.encrypt(secret);
-      final c2 = vault.encrypt(secret);
+        final c1 = vault.encrypt(secret);
+        final c2 = vault.encrypt(secret);
 
-      expect(c1, isNot(equals(c2)));
-      expect(vault.decrypt(c1), secret);
-      expect(vault.decrypt(c2), secret);
-    });
+        expect(c1, isNot(equals(c2)));
+        expect(vault.decrypt(c1), secret);
+        expect(vault.decrypt(c2), secret);
+      },
+    );
 
-    test('detects tampering and throws FormatException on invalid HMAC tag', () {
-      final vault = LocalSecretVault.withKey('test-secret-key-32-chars-long!!');
-      final ciphertext = vault.encrypt('secret_value');
+    test(
+      'detects tampering and throws FormatException on invalid HMAC tag',
+      () {
+        final vault = LocalSecretVault.withKey(
+          'test-secret-key-32-chars-long!!',
+        );
+        final ciphertext = vault.encrypt('secret_value');
 
-      // Format: ENC:<iv>:<ciphertext>:<mac>
-      final parts = ciphertext.split(':');
-      expect(parts.length, 4);
+        // Format: ENC:<iv>:<ciphertext>:<mac>
+        final parts = ciphertext.split(':');
+        expect(parts.length, 4);
 
-      // Tamper ciphertext
-      final tampered = 'ENC:${parts[1]}:badpayload:${parts[3]}';
-      expect(() => vault.decrypt(tampered), throwsA(isA<FormatException>()));
-    });
+        // Tamper ciphertext
+        final tampered = 'ENC:${parts[1]}:badpayload:${parts[3]}';
+        expect(() => vault.decrypt(tampered), throwsA(isA<FormatException>()));
+      },
+    );
 
     test('persists and reloads master key from file correctly', () async {
       final keyFile = File('${tempDir.path}/master.key');

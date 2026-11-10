@@ -125,7 +125,9 @@ void main() {
         isTrue,
       );
     },
-    skip: !Platform.isLinux ? 'PostgreSQL musl bundle installer test is Linux-only' : false,
+    skip: !Platform.isLinux
+        ? 'PostgreSQL musl bundle installer test is Linux-only'
+        : false,
   );
 
   test(
@@ -168,6 +170,8 @@ void main() {
         contains("listen_addresses = '*'"),
       );
     },
-    skip: !Platform.isLinux ? 'PostgreSQL musl bundle installer test is Linux-only' : false,
+    skip: !Platform.isLinux
+        ? 'PostgreSQL musl bundle installer test is Linux-only'
+        : false,
   );
 }

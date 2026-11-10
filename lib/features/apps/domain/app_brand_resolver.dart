@@ -44,23 +44,32 @@ class AppBrandResolver {
   ///
   /// Returns [fallback] (defaults to [Colors.black]) when no brand color
   /// is defined for the app.
-  static Color iconColor(String appId, {Color fallback = const Color(0xFF000000)}) {
+  static Color iconColor(
+    String appId, {
+    Color fallback = const Color(0xFF000000),
+  }) {
     final id = appId.toLowerCase();
 
     if (id.contains('bun')) return const Color(0xFFE5A83B);
     if (id.contains('deno')) return const Color(0xFF70FFAF);
     if (id.contains('nginx')) return const Color(0xFF009639);
     if (id.contains('caddy')) return const Color(0xFF1F8C5B);
-    if (id.contains('nginx') && id.contains('waf')) return const Color(0xFF4169E1);
+    if (id.contains('nginx') && id.contains('waf')) {
+      return const Color(0xFF4169E1);
+    }
     if (id.contains('php')) return const Color(0xFF777BB4);
-    if (id.contains('apache') && id.contains('waf')) return const Color(0xFFDC143C);
+    if (id.contains('apache') && id.contains('waf')) {
+      return const Color(0xFFDC143C);
+    }
     if (id.contains('mysql')) return const Color(0xFF4479A1);
     if (id.contains('postgresql')) return const Color(0xFF336791);
     if (id.contains('cloud')) return const Color(0xFF58A6FF);
     if (id.contains('rustfs')) return const Color(0xFFE67E22);
     if (id.contains('meilisearch')) return const Color(0xFFFF5E5E);
     if (id.contains('elasticsearch')) return const Color(0xFF005A9E);
-    if (id.contains('python') || id.contains('pyenv')) return const Color(0xFF3776AB);
+    if (id.contains('python') || id.contains('pyenv')) {
+      return const Color(0xFF3776AB);
+    }
     if (id.contains('node')) return const Color(0xFF68A063);
 
     return fallback;

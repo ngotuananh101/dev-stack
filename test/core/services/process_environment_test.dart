@@ -32,8 +32,11 @@ void main() {
           '/usr/bin',
           '/bin',
         ].where((d) => Directory(d).existsSync()).toList();
-        expect(existing, isNotEmpty,
-            reason: 'test host should have at least one standard bin dir');
+        expect(
+          existing,
+          isNotEmpty,
+          reason: 'test host should have at least one standard bin dir',
+        );
         for (final dir in existing) {
           expect(entries, contains(dir));
         }

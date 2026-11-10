@@ -173,16 +173,16 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: AppTextSize.xs,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.textSecondary,
+        fontSize: AppTextSize.xs,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 
   String _formatNext(DateTime dt) {
     String two(int v) => v.toString().padLeft(2, '0');
@@ -202,7 +202,9 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
     // cached value is only valid for the schedule it was computed from.
     final previewReady = _previewSchedule == scheduleText;
     final preview = previewReady ? _preview : null;
-    final presetValue = _presets.containsKey(scheduleText) ? scheduleText : null;
+    final presetValue = _presets.containsKey(scheduleText)
+        ? scheduleText
+        : null;
 
     return Dialog(
       backgroundColor: AppColors.surface,
@@ -218,8 +220,11 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
           children: [
             AppModalHeader(
               icon: LucideIcons.clock,
-              title: isEditing ? 'Edit Job: ${widget.initialJob!.name}' : 'New Cron Job',
-              subtitle: 'Runs only while DevStack is open — missed runs are not back-filled',
+              title: isEditing
+                  ? 'Edit Job: ${widget.initialJob!.name}'
+                  : 'New Cron Job',
+              subtitle:
+                  'Runs only while DevStack is open — missed runs are not back-filled',
               onClose: () => Navigator.of(context).pop(),
             ),
             Flexible(
@@ -270,8 +275,8 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
                           _previewComputing && !previewReady
                               ? 'Computing next run…'
                               : preview == null
-                                  ? 'No matching time within 4 years.'
-                                  : 'Next run: ${_formatNext(preview)}',
+                              ? 'No matching time within 4 years.'
+                              : 'Next run: ${_formatNext(preview)}',
                           style: const TextStyle(
                             color: AppColors.textMuted,
                             fontSize: AppTextSize.xxs,
@@ -309,7 +314,9 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
                       const SizedBox(height: 18),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceLight.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(8),

@@ -160,7 +160,8 @@ class Settings extends _$Settings {
         // missing whatever the user (or an installer) had linked in. The link
         // is not followed, so there is no risk of recursing into a cycle; a
         // target that points into the old tree is rewritten to follow the move.
-        if (FileSystemEntity.typeSync(newPath) != FileSystemEntityType.notFound) {
+        if (FileSystemEntity.typeSync(newPath) !=
+            FileSystemEntityType.notFound) {
           continue; // Already present (a re-run).
         }
         try {
@@ -168,11 +169,16 @@ class Settings extends _$Settings {
           final absoluteTarget = p.isAbsolute(rawTarget)
               ? rawTarget
               : p.normalize(p.join(entity.parent.path, rawTarget));
-          final rewritten =
-              replacePathPrefix(absoluteTarget, source.path, target.path);
+          final rewritten = replacePathPrefix(
+            absoluteTarget,
+            source.path,
+            target.path,
+          );
           await Link(newPath).create(rewritten);
         } catch (e) {
-          AppLogger.warning('Skipping symlink (unreadable): ${entity.path}: $e');
+          AppLogger.warning(
+            'Skipping symlink (unreadable): ${entity.path}: $e',
+          );
         }
       } else if (entity is File) {
         final isLegacyPowerShellShim =
@@ -260,10 +266,30 @@ class Settings extends _$Settings {
   @visibleForTesting
   static bool looksLikeBinaryName(String name) {
     const known = {
-      'php', 'php-cgi', 'php-fpm', 'nginx', 'apache', 'httpd', 'mysqld',
-      'mysql', 'mariadbd', 'mariadb', 'mongod', 'mongosh', 'redis-server',
-      'redis-cli', 'postgres', 'pg_ctl', 'initdb', 'psql', 'caddy',
-      'meilisearch', 'minio', 'rustfs', 'supervisord', 'certutil',
+      'php',
+      'php-cgi',
+      'php-fpm',
+      'nginx',
+      'apache',
+      'httpd',
+      'mysqld',
+      'mysql',
+      'mariadbd',
+      'mariadb',
+      'mongod',
+      'mongosh',
+      'redis-server',
+      'redis-cli',
+      'postgres',
+      'pg_ctl',
+      'initdb',
+      'psql',
+      'caddy',
+      'meilisearch',
+      'minio',
+      'rustfs',
+      'supervisord',
+      'certutil',
     };
     return known.contains(name.toLowerCase());
   }

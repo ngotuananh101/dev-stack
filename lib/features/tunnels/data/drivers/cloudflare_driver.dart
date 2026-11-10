@@ -9,21 +9,24 @@ class CloudflareDriver implements TunnelDriver {
 
   // api.trycloudflare.com is the endpoint cloudflared requests a quick tunnel
   // from (it shows up in error logs), not a tunnel URL.
-  static final RegExp _urlRegex = RegExp(r'https:\/\/(?!api\.)[a-zA-Z0-9-]+\.trycloudflare\.com');
+  static final RegExp _urlRegex = RegExp(
+    r'https:\/\/(?!api\.)[a-zA-Z0-9-]+\.trycloudflare\.com',
+  );
 
   // Current cloudflared logs "Registered tunnel connection connIndex=0 ...",
   // older releases "Connection <uuid> registered".
-  static final RegExp _registeredRegex = RegExp(r'Registered tunnel connection|Connection [0-9a-f-]+ registered');
+  static final RegExp _registeredRegex = RegExp(
+    r'Registered tunnel connection|Connection [0-9a-f-]+ registered',
+  );
 
   // Remotely-managed (token) tunnels log their dashboard ingress rules as a
   // quoted JSON string: config="{\"ingress\":[...]}".
-  static final RegExp _quotedConfigRegex = RegExp(r'config=("(?:[^"\\]|\\.)*")');
+  static final RegExp _quotedConfigRegex = RegExp(
+    r'config=("(?:[^"\\]|\\.)*")',
+  );
 
   @override
-  List<String> buildStartArguments(
-    TunnelModel tunnel, {
-    String? defaultToken,
-  }) {
+  List<String> buildStartArguments(TunnelModel tunnel, {String? defaultToken}) {
     final token = tunnel.authToken ?? defaultToken;
 
     if (token != null && token.trim().isNotEmpty) {
@@ -31,12 +34,7 @@ class CloudflareDriver implements TunnelDriver {
       // Cloudflare dashboard ingress config; the local --http-host-header flag
       // only applies to quick (--url) tunnels. Site routing for token tunnels
       // must therefore be configured there (httpHostHeader).
-      return [
-        'tunnel',
-        'run',
-        '--token',
-        token.trim(),
-      ];
+      return ['tunnel', 'run', '--token', token.trim()];
     }
 
     // Site tunnels must hit the webserver's HTTP port (80) and carry the
@@ -72,7 +70,8 @@ class CloudflareDriver implements TunnelDriver {
   }
 
   @override
-  bool isConnectionEstablished(String logLine) => _registeredRegex.hasMatch(logLine);
+  bool isConnectionEstablished(String logLine) =>
+      _registeredRegex.hasMatch(logLine);
 
   List<String> _ingressHostnames(String logLine) {
     final quoted = _quotedConfigRegex.firstMatch(logLine)?.group(1);
@@ -83,7 +82,8 @@ class CloudflareDriver implements TunnelDriver {
       if (ingress is! List) return const [];
       return [
         for (final rule in ingress)
-          if (rule is Map && rule['hostname'] is String) (rule['hostname'] as String).toLowerCase(),
+          if (rule is Map && rule['hostname'] is String)
+            (rule['hostname'] as String).toLowerCase(),
       ];
     } catch (_) {
       return const [];
@@ -97,7 +97,9 @@ class CloudflareDriver implements TunnelDriver {
     final host = url == null ? null : Uri.tryParse(url)?.host;
     if (host != null && host.isNotEmpty) {
       for (final hostname in hostnames) {
-        final matches = hostname.startsWith('*.') ? host.endsWith(hostname.substring(1)) : hostname == host;
+        final matches = hostname.startsWith('*.')
+            ? host.endsWith(hostname.substring(1))
+            : hostname == host;
         if (matches) return 'https://$host';
       }
     }

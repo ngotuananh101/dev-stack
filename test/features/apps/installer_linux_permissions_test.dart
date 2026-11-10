@@ -7,7 +7,6 @@ import '../../helpers/test_ref.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
-
 void main() {
   late AppInstallerService installerService;
   late Directory tempDir;
@@ -80,7 +79,10 @@ void main() {
 
       expect(executed, hasLength(1));
       expect(executed.first, ['chmod', 'u+x', dummyFile.path]);
-      expect(logs.any((msg) => msg.contains('Ensured executable permission')), isTrue);
+      expect(
+        logs.any((msg) => msg.contains('Ensured executable permission')),
+        isTrue,
+      );
     });
 
     test('logs warning if chmod u+x returns non-zero exit code', () async {
@@ -109,46 +111,59 @@ void main() {
           isLinuxOverride: true,
           logInfo: logs.add,
           runProcess: (exec, args) async {
-            throw ProcessException('chmod', ['u+x', dummyFile.path], 'error', 1);
+            throw ProcessException(
+              'chmod',
+              ['u+x', dummyFile.path],
+              'error',
+              1,
+            );
           },
         ),
         completes,
       );
 
-      expect(logs.any((msg) => msg.contains('Could not set executable permission')), isTrue);
+      expect(
+        logs.any((msg) => msg.contains('Could not set executable permission')),
+        isTrue,
+      );
     });
   });
 
   group('AppInstallerService.detectFiles Linux permission integration', () {
-    test('enforces chmod u+x on detected exec and cli paths on Linux', () async {
-      final binDir = Directory(p.join(tempDir.path, 'bin'))..createSync(recursive: true);
-      final execFile = File(p.join(binDir.path, 'nginx'))..createSync();
-      final cliFile = File(p.join(binDir.path, 'nginx-cli'))..createSync();
+    test(
+      'enforces chmod u+x on detected exec and cli paths on Linux',
+      () async {
+        final binDir = Directory(p.join(tempDir.path, 'bin'))
+          ..createSync(recursive: true);
+        final execFile = File(p.join(binDir.path, 'nginx'))..createSync();
+        final cliFile = File(p.join(binDir.path, 'nginx-cli'))..createSync();
 
-      final executed = <List<String>>[];
-      final logs = <String>[];
+        final executed = <List<String>>[];
+        final logs = <String>[];
 
-      final result = await installerService.detectFiles(
-        tempDir.path,
-        'nginx',
-        'nginx-cli',
-        logs.add,
-        isLinuxOverride: true,
-        runProcess: (exec, args) async {
-          executed.add([exec, ...args]);
-          return ProcessResult(1234, 0, '', '');
-        },
-      );
+        final result = await installerService.detectFiles(
+          tempDir.path,
+          'nginx',
+          'nginx-cli',
+          logs.add,
+          isLinuxOverride: true,
+          runProcess: (exec, args) async {
+            executed.add([exec, ...args]);
+            return ProcessResult(1234, 0, '', '');
+          },
+        );
 
-      expect(result['exec'], equals(execFile.path));
-      expect(result['cli'], equals(cliFile.path));
-      expect(executed, hasLength(2));
-      expect(executed[0], ['chmod', 'u+x', execFile.path]);
-      expect(executed[1], ['chmod', 'u+x', cliFile.path]);
-    });
+        expect(result['exec'], equals(execFile.path));
+        expect(result['cli'], equals(cliFile.path));
+        expect(executed, hasLength(2));
+        expect(executed[0], ['chmod', 'u+x', execFile.path]);
+        expect(executed[1], ['chmod', 'u+x', cliFile.path]);
+      },
+    );
 
     test('skips chmod u+x when isLinuxOverride is false', () async {
-      final binDir = Directory(p.join(tempDir.path, 'bin'))..createSync(recursive: true);
+      final binDir = Directory(p.join(tempDir.path, 'bin'))
+        ..createSync(recursive: true);
       final execFile = File(p.join(binDir.path, 'nginx'))..createSync();
 
       final executed = <List<String>>[];

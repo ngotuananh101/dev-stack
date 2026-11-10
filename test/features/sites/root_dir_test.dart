@@ -32,10 +32,7 @@ void main() {
     });
 
     test('rejects empty path', () {
-      expect(
-        () => Sites.validateRootDir(''),
-        throwsA(isA<ArgumentError>()),
-      );
+      expect(() => Sites.validateRootDir(''), throwsA(isA<ArgumentError>()));
     });
 
     test('rejects overlong path', () {

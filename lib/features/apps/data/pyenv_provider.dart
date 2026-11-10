@@ -66,7 +66,9 @@ class Pyenv extends _$Pyenv {
 
     for (final raw in lines) {
       final line = raw.trim();
-      if (line.isEmpty || line.startsWith('Available') || line.startsWith('::')) {
+      if (line.isEmpty ||
+          line.startsWith('Available') ||
+          line.startsWith('::')) {
         continue;
       }
       // Match standard CPython semver versions (e.g. 3.12.4, 3.11.9, 2.7.18)
@@ -85,7 +87,11 @@ class Pyenv extends _$Pyenv {
         if (currentLatest == null) {
           latestVersions[key] = v;
         } else {
-          final curPatch = int.tryParse(currentLatest.split('.').elementAtOrNull(2) ?? '0') ?? 0;
+          final curPatch =
+              int.tryParse(
+                currentLatest.split('.').elementAtOrNull(2) ?? '0',
+              ) ??
+              0;
           final newPatch = int.tryParse(parts.elementAtOrNull(2) ?? '0') ?? 0;
           if (newPatch > curPatch) {
             latestVersions[key] = v;
@@ -144,7 +150,8 @@ class Pyenv extends _$Pyenv {
   }) {
     final windows = isWindows ?? Platform.isWindows;
     if (windows) {
-      return cliFilePath ?? p.windows.join(installPath, 'pyenv-win', 'bin', 'pyenv.bat');
+      return cliFilePath ??
+          p.windows.join(installPath, 'pyenv-win', 'bin', 'pyenv.bat');
     }
 
     // On Linux, check libexec/pyenv first (the real script), then bin/pyenv
@@ -164,7 +171,9 @@ class Pyenv extends _$Pyenv {
 
   Future<String?> _getPyenvPath() async {
     final pyenvApp = await _getPyenvApp();
-    if (pyenvApp == null || pyenvApp.location == null) return pyenvApp?.cliFilePath;
+    if (pyenvApp == null || pyenvApp.location == null) {
+      return pyenvApp?.cliFilePath;
+    }
     return resolvePyenvExecutable(
       installPath: pyenvApp.location!,
       cliFilePath: pyenvApp.cliFilePath,
@@ -183,11 +192,9 @@ class Pyenv extends _$Pyenv {
     if (pyenvPath == null) return null;
 
     try {
-      final result = await Process.run(
-        pyenvPath,
-        ['versions'],
-        environment: env,
-      );
+      final result = await Process.run(pyenvPath, [
+        'versions',
+      ], environment: env);
       if (result.exitCode == 0) {
         final lines = result.stdout.toString().split('\n');
         for (var line in lines) {
@@ -210,11 +217,9 @@ class Pyenv extends _$Pyenv {
     if (pyenvPath == null) return [];
 
     try {
-      final result = await Process.run(
-        pyenvPath,
-        ['versions'],
-        environment: env,
-      );
+      final result = await Process.run(pyenvPath, [
+        'versions',
+      ], environment: env);
       if (result.exitCode == 0) {
         return parseInstalledVersions(result.stdout.toString());
       }
@@ -231,11 +236,10 @@ class Pyenv extends _$Pyenv {
 
     try {
       // Run with environment containing PYENV_ROOT
-      final result = await Process.run(
-        pyenvPath,
-        ['install', '-l'],
-        environment: env,
-      );
+      final result = await Process.run(pyenvPath, [
+        'install',
+        '-l',
+      ], environment: env);
       if (result.exitCode == 0) {
         return parseInstallableVersions(result.stdout.toString());
       } else {
@@ -256,11 +260,10 @@ class Pyenv extends _$Pyenv {
 
     onLog?.call('Starting installation of Python $version...');
 
-    final result = await Process.run(
-      pyenvPath,
-      ['install', version],
-      environment: env,
-    );
+    final result = await Process.run(pyenvPath, [
+      'install',
+      version,
+    ], environment: env);
     if (result.exitCode != 0) {
       onLog?.call('Error: ${result.stderr}');
       throw Exception('Failed to install Python $version');
@@ -275,11 +278,11 @@ class Pyenv extends _$Pyenv {
     final env = await _getEnvironment();
     if (pyenvPath == null) throw Exception('pyenv not found');
 
-    final result = await Process.run(
-      pyenvPath,
-      ['uninstall', '-f', version],
-      environment: env,
-    );
+    final result = await Process.run(pyenvPath, [
+      'uninstall',
+      '-f',
+      version,
+    ], environment: env);
     if (result.exitCode != 0) {
       throw Exception('Failed to uninstall Python $version');
     }
@@ -291,11 +294,10 @@ class Pyenv extends _$Pyenv {
     final env = await _getEnvironment();
     if (pyenvPath == null) throw Exception('pyenv not found');
 
-    final result = await Process.run(
-      pyenvPath,
-      ['global', version],
-      environment: env,
-    );
+    final result = await Process.run(pyenvPath, [
+      'global',
+      version,
+    ], environment: env);
     if (result.exitCode != 0) {
       throw Exception('Failed to set global Python $version');
     }
@@ -307,11 +309,7 @@ class Pyenv extends _$Pyenv {
     final env = await _getEnvironment();
     if (pyenvPath == null) return null;
 
-    final result = await Process.run(
-      pyenvPath,
-      ['version'],
-      environment: env,
-    );
+    final result = await Process.run(pyenvPath, ['version'], environment: env);
     if (result.exitCode == 0) {
       final ver = result.stdout.toString().split(' ').firstOrNull;
       if (ver != 'system') return ver;

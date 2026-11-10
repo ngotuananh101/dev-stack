@@ -16,7 +16,10 @@ void main() {
     });
 
     test('hostsPath returns Linux hosts path when resolved for Linux', () {
-      expect(HostsRepository.resolveHostsPath(isLinux: true), equals('/etc/hosts'));
+      expect(
+        HostsRepository.resolveHostsPath(isLinux: true),
+        equals('/etc/hosts'),
+      );
       expect(
         HostsRepository.resolveHostsPath(isLinux: false),
         equals(r'C:\Windows\System32\drivers\etc\hosts'),
@@ -24,4 +27,3 @@ void main() {
     });
   });
 }
-

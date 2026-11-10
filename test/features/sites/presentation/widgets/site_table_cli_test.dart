@@ -170,9 +170,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          cliProcessManagerProvider.overrideWithValue(fakeManager),
-        ],
+        overrides: [cliProcessManagerProvider.overrideWithValue(fakeManager)],
         child: MaterialApp(
           home: Scaffold(
             body: SiteTable(
@@ -235,8 +233,9 @@ void main() {
     // A 700px window leaves ~412px for the table: narrower than the row's
     // fixed columns plus the ~220px of action buttons it used to lay out in a
     // rigid 220px box with no slack.
-    testWidgets('collapses actions into one menu at a ~412px row',
-        (tester) async {
+    testWidgets('collapses actions into one menu at a ~412px row', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(700, 720);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -288,4 +287,3 @@ void main() {
     });
   });
 }
-

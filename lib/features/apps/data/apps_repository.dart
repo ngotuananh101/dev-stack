@@ -79,8 +79,7 @@ class AppsRepository {
           }
 
           final rawVersions = json['versions'];
-          final Map<String, dynamic> versionsMap =
-              rawVersions is Map
+          final Map<String, dynamic> versionsMap = rawVersions is Map
               ? (Map<String, dynamic>.from(rawVersions)..removeWhere(
                   (_, url) => url is! String || !isSecureCatalogUrl(url),
                 ))

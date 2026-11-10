@@ -59,7 +59,9 @@ class SiteTable extends ConsumerWidget {
           // across rows, even when different site types carry different actions.
           final plan = planActionColumn(
             [for (final site in sites) _rowActions(site, ref)],
-            availableWidth: operateWidth.isFinite && operateWidth > 0 ? operateWidth : 1,
+            availableWidth: operateWidth.isFinite && operateWidth > 0
+                ? operateWidth
+                : 1,
             firstGap: 8,
             gap: 8,
           );
@@ -86,8 +88,8 @@ class SiteTable extends ConsumerWidget {
                     },
                   ),
                 ),
-              ],
-            );
+            ],
+          );
         },
       ),
     );
@@ -174,32 +176,24 @@ class SiteTable extends ConsumerWidget {
 
     return [
       if (site.siteType == 'cli') ...[
-        RowAction.icon(
-          isRunning ? 'Stop' : 'Start',
-          () async {
-            if (isRunning) {
-              await cliManager.stopSite(site.id);
-            } else {
-              await cliManager.startSite(site);
-            }
-          },
-          icon: isRunning ? LucideIcons.square : LucideIcons.play,
-        ),
+        RowAction.icon(isRunning ? 'Stop' : 'Start', () async {
+          if (isRunning) {
+            await cliManager.stopSite(site.id);
+          } else {
+            await cliManager.startSite(site);
+          }
+        }, icon: isRunning ? LucideIcons.square : LucideIcons.play),
         RowAction.icon(
           isRunning ? 'Restart' : 'Not running',
           isRunning ? () => cliManager.restartSite(site) : null,
           icon: LucideIcons.rotateCw,
         ),
-        RowAction.icon(
-          'Logs',
-          () {
-            showDialog(
-              context: ref.context,
-              builder: (context) => SiteLogsModal(site: site),
-            );
-          },
-          icon: LucideIcons.scrollText,
-        ),
+        RowAction.icon('Logs', () {
+          showDialog(
+            context: ref.context,
+            builder: (context) => SiteLogsModal(site: site),
+          );
+        }, icon: LucideIcons.scrollText),
       ],
       if (site.siteType == 'php')
         RowAction.icon(
@@ -207,37 +201,25 @@ class SiteTable extends ConsumerWidget {
           () => _openTerminal(site, ref),
           icon: LucideIcons.terminal,
         ),
-      RowAction.icon(
-        'Share / Tunnel',
-        () {
-          showDialog(
-            context: ref.context,
-            builder: (context) => SiteTunnelDialog(site: site),
-          );
-        },
-        icon: LucideIcons.radio,
-      ),
-      RowAction.icon(
-        'Config',
-        () => onEdit(site),
-        icon: LucideIcons.settings,
-      ),
-      RowAction.icon(
-        'Delete',
-        () {
-          AppDialogs.showConfirm(
-            context: ref.context,
-            title: 'Delete Site',
-            text:
-                'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
-            confirmBtnText: 'DELETE',
-            onConfirm: () {
-              ref.read(sitesProvider.notifier).deleteSite(site.id);
-            },
-          );
-        },
-        icon: Icons.delete_outline_rounded,
-      ),
+      RowAction.icon('Share / Tunnel', () {
+        showDialog(
+          context: ref.context,
+          builder: (context) => SiteTunnelDialog(site: site),
+        );
+      }, icon: LucideIcons.radio),
+      RowAction.icon('Config', () => onEdit(site), icon: LucideIcons.settings),
+      RowAction.icon('Delete', () {
+        AppDialogs.showConfirm(
+          context: ref.context,
+          title: 'Delete Site',
+          text:
+              'Are you sure you want to delete ${site.domain}? This will also remove vhost configurations and logs.',
+          confirmBtnText: 'DELETE',
+          onConfirm: () {
+            ref.read(sitesProvider.notifier).deleteSite(site.id);
+          },
+        );
+      }, icon: Icons.delete_outline_rounded),
     ];
   }
 
@@ -308,8 +290,8 @@ class SiteTable extends ConsumerWidget {
               message: site.siteType == 'cli' && site.command != null
                   ? 'Command: ${site.command}'
                   : (site.siteType == 'proxy'
-                      ? (site.proxyTarget ?? '-')
-                      : site.rootDir),
+                        ? (site.proxyTarget ?? '-')
+                        : site.rootDir),
               child: Text(
                 site.siteType == 'proxy'
                     ? (site.proxyTarget ?? '-')
@@ -399,14 +381,15 @@ class SiteTable extends ConsumerWidget {
 
   @visibleForTesting
   static ({String executable, List<String> arguments, bool runInShell})
-      buildTerminalLaunchSpec({
+  buildTerminalLaunchSpec({
     required bool isLinux,
     required String sitePath,
     String? phpDir,
     String? domain,
   }) {
-    final title =
-        domain != null ? 'DevStack Terminal for $domain' : 'DevStack Terminal';
+    final title = domain != null
+        ? 'DevStack Terminal for $domain'
+        : 'DevStack Terminal';
     if (!isLinux) {
       String psCommand = '';
       if (phpDir != null) {
@@ -415,14 +398,15 @@ class SiteTable extends ConsumerWidget {
       psCommand += 'Clear-Host; ';
       psCommand +=
           'Write-Host "==========================================" -ForegroundColor Cyan; ';
-      psCommand +=
-          'Write-Host " $title" -ForegroundColor White; ';
+      psCommand += 'Write-Host " $title" -ForegroundColor White; ';
       psCommand +=
           'Write-Host "==========================================" -ForegroundColor Cyan; ';
       if (phpDir != null) {
-        psCommand += 'Write-Host "PHP Path : $phpDir" -ForegroundColor DarkGray; ';
+        psCommand +=
+            'Write-Host "PHP Path : $phpDir" -ForegroundColor DarkGray; ';
       }
-      psCommand += 'Write-Host "Site Path: $sitePath" -ForegroundColor DarkGray; ';
+      psCommand +=
+          'Write-Host "Site Path: $sitePath" -ForegroundColor DarkGray; ';
       psCommand += 'Write-Host ""; ';
       if (phpDir != null) {
         psCommand += 'php -v; Write-Host ""; ';
@@ -493,11 +477,12 @@ class SiteTable extends ConsumerWidget {
             workingDirectory: workingDir,
           );
         } catch (_) {
-          await Process.start(
-            'xterm',
-            ['-e', 'bash', '-c', launchSpec.arguments.last],
-            workingDirectory: workingDir,
-          );
+          await Process.start('xterm', [
+            '-e',
+            'bash',
+            '-c',
+            launchSpec.arguments.last,
+          ], workingDirectory: workingDir);
         }
       } else {
         await Process.start(

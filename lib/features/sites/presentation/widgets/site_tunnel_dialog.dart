@@ -9,6 +9,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/widgets/status_chip.dart';
+import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../shared/utils/modal_sizing.dart';
 import '../../../tunnels/data/tunnels_provider.dart';
 import '../../../tunnels/data/tunnel_manager_service.dart';
@@ -30,10 +31,7 @@ import '../../domain/site_model.dart';
 class SiteTunnelDialog extends ConsumerStatefulWidget {
   final SiteModel site;
 
-  const SiteTunnelDialog({
-    super.key,
-    required this.site,
-  });
+  const SiteTunnelDialog({super.key, required this.site});
 
   @override
   ConsumerState<SiteTunnelDialog> createState() => _SiteTunnelDialogState();
@@ -101,8 +99,7 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
 
   TunnelModel? _findSiteTunnel(List<TunnelModel> tunnels) {
     for (final t in tunnels) {
-      if (t.targetType == 'site' &&
-          t.targetSiteDomain == widget.site.domain) {
+      if (t.targetType == 'site' && t.targetSiteDomain == widget.site.domain) {
         return t;
       }
     }
@@ -116,7 +113,11 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
         AppButton(
           label: 'Start Quick Tunnel (Cloudflare)',
           onPressed: _startQuickTunnel,
-          icon: const Icon(LucideIcons.cloud, size: 16, color: AppColors.textOnColor),
+          icon: const Icon(
+            LucideIcons.cloud,
+            size: 16,
+            color: AppColors.textOnColor,
+          ),
         ),
         const SizedBox(height: 12),
         AppButton(
@@ -133,7 +134,8 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
     final status = session?.status ?? TunnelStatus.stopped;
     final isRunning = status == TunnelStatus.running;
     final isStopped = status == TunnelStatus.stopped;
-    final isConnecting = status == TunnelStatus.connecting ||
+    final isConnecting =
+        status == TunnelStatus.connecting ||
         status == TunnelStatus.downloadingBinary;
     final hasError = status == TunnelStatus.error;
     final publicUrl = session?.publicUrl;
@@ -268,9 +270,7 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
           icon: LucideIcons.copy,
           onPressed: () {
             Clipboard.setData(ClipboardData(text: url));
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Public URL copied to clipboard')),
-            );
+            AppDialogs.showToast(context, 'Public URL copied to clipboard');
           },
         ),
         const SizedBox(width: 4),
@@ -278,10 +278,7 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
           tooltip: 'Open in Browser',
           icon: LucideIcons.externalLink,
           onPressed: () {
-            launchUrlString(
-              url,
-              mode: LaunchMode.externalApplication,
-            );
+            launchUrlString(url, mode: LaunchMode.externalApplication);
           },
         ),
         const SizedBox(width: 4),
@@ -298,10 +295,7 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
     showDialog(
       context: context,
       builder: (context) => Center(
-        child: TunnelQrModal(
-          tunnelName: widget.site.domain,
-          publicUrl: url,
-        ),
+        child: TunnelQrModal(tunnelName: widget.site.domain, publicUrl: url),
       ),
     );
   }
@@ -329,8 +323,9 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
             label: 'Cancel',
             style: AppButtonStyle.danger,
             icon: const Icon(LucideIcons.x, size: 14),
-            onPressed: () =>
-                ref.read(tunnelSessionsProvider.notifier).cancelStart(tunnel.id),
+            onPressed: () => ref
+                .read(tunnelSessionsProvider.notifier)
+                .cancelStart(tunnel.id),
           )
         else
           AppButton(
@@ -370,7 +365,9 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
       createdAt: DateTime.now(),
     );
 
-    final savedTunnel = await ref.read(tunnelManagerServiceProvider).saveTunnel(tunnel);
+    final savedTunnel = await ref
+        .read(tunnelManagerServiceProvider)
+        .saveTunnel(tunnel);
 
     // Refresh the tunnels stream so the newly saved tunnel is picked up.
     // ignore: unused_result

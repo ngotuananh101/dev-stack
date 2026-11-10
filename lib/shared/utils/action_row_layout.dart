@@ -156,7 +156,10 @@ ActionColumnPlan planActionColumn(
   }
 
   if (widest + kOverflowMenuWidth > availableWidth) {
-    return ActionColumnPlan(width: firstGap + kOverflowMenuWidth, collapsed: true);
+    return ActionColumnPlan(
+      width: firstGap + kOverflowMenuWidth,
+      collapsed: true,
+    );
   }
   return ActionColumnPlan(width: widest, collapsed: false);
 }

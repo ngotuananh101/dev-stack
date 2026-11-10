@@ -10,11 +10,7 @@ class ServiceLogsModal extends ConsumerWidget {
   final AppModel app;
   final VoidCallback onClose;
 
-  const ServiceLogsModal({
-    super.key,
-    required this.app,
-    required this.onClose,
-  });
+  const ServiceLogsModal({super.key, required this.app, required this.onClose});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -48,22 +48,25 @@ void main() {
       },
     );
 
-    test('sequential calls reuse cached instance without re-invoking opener', () async {
-      int openerCalls = 0;
-      final fakeIsar = _FakeIsar();
+    test(
+      'sequential calls reuse cached instance without re-invoking opener',
+      () async {
+        int openerCalls = 0;
+        final fakeIsar = _FakeIsar();
 
-      Future<Isar> testOpener() async {
-        openerCalls++;
-        return fakeIsar;
-      }
+        Future<Isar> testOpener() async {
+          openerCalls++;
+          return fakeIsar;
+        }
 
-      final first = await IsarInstance.getInstance(opener: testOpener);
-      final second = await IsarInstance.getInstance(opener: testOpener);
+        final first = await IsarInstance.getInstance(opener: testOpener);
+        final second = await IsarInstance.getInstance(opener: testOpener);
 
-      expect(openerCalls, equals(1));
-      expect(identical(first, second), isTrue);
-      expect(identical(first, fakeIsar), isTrue);
-    });
+        expect(openerCalls, equals(1));
+        expect(identical(first, second), isTrue);
+        expect(identical(first, fakeIsar), isTrue);
+      },
+    );
 
     test(
       'error in opener propagates to all concurrent waiters and resets lock for subsequent calls',
@@ -86,9 +89,7 @@ void main() {
           expect(future, throwsA(isA<Exception>()));
         }
 
-        await Future.wait(
-          futures.map((f) => f.catchError((_) => _FakeIsar())),
-        );
+        await Future.wait(futures.map((f) => f.catchError((_) => _FakeIsar())));
 
         expect(openerCalls, equals(1));
 
@@ -99,7 +100,9 @@ void main() {
           return fakeIsar;
         }
 
-        final recovered = await IsarInstance.getInstance(opener: successfulOpener);
+        final recovered = await IsarInstance.getInstance(
+          opener: successfulOpener,
+        );
         expect(openerCalls, equals(2));
         expect(identical(recovered, fakeIsar), isTrue);
       },
@@ -127,26 +130,29 @@ void main() {
       expect(identical(second, fakeIsar2), isTrue);
     });
 
-    test('if cached instance has isOpen == false, opener is invoked again', () async {
-      int openerCalls = 0;
-      final fakeIsar1 = _FakeIsar(isOpen: true);
-      final fakeIsar2 = _FakeIsar(isOpen: true);
+    test(
+      'if cached instance has isOpen == false, opener is invoked again',
+      () async {
+        int openerCalls = 0;
+        final fakeIsar1 = _FakeIsar(isOpen: true);
+        final fakeIsar2 = _FakeIsar(isOpen: true);
 
-      Future<Isar> testOpener() async {
-        openerCalls++;
-        return openerCalls == 1 ? fakeIsar1 : fakeIsar2;
-      }
+        Future<Isar> testOpener() async {
+          openerCalls++;
+          return openerCalls == 1 ? fakeIsar1 : fakeIsar2;
+        }
 
-      final first = await IsarInstance.getInstance(opener: testOpener);
-      expect(identical(first, fakeIsar1), isTrue);
-      expect(openerCalls, equals(1));
+        final first = await IsarInstance.getInstance(opener: testOpener);
+        expect(identical(first, fakeIsar1), isTrue);
+        expect(openerCalls, equals(1));
 
-      // Simulate external close on instance
-      fakeIsar1.isOpen = false;
+        // Simulate external close on instance
+        fakeIsar1.isOpen = false;
 
-      final second = await IsarInstance.getInstance(opener: testOpener);
-      expect(identical(second, fakeIsar2), isTrue);
-      expect(openerCalls, equals(2));
-    });
+        final second = await IsarInstance.getInstance(opener: testOpener);
+        expect(identical(second, fakeIsar2), isTrue);
+        expect(openerCalls, equals(2));
+      },
+    );
   });
 }

@@ -6,14 +6,13 @@ class NgrokDriver implements TunnelDriver {
   @override
   String get providerId => 'ngrok';
 
-  static final RegExp _fallbackUrlRegex = RegExp(r'https:\/\/[a-zA-Z0-9-]+\.(ngrok-free\.app|ngrok\.io|ngrok\.app)');
+  static final RegExp _fallbackUrlRegex = RegExp(
+    r'https:\/\/[a-zA-Z0-9-]+\.(ngrok-free\.app|ngrok\.io|ngrok\.app)',
+  );
   static final RegExp _inspectorAddrRegex = RegExp(r'127\.0\.0\.1:\d+');
 
   @override
-  List<String> buildStartArguments(
-    TunnelModel tunnel, {
-    String? defaultToken,
-  }) {
+  List<String> buildStartArguments(TunnelModel tunnel, {String? defaultToken}) {
     // Site tunnels must hit the webserver's HTTP port (80) and carry the
     // site's domain as the Host header, otherwise nginx falls through to the
     // default vhost and serves the wrong site. Use a LITERAL hostname here

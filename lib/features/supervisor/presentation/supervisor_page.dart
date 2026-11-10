@@ -36,9 +36,7 @@ class SupervisorPage extends ConsumerWidget {
                 data: (programs) => SupervisorTable(
                   programs: programs,
                   statuses: statuses,
-                  pids: {
-                    for (final p in programs) p.id: manager.getPid(p.id),
-                  },
+                  pids: {for (final p in programs) p.id: manager.getPid(p.id)},
                   onStart: (p) => _start(context, manager, p),
                   onStop: (id) => manager.stop(id),
                   onRestart: (p) => _restart(context, manager, p),
@@ -46,8 +44,7 @@ class SupervisorPage extends ConsumerWidget {
                   onEdit: (p) => _edit(context, p),
                   onDelete: (p) => _delete(context, ref, manager, p),
                 ),
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Text(
                     'Error loading programs: $e',
@@ -172,7 +169,8 @@ class SupervisorPage extends ConsumerWidget {
     AppDialogs.showConfirm(
       context: context,
       title: 'Delete Program',
-      text: 'Delete "${program.name}"? The process will be stopped and its '
+      text:
+          'Delete "${program.name}"? The process will be stopped and its '
           'configuration removed. This cannot be undone.',
       confirmBtnText: 'DELETE',
       onConfirm: () async {

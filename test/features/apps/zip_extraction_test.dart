@@ -42,8 +42,7 @@ void main() {
   });
 
   test('creates nested directories from directory entries', () {
-    final archive = Archive()
-      ..addFile(ArchiveFile('empty/dir/', 0, <int>[]));
+    final archive = Archive()..addFile(ArchiveFile('empty/dir/', 0, <int>[]));
     final summary = AppInstallerService.extractZipToDirectory(
       ZipEncoder().encode(archive),
       tmp.path,
@@ -53,18 +52,20 @@ void main() {
     expect(Directory('${tmp.path}/empty/dir').existsSync(), isTrue);
   });
 
-  test('skips path-traversal entries instead of writing outside the target',
-      () {
-    final bytes = buildZip({
-      'ok.txt': 'fine',
-      '../escaped.txt': 'bad',
-    });
+  test(
+    'skips path-traversal entries instead of writing outside the target',
+    () {
+      final bytes = buildZip({'ok.txt': 'fine', '../escaped.txt': 'bad'});
 
-    final summary = AppInstallerService.extractZipToDirectory(bytes, tmp.path);
+      final summary = AppInstallerService.extractZipToDirectory(
+        bytes,
+        tmp.path,
+      );
 
-    expect(summary.fileCount, 1);
-    expect(summary.skippedEntries, contains('../escaped.txt'));
-    expect(File('${tmp.path}/../escaped.txt').existsSync(), isFalse);
-    expect(File('${tmp.path}/ok.txt').existsSync(), isTrue);
-  });
+      expect(summary.fileCount, 1);
+      expect(summary.skippedEntries, contains('../escaped.txt'));
+      expect(File('${tmp.path}/../escaped.txt').existsSync(), isFalse);
+      expect(File('${tmp.path}/ok.txt').existsSync(), isTrue);
+    },
+  );
 }

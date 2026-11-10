@@ -69,29 +69,26 @@ void main() {
       },
     );
 
-    test(
-      'cleans up temporary directory when elevated copy succeeds',
-      () async {
-        final repo = HostsRepository();
-        String? capturedTempDirPath;
+    test('cleans up temporary directory when elevated copy succeeds', () async {
+      final repo = HostsRepository();
+      String? capturedTempDirPath;
 
-        final result = await repo.saveHostsRaw(
-          '127.0.0.1 success.local\n',
-          isLinux: true,
-          skipDirectWrite: true,
-          runProcess: (exec, args) async {
-            if (exec == 'chmod' && args.length >= 2) {
-              capturedTempDirPath = File(args[1]).parent.path;
-            }
-            return ProcessResult(102, 0, '', '');
-          },
-        );
+      final result = await repo.saveHostsRaw(
+        '127.0.0.1 success.local\n',
+        isLinux: true,
+        skipDirectWrite: true,
+        runProcess: (exec, args) async {
+          if (exec == 'chmod' && args.length >= 2) {
+            capturedTempDirPath = File(args[1]).parent.path;
+          }
+          return ProcessResult(102, 0, '', '');
+        },
+      );
 
-        expect(result, isTrue);
-        expect(capturedTempDirPath, isNotNull);
-        expect(Directory(capturedTempDirPath!).existsSync(), isFalse);
-      },
-    );
+      expect(result, isTrue);
+      expect(capturedTempDirPath, isNotNull);
+      expect(Directory(capturedTempDirPath!).existsSync(), isFalse);
+    });
   });
 
   group('BackgroundProcess.runElevated audit logging (VULN-05)', () {
@@ -131,27 +128,24 @@ void main() {
       },
     );
 
-    test(
-      'logs audit message when arguments are empty',
-      () async {
-        final auditLogs = <String>[];
+    test('logs audit message when arguments are empty', () async {
+      final auditLogs = <String>[];
 
-        await BackgroundProcess.runElevated(
-          'whoami',
-          [],
-          isLinux: true,
-          logInfo: (msg) => auditLogs.add(msg),
-          runProcess: (exec, args) async {
-            return ProcessResult(201, 0, 'root', '');
-          },
-        );
+      await BackgroundProcess.runElevated(
+        'whoami',
+        [],
+        isLinux: true,
+        logInfo: (msg) => auditLogs.add(msg),
+        runProcess: (exec, args) async {
+          return ProcessResult(201, 0, 'root', '');
+        },
+      );
 
-        expect(auditLogs, hasLength(1));
-        expect(
-          auditLogs.first,
-          equals('Audit: executing elevated command with pkexec: whoami'),
-        );
-      },
-    );
+      expect(auditLogs, hasLength(1));
+      expect(
+        auditLogs.first,
+        equals('Audit: executing elevated command with pkexec: whoami'),
+      );
+    });
   });
 }

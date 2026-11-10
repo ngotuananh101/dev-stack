@@ -11,16 +11,15 @@ class _StaticSitesNotifier extends Sites {
 }
 
 void main() {
-  testWidgets('sites toolbar wraps its buttons and shrinks the search field',
-      (tester) async {
+  testWidgets('sites toolbar wraps its buttons and shrinks the search field', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(520, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          sitesProvider.overrideWith(_StaticSitesNotifier.new),
-        ],
+        overrides: [sitesProvider.overrideWith(_StaticSitesNotifier.new)],
         child: const MaterialApp(home: Scaffold(body: SitesPage())),
       ),
     );

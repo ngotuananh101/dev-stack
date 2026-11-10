@@ -21,7 +21,7 @@ class SystemInfoState extends _$SystemInfoState {
 
   @visibleForTesting
   static Future<({String rawOutput, String frameworkLabel})>
-      collectPlatformInfo({
+  collectPlatformInfo({
     bool? isWindows,
     Future<ProcessResult> Function(String, List<String>)? run,
   }) async {
@@ -63,4 +63,3 @@ class SystemInfoState extends _$SystemInfoState {
     );
   }
 }
-

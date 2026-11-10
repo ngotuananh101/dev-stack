@@ -13,7 +13,10 @@ void main() {
 
   test('Windows app resolves <location>/php.ini', () {
     final app = createApp(location: r'C:\dev-stack\apps\php\8.2');
-    expect(resolvePhpIniPath(app, isLinux: false), p.join(r'C:\dev-stack\apps\php\8.2', 'php.ini'));
+    expect(
+      resolvePhpIniPath(app, isLinux: false),
+      p.join(r'C:\dev-stack\apps\php\8.2', 'php.ini'),
+    );
   });
 
   test('Linux app without a bundle resolves <location>/php.ini', () {

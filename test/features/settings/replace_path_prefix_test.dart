@@ -26,11 +26,7 @@ void main() {
 
     test('replaces when the path equals the prefix exactly', () {
       expect(
-        Settings.replacePathPrefix(
-          r'C:\Dev',
-          r'C:\Dev',
-          r'C:\DevStack',
-        ),
+        Settings.replacePathPrefix(r'C:\Dev', r'C:\Dev', r'C:\DevStack'),
         r'C:\DevStack',
       );
     });
@@ -87,10 +83,14 @@ void main() {
 
       final text = File('${dir.path}/shim')
         ..writeAsStringSync('#!/bin/sh\nexec /old/dir/bin/php "\$@"\n');
-      final binary = File('${dir.path}/elf')..writeAsBytesSync([0x7f, 0x45, 0x4c, 0x46, 0x00, 0x01]);
+      final binary = File('${dir.path}/elf')
+        ..writeAsBytesSync([0x7f, 0x45, 0x4c, 0x46, 0x00, 0x01]);
 
-      expect(await Settings.looksLikeBinaryFile(text), isFalse,
-          reason: 'plain shell shims must still be rewritten');
+      expect(
+        await Settings.looksLikeBinaryFile(text),
+        isFalse,
+        reason: 'plain shell shims must still be rewritten',
+      );
       expect(await Settings.looksLikeBinaryFile(binary), isTrue);
     });
   });

@@ -16,13 +16,10 @@ class DbSettings extends _$DbSettings {
 
     final id = app.appId.toLowerCase();
     if (id == 'phpmyadmin') {
-      return File(
-        '${app.location}${Platform.pathSeparator}config.inc.php',
-      );
+      return File('${app.location}${Platform.pathSeparator}config.inc.php');
     }
 
-    final isMariaDb =
-        app.groupName == 'mariadb' || id.contains('mariadb');
+    final isMariaDb = app.groupName == 'mariadb' || id.contains('mariadb');
 
     // MariaDB/MySQL put my.ini in the managed data directory
     if (isMariaDb || id.contains('mysql')) {

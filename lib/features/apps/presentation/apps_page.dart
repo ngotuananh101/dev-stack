@@ -144,9 +144,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                           }
                         },
                         onTogglePath: (app) async {
-                          await ref
-                              .read(appsProvider.notifier)
-                              .togglePath(app);
+                          await ref.read(appsProvider.notifier).togglePath(app);
 
                           if (!context.mounted) return;
                           final status = app.isAddedToPath
@@ -184,9 +182,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
                           );
                         },
                         onOpen: (app) async {
-                          await ref
-                              .read(appsProvider.notifier)
-                              .openApp(app);
+                          await ref.read(appsProvider.notifier).openApp(app);
                         },
                         onCancelInstall: (app) {
                           ref
@@ -228,11 +224,7 @@ class _AppsPageState extends ConsumerState<AppsPage> {
 
       if (!mounted) return;
 
-      AppDialogs.showSuccess(
-        context: context,
-        title: 'Success',
-        text: 'App list updated successfully',
-      );
+      AppDialogs.showToast(context, 'App list updated successfully');
     } catch (e) {
       if (!mounted) return;
 

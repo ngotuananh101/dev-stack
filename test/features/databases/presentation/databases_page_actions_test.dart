@@ -52,10 +52,7 @@ Future<void> _pumpPage(
   await tester.binding.setSurfaceSize(const Size(1400, 900));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
-  final apps = <AppModel>[
-    engine,
-    if (phpMyAdminInstalled) _phpMyAdmin(),
-  ];
+  final apps = <AppModel>[engine, if (phpMyAdminInstalled) _phpMyAdmin()];
 
   await tester.pumpWidget(
     ProviderScope(
@@ -98,9 +95,7 @@ void main() {
       expect(find.text('phpMyAdmin'), findsNothing);
     });
 
-    testWidgets('shown for MySQL when phpMyAdmin is installed', (
-      tester,
-    ) async {
+    testWidgets('shown for MySQL when phpMyAdmin is installed', (tester) async {
       await _pumpPage(
         tester,
         engine: _engine('mysql', 'MySQL'),

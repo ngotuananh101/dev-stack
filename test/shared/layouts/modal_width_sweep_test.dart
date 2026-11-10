@@ -51,7 +51,8 @@ void main() {
     useSsl: true,
   );
   final modals = <String, Widget Function()>{
-    'app version': () => AppVersionModal(app: app, onInstall: () {}, onClose: () {}),
+    'app version': () =>
+        AppVersionModal(app: app, onInstall: () {}, onClose: () {}),
     'app settings': () => AppSettingsModal(app: app, onClose: () {}),
     'pyenv manage': () => PyenvManageModal(app: app, onClose: () {}),
     'service logs': () => ServiceLogsModal(app: app, onClose: () {}),
@@ -72,11 +73,8 @@ void main() {
       onCancel: () {},
     ),
     'add database': () => AddDatabaseModal(engine: app, onClose: () {}),
-    'add redis key': () => AddRedisKeyModal(
-      engine: app,
-      dbIndex: 0,
-      onClose: () {},
-    ),
+    'add redis key': () =>
+        AddRedisKeyModal(engine: app, dbIndex: 0, onClose: () {}),
     'system info': () => const SystemInfoModal(),
     'cron form': () => const CronFormModal(),
     'program form': () => const ProgramFormModal(),
@@ -85,7 +83,8 @@ void main() {
       tunnelName: 'My Tunnel',
       publicUrl: 'https://example.trycloudflare.com',
     ),
-    'tunnel logs': () => TunnelLogsModal(tunnelName: 'My Tunnel', session: null),
+    'tunnel logs': () =>
+        TunnelLogsModal(tunnelName: 'My Tunnel', session: null),
   };
 
   for (final entry in modals.entries) {

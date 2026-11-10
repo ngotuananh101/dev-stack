@@ -27,10 +27,7 @@ class _CancelAwareAdapter implements HttpClientAdapter {
     });
     await cancelled.future;
 
-    throw DioException(
-      requestOptions: options,
-      type: DioExceptionType.cancel,
-    );
+    throw DioException(requestOptions: options, type: DioExceptionType.cancel);
   }
 
   @override

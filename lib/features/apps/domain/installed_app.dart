@@ -12,18 +12,18 @@ class InstalledApp {
   late String appName;
   late String location;
   late String status; // 'running', 'stopped', 'installing', 'not_installed'
-  
+
   String? version; // The version currently installed
   DateTime? installedAt;
-  
+
   String? execFilePath;
   String? cliFilePath;
-  
+
   @Index()
   bool addedToPath = false;
 
   bool autoStartService = false;
-  
+
   @Index()
   String? groupName;
 

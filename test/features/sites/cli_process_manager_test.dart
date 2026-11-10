@@ -32,7 +32,9 @@ void main() {
         domain: 'test-app.test',
         rootDir: tempDir.path,
         siteType: 'cli',
-        command: Platform.isWindows ? 'echo Hello CLI Test' : 'echo "Hello CLI Test"',
+        command: Platform.isWindows
+            ? 'echo Hello CLI Test'
+            : 'echo "Hello CLI Test"',
         port: 3000,
       );
 

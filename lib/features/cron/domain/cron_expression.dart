@@ -72,12 +72,7 @@ class CronExpression {
 
   /// Expands one field (`*`, `a`, `a-b`, `a,b`, `*/n`, `a-b/n`) into the sorted,
   /// de-duplicated set of matching values within [min]..[max].
-  static List<int> _parseField(
-    String field,
-    int min,
-    int max,
-    String name,
-  ) {
+  static List<int> _parseField(String field, int min, int max, String name) {
     final values = <int>{};
     for (final part in field.split(',')) {
       final piece = part.trim();
@@ -121,9 +116,7 @@ class CronExpression {
       }
 
       if (lo < min || hi > max) {
-        throw FormatException(
-          '$name value out of range ($min-$max): "$piece"',
-        );
+        throw FormatException('$name value out of range ($min-$max): "$piece"');
       }
 
       for (var v = lo; v <= hi; v += step) {
@@ -164,8 +157,13 @@ class CronExpression {
   /// 4-year horizon so an unsatisfiable schedule (e.g. `0 0 30 2 *`) returns
   /// `null` instead of looping forever.
   DateTime? nextOccurrence(DateTime from) {
-    final start = DateTime(from.year, from.month, from.day, from.hour, from.minute)
-        .add(const Duration(minutes: 1));
+    final start = DateTime(
+      from.year,
+      from.month,
+      from.day,
+      from.hour,
+      from.minute,
+    ).add(const Duration(minutes: 1));
     final horizon = DateTime(start.year + 4, start.month, start.day);
 
     var candidate = start;
@@ -195,12 +193,27 @@ class CronExpression {
   }
 
   static const List<String> _weekdayNames = [
-    'Sunday', 'Monday', 'Tuesday', 'Wednesday',
-    'Thursday', 'Friday', 'Saturday',
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
   ];
   static const List<String> _monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   String _two(int v) => v.toString().padLeft(2, '0');
@@ -230,11 +243,13 @@ class CronExpression {
     if (hours.length == 24 && dayPart == null) {
       if (minutes.length == 1) return 'At minute ${minutes.first}';
       final step = minutes.length > 1 ? minutes[1] - minutes[0] : 0;
-      final isStepped = minutes.first == 0 &&
+      final isStepped =
+          minutes.first == 0 &&
           step > 0 &&
-          List.generate(minutes.length, (i) => i * step).every(
-                (v) => minutes.contains(v),
-              );
+          List.generate(
+            minutes.length,
+            (i) => i * step,
+          ).every((v) => minutes.contains(v));
       if (isStepped) return 'Every $step minutes';
     }
 
@@ -269,7 +284,8 @@ class CronExpression {
         return 'on ${_weekdayNames[daysOfWeek.first]}';
       }
       // Contiguous range like 1-5 → "Mon-Fri".
-      final contiguous = daysOfWeek.length > 1 &&
+      final contiguous =
+          daysOfWeek.length > 1 &&
           daysOfWeek.last - daysOfWeek.first == daysOfWeek.length - 1;
       if (contiguous) {
         final a = _weekdayNames[daysOfWeek.first].substring(0, 3);

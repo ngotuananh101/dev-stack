@@ -10,7 +10,7 @@ class SiteModel {
   late String domain; // Site name/domain (e.g. example.test)
 
   late String rootDir; // Root directory path
-  
+
   String siteType = 'php'; // 'php', 'static', 'proxy', 'cli'
 
   String? phpVersion; // e.g. "8.2", "8.1"
@@ -24,7 +24,7 @@ class SiteModel {
   bool autoStart = false; // Whether to auto-start the CLI site
 
   bool useSsl = false;
-  
+
   DateTime? createdAt;
 
   SiteModel({

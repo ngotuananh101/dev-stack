@@ -32,17 +32,12 @@ void main() {
       final token = CancelToken();
       var started = 0;
       final items = List.generate(20, (i) => i);
-      await runBounded<int, int>(
-        items,
-        2,
-        (item, index) async {
-          started++;
-          if (started == 3) token.cancel();
-          await Future<void>.delayed(const Duration(milliseconds: 5));
-          return item;
-        },
-        cancel: token,
-      );
+      await runBounded<int, int>(items, 2, (item, index) async {
+        started++;
+        if (started == 3) token.cancel();
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        return item;
+      }, cancel: token);
       // Some tasks admitted before cancel; not all 20 should run.
       expect(started, lessThan(20));
     });

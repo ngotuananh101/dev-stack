@@ -7,7 +7,6 @@ import '../../helpers/test_ref.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
-
 void main() {
   late AppInstallerService installerService;
   late Directory tempAppsDir;
@@ -27,7 +26,8 @@ void main() {
   group('Linux Capability Setup for Webservers', () {
     test('skips capability setup on non-Linux platforms', () async {
       final logMessages = <String>[];
-      final dummyBinary = File(p.join(AppConfig.appsDir, 'caddy'))..createSync(recursive: true);
+      final dummyBinary = File(p.join(AppConfig.appsDir, 'caddy'))
+        ..createSync(recursive: true);
 
       var processCalled = false;
       await installerService.setLinuxCapabilityForWebserver(
@@ -79,12 +79,16 @@ void main() {
       );
 
       expect(processCalled, isFalse);
-      expect(logMessages.any((msg) => msg.contains('Executable not found')), isTrue);
+      expect(
+        logMessages.any((msg) => msg.contains('Executable not found')),
+        isTrue,
+      );
     });
 
     test('calls sudo setcap successfully on valid binary', () async {
       final logMessages = <String>[];
-      final nginxBinary = File(p.join(AppConfig.appsDir, 'nginx'))..createSync(recursive: true);
+      final nginxBinary = File(p.join(AppConfig.appsDir, 'nginx'))
+        ..createSync(recursive: true);
 
       final executedCommands = <String>[];
       final executedArgs = <List<String>>[];
@@ -101,13 +105,20 @@ void main() {
       );
 
       expect(executedCommands, equals(['sudo']));
-      expect(executedArgs.first, equals(['setcap', 'cap_net_bind_service=+ep', nginxBinary.path]));
-      expect(logMessages.any((msg) => msg.contains('Successfully set capability')), isTrue);
+      expect(
+        executedArgs.first,
+        equals(['setcap', 'cap_net_bind_service=+ep', nginxBinary.path]),
+      );
+      expect(
+        logMessages.any((msg) => msg.contains('Successfully set capability')),
+        isTrue,
+      );
     });
 
     test('falls back to pkexec when sudo fails', () async {
       final logMessages = <String>[];
-      final caddyBinary = File(p.join(AppConfig.appsDir, 'caddy'))..createSync(recursive: true);
+      final caddyBinary = File(p.join(AppConfig.appsDir, 'caddy'))
+        ..createSync(recursive: true);
 
       final executedCommands = <String>[];
 
@@ -125,13 +136,22 @@ void main() {
       );
 
       expect(executedCommands, equals(['sudo', 'pkexec']));
-      expect(logMessages.any((msg) => msg.contains('Sudo failed, trying pkexec')), isTrue);
-      expect(logMessages.any((msg) => msg.contains('Successfully set capability via pkexec')), isTrue);
+      expect(
+        logMessages.any((msg) => msg.contains('Sudo failed, trying pkexec')),
+        isTrue,
+      );
+      expect(
+        logMessages.any(
+          (msg) => msg.contains('Successfully set capability via pkexec'),
+        ),
+        isTrue,
+      );
     });
 
     test('logs manual guidance when both sudo and pkexec fail', () async {
       final logMessages = <String>[];
-      final apacheBinary = File(p.join(AppConfig.appsDir, 'httpd'))..createSync(recursive: true);
+      final apacheBinary = File(p.join(AppConfig.appsDir, 'httpd'))
+        ..createSync(recursive: true);
 
       await installerService.setLinuxCapabilityForWebserver(
         apacheBinary.path,
@@ -142,8 +162,16 @@ void main() {
         },
       );
 
-      expect(logMessages.any((msg) => msg.contains('Could not set capability')), isTrue);
-      expect(logMessages.any((msg) => msg.contains('sudo setcap cap_net_bind_service=+ep')), isTrue);
+      expect(
+        logMessages.any((msg) => msg.contains('Could not set capability')),
+        isTrue,
+      );
+      expect(
+        logMessages.any(
+          (msg) => msg.contains('sudo setcap cap_net_bind_service=+ep'),
+        ),
+        isTrue,
+      );
       expect(logMessages.any((msg) => msg.contains('ports >= 1024')), isTrue);
     });
     test('grants the capability to the loader, not the bin launcher', () async {
@@ -180,15 +208,13 @@ void main() {
       expect(executedArgs, hasLength(1));
       expect(
         executedArgs.single,
-        equals([
-          'sudo',
-          'setcap',
-          'cap_net_bind_service=+ep',
-          loader.path,
-        ]),
+        equals(['sudo', 'setcap', 'cap_net_bind_service=+ep', loader.path]),
       );
       expect(executedArgs.single.last.endsWith('ld-musl-x86_64.so.1'), isTrue);
-      expect(logMessages.any((msg) => msg.contains('Executable not found')), isFalse);
+      expect(
+        logMessages.any((msg) => msg.contains('Executable not found')),
+        isFalse,
+      );
     });
 
     test('logs and does not throw when the runner fails', () async {
@@ -218,7 +244,9 @@ void main() {
         isTrue,
       );
       expect(
-        logMessages.any((msg) => msg.contains('sudo setcap cap_net_bind_service=+ep')),
+        logMessages.any(
+          (msg) => msg.contains('sudo setcap cap_net_bind_service=+ep'),
+        ),
         isTrue,
       );
     });

@@ -93,19 +93,14 @@ class _AppHeaderState extends State<AppHeader> {
       height: kAppHeaderHeight,
       decoration: const BoxDecoration(
         color: AppColors.background,
-        border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 1.0),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 1.0)),
       ),
       child: Row(
         children: [
           _buildBrand(),
           const Expanded(
             child: DragToMoveArea(
-              child: SizedBox(
-                height: kAppHeaderHeight,
-                width: double.infinity,
-              ),
+              child: SizedBox(height: kAppHeaderHeight, width: double.infinity),
             ),
           ),
           _buildWindowControls(),
@@ -120,11 +115,7 @@ class _AppHeaderState extends State<AppHeader> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(
-            'assets/images/icon.png',
-            width: 16,
-            height: 16,
-          ),
+          Image.asset('assets/images/icon.png', width: 16, height: 16),
           const SizedBox(width: 8),
           const Text(
             'Ponta DevStack',

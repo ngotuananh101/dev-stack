@@ -56,13 +56,15 @@ Future<void> updateBaseDirEnvVar(
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
-  })? runProcess,
+  })?
+  runProcess,
   bool? isWindows,
 }) async {
   try {
     final onWindows = isWindows ?? Platform.isWindows;
     if (onWindows) {
-      final runner = runProcess ??
+      final runner =
+          runProcess ??
           ((cmd, args, {environment}) =>
               BackgroundProcess.run(cmd, args, environment: environment));
       final result = await runner(
@@ -83,7 +85,9 @@ Future<void> updateBaseDirEnvVar(
           'Updated DEVSTACK_BASE_DIR environment variable: $baseDir',
         );
       } else {
-        AppLogger.warning('Failed to update DEVSTACK_BASE_DIR: ${result.stderr}');
+        AppLogger.warning(
+          'Failed to update DEVSTACK_BASE_DIR: ${result.stderr}',
+        );
       }
     } else if (Platform.isLinux) {
       AppLogger.info('Base dir set to $baseDir');

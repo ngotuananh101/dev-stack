@@ -12,6 +12,7 @@ import 'package:re_highlight/styles/atom-one-dark.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
+import '../../../shared/utils/app_dialogs.dart';
 import '../../../shared/widgets/app_button.dart';
 import 'language_for_config.dart';
 
@@ -156,7 +157,8 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
         _fileBytes = _byteLength(widget.content!);
         _dirty = false;
       }
-    } else if (widget.filePath != oldWidget.filePath && widget.content == null) {
+    } else if (widget.filePath != oldWidget.filePath &&
+        widget.content == null) {
       _loadFile();
     }
   }
@@ -279,30 +281,19 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
         if (_editRevision == revisionAtSave) _dirty = false;
         if (mounted) {
           setState(() {});
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Saved successfully'),
-              backgroundColor: AppColors.success,
-            ),
-          );
+          AppDialogs.showToast(context, 'Saved successfully');
         }
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save (permission denied or UAC declined)'),
-            backgroundColor: AppColors.error,
-          ),
+        AppDialogs.showError(
+          context,
+          title: 'Could not save',
+          message: 'The write was denied — permission denied or UAC declined.',
         );
       }
     } catch (e) {
       AppLogger.error('ConfigCodeEditor save failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppDialogs.showError(context, title: 'Could not save', message: '$e');
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -470,7 +461,9 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                           fillColor: AppColors.background,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
                           ),
                         ),
                       ),

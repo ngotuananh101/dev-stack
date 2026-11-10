@@ -42,8 +42,7 @@ class _BatchProgressDialogState extends State<BatchProgressDialog> {
           valueListenable: widget.progress,
           builder: (context, p, _) {
             final isFinalizing = p.phase == BatchPhase.finalizing;
-            final percent =
-                (p.fraction * 100).clamp(0, 100).toStringAsFixed(0);
+            final percent = (p.fraction * 100).clamp(0, 100).toStringAsFixed(0);
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -66,8 +65,9 @@ class _BatchProgressDialogState extends State<BatchProgressDialog> {
                           value: isFinalizing ? null : p.fraction,
                           minHeight: 8,
                           backgroundColor: AppColors.background,
-                          valueColor:
-                              const AlwaysStoppedAnimation(AppColors.primary),
+                          valueColor: const AlwaysStoppedAnimation(
+                            AppColors.primary,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),

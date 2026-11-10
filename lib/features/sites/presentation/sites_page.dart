@@ -243,11 +243,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
             text += ' Failed: ${result.failed.length}.';
           }
           if (result.cancelled) text += ' (Cancelled)';
-          AppDialogs.showSuccess(
-            context: context,
-            title: 'Bulk Delete Finished',
-            text: text,
-          );
+          AppDialogs.showToast(context, 'Bulk delete finished. $text');
         }
       },
     );
@@ -269,10 +265,11 @@ class _SitesPageState extends ConsumerState<SitesPage> {
 
     if (subdirs.isEmpty) {
       if (mounted) {
-        AppDialogs.showToast(
+        AppDialogs.showError(
           context,
-          'No subfolders found in the selected directory.',
-          isError: true,
+          title: 'No subfolders found',
+          message:
+              'The selected directory has no subfolders to create sites from.',
         );
       }
       return;
@@ -357,11 +354,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
               message += ' Failed: ${result.failed.length}.';
             }
             if (result.cancelled) message += ' (Cancelled)';
-            AppDialogs.showSuccess(
-              context: context,
-              title: 'Batch Creation Finished',
-              text: message,
-            );
+            AppDialogs.showToast(context, 'Batch creation finished. $message');
           }
         },
       );

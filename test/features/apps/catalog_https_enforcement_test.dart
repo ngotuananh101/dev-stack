@@ -8,11 +8,13 @@ void main() {
 
       expect(
         () => repo.updateAppListFromUrl('http://example.com/apps.json'),
-        throwsA(isA<ArgumentError>().having(
-          (e) => e.message,
-          'message',
-          contains('HTTPS'),
-        )),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('HTTPS'),
+          ),
+        ),
       );
     });
 
@@ -21,11 +23,13 @@ void main() {
 
       expect(
         () => repo.updateAppListFromUrl('ftp://example.com/apps.json'),
-        throwsA(isA<ArgumentError>().having(
-          (e) => e.message,
-          'message',
-          contains('HTTPS'),
-        )),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('HTTPS'),
+          ),
+        ),
       );
     });
 
@@ -34,11 +38,13 @@ void main() {
 
       expect(
         () => repo.updateAppListFromUrl('file:///etc/passwd'),
-        throwsA(isA<ArgumentError>().having(
-          (e) => e.message,
-          'message',
-          contains('HTTPS'),
-        )),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('HTTPS'),
+          ),
+        ),
       );
     });
 
@@ -52,10 +58,22 @@ void main() {
     });
 
     test('isSecureCatalogUrl accepts https and rejects others', () {
-      expect(AppsRepository.isSecureCatalogUrl('https://example.com/apps.json'), isTrue);
-      expect(AppsRepository.isSecureCatalogUrl('HTTPS://example.com/apps.json'), isTrue);
-      expect(AppsRepository.isSecureCatalogUrl('http://example.com/apps.json'), isFalse);
-      expect(AppsRepository.isSecureCatalogUrl('ftp://example.com/apps.json'), isFalse);
+      expect(
+        AppsRepository.isSecureCatalogUrl('https://example.com/apps.json'),
+        isTrue,
+      );
+      expect(
+        AppsRepository.isSecureCatalogUrl('HTTPS://example.com/apps.json'),
+        isTrue,
+      );
+      expect(
+        AppsRepository.isSecureCatalogUrl('http://example.com/apps.json'),
+        isFalse,
+      );
+      expect(
+        AppsRepository.isSecureCatalogUrl('ftp://example.com/apps.json'),
+        isFalse,
+      );
       expect(AppsRepository.isSecureCatalogUrl(''), isFalse);
       expect(AppsRepository.isSecureCatalogUrl('random string'), isFalse);
     });

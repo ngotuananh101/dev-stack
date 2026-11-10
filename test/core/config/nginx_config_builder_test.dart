@@ -20,10 +20,7 @@ void main() {
         config,
         contains('include "C:/Ponta/vhosts/nginx/integrations/*.conf";'),
       );
-      expect(
-        config,
-        contains('include "C:/Ponta/vhosts/nginx/*.conf";'),
-      );
+      expect(config, contains('include "C:/Ponta/vhosts/nginx/*.conf";'));
       expect(config, isNot(contains('# HTTPS server')));
       expect(config, isNot(contains('443')));
     });
@@ -54,21 +51,24 @@ void main() {
       expect(config, contains('ssl_prefer_server_ciphers  on;'));
     });
 
-    test('includes PHP FastCGI handler in HTTPS block when phpPort is provided', () {
-      final config = NginxConfigBuilder.buildMainConfig(
-        webRoot: r'C:\Ponta\www',
-        vhostsGlob: r'C:\Ponta\vhosts\nginx\*.conf',
-        integrationsGlob: r'C:\Ponta\vhosts\nginx\integrations\*.conf',
-        allowLanAccess: false,
-        isSslInstalled: true,
-        certPath: r'C:\Ponta\certs\localhost.crt',
-        keyPath: r'C:\Ponta\certs\localhost.key',
-        phpPort: 9082,
-      );
+    test(
+      'includes PHP FastCGI handler in HTTPS block when phpPort is provided',
+      () {
+        final config = NginxConfigBuilder.buildMainConfig(
+          webRoot: r'C:\Ponta\www',
+          vhostsGlob: r'C:\Ponta\vhosts\nginx\*.conf',
+          integrationsGlob: r'C:\Ponta\vhosts\nginx\integrations\*.conf',
+          allowLanAccess: false,
+          isSslInstalled: true,
+          certPath: r'C:\Ponta\certs\localhost.crt',
+          keyPath: r'C:\Ponta\certs\localhost.key',
+          phpPort: 9082,
+        );
 
-      expect(config, contains('fastcgi_pass 127.0.0.1:9082;'));
-      expect(config, contains('fastcgi_param SCRIPT_FILENAME'));
-    });
+        expect(config, contains('fastcgi_pass 127.0.0.1:9082;'));
+        expect(config, contains('fastcgi_param SCRIPT_FILENAME'));
+      },
+    );
 
     test('does not include PHP handler when phpPort is not provided', () {
       final config = NginxConfigBuilder.buildMainConfig(
@@ -95,7 +95,9 @@ void main() {
       expect(config, contains('include fastcgi_params;'));
       expect(
         config,
-        contains(r'fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;'),
+        contains(
+          r'fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;',
+        ),
       );
     });
   });
@@ -114,7 +116,10 @@ void main() {
       expect(config, contains(r'location ~ ^/phpmyadmin/(.+\.php)$ {'));
       expect(config, contains(r'alias "C:/Ponta/apps/phpMyAdmin/$1";'));
       expect(config, contains('fastcgi_pass 127.0.0.1:9080;'));
-      expect(config, contains(r'fastcgi_param SCRIPT_FILENAME $request_filename;'));
+      expect(
+        config,
+        contains(r'fastcgi_param SCRIPT_FILENAME $request_filename;'),
+      );
     });
   });
 
@@ -159,8 +164,14 @@ void main() {
       expect(config, contains('listen 127.0.0.1:80;'));
       expect(config, contains('listen 127.0.0.1:443 ssl;'));
       expect(config, contains('fastcgi_pass 127.0.0.1:9083;'));
-      expect(config, contains('ssl_certificate      "C:/Ponta/certs/phpsite.crt";'));
-      expect(config, contains('ssl_certificate_key  "C:/Ponta/certs/phpsite.key";'));
+      expect(
+        config,
+        contains('ssl_certificate      "C:/Ponta/certs/phpsite.crt";'),
+      );
+      expect(
+        config,
+        contains('ssl_certificate_key  "C:/Ponta/certs/phpsite.key";'),
+      );
     });
 
     test('generates reverse proxy site configuration', () {
@@ -192,16 +203,46 @@ void main() {
 
   test('NginxConfigBuilder.defaultFastcgiParams returns standard params', () {
     final params = NginxConfigBuilder.defaultFastcgiParams();
-    expect(params, contains(r'fastcgi_param  QUERY_STRING       $query_string;'));
-    expect(params, contains(r'fastcgi_param  REQUEST_METHOD     $request_method;'));
-    expect(params, contains(r'fastcgi_param  CONTENT_TYPE       $content_type;'));
-    expect(params, contains(r'fastcgi_param  CONTENT_LENGTH     $content_length;'));
-    expect(params, contains(r'fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;'));
-    expect(params, contains(r'fastcgi_param  DOCUMENT_ROOT      $document_root;'));
-    expect(params, contains(r'fastcgi_param  SERVER_PROTOCOL    $server_protocol;'));
-    expect(params, contains(r'fastcgi_param  REMOTE_ADDR        $remote_addr;'));
-    expect(params, contains(r'fastcgi_param  SERVER_PORT        $server_port;'));
-    expect(params, contains(r'fastcgi_param  SERVER_NAME        $server_name;'));
+    expect(
+      params,
+      contains(r'fastcgi_param  QUERY_STRING       $query_string;'),
+    );
+    expect(
+      params,
+      contains(r'fastcgi_param  REQUEST_METHOD     $request_method;'),
+    );
+    expect(
+      params,
+      contains(r'fastcgi_param  CONTENT_TYPE       $content_type;'),
+    );
+    expect(
+      params,
+      contains(r'fastcgi_param  CONTENT_LENGTH     $content_length;'),
+    );
+    expect(
+      params,
+      contains(r'fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;'),
+    );
+    expect(
+      params,
+      contains(r'fastcgi_param  DOCUMENT_ROOT      $document_root;'),
+    );
+    expect(
+      params,
+      contains(r'fastcgi_param  SERVER_PROTOCOL    $server_protocol;'),
+    );
+    expect(
+      params,
+      contains(r'fastcgi_param  REMOTE_ADDR        $remote_addr;'),
+    );
+    expect(
+      params,
+      contains(r'fastcgi_param  SERVER_PORT        $server_port;'),
+    );
+    expect(
+      params,
+      contains(r'fastcgi_param  SERVER_NAME        $server_name;'),
+    );
     expect(params, contains('REDIRECT_STATUS    200;'));
     expect(params, contains('GATEWAY_INTERFACE  CGI/1.1'));
   });

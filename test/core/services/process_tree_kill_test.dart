@@ -23,10 +23,10 @@ bool _alive(int pid) {
 void main() {
   test('kills the whole tree, not just the leader', () async {
     // A leader with two children: killing only the leader orphans them.
-    final leader = await Process.start(
-      '/bin/sh',
-      ['-c', 'sleep 300 & sleep 300 & wait'],
-    );
+    final leader = await Process.start('/bin/sh', [
+      '-c',
+      'sleep 300 & sleep 300 & wait',
+    ]);
     addTearDown(() {
       for (final pid in [leader.pid, ..._childrenOf(leader.pid)]) {
         try {
@@ -44,13 +44,15 @@ void main() {
 
     expect(_alive(leader.pid), isFalse, reason: 'the leader must be dead');
     for (final child in children) {
-      expect(_alive(child), isFalse,
-          reason: 'child $child must be dead too, not orphaned');
+      expect(
+        _alive(child),
+        isFalse,
+        reason: 'child $child must be dead too, not orphaned',
+      );
     }
   });
 
-  test('leaves a sibling that shares the caller process group alone',
-      () async {
+  test('leaves a sibling that shares the caller process group alone', () async {
     // The caller and the sibling live in the same process group; a tree kill
     // must never signal that group.
     final sibling = await Process.start('/bin/sh', ['-c', 'sleep 300']);
@@ -60,10 +62,7 @@ void main() {
       } catch (_) {}
     });
 
-    final leader = await Process.start(
-      '/bin/sh',
-      ['-c', 'sleep 300 & wait'],
-    );
+    final leader = await Process.start('/bin/sh', ['-c', 'sleep 300 & wait']);
     addTearDown(() {
       try {
         Process.killPid(leader.pid, ProcessSignal.sigkill);
@@ -74,8 +73,11 @@ void main() {
     await killProcessTree(leader.pid);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
-    expect(_alive(sibling.pid), isTrue,
-        reason: 'a sibling in the caller\'s group must survive');
+    expect(
+      _alive(sibling.pid),
+      isTrue,
+      reason: 'a sibling in the caller\'s group must survive',
+    );
   });
 
   test('is a no-op for a pid that is already gone', () async {
@@ -114,11 +116,17 @@ void main() {
         .map((call) => call.last)
         .toList();
     for (final pid in ['20', '30', '40']) {
-      expect(killed, contains(pid),
-          reason: 'descendant $pid must be signalled');
+      expect(
+        killed,
+        contains(pid),
+        reason: 'descendant $pid must be signalled',
+      );
     }
-    expect(killed, isNot(contains('11')),
-        reason: 'siblings are not descendants');
+    expect(
+      killed,
+      isNot(contains('11')),
+      reason: 'siblings are not descendants',
+    );
   });
 
   test('parses ps rows and walks the tree in memory', () {

@@ -89,11 +89,11 @@ class CronSchedulerService {
     Isar? isar,
     Isar? Function()? isarResolver,
     this.interval = const Duration(seconds: 30),
-  })  : _runner = runner ?? _defaultRunner,
-        _clock = clock ?? DateTime.now,
-        _loadJobs = loadJobs ?? (() async => const <CronJob>[]),
-        _updateJob = updateJob ?? ((_) async {}),
-        _isarResolver = isarResolver ?? (isar != null ? () => isar : () => null);
+  }) : _runner = runner ?? _defaultRunner,
+       _clock = clock ?? DateTime.now,
+       _loadJobs = loadJobs ?? (() async => const <CronJob>[]),
+       _updateJob = updateJob ?? ((_) async {}),
+       _isarResolver = isarResolver ?? (isar != null ? () => isar : () => null);
 
   Isar? get _isar => _isarResolver();
 

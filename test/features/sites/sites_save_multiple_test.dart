@@ -10,7 +10,8 @@ String? _isarLibraryPath() {
       : (Platform.isLinux ? 'libisar_plus.so' : null);
   if (libName == null) return null;
 
-  final pubCache = Platform.environment['PUB_CACHE'] ??
+  final pubCache =
+      Platform.environment['PUB_CACHE'] ??
       (Platform.isWindows
           ? '${Platform.environment['LOCALAPPDATA']}\\Pub\\Cache'
           : '${Platform.environment['HOME']}/.pub-cache');
@@ -46,31 +47,30 @@ void main() {
   });
 
   group('SiteModel auto-increment persistence', () {
-    test(
-      'creating multiple sites with autoIncrement assigns unique IDs',
-      () {
-        final site1 = SiteModel(
-          id: isar.siteModels.autoIncrement(),
-          domain: 'site1.test',
-          rootDir: 'C:\\sites\\site1',
-        );
-        final site2 = SiteModel(
-          id: isar.siteModels.autoIncrement(),
-          domain: 'site2.test',
-          rootDir: 'C:\\sites\\site2',
-        );
+    test('creating multiple sites with autoIncrement assigns unique IDs', () {
+      final site1 = SiteModel(
+        id: isar.siteModels.autoIncrement(),
+        domain: 'site1.test',
+        rootDir: 'C:\\sites\\site1',
+      );
+      final site2 = SiteModel(
+        id: isar.siteModels.autoIncrement(),
+        domain: 'site2.test',
+        rootDir: 'C:\\sites\\site2',
+      );
 
-        isar.write((_) {
-          isar.siteModels.put(site1);
-          isar.siteModels.put(site2);
-        });
+      isar.write((_) {
+        isar.siteModels.put(site1);
+        isar.siteModels.put(site2);
+      });
 
-        final all = isar.siteModels.where().findAll();
-        expect(all.length, equals(2));
-        expect(all.map((s) => s.domain).toSet(), containsAll(['site1.test', 'site2.test']));
-        expect(all.map((s) => s.id).toSet().length, equals(2));
-      },
-      skip: libraryPath == null ? 'Isar native library not available' : false,
-    );
+      final all = isar.siteModels.where().findAll();
+      expect(all.length, equals(2));
+      expect(
+        all.map((s) => s.domain).toSet(),
+        containsAll(['site1.test', 'site2.test']),
+      );
+      expect(all.map((s) => s.id).toSet().length, equals(2));
+    }, skip: libraryPath == null ? 'Isar native library not available' : false);
   });
 }

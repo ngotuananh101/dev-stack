@@ -28,7 +28,8 @@ void main() {
   late Directory tempDir;
   late List<_FakeProcess> spawned;
 
-  SupervisorProgram program({int restartDelaySeconds = 30}) => SupervisorProgram(
+  SupervisorProgram program({int restartDelaySeconds = 30}) =>
+      SupervisorProgram(
         id: 1,
         name: 'Queue',
         command: 'php artisan queue:work',
@@ -49,8 +50,7 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  test('a watchdog parked in its backoff is released by the shutdown',
-      () async {
+  test('a watchdog parked in its backoff is released by the shutdown', () async {
     final manager = SupervisorManager(
       logsDirectory: tempDir.path,
       spawner: (p) async {
@@ -75,10 +75,16 @@ void main() {
     // waiting out a 60-second backoff keeps the app's shutdown waiting, and
     // the program must not be respawned while the app is going down.
     await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(manager.statusOf(1), SupervisorStatus.stopped,
-        reason: 'the parked backoff must be released by the shutdown');
-    expect(spawned.length, 1,
-        reason: 'a program must not be respawned after the shutdown');
+    expect(
+      manager.statusOf(1),
+      SupervisorStatus.stopped,
+      reason: 'the parked backoff must be released by the shutdown',
+    );
+    expect(
+      spawned.length,
+      1,
+      reason: 'a program must not be respawned after the shutdown',
+    );
   });
 
   test('shutdown kills the process trees synchronously', () async {

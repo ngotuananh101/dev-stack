@@ -7,8 +7,9 @@ import 'package:dev_stack/features/apps/data/apps_repository.dart';
 void main() {
   group('OS-aware catalog URL', () {
     test('filename segment matches catalogFileNameFor', () {
-      final expected =
-          AppsRepository.catalogFileNameFor(isLinux: Platform.isLinux);
+      final expected = AppsRepository.catalogFileNameFor(
+        isLinux: Platform.isLinux,
+      );
       expect(Apps.catalogUrl, endsWith('/$expected'));
     });
 

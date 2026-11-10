@@ -81,10 +81,10 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           }
         } catch (e) {
           if (mounted) {
-            AppDialogs.showToast(
+            AppDialogs.showError(
               context,
-              'Error deleting file: $e',
-              isError: true,
+              title: 'Delete failed',
+              message: 'Could not delete the log file: $e',
             );
           }
         }

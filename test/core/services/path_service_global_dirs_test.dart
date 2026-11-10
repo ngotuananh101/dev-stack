@@ -97,16 +97,19 @@ void main() {
         );
       });
 
-      test('bun on Windows returns null when USERPROFILE and HOME are missing', () {
-        expect(
-          PathService.globalPackageDirForApp(
-            'bun',
-            isWindows: true,
-            environment: {},
-          ),
-          isNull,
-        );
-      });
+      test(
+        'bun on Windows returns null when USERPROFILE and HOME are missing',
+        () {
+          expect(
+            PathService.globalPackageDirForApp(
+              'bun',
+              isWindows: true,
+              environment: {},
+            ),
+            isNull,
+          );
+        },
+      );
 
       test('bun on Linux returns null when HOME is empty', () {
         expect(
@@ -119,16 +122,19 @@ void main() {
         );
       });
 
-      test('deno on Windows returns null when USERPROFILE and HOME are missing', () {
-        expect(
-          PathService.globalPackageDirForApp(
-            'deno',
-            isWindows: true,
-            environment: {},
-          ),
-          isNull,
-        );
-      });
+      test(
+        'deno on Windows returns null when USERPROFILE and HOME are missing',
+        () {
+          expect(
+            PathService.globalPackageDirForApp(
+              'deno',
+              isWindows: true,
+              environment: {},
+            ),
+            isNull,
+          );
+        },
+      );
 
       test('deno on Linux returns null when HOME is missing', () {
         expect(
@@ -143,4 +149,3 @@ void main() {
     });
   });
 }
-

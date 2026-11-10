@@ -44,7 +44,9 @@ class CronTable extends StatelessWidget {
         // even when rows carry different numbers of actions.
         final plan = planActionColumn(
           [for (final job in jobs) _rowActions(job)],
-          availableWidth: operateWidth.isFinite && operateWidth > 0 ? operateWidth : 1,
+          availableWidth: operateWidth.isFinite && operateWidth > 0
+              ? operateWidth
+              : 1,
           firstGap: 6,
         );
 
@@ -166,8 +168,9 @@ class CronTable extends StatelessWidget {
     bool isLast,
   ) {
     final valid = CronExpression.isValid(job.schedule);
-    final description =
-        valid ? CronExpression.parse(job.schedule).describe() : 'Invalid schedule';
+    final description = valid
+        ? CronExpression.parse(job.schedule).describe()
+        : 'Invalid schedule';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -298,16 +301,8 @@ class CronTable extends StatelessWidget {
         () => onViewHistory(job),
         icon: LucideIcons.history,
       ),
-      RowAction.icon(
-        'Edit',
-        () => onEdit(job),
-        icon: LucideIcons.edit,
-      ),
-      RowAction.icon(
-        'Delete',
-        () => onDelete(job),
-        icon: LucideIcons.trash2,
-      ),
+      RowAction.icon('Edit', () => onEdit(job), icon: LucideIcons.edit),
+      RowAction.icon('Delete', () => onDelete(job), icon: LucideIcons.trash2),
     ];
   }
 

@@ -53,7 +53,11 @@ class SslService extends _$SslService {
       if (File(binPath).existsSync()) return binPath;
 
       final devPath = p.join(
-          Directory.current.path, 'assets', 'bin', 'mkcert.exe');
+        Directory.current.path,
+        'assets',
+        'bin',
+        'mkcert.exe',
+      );
       if (File(devPath).existsSync()) return devPath;
 
       final prodPath = p.join(
@@ -90,8 +94,8 @@ class SslService extends _$SslService {
 
     try {
       final target = File(binCopy);
-      final needsCopy = !target.existsSync() ||
-          target.lengthSync() != source.lengthSync();
+      final needsCopy =
+          !target.existsSync() || target.lengthSync() != source.lengthSync();
       if (needsCopy) {
         if (!Directory(AppConfig.binDir).existsSync()) {
           Directory(AppConfig.binDir).createSync(recursive: true);
@@ -108,7 +112,9 @@ class SslService extends _$SslService {
       // `mkcert -CAROOT` prints the configured path even before a CA has been
       // created, so checking its output alone would make this method create a
       // CA as a side effect of the certificate-generation probe below.
-      final carootResult = await BackgroundProcess.run(_mkcertPath, ['-CAROOT']);
+      final carootResult = await BackgroundProcess.run(_mkcertPath, [
+        '-CAROOT',
+      ]);
       final carootPath = carootResult.stdout.toString().trim();
       final rootCaPath = p.join(carootPath, 'rootCA.pem');
       if (carootResult.exitCode != 0 ||
@@ -183,12 +189,12 @@ class SslService extends _$SslService {
 
   @visibleForTesting
   static List<String> linuxTrustStoreBundles() => const [
-        '/etc/ssl/certs/ca-certificates.crt', // Debian, Ubuntu
-        '/etc/pki/tls/certs/ca-bundle.crt', // RHEL, Fedora
-        '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem',
-        '/etc/ssl/ca-bundle.pem', // SUSE
-        '/etc/ssl/cert.pem', // Alpine, Arch
-      ];
+    '/etc/ssl/certs/ca-certificates.crt', // Debian, Ubuntu
+    '/etc/pki/tls/certs/ca-bundle.crt', // RHEL, Fedora
+    '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem',
+    '/etc/ssl/ca-bundle.pem', // SUSE
+    '/etc/ssl/cert.pem', // Alpine, Arch
+  ];
 
   String getSiteCertDir(String domain) => p.join(AppConfig.certsDir, domain);
   String getSiteCertPath(String domain) =>
@@ -295,10 +301,7 @@ class SslService extends _$SslService {
         ],
       );
     }
-    return (
-      executable: mkcertPath,
-      arguments: [action],
-    );
+    return (executable: mkcertPath, arguments: [action]);
   }
 
   Future<void> initializeRootCA() async {
@@ -343,8 +346,9 @@ class SslService extends _$SslService {
       if (onLinux) {
         // Run as user first to create CA in user's CAROOT and install to user browser NSS stores
         try {
-          final userInit =
-              await BackgroundProcess.run(_mkcertPath, const ['-install']);
+          final userInit = await BackgroundProcess.run(_mkcertPath, const [
+            '-install',
+          ]);
           if (userInit.stdout.toString().contains('certutil') ||
               userInit.stderr.toString().contains('certutil')) {
             AppLogger.warning(
@@ -355,9 +359,8 @@ class SslService extends _$SslService {
       }
 
       final userCaroot = await _resolveCaroot();
-      final username = Platform.environment['USER'] ??
-          Platform.environment['LOGNAME'] ??
-          '';
+      final username =
+          Platform.environment['USER'] ?? Platform.environment['LOGNAME'] ?? '';
 
       final elevatedCmd = buildElevatedMkcertArgs(
         mkcertPath: _mkcertPath,
@@ -411,9 +414,8 @@ class SslService extends _$SslService {
       AppLogger.info('Uninstalling SSL Root CA...');
 
       final userCaroot = await _resolveCaroot();
-      final username = Platform.environment['USER'] ??
-          Platform.environment['LOGNAME'] ??
-          '';
+      final username =
+          Platform.environment['USER'] ?? Platform.environment['LOGNAME'] ?? '';
 
       final elevatedCmd = buildElevatedMkcertArgs(
         mkcertPath: _mkcertPath,

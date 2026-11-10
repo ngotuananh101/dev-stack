@@ -27,25 +27,24 @@ void main() {
   // The real layout is a sidebar next to the page, so the page only gets the
   // window width minus the sidebar's. Reproducing both here makes the test
   // measure the width the page really has.
-  Widget host(Widget page, {required bool sidebarCollapsed}) =>
-      ProviderScope(
-        overrides: [
-          appsProvider.overrideWith(_StaticAppsNotifier.new),
-          sidebarCollapsedProvider.overrideWith(
-            () => _StaticSidebar(collapsed: sidebarCollapsed),
-          ),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: Row(
-              children: [
-                const Sidebar(),
-                Expanded(child: page),
-              ],
-            ),
-          ),
+  Widget host(Widget page, {required bool sidebarCollapsed}) => ProviderScope(
+    overrides: [
+      appsProvider.overrideWith(_StaticAppsNotifier.new),
+      sidebarCollapsedProvider.overrideWith(
+        () => _StaticSidebar(collapsed: sidebarCollapsed),
+      ),
+    ],
+    child: MaterialApp(
+      home: Scaffold(
+        body: Row(
+          children: [
+            const Sidebar(),
+            Expanded(child: page),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
   final pages = <String, Widget>{
     'apps': const AppsPage(),
@@ -68,7 +67,8 @@ void main() {
       (size: Size(1000, 700), collapsed: false),
       (size: Size(1400, 900), collapsed: false),
     ]) {
-      final label = '${scenario.size.width}x${scenario.size.height}'
+      final label =
+          '${scenario.size.width}x${scenario.size.height}'
           '${scenario.collapsed ? ' collapsed' : ''}';
       testWidgets('the ${entry.key} page lays out at $label', (tester) async {
         await tester.binding.setSurfaceSize(scenario.size);
@@ -84,8 +84,11 @@ void main() {
 
         // A RenderFlex overflow is thrown as an exception, so a null exception
         // is the proof that the page fits the window.
-        expect(tester.takeException(), isNull,
-            reason: 'the ${entry.key} page must not overflow at $label');
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'the ${entry.key} page must not overflow at $label',
+        );
       });
     }
   }

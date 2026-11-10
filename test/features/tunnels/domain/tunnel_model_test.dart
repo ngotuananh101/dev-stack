@@ -5,10 +5,7 @@ import 'package:dev_stack/features/tunnels/domain/tunnel_session.dart';
 void main() {
   group('TunnelModel', () {
     test('instantiates with default values', () {
-      final tunnel = TunnelModel(
-        name: 'My Shop',
-        targetPort: 80,
-      );
+      final tunnel = TunnelModel(name: 'My Shop', targetPort: 80);
 
       expect(tunnel.name, equals('My Shop'));
       expect(tunnel.provider, equals('cloudflare'));

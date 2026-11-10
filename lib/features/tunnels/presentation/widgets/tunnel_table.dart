@@ -53,7 +53,9 @@ class TunnelTable extends StatelessWidget {
                 sessions[tunnel.id] ?? TunnelSession(tunnelId: tunnel.id),
               ),
           ],
-          availableWidth: operateWidth.isFinite && operateWidth > 0 ? operateWidth : 1,
+          availableWidth: operateWidth.isFinite && operateWidth > 0
+              ? operateWidth
+              : 1,
           firstGap: 6,
         );
 
@@ -386,11 +388,7 @@ class TunnelTable extends StatelessWidget {
         () => onViewLogs(tunnel),
         icon: LucideIcons.list,
       ),
-      RowAction.icon(
-        'Edit',
-        () => onEdit(tunnel),
-        icon: LucideIcons.edit,
-      ),
+      RowAction.icon('Edit', () => onEdit(tunnel), icon: LucideIcons.edit),
       RowAction.icon(
         'Delete',
         () => onDelete(tunnel),
@@ -468,7 +466,10 @@ class TunnelTable extends StatelessWidget {
     if (status == TunnelStatus.running) {
       return const Text(
         'Connected (route set in provider dashboard)',
-        style: TextStyle(color: AppColors.textSecondary, fontSize: AppTextSize.xs),
+        style: TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: AppTextSize.xs,
+        ),
         overflow: TextOverflow.ellipsis,
       );
     }

@@ -94,7 +94,9 @@ class CategoryBar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: AppTextSize.xxs,
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? AppColors.textOnColor : AppColors.textMuted,
+                    color: isSelected
+                        ? AppColors.textOnColor
+                        : AppColors.textMuted,
                   ),
                 ),
               ),

@@ -19,7 +19,8 @@ String? _isarLibraryPath() {
       : (Platform.isLinux ? 'libisar_plus.so' : null);
   if (libName == null) return null;
 
-  final pubCache = Platform.environment['PUB_CACHE'] ??
+  final pubCache =
+      Platform.environment['PUB_CACHE'] ??
       (Platform.isWindows
           ? '${Platform.environment['LOCALAPPDATA']}\\Pub\\Cache'
           : '${Platform.environment['HOME']}/.pub-cache');
@@ -59,35 +60,31 @@ void main() {
   );
 
   group('Settings.updateField', () {
-    test(
-      'notifies listeners as soon as the value is written',
-      () async {
-        final container = createContainer();
-        final initial = await container.read(settingsProvider.future);
-        expect(initial.minimizeToTray, isFalse);
+    test('notifies listeners as soon as the value is written', () async {
+      final container = createContainer();
+      final initial = await container.read(settingsProvider.future);
+      expect(initial.minimizeToTray, isFalse);
 
-        final emitted = <AppSettings>[];
-        container.listen(settingsProvider, (previous, next) {
-          if (next.hasValue) emitted.add(next.value!);
-        });
+      final emitted = <AppSettings>[];
+      container.listen(settingsProvider, (previous, next) {
+        if (next.hasValue) emitted.add(next.value!);
+      });
 
-        await container
-            .read(settingsProvider.notifier)
-            .updateField(minimizeToTray: true);
-        await container.pump();
+      await container
+          .read(settingsProvider.notifier)
+          .updateField(minimizeToTray: true);
+      await container.pump();
 
-        // `updateField` mutates the live Isar instance and re-emits that same
-        // instance, so a value-equality filter on AsyncValue suppresses the
-        // notification and the settings screen only refreshes on a remount.
-        expect(
-          emitted,
-          hasLength(1),
-          reason: 'toggling a switch must notify listeners immediately',
-        );
-        expect(emitted.single.minimizeToTray, isTrue);
-      },
-      skip: libraryPath == null ? 'Isar native library not available' : false,
-    );
+      // `updateField` mutates the live Isar instance and re-emits that same
+      // instance, so a value-equality filter on AsyncValue suppresses the
+      // notification and the settings screen only refreshes on a remount.
+      expect(
+        emitted,
+        hasLength(1),
+        reason: 'toggling a switch must notify listeners immediately',
+      );
+      expect(emitted.single.minimizeToTray, isTrue);
+    }, skip: libraryPath == null ? 'Isar native library not available' : false);
 
     test(
       'notifies for auto-start, the other switch on the same section',
@@ -114,20 +111,16 @@ void main() {
       skip: libraryPath == null ? 'Isar native library not available' : false,
     );
 
-    test(
-      'persists the change so a later read sees it',
-      () async {
-        final container = createContainer();
-        await container.read(settingsProvider.future);
+    test('persists the change so a later read sees it', () async {
+      final container = createContainer();
+      await container.read(settingsProvider.future);
 
-        await container
-            .read(settingsProvider.notifier)
-            .updateField(minimizeToTray: true);
+      await container
+          .read(settingsProvider.notifier)
+          .updateField(minimizeToTray: true);
 
-        final row = isar.appSettings.where().findFirst();
-        expect(row?.minimizeToTray, isTrue);
-      },
-      skip: libraryPath == null ? 'Isar native library not available' : false,
-    );
+      final row = isar.appSettings.where().findFirst();
+      expect(row?.minimizeToTray, isTrue);
+    }, skip: libraryPath == null ? 'Isar native library not available' : false);
   });
 }

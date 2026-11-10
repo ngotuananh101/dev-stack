@@ -12,7 +12,8 @@ String? _isarLibraryPath() {
       : (Platform.isLinux ? 'libisar_plus.so' : null);
   if (libName == null) return null;
 
-  final pubCache = Platform.environment['PUB_CACHE'] ??
+  final pubCache =
+      Platform.environment['PUB_CACHE'] ??
       (Platform.isWindows
           ? '${Platform.environment['LOCALAPPDATA']}\\Pub\\Cache'
           : '${Platform.environment['HOME']}/.pub-cache');
@@ -32,7 +33,7 @@ String? _isarLibraryPath() {
 
 class _FakeDownloader extends TunnelDownloaderService {
   _FakeDownloader()
-      : super(baseDirResolver: () => '', isWindowsResolver: () => true);
+    : super(baseDirResolver: () => '', isWindowsResolver: () => true);
 
   @override
   Future<bool> isBinaryDownloaded(String provider) async => true;
@@ -47,7 +48,9 @@ void main() {
   final libraryPath = _isarLibraryPath();
 
   setUp(() {
-    final tempDir = Directory.systemTemp.createTempSync('devstack_tunnels_test_');
+    final tempDir = Directory.systemTemp.createTempSync(
+      'devstack_tunnels_test_',
+    );
     addTearDown(() => tempDir.deleteSync(recursive: true));
 
     Isar.initialize(libraryPath);

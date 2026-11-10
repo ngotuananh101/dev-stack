@@ -9,8 +9,7 @@ void main() {
     });
 
     test('every N minutes', () {
-      expect(CronExpression.parse('*/5 * * * *').describe(),
-          'Every 5 minutes');
+      expect(CronExpression.parse('*/5 * * * *').describe(), 'Every 5 minutes');
     });
 
     test('at a specific time', () {
@@ -30,18 +29,18 @@ void main() {
     });
 
     test('monthly', () {
-      expect(CronExpression.parse('@monthly').describe(),
-          'At 00:00 on day 1');
+      expect(CronExpression.parse('@monthly').describe(), 'At 00:00 on day 1');
     });
 
     test('yearly', () {
-      expect(CronExpression.parse('@yearly').describe(),
-          'At 00:00 on Jan 1');
+      expect(CronExpression.parse('@yearly').describe(), 'At 00:00 on Jan 1');
     });
 
     test('weekday range', () {
-      expect(CronExpression.parse('0 9 * * 1-5').describe(),
-          'At 09:00 on Mon-Fri');
+      expect(
+        CronExpression.parse('0 9 * * 1-5').describe(),
+        'At 09:00 on Mon-Fri',
+      );
     });
   });
 }

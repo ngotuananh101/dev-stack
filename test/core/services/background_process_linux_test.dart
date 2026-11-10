@@ -24,80 +24,102 @@ class _FakeProcess implements Process {
 void main() {
   group('BackgroundProcess command formatting', () {
     test('builds Linux elevated command arguments correctly', () {
-      final cmd = BackgroundProcess.buildLinuxElevatedArgs('cp', ['/tmp/a', '/etc/hosts']);
+      final cmd = BackgroundProcess.buildLinuxElevatedArgs('cp', [
+        '/tmp/a',
+        '/etc/hosts',
+      ]);
       expect(cmd.executable, equals('pkexec'));
       expect(cmd.arguments, equals(['cp', '/tmp/a', '/etc/hosts']));
     });
 
-    test('builds Linux kill command arguments with negative PID for process group', () {
-      final cmd = BackgroundProcess.buildLinuxKillArgs(12345);
-      expect(cmd.executable, equals('kill'));
-      expect(cmd.arguments, equals(['-TERM', '--', '-12345']));
-    });
+    test(
+      'builds Linux kill command arguments with negative PID for process group',
+      () {
+        final cmd = BackgroundProcess.buildLinuxKillArgs(12345);
+        expect(cmd.executable, equals('kill'));
+        expect(cmd.arguments, equals(['-TERM', '--', '-12345']));
+      },
+    );
 
-    test('builds Linux reload command targeting the master PID, not the group', () {
-      final cmd = BackgroundProcess.buildLinuxReloadArgs(12345);
-      expect(cmd.executable, equals('kill'));
-      // No leading '-' on the PID: SIGUSR2 must reach only the php-fpm master.
-      // Workers reset SIGUSR2 to SIG_DFL, so a group signal would kill them.
-      expect(cmd.arguments, equals(['-USR2', '--', '12345']));
-    });
+    test(
+      'builds Linux reload command targeting the master PID, not the group',
+      () {
+        final cmd = BackgroundProcess.buildLinuxReloadArgs(12345);
+        expect(cmd.executable, equals('kill'));
+        // No leading '-' on the PID: SIGUSR2 must reach only the php-fpm master.
+        // Workers reset SIGUSR2 to SIG_DFL, so a group signal would kill them.
+        expect(cmd.arguments, equals(['-USR2', '--', '12345']));
+      },
+    );
   });
 
   group('BackgroundProcess.stopManaged (non-Windows)', () {
-    test('attempts group kill via negative PID when runProcess succeeds', () async {
-      final fake = _FakeProcess(4321);
-      final managed = ManagedBackgroundProcess.wrap(fake);
+    test(
+      'attempts group kill via negative PID when runProcess succeeds',
+      () async {
+        final fake = _FakeProcess(4321);
+        final managed = ManagedBackgroundProcess.wrap(fake);
 
-      String? calledExecutable;
-      List<String>? calledArgs;
+        String? calledExecutable;
+        List<String>? calledArgs;
 
-      await BackgroundProcess.stopManaged(
-        managed,
-        isWindows: false,
-        runProcess: (exec, args) async {
-          calledExecutable = exec;
-          calledArgs = args;
-          return ProcessResult(999, 0, '', '');
-        },
-      );
+        await BackgroundProcess.stopManaged(
+          managed,
+          isWindows: false,
+          runProcess: (exec, args) async {
+            calledExecutable = exec;
+            calledArgs = args;
+            return ProcessResult(999, 0, '', '');
+          },
+        );
 
-      expect(calledExecutable, equals('kill'));
-      expect(calledArgs, equals(['-TERM', '--', '-4321']));
-      expect(fake.killed, isFalse);
-    });
+        expect(calledExecutable, equals('kill'));
+        expect(calledArgs, equals(['-TERM', '--', '-4321']));
+        expect(fake.killed, isFalse);
+      },
+    );
 
-    test('falls back to process.kill when group kill command fails with non-zero exitCode', () async {
-      final fake = _FakeProcess(4321);
-      final managed = ManagedBackgroundProcess.wrap(fake);
+    test(
+      'falls back to process.kill when group kill command fails with non-zero exitCode',
+      () async {
+        final fake = _FakeProcess(4321);
+        final managed = ManagedBackgroundProcess.wrap(fake);
 
-      await BackgroundProcess.stopManaged(
-        managed,
-        isWindows: false,
-        runProcess: (exec, args) async {
-          return ProcessResult(999, 1, '', 'No such process');
-        },
-      );
+        await BackgroundProcess.stopManaged(
+          managed,
+          isWindows: false,
+          runProcess: (exec, args) async {
+            return ProcessResult(999, 1, '', 'No such process');
+          },
+        );
 
-      expect(fake.killed, isTrue);
-      expect(fake.lastSignal, equals(ProcessSignal.sigterm));
-    });
+        expect(fake.killed, isTrue);
+        expect(fake.lastSignal, equals(ProcessSignal.sigterm));
+      },
+    );
 
-    test('falls back to process.kill when group kill throws an exception', () async {
-      final fake = _FakeProcess(4321);
-      final managed = ManagedBackgroundProcess.wrap(fake);
+    test(
+      'falls back to process.kill when group kill throws an exception',
+      () async {
+        final fake = _FakeProcess(4321);
+        final managed = ManagedBackgroundProcess.wrap(fake);
 
-      await BackgroundProcess.stopManaged(
-        managed,
-        isWindows: false,
-        runProcess: (exec, args) async {
-          throw const ProcessException('kill', ['-TERM', '--', '-4321'], 'Command not found');
-        },
-      );
+        await BackgroundProcess.stopManaged(
+          managed,
+          isWindows: false,
+          runProcess: (exec, args) async {
+            throw const ProcessException('kill', [
+              '-TERM',
+              '--',
+              '-4321',
+            ], 'Command not found');
+          },
+        );
 
-      expect(fake.killed, isTrue);
-      expect(fake.lastSignal, equals(ProcessSignal.sigterm));
-    });
+        expect(fake.killed, isTrue);
+        expect(fake.lastSignal, equals(ProcessSignal.sigterm));
+      },
+    );
   });
 
   group('BackgroundProcess.writeStringElevated', () {
@@ -118,77 +140,76 @@ void main() {
       }
     });
 
-    test('falls back to elevated pkexec cp with chmod 600 when direct write fails', () async {
-      final executedCommands = <({String exec, List<String> args})>[];
+    test(
+      'falls back to elevated pkexec cp with chmod 600 when direct write fails',
+      () async {
+        final executedCommands = <({String exec, List<String> args})>[];
 
-      final success = await BackgroundProcess.writeStringElevated(
-        '/etc/php/8.4/fpm/php.ini',
-        'elevated content',
-        isLinux: true,
-        skipDirectWrite: true,
-        runProcess: (exec, args) async {
-          executedCommands.add((exec: exec, args: args));
-          return ProcessResult(1234, 0, '', '');
-        },
-      );
+        final success = await BackgroundProcess.writeStringElevated(
+          '/etc/php/8.4/fpm/php.ini',
+          'elevated content',
+          isLinux: true,
+          skipDirectWrite: true,
+          runProcess: (exec, args) async {
+            executedCommands.add((exec: exec, args: args));
+            return ProcessResult(1234, 0, '', '');
+          },
+        );
 
-      expect(success, isTrue);
-      expect(executedCommands.length, equals(2));
+        expect(success, isTrue);
+        expect(executedCommands.length, equals(2));
 
-      // 1. First command is chmod 600 on temp file
-      expect(executedCommands[0].exec, equals('chmod'));
-      expect(executedCommands[0].args.first, equals('600'));
-      expect(executedCommands[0].args[1], contains('temp_file'));
+        // 1. First command is chmod 600 on temp file
+        expect(executedCommands[0].exec, equals('chmod'));
+        expect(executedCommands[0].args.first, equals('600'));
+        expect(executedCommands[0].args[1], contains('temp_file'));
 
-      // 2. Second command is pkexec cp tempFile destFile
-      expect(executedCommands[1].exec, equals('pkexec'));
-      expect(executedCommands[1].args, equals([
-        'cp',
-        executedCommands[0].args[1],
-        '/etc/php/8.4/fpm/php.ini',
-      ]));
-    });
+        // 2. Second command is pkexec cp tempFile destFile
+        expect(executedCommands[1].exec, equals('pkexec'));
+        expect(
+          executedCommands[1].args,
+          equals([
+            'cp',
+            executedCommands[0].args[1],
+            '/etc/php/8.4/fpm/php.ini',
+          ]),
+        );
+      },
+    );
   });
 
   group('runCapped', () {
     test('keeps only the cap and reports truncation', () async {
-      final result = await BackgroundProcess.runCapped(
-        '/bin/sh',
-        ['-c', 'yes 0123456789 | head -n 5000'],
-        maxChars: 100,
-      );
+      final result = await BackgroundProcess.runCapped('/bin/sh', [
+        '-c',
+        'yes 0123456789 | head -n 5000',
+      ], maxChars: 100);
 
       expect(result.exitCode, 0);
       expect(result.output.length, lessThanOrEqualTo(100));
       expect(result.truncated, isTrue);
     });
 
-    test('drains stdout and stderr concurrently without deadlocking',
-        () async {
+    test('drains stdout and stderr concurrently without deadlocking', () async {
       // Writing more than a pipe buffer to both streams deadlocks if one is
       // read only after the other finishes.
-      final result = await BackgroundProcess.runCapped(
-        '/bin/sh',
-        [
-          '-c',
-          'i=0; while [ \$i -lt 400 ]; do '
-              'echo 0123456789012345678901234567890123456789; '
-              'echo 9876543210987654321098765432109876543210 >&2; '
-              'i=\$((i+1)); done',
-        ],
-        maxChars: 32 * 1024,
-      ).timeout(const Duration(seconds: 20));
+      final result = await BackgroundProcess.runCapped('/bin/sh', [
+        '-c',
+        'i=0; while [ \$i -lt 400 ]; do '
+            'echo 0123456789012345678901234567890123456789; '
+            'echo 9876543210987654321098765432109876543210 >&2; '
+            'i=\$((i+1)); done',
+      ], maxChars: 32 * 1024).timeout(const Duration(seconds: 20));
 
       expect(result.exitCode, 0);
       expect(result.output, contains('0123456789'));
     }, skip: Platform.isWindows);
 
     test('propagates the exit code for a failing command', () async {
-      final result = await BackgroundProcess.runCapped(
-        '/bin/sh',
-        ['-c', 'echo boom; exit 3'],
-        maxChars: 1000,
-      );
+      final result = await BackgroundProcess.runCapped('/bin/sh', [
+        '-c',
+        'echo boom; exit 3',
+      ], maxChars: 1000);
 
       expect(result.exitCode, 3);
       expect(result.output, contains('boom'));

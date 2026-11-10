@@ -55,31 +55,37 @@ void main() {
       expect(config, isNot(contains('file_server')));
     });
 
-    test('Proxy target validation accepts valid URLs and rejects malicious input', () {
-      expect(
-        Sites.validateProxyTarget('http://localhost:5000'),
-        'http://localhost:5000',
-      );
-      expect(
-        () => Sites.validateProxyTarget(''),
-        throwsA(isA<ArgumentError>()),
-      );
-      expect(
-        () => Sites.validateProxyTarget('http://localhost:5000;\nrm -rf /'),
-        throwsA(isA<ArgumentError>()),
-      );
-    });
+    test(
+      'Proxy target validation accepts valid URLs and rejects malicious input',
+      () {
+        expect(
+          Sites.validateProxyTarget('http://localhost:5000'),
+          'http://localhost:5000',
+        );
+        expect(
+          () => Sites.validateProxyTarget(''),
+          throwsA(isA<ArgumentError>()),
+        );
+        expect(
+          () => Sites.validateProxyTarget('http://localhost:5000;\nrm -rf /'),
+          throwsA(isA<ArgumentError>()),
+        );
+      },
+    );
 
-    test('Non-empty rootDir validation prevents directive injection if provided', () {
-      // If a proxy site supplies a rootDir, unsafe characters are still caught
-      expect(
-        () => Sites.validateRootDir('C:\\path"with"quotes'),
-        throwsA(isA<ArgumentError>()),
-      );
-      expect(
-        () => Sites.validateRootDir('C:\\path\nwith\nnewlines'),
-        throwsA(isA<ArgumentError>()),
-      );
-    });
+    test(
+      'Non-empty rootDir validation prevents directive injection if provided',
+      () {
+        // If a proxy site supplies a rootDir, unsafe characters are still caught
+        expect(
+          () => Sites.validateRootDir('C:\\path"with"quotes'),
+          throwsA(isA<ArgumentError>()),
+        );
+        expect(
+          () => Sites.validateRootDir('C:\\path\nwith\nnewlines'),
+          throwsA(isA<ArgumentError>()),
+        );
+      },
+    );
   });
 }

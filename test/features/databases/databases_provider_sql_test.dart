@@ -18,8 +18,7 @@ void main() {
 
     test('rejects injection payloads', () {
       expect(
-        () =>
-            Databases.validateIdentifier("x'; DROP DATABASE mysql; --"),
+        () => Databases.validateIdentifier("x'; DROP DATABASE mysql; --"),
         throwsA(isA<ArgumentError>()),
       );
       expect(
@@ -80,32 +79,40 @@ void main() {
 
   group('Databases.postgresCliArgs', () {
     test('prepends -h /tmp on Linux', () {
-      final args = Databases.postgresCliArgs(
-        ['-U', 'postgres', '-l'],
-        isLinux: true,
-      );
+      final args = Databases.postgresCliArgs([
+        '-U',
+        'postgres',
+        '-l',
+      ], isLinux: true);
       expect(args, ['-h', '/tmp', '-U', 'postgres', '-l']);
     });
 
     test('preserves arguments as-is on non-Linux', () {
-      final args = Databases.postgresCliArgs(
-        ['-U', 'postgres', '-l'],
-        isLinux: false,
-      );
+      final args = Databases.postgresCliArgs([
+        '-U',
+        'postgres',
+        '-l',
+      ], isLinux: false);
       expect(args, ['-U', 'postgres', '-l']);
     });
   });
 
-
   group('Databases.readPostgresPassword', () {
     test('reads password from a sibling postgres-password.txt', () async {
       final tmp = await Directory.systemTemp.createTemp('pg-pw-');
-      final binDir = Directory('${tmp.path}/install/bin')..createSync(recursive: true);
+      final binDir = Directory('${tmp.path}/install/bin')
+        ..createSync(recursive: true);
       final cliPath = '${binDir.path}/psql';
-      File('${tmp.path}/install/postgres-password.txt')
-          .writeAsStringSync('s3cr3t\n');
+      File(
+        '${tmp.path}/install/postgres-password.txt',
+      ).writeAsStringSync('s3cr3t\n');
 
-      final app = AppModel(appId: 'postgresql', name: 'PostgreSQL', categories: ['database'], installedVersion: '16.4');
+      final app = AppModel(
+        appId: 'postgresql',
+        name: 'PostgreSQL',
+        categories: ['database'],
+        installedVersion: '16.4',
+      );
       final pwd = await Databases.readPostgresPassword(cliPath, app);
       expect(pwd, 's3cr3t');
       await tmp.delete(recursive: true);
@@ -114,7 +121,12 @@ void main() {
     test('returns empty string when no password file exists', () async {
       final tmp = await Directory.systemTemp.createTemp('pg-pw-none-');
       final cliPath = '${tmp.path}/psql';
-      final app = AppModel(appId: 'postgresql', name: 'PostgreSQL', categories: ['database'], installedVersion: '16.4');
+      final app = AppModel(
+        appId: 'postgresql',
+        name: 'PostgreSQL',
+        categories: ['database'],
+        installedVersion: '16.4',
+      );
       final pwd = await Databases.readPostgresPassword(cliPath, app);
       expect(pwd, '');
       await tmp.delete(recursive: true);

@@ -36,11 +36,14 @@ void main() {
       expect(sockets.any((s) => s.port == 9082), isTrue);
     });
 
-    test('start() no longer delegates to systemctl for package_manager PHP', () {
-      // Verify the service manager no longer has systemctl bypass methods.
-      final AppServiceManager manager = AppServiceManager(AppLogger);
-      expect(manager, isNotNull);
-    });
+    test(
+      'start() no longer delegates to systemctl for package_manager PHP',
+      () {
+        // Verify the service manager no longer has systemctl bypass methods.
+        final AppServiceManager manager = AppServiceManager(AppLogger);
+        expect(manager, isNotNull);
+      },
+    );
 
     test('PHP-FPM foreground arguments are passed on Linux with conf path', () {
       final args = AppServiceManager.argumentsForExecutable(
@@ -50,8 +53,16 @@ void main() {
         isLinux: true,
       );
       // Must use -F (foreground) and -y (config file path) flags
-      expect(args, contains('-F'), reason: 'PHP-FPM must run in foreground (-F)');
-      expect(args, contains('-y'), reason: 'PHP-FPM must specify config file via -y');
+      expect(
+        args,
+        contains('-F'),
+        reason: 'PHP-FPM must run in foreground (-F)',
+      );
+      expect(
+        args,
+        contains('-y'),
+        reason: 'PHP-FPM must specify config file via -y',
+      );
       expect(
         args.any((a) => a.contains('php-fpm.conf')),
         isTrue,
@@ -69,8 +80,11 @@ void main() {
       );
       // The -F and -y flags with the conf path should be present
       expect(args, containsAll(['-F', '-y']));
-      expect(args.last, contains('php-fpm.conf'),
-          reason: 'PHP-FPM -y must point to php-fpm.conf');
+      expect(
+        args.last,
+        contains('php-fpm.conf'),
+        reason: 'PHP-FPM -y must point to php-fpm.conf',
+      );
     });
   });
 }

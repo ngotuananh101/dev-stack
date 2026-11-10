@@ -4,7 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('resolveDomainFromTemplate', () {
     test('replaces [site-name] placeholder', () {
-      expect(resolveDomainFromTemplate('[site-name].test', 'blog'), 'blog.test');
+      expect(
+        resolveDomainFromTemplate('[site-name].test', 'blog'),
+        'blog.test',
+      );
     });
 
     test('replaces {name} placeholder', () {

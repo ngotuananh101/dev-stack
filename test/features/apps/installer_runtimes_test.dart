@@ -8,7 +8,9 @@ void main() {
     late Directory tempDir;
 
     setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('installer_runtime_test_');
+      tempDir = await Directory.systemTemp.createTemp(
+        'installer_runtime_test_',
+      );
     });
 
     tearDown(() async {

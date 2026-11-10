@@ -42,9 +42,8 @@ class _RealSupervisedProcess implements SupervisedProcess {
 
 /// Spawns a program's command. The default implementation mirrors
 /// `CliProcessManager` (setsid on POSIX, cmd.exe on Windows).
-typedef SupervisorSpawner = Future<SupervisedProcess> Function(
-  SupervisorProgram program,
-);
+typedef SupervisorSpawner =
+    Future<SupervisedProcess> Function(SupervisorProgram program);
 
 /// Terminates an entire process tree rooted at [pid].
 typedef SupervisorTreeKiller = Future<void> Function(int pid);
@@ -130,11 +129,11 @@ class SupervisorManager {
     SupervisorTreeKiller? treeKiller,
     SupervisorTreeKillerSync? treeKillerSync,
     SupervisorDelay? delay,
-  })  : _isarResolver = isarResolver ?? (isar != null ? () => isar : () => null),
-        _spawner = spawner ?? _defaultSpawn,
-        _treeKiller = treeKiller ?? _defaultTreeKill,
-        _treeKillerSync = treeKillerSync ?? killProcessTreeSync,
-        _delay = delay ?? Future<void>.delayed;
+  }) : _isarResolver = isarResolver ?? (isar != null ? () => isar : () => null),
+       _spawner = spawner ?? _defaultSpawn,
+       _treeKiller = treeKiller ?? _defaultTreeKill,
+       _treeKillerSync = treeKillerSync ?? killProcessTreeSync,
+       _delay = delay ?? Future<void>.delayed;
 
   Isar? get _isar => _isarResolver();
 
@@ -175,29 +174,35 @@ class SupervisorManager {
     // `ProcessException: No such file or directory` for `workingDirectory: ''`.
     final workDir = program.workingDir.isEmpty ? null : program.workingDir;
     if (Platform.isWindows) {
-      return _RealSupervisedProcess(await Process.start(
-        'cmd.exe',
-        ['/c', program.command],
-        workingDirectory: workDir,
-        environment: _buildEnvironment(program),
-      ));
+      return _RealSupervisedProcess(
+        await Process.start(
+          'cmd.exe',
+          ['/c', program.command],
+          workingDirectory: workDir,
+          environment: _buildEnvironment(program),
+        ),
+      );
     }
     try {
       // setsid makes the child its own process-group leader (pid == pgid), so
       // `kill -9 -- -<pid>` addresses the whole tree.
-      return _RealSupervisedProcess(await Process.start(
-        'setsid',
-        ['/bin/sh', '-c', program.command],
-        workingDirectory: workDir,
-        environment: _buildEnvironment(program),
-      ));
+      return _RealSupervisedProcess(
+        await Process.start(
+          'setsid',
+          ['/bin/sh', '-c', program.command],
+          workingDirectory: workDir,
+          environment: _buildEnvironment(program),
+        ),
+      );
     } catch (_) {
-      return _RealSupervisedProcess(await Process.start(
-        '/bin/sh',
-        ['-c', program.command],
-        workingDirectory: workDir,
-        environment: _buildEnvironment(program),
-      ));
+      return _RealSupervisedProcess(
+        await Process.start(
+          '/bin/sh',
+          ['-c', program.command],
+          workingDirectory: workDir,
+          environment: _buildEnvironment(program),
+        ),
+      );
     }
   }
 
@@ -210,14 +215,19 @@ class SupervisorManager {
   ///
   /// [isRestart] is internal: a watchdog respawn keeps the rolling restart
   /// window, while a user-initiated start resets it.
-  Future<bool> start(SupervisorProgram program, {bool isRestart = false}) async {
+  Future<bool> start(
+    SupervisorProgram program, {
+    bool isRestart = false,
+  }) async {
     if (!program.enabled) return false;
     if (program.command.trim().isEmpty) return false;
     if (isRunning(program.id)) return true;
 
     final workDir = Directory(program.workingDir);
     if (program.workingDir.isNotEmpty && !workDir.existsSync()) {
-      throw StateError('Working directory does not exist: ${program.workingDir}');
+      throw StateError(
+        'Working directory does not exist: ${program.workingDir}',
+      );
     }
 
     if (_processes.containsKey(program.id)) {
@@ -230,8 +240,9 @@ class SupervisorManager {
     final logBase = logsDirectory ?? p.join(AppConfig.baseDir, 'logs');
     final logDir = Directory(p.join(logBase, 'supervisor'));
     if (!logDir.existsSync()) logDir.createSync(recursive: true);
-    final sink = File(p.join(logDir.path, '${program.name}.log'))
-        .openWrite(mode: FileMode.append);
+    final sink = File(
+      p.join(logDir.path, '${program.name}.log'),
+    ).openWrite(mode: FileMode.append);
 
     final buffer = CircularLogBuffer();
     final controller = StreamController<String>.broadcast();
@@ -331,8 +342,9 @@ class SupervisorManager {
 
     final now = DateTime.now();
     final times = _restartTimes.putIfAbsent(program.id, () => []);
-    final windowStart =
-        now.subtract(Duration(seconds: current.restartWindowSeconds));
+    final windowStart = now.subtract(
+      Duration(seconds: current.restartWindowSeconds),
+    );
     times.removeWhere((t) => t.isBefore(windowStart));
     times.add(now);
 
@@ -400,10 +412,7 @@ class SupervisorManager {
   /// let go.
   Future<void> _waitBackoff(Duration duration) async {
     if (_cancelled) return;
-    await Future.any([
-      _delay(duration),
-      _cancelSignal.future,
-    ]);
+    await Future.any([_delay(duration), _cancelSignal.future]);
   }
 
   Future<bool> stop(int programId) async {

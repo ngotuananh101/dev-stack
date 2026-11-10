@@ -84,23 +84,26 @@ void main() {
 
   tearDown(() => container.dispose());
 
-  test('cancelInstall aborts an in-flight install and resets the app', () async {
-    final notifier = container.read(appsProvider.notifier);
-    // Kick off the install; it blocks inside the fake installer.
-    final installFuture = notifier.toggleInstallation(app);
-    await Future<void>.delayed(Duration.zero);
+  test(
+    'cancelInstall aborts an in-flight install and resets the app',
+    () async {
+      final notifier = container.read(appsProvider.notifier);
+      // Kick off the install; it blocks inside the fake installer.
+      final installFuture = notifier.toggleInstallation(app);
+      await Future<void>.delayed(Duration.zero);
 
-    expect(app.status, 'installing');
+      expect(app.status, 'installing');
 
-    final cancelled = notifier.cancelInstall('testapp');
-    expect(cancelled, isTrue);
+      final cancelled = notifier.cancelInstall('testapp');
+      expect(cancelled, isTrue);
 
-    await installFuture;
+      await installFuture;
 
-    expect(app.status, 'not_installed');
-    expect(app.installProgress, isNull);
-    expect(app.isInstalled, isFalse);
-  });
+      expect(app.status, 'not_installed');
+      expect(app.installProgress, isNull);
+      expect(app.isInstalled, isFalse);
+    },
+  );
 
   test('cancelInstall returns false when nothing is installing', () {
     final notifier = container.read(appsProvider.notifier);

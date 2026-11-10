@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text_size.dart';
+import '../utils/app_dialogs.dart';
 import 'app_modal_header.dart';
 
 /// A bottom-anchored, lazily built log viewer.
@@ -73,7 +74,8 @@ class _TerminalLogViewState extends State<TerminalLogView> {
   @override
   void didUpdateWidget(TerminalLogView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final changed = widget.revision != oldWidget.revision ||
+    final changed =
+        widget.revision != oldWidget.revision ||
         widget.lines.length != oldWidget.lines.length ||
         !identical(widget.lines, oldWidget.lines);
     if (_autoScroll && changed) {
@@ -99,12 +101,7 @@ class _TerminalLogViewState extends State<TerminalLogView> {
 
   void _defaultCopy() {
     Clipboard.setData(ClipboardData(text: widget.lines.join('\n')));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Logs copied to clipboard'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    AppDialogs.showToast(context, 'Logs copied to clipboard');
   }
 
   @override
@@ -117,10 +114,7 @@ class _TerminalLogViewState extends State<TerminalLogView> {
     );
 
     if (!widget.isModal) {
-      return Container(
-        color: AppColors.background,
-        child: body,
-      );
+      return Container(color: AppColors.background, child: body);
     }
 
     return Container(
@@ -161,18 +155,30 @@ class _TerminalLogViewState extends State<TerminalLogView> {
         ),
         if (widget.onClear != null)
           IconButton(
-            icon: const Icon(Icons.clear_all, size: 16, color: AppColors.textSecondary),
+            icon: const Icon(
+              Icons.clear_all,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
             tooltip: 'Clear',
             onPressed: widget.onClear,
           ),
         IconButton(
-          icon: const Icon(Icons.copy, size: 16, color: AppColors.textSecondary),
+          icon: const Icon(
+            Icons.copy,
+            size: 16,
+            color: AppColors.textSecondary,
+          ),
           tooltip: 'Copy all',
           onPressed: widget.onCopy ?? _defaultCopy,
         ),
         if (widget.onOpenFile != null)
           IconButton(
-            icon: const Icon(LucideIcons.fileText, size: 16, color: AppColors.textSecondary),
+            icon: const Icon(
+              LucideIcons.fileText,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
             tooltip: 'Open log file',
             onPressed: widget.onOpenFile,
           ),

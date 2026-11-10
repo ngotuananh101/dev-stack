@@ -12,7 +12,8 @@ String? _isarLibraryPath() {
       : (Platform.isLinux ? 'libisar_plus.so' : null);
   if (libName == null) return null;
 
-  final pubCache = Platform.environment['PUB_CACHE'] ??
+  final pubCache =
+      Platform.environment['PUB_CACHE'] ??
       (Platform.isWindows
           ? '${Platform.environment['LOCALAPPDATA']}\\Pub\\Cache'
           : '${Platform.environment['HOME']}/.pub-cache');
@@ -77,13 +78,21 @@ void main() {
         await repository.save(app3);
 
         final all = isar.installedApps.where().findAll();
-        expect(all.length, equals(3), reason: 'All 3 apps must be stored, not overwritten');
+        expect(
+          all.length,
+          equals(3),
+          reason: 'All 3 apps must be stored, not overwritten',
+        );
 
         final appIds = all.map((a) => a.appId).toSet();
         expect(appIds, containsAll(['nginx', 'php82', 'mysql']));
 
         final ids = all.map((a) => a.id).toSet();
-        expect(ids.length, equals(3), reason: 'Each app must have a distinct primary key id');
+        expect(
+          ids.length,
+          equals(3),
+          reason: 'Each app must have a distinct primary key id',
+        );
       },
       skip: libraryPath == null ? 'Isar native library not available' : false,
     );
@@ -104,11 +113,17 @@ void main() {
         final all = isar.installedApps.where().findAll();
         expect(all.length, equals(2));
 
-        final nginx = isar.installedApps.where().appIdEqualTo('nginx').findFirst();
+        final nginx = isar.installedApps
+            .where()
+            .appIdEqualTo('nginx')
+            .findFirst();
         expect(nginx, isNotNull);
         expect(nginx!.version, equals('1.26.0'));
 
-        final php = isar.installedApps.where().appIdEqualTo('php82').findFirst();
+        final php = isar.installedApps
+            .where()
+            .appIdEqualTo('php82')
+            .findFirst();
         expect(php, isNotNull);
         expect(php!.version, equals('8.2.0'));
       },

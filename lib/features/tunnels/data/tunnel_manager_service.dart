@@ -16,14 +16,17 @@ import 'drivers/cloudflare_driver.dart';
 import 'drivers/ngrok_driver.dart';
 import 'tunnel_downloader_service.dart';
 
-typedef ProcessStarter = Future<dynamic> Function(String executable, List<String> arguments);
+typedef ProcessStarter =
+    Future<dynamic> Function(String executable, List<String> arguments);
 typedef ProcessStopper = Future<void> Function(int pid);
 
 @visibleForTesting
 class FakeManagedProcess {
   final int pid;
-  final StreamController<List<int>> stdoutController = StreamController<List<int>>.broadcast();
-  final StreamController<List<int>> stderrController = StreamController<List<int>>.broadcast();
+  final StreamController<List<int>> stdoutController =
+      StreamController<List<int>>.broadcast();
+  final StreamController<List<int>> stderrController =
+      StreamController<List<int>>.broadcast();
 
   FakeManagedProcess(this.pid);
 
@@ -58,6 +61,7 @@ class TunnelManagerService {
   final Map<int, TunnelSession> _sessions = {};
   final Map<int, dynamic> _activeProcesses = {};
   final Map<int, List<StreamSubscription>> _logSubscriptions = {};
+
   /// Cancel tokens for tunnels whose start is still in flight (binary download
   /// or process launch). Cancelling the token aborts the download; a tunnel
   /// whose process has already launched is torn down instead.
@@ -78,21 +82,17 @@ class TunnelManagerService {
     Map<String, TunnelDriver>? drivers,
     ProcessStarter? startProcessFn,
     ProcessStopper? stopProcessFn,
-  })  : _downloader = downloader ?? TunnelDownloaderService(),
-        _logger = logger,
-        _isar = isar,
-        _drivers = drivers ?? {
-          'cloudflare': CloudflareDriver(),
-          'ngrok': NgrokDriver(),
-        },
-        _startProcess = startProcessFn ??
-            ((exec, args) async => ManagedBackgroundProcess.wrap(
-                  await Process.start(
-                    exec,
-                    args,
-                    mode: ProcessStartMode.normal,
-                  ),
-                )) {
+  }) : _downloader = downloader ?? TunnelDownloaderService(),
+       _logger = logger,
+       _isar = isar,
+       _drivers =
+           drivers ??
+           {'cloudflare': CloudflareDriver(), 'ngrok': NgrokDriver()},
+       _startProcess =
+           startProcessFn ??
+           ((exec, args) async => ManagedBackgroundProcess.wrap(
+             await Process.start(exec, args, mode: ProcessStartMode.normal),
+           )) {
     _stopProcess = stopProcessFn ?? _defaultStopProcess;
   }
 
@@ -107,7 +107,8 @@ class TunnelManagerService {
     }
   }
 
-  Stream<Map<int, TunnelSession>> get sessionsStream => _sessionsController.stream;
+  Stream<Map<int, TunnelSession>> get sessionsStream =>
+      _sessionsController.stream;
 
   Map<int, TunnelSession> get currentSessions => Map.unmodifiable(_sessions);
 
@@ -133,10 +134,7 @@ class TunnelManagerService {
     }
   }
 
-  Future<void> _startTunnel(
-    TunnelModel tunnel, {
-    String? defaultToken,
-  }) async {
+  Future<void> _startTunnel(TunnelModel tunnel, {String? defaultToken}) async {
     final driver = _drivers[tunnel.provider.toLowerCase()];
     if (driver == null) {
       throw ArgumentError('Unsupported driver: ${tunnel.provider}');
@@ -209,10 +207,7 @@ class TunnelManagerService {
 
       _updateSession(
         tunnel.id,
-        TunnelSession(
-          tunnelId: tunnel.id,
-          status: TunnelStatus.connecting,
-        ),
+        TunnelSession(tunnelId: tunnel.id, status: TunnelStatus.connecting),
       );
 
       final process = await _startProcess(execPath, args);
@@ -314,7 +309,9 @@ class TunnelManagerService {
             tunnel.id,
             session.copyWith(
               status: isAbnormal ? TunnelStatus.error : TunnelStatus.stopped,
-              errorMessage: isAbnormal ? 'Process exited with code $exitCode' : null,
+              errorMessage: isAbnormal
+                  ? 'Process exited with code $exitCode'
+                  : null,
             ),
           );
         }
@@ -333,19 +330,30 @@ class TunnelManagerService {
               .transform(const LineSplitter())
               .listen(handleLine),
         );
-        process.exitCode.then((code) => cleanupProcess(code), onError: (_) => cleanupProcess());
+        process.exitCode.then(
+          (code) => cleanupProcess(code),
+          onError: (_) => cleanupProcess(),
+        );
       } else if (process is FakeManagedProcess) {
         subscriptions.add(
           process.stdout
               .transform(utf8.decoder)
               .transform(const LineSplitter())
-              .listen(handleLine, onError: (_) => cleanupProcess(), onDone: cleanupProcess),
+              .listen(
+                handleLine,
+                onError: (_) => cleanupProcess(),
+                onDone: cleanupProcess,
+              ),
         );
         subscriptions.add(
           process.stderr
               .transform(utf8.decoder)
               .transform(const LineSplitter())
-              .listen(handleLine, onError: (_) => cleanupProcess(), onDone: cleanupProcess),
+              .listen(
+                handleLine,
+                onError: (_) => cleanupProcess(),
+                onDone: cleanupProcess,
+              ),
         );
       }
 
@@ -430,10 +438,7 @@ class TunnelManagerService {
     _activeProcesses.remove(tunnelId);
     _updateSession(
       tunnelId,
-      TunnelSession(
-        tunnelId: tunnelId,
-        status: TunnelStatus.stopped,
-      ),
+      TunnelSession(tunnelId: tunnelId, status: TunnelStatus.stopped),
     );
   }
 

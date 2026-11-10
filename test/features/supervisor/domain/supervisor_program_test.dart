@@ -4,7 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('defaults keep a program supervised and restartable', () {
-    final p = SupervisorProgram(name: 'Queue', command: 'php artisan queue:work');
+    final p = SupervisorProgram(
+      name: 'Queue',
+      command: 'php artisan queue:work',
+    );
     expect(p.id, 0);
     expect(p.autoStart, isFalse);
     expect(p.autoRestart, isTrue);

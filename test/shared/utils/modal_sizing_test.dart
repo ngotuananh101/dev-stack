@@ -60,11 +60,7 @@ void main() {
           ModalSize.lg,
           ModalSize.xl,
         ]) {
-          final d = await dimsFor(
-            tester,
-            size,
-            window: Size(window, 800),
-          );
+          final d = await dimsFor(tester, size, window: Size(window, 800));
           expect(
             d.width,
             lessThanOrEqualTo(window - kModalInsetPadding.horizontal),

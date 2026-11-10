@@ -15,7 +15,10 @@ void main() {
 
       test('resolves php variants including php84', () {
         expect(AppBrandResolver.iconFileName('php84'), equals('php'));
-        expect(AppBrandResolver.iconFileName('phpmyadmin'), equals('phpmyadmin'));
+        expect(
+          AppBrandResolver.iconFileName('phpmyadmin'),
+          equals('phpmyadmin'),
+        );
       });
 
       test('resolves database and other app icons', () {
@@ -30,41 +33,83 @@ void main() {
         expect(AppBrandResolver.iconFileName('python'), equals('python'));
         expect(AppBrandResolver.iconFileName('pyenv'), equals('python'));
         expect(AppBrandResolver.iconFileName('rustfs'), equals('rustfs'));
-        expect(AppBrandResolver.iconFileName('meilisearch'), equals('meilisearch'));
-        expect(AppBrandResolver.iconFileName('elasticsearch'), equals('elasticsearch'));
+        expect(
+          AppBrandResolver.iconFileName('meilisearch'),
+          equals('meilisearch'),
+        );
+        expect(
+          AppBrandResolver.iconFileName('elasticsearch'),
+          equals('elasticsearch'),
+        );
       });
 
       test('falls back to group name when no specific match', () {
-        expect(AppBrandResolver.iconFileName('unknown', groupName: 'node'), equals('node'));
-        expect(AppBrandResolver.iconFileName('unknown', groupName: 'php'), equals('php'));
+        expect(
+          AppBrandResolver.iconFileName('unknown', groupName: 'node'),
+          equals('node'),
+        );
+        expect(
+          AppBrandResolver.iconFileName('unknown', groupName: 'php'),
+          equals('php'),
+        );
         expect(AppBrandResolver.iconFileName('unknown'), equals(''));
       });
     });
 
     group('iconColor', () {
       test('resolves bun brand color', () {
-        expect(AppBrandResolver.iconColor('bun'), equals(const Color(0xFFE5A83B)));
+        expect(
+          AppBrandResolver.iconColor('bun'),
+          equals(const Color(0xFFE5A83B)),
+        );
       });
 
       test('resolves deno brand color', () {
-        expect(AppBrandResolver.iconColor('deno'), equals(const Color(0xFF70FFAF)));
+        expect(
+          AppBrandResolver.iconColor('deno'),
+          equals(const Color(0xFF70FFAF)),
+        );
       });
 
       test('resolves nodejs/node brand color', () {
-        expect(AppBrandResolver.iconColor('nodejs'), equals(const Color(0xFF68A063)));
-        expect(AppBrandResolver.iconColor('node'), equals(const Color(0xFF68A063)));
+        expect(
+          AppBrandResolver.iconColor('nodejs'),
+          equals(const Color(0xFF68A063)),
+        );
+        expect(
+          AppBrandResolver.iconColor('node'),
+          equals(const Color(0xFF68A063)),
+        );
       });
 
       test('resolves other app brand colors', () {
-        expect(AppBrandResolver.iconColor('caddy'), equals(const Color(0xFF1F8C5B)));
-        expect(AppBrandResolver.iconColor('nginx'), equals(const Color(0xFF009639)));
-        expect(AppBrandResolver.iconColor('php'), equals(const Color(0xFF777BB4)));
-        expect(AppBrandResolver.iconColor('mysql'), equals(const Color(0xFF4479A1)));
-        expect(AppBrandResolver.iconColor('postgresql'), equals(const Color(0xFF336791)));
+        expect(
+          AppBrandResolver.iconColor('caddy'),
+          equals(const Color(0xFF1F8C5B)),
+        );
+        expect(
+          AppBrandResolver.iconColor('nginx'),
+          equals(const Color(0xFF009639)),
+        );
+        expect(
+          AppBrandResolver.iconColor('php'),
+          equals(const Color(0xFF777BB4)),
+        );
+        expect(
+          AppBrandResolver.iconColor('mysql'),
+          equals(const Color(0xFF4479A1)),
+        );
+        expect(
+          AppBrandResolver.iconColor('postgresql'),
+          equals(const Color(0xFF336791)),
+        );
       });
 
       test('falls back to default color for unknown apps', () {
-        expect(AppBrandResolver.iconColor('unknown'), equals(const Color(0xFF000000)));
+        expect(
+          AppBrandResolver.iconColor('unknown'),
+          equals(const Color(0xFF000000)),
+        );
       });
 
       test('uses custom fallback color', () {
@@ -80,7 +125,10 @@ void main() {
         expect(AppBrandResolver.fallbackIcon('python'), equals(Icons.code));
         expect(AppBrandResolver.fallbackIcon('pyenv'), equals(Icons.code));
         expect(AppBrandResolver.fallbackIcon('node'), equals(Icons.javascript));
-        expect(AppBrandResolver.fallbackIcon('nodejs'), equals(Icons.javascript));
+        expect(
+          AppBrandResolver.fallbackIcon('nodejs'),
+          equals(Icons.javascript),
+        );
         expect(AppBrandResolver.fallbackIcon('php'), equals(Icons.code));
         expect(AppBrandResolver.fallbackIcon('mysql'), equals(Icons.storage));
         expect(AppBrandResolver.fallbackIcon('caddy'), equals(Icons.dns));
@@ -97,12 +145,18 @@ void main() {
   group('App Brand UI resolution for Bun and Deno', () {
     test('resolves bun icon and brand color', () {
       expect(AppBrandResolver.iconFileName('bun'), equals('bun'));
-      expect(AppBrandResolver.iconColor('bun'), equals(const Color(0xFFE5A83B)));
+      expect(
+        AppBrandResolver.iconColor('bun'),
+        equals(const Color(0xFFE5A83B)),
+      );
     });
 
     test('resolves deno icon and brand color', () {
       expect(AppBrandResolver.iconFileName('deno'), equals('deno'));
-      expect(AppBrandResolver.iconColor('deno'), equals(const Color(0xFF70FFAF)));
+      expect(
+        AppBrandResolver.iconColor('deno'),
+        equals(const Color(0xFF70FFAF)),
+      );
     });
   });
 }

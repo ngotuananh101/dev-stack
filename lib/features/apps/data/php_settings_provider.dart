@@ -25,10 +25,7 @@ String? resolvePhpIniPath(AppModel app, {bool? isLinux}) {
 }
 
 /// Resolves the php.ini [File] for an app using [resolvePhpIniPath].
-File? resolvePhpIniFile(
-  AppModel app, {
-  bool? isLinux,
-}) {
+File? resolvePhpIniFile(AppModel app, {bool? isLinux}) {
   final path = resolvePhpIniPath(app, isLinux: isLinux);
   if (path == null) return null;
   return File(path);

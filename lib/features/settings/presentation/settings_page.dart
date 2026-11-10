@@ -79,9 +79,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       items: installedPhps.map((a) => a.appId).toList(),
                       onChanged: (val) {
                         if (val != null) {
-                          ref
-                              .read(appsProvider.notifier)
-                              .changeDefaultPhp(val);
+                          ref.read(appsProvider.notifier).changeDefaultPhp(val);
                         }
                       },
                       placeholder: 'No PHP version installed',
@@ -370,10 +368,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (sourceExists) {
         final success = await notifier.migrateBaseDir(oldDir, newDir);
         if (!success && context.mounted) {
-          AppDialogs.showToast(
+          AppDialogs.showError(
             context,
-            'Migration failed. Base directory was NOT changed.',
-            isError: true,
+            title: 'Migration failed',
+            message:
+                'The data could not be migrated. Base directory was NOT changed.',
           );
           setState(() => _isMigrating = false);
           return;
@@ -447,7 +446,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       );
     } catch (e) {
       if (context.mounted) {
-        AppDialogs.showToast(context, 'Error: $e', isError: true);
+        AppDialogs.showErrorFrom(context, e, title: 'Migration failed');
         setState(() => _isMigrating = false);
       }
     }
@@ -1021,17 +1020,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     final sslState = ref.read(sslServiceProvider);
     if (sslState.hasError) {
-      AppDialogs.showToast(
+      AppDialogs.showError(
         context,
-        'Failed to ${actionName.toLowerCase()} SSL.',
-        isError: true,
+        title: 'SSL Root Certificate failed',
+        message:
+            'Could not ${actionName.toLowerCase()} the SSL Root Certificate.',
       );
     } else {
-      AppDialogs.showSuccess(
-        context: context,
-        title: 'Success',
-        text:
-            'Successfully ${actionName.toLowerCase()}ed SSL Root Certificate.',
+      AppDialogs.showToast(
+        context,
+        'Successfully ${actionName.toLowerCase()}ed SSL Root Certificate.',
       );
     }
   }
@@ -1133,10 +1131,7 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
         filled: true,
         fillColor: AppColors.surface,
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 8,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.border),

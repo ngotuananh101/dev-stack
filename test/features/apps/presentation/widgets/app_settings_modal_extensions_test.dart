@@ -16,7 +16,10 @@ class _MockPhpSettings extends PhpSettings {
   _MockPhpSettings(this._exts);
 
   @override
-  Future<List<PhpExtension>> getExtensions(AppModel app, [String? iniContent]) async {
+  Future<List<PhpExtension>> getExtensions(
+    AppModel app, [
+    String? iniContent,
+  ]) async {
     return _exts;
   }
 }
@@ -26,7 +29,9 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
   });
 
-  testWidgets('AppSettingsModal renders compact PHP extension cards', (tester) async {
+  testWidgets('AppSettingsModal renders compact PHP extension cards', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -68,15 +73,14 @@ void main() {
       ProviderScope(
         overrides: [
           appsProvider.overrideWith(() => _StaticAppsNotifier()),
-          phpSettingsProvider.overrideWith(() => _MockPhpSettings(mockExtensions)),
+          phpSettingsProvider.overrideWith(
+            () => _MockPhpSettings(mockExtensions),
+          ),
         ],
         child: MaterialApp(
           home: Scaffold(
             body: Center(
-              child: AppSettingsModal(
-                app: phpApp,
-                onClose: () {},
-              ),
+              child: AppSettingsModal(app: phpApp, onClose: () {}),
             ),
           ),
         ),
@@ -98,10 +102,9 @@ void main() {
     expect(find.text('mbstring'), findsOneWidget);
 
     // Extension cards should be compact (height <= 50px, width <= 300px)
-    final curlCardFinder = find.ancestor(
-      of: find.text('curl'),
-      matching: find.byType(Container),
-    ).first;
+    final curlCardFinder = find
+        .ancestor(of: find.text('curl'), matching: find.byType(Container))
+        .first;
     final cardSize = tester.getSize(curlCardFinder);
     expect(cardSize.height, lessThanOrEqualTo(50.0));
     expect(cardSize.width, lessThanOrEqualTo(300.0));

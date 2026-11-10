@@ -6,14 +6,8 @@ void main() {
     test('contains the four MySQL system schemas', () {
       expect(Databases.mysqlSystemSchemas, contains('mysql'));
       expect(Databases.mysqlSystemSchemas, contains('sys'));
-      expect(
-        Databases.mysqlSystemSchemas,
-        contains('information_schema'),
-      );
-      expect(
-        Databases.mysqlSystemSchemas,
-        contains('performance_schema'),
-      );
+      expect(Databases.mysqlSystemSchemas, contains('information_schema'));
+      expect(Databases.mysqlSystemSchemas, contains('performance_schema'));
     });
 
     test('is unmodifiable', () {

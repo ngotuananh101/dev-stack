@@ -22,21 +22,22 @@ void main() {
   }
 
   Widget host(String engineId, List<DatabaseRecord> databases) => MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            height: 300,
-            child: DatabaseTable(
-              engineId: engineId,
-              databases: databases,
-              onDelete: (_) {},
-              onEdit: (_) {},
-            ),
-          ),
+    home: Scaffold(
+      body: SizedBox(
+        height: 300,
+        child: DatabaseTable(
+          engineId: engineId,
+          databases: databases,
+          onDelete: (_) {},
+          onEdit: (_) {},
         ),
-      );
+      ),
+    ),
+  );
 
-  testWidgets('renders both row actions inline when the row is wide',
-      (tester) async {
+  testWidgets('renders both row actions inline when the row is wide', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -48,8 +49,9 @@ void main() {
     expect(find.byIcon(LucideIcons.moreHorizontal), findsNothing);
   });
 
-  testWidgets('collapses row actions into one menu at a ~412px row',
-      (tester) async {
+  testWidgets('collapses row actions into one menu at a ~412px row', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(700, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -67,8 +69,9 @@ void main() {
     expect(find.text('Delete'), findsOneWidget);
   });
 
-  testWidgets('a redis row keeps its actions inline at a 700px window',
-      (tester) async {
+  testWidgets('a redis row keeps its actions inline at a 700px window', (
+    tester,
+  ) async {
     // The redis row carries one data column fewer than the SQL row, so a 700px
     // window still leaves room for the pair.
     await tester.binding.setSurfaceSize(const Size(700, 720));
@@ -82,8 +85,9 @@ void main() {
     expect(find.byIcon(LucideIcons.moreHorizontal), findsNothing);
   });
 
-  testWidgets('a redis row collapses its flush/clear pair when narrow',
-      (tester) async {
+  testWidgets('a redis row collapses its flush/clear pair when narrow', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(450, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 

@@ -62,13 +62,11 @@ class CronPage extends ConsumerWidget {
                       }
                     }
                   },
-                  onViewHistory: (job) =>
-                      _viewHistory(context, scheduler, job),
+                  onViewHistory: (job) => _viewHistory(context, scheduler, job),
                   onEdit: (job) => _edit(context, job),
                   onDelete: (job) => _delete(context, ref, job),
                 ),
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Text(
                     'Error loading cron jobs: $e',
@@ -157,7 +155,8 @@ class CronPage extends ConsumerWidget {
     AppDialogs.showConfirm(
       context: context,
       title: 'Delete Job',
-      text: 'Delete "${job.name}"? Its configuration will be removed. '
+      text:
+          'Delete "${job.name}"? Its configuration will be removed. '
           'This cannot be undone.',
       confirmBtnText: 'DELETE',
       onConfirm: () => ref.read(cronRepositoryProvider).delete(job.id),

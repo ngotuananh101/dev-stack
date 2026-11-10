@@ -16,17 +16,13 @@ class _EmptyAppsNotifier extends Apps {
 }
 
 void main() {
-  testWidgets('AddSiteModal shows CLI App type option and presets', (tester) async {
+  testWidgets('AddSiteModal shows CLI App type option and presets', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          appsProvider.overrideWith(() => _EmptyAppsNotifier()),
-        ],
-        child: const MaterialApp(
-          home: Scaffold(
-            body: AddSiteModal(),
-          ),
-        ),
+        overrides: [appsProvider.overrideWith(() => _EmptyAppsNotifier())],
+        child: const MaterialApp(home: Scaffold(body: AddSiteModal())),
       ),
     );
     await tester.pumpAndSettle();
@@ -42,8 +38,9 @@ void main() {
     expect(find.text('Preset'), findsOneWidget);
   });
 
-  testWidgets('EditSiteModal shows CLI App inputs and preset auto-fill',
-      (tester) async {
+  testWidgets('EditSiteModal shows CLI App inputs and preset auto-fill', (
+    tester,
+  ) async {
     // The modal is a 1000x800 Dialog; make the surface tall/wide enough to
     // avoid layout overflow on the small default 800x600 test surface.
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
@@ -61,9 +58,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          appsProvider.overrideWith(() => _EmptyAppsNotifier()),
-        ],
+        overrides: [appsProvider.overrideWith(() => _EmptyAppsNotifier())],
         child: MaterialApp(
           home: Scaffold(
             body: EditSiteModal(site: site, onClose: () {}),

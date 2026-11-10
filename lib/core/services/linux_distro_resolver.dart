@@ -42,7 +42,8 @@ class LinuxDistroResolver {
 
       if (content.isNotEmpty) {
         final parsed = parseOsRelease(content);
-        final codename = parsed['VERSION_CODENAME'] ?? parsed['UBUNTU_CODENAME'];
+        final codename =
+            parsed['VERSION_CODENAME'] ?? parsed['UBUNTU_CODENAME'];
         if (codename != null && codename.isNotEmpty) {
           return codename.toLowerCase();
         }

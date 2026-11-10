@@ -14,7 +14,7 @@ class MongodbSettings extends _$MongodbSettings {
     if (app.location == null) return null;
 
     final location = app.location!;
-    
+
     // MongoDB on Windows often uses bin/mongod.cfg or mongod.cfg (sometimes .conf)
     final binPath = p.join(location, 'bin', 'mongod.cfg');
     final rootPath = p.join(location, 'mongod.cfg');

@@ -16,8 +16,10 @@ RegExp _apacheGlobToRegExp(String glob) {
 
 void main() {
   group('ApacheConfigBuilder.buildMainConfig', () {
-    test('updates ServerRoot, DocumentRoot, Directory permissions, Listeners, and global vhosts', () {
-      const initialHttpd = '''
+    test(
+      'updates ServerRoot, DocumentRoot, Directory permissions, Listeners, and global vhosts',
+      () {
+        const initialHttpd = '''
 Define SRVROOT "c:/Apache24"
 ServerRoot "\${SRVROOT}"
 Listen 80
@@ -30,32 +32,33 @@ DocumentRoot "c:/Apache24/htdocs"
 #ServerName www.example.com:80
 ''';
 
-      final updated = ApacheConfigBuilder.buildMainConfig(
-        initialContent: initialHttpd,
-        serverRoot: r'C:\Ponta\apps\apache\2.4.58',
-        documentRoot: r'C:\Ponta\www',
-        vhostsGlob: r'C:\Ponta\vhosts\apache\*.conf',
-        allowLanAccess: false,
-        isSslInstalled: false,
-      );
+        final updated = ApacheConfigBuilder.buildMainConfig(
+          initialContent: initialHttpd,
+          serverRoot: r'C:\Ponta\apps\apache\2.4.58',
+          documentRoot: r'C:\Ponta\www',
+          vhostsGlob: r'C:\Ponta\vhosts\apache\*.conf',
+          allowLanAccess: false,
+          isSslInstalled: false,
+        );
 
-      expect(
-        updated,
-        contains('Define SRVROOT "C:/Ponta/apps/apache/2.4.58"'),
-      );
-      expect(updated, contains('DocumentRoot "C:/Ponta/www"'));
-      expect(updated, contains('<Directory "C:/Ponta/www">'));
-      expect(updated, contains('Options Indexes FollowSymLinks'));
-      expect(updated, contains('AllowOverride All'));
-      expect(updated, contains('Require all granted'));
-      expect(updated, contains('Listen 127.0.0.1:80'));
-      expect(updated, isNot(contains('Listen 127.0.0.1:443')));
-      expect(updated, contains('ServerName localhost:80'));
-      expect(
-        updated,
-        contains('IncludeOptional "C:/Ponta/vhosts/apache/*.conf"'),
-      );
-    });
+        expect(
+          updated,
+          contains('Define SRVROOT "C:/Ponta/apps/apache/2.4.58"'),
+        );
+        expect(updated, contains('DocumentRoot "C:/Ponta/www"'));
+        expect(updated, contains('<Directory "C:/Ponta/www">'));
+        expect(updated, contains('Options Indexes FollowSymLinks'));
+        expect(updated, contains('AllowOverride All'));
+        expect(updated, contains('Require all granted'));
+        expect(updated, contains('Listen 127.0.0.1:80'));
+        expect(updated, isNot(contains('Listen 127.0.0.1:443')));
+        expect(updated, contains('ServerName localhost:80'));
+        expect(
+          updated,
+          contains('IncludeOptional "C:/Ponta/vhosts/apache/*.conf"'),
+        );
+      },
+    );
 
     test('enables proxy modules even when SSL is not installed', () {
       const initialHttpd = '''
@@ -124,7 +127,9 @@ DocumentRoot "c:/Apache24/htdocs"
       expect(updated, contains('LoadModule ssl_module modules/mod_ssl.so'));
       expect(
         updated,
-        contains('LoadModule socache_shmcb_module modules/mod_socache_shmcb.so'),
+        contains(
+          'LoadModule socache_shmcb_module modules/mod_socache_shmcb.so',
+        ),
       );
       expect(updated, contains('LoadModule proxy_module modules/mod_proxy.so'));
       expect(
@@ -157,7 +162,10 @@ DocumentRoot "c:/Apache24/htdocs"
       );
 
       expect(config, contains('# phpMyAdmin Configuration'));
-      expect(config, contains('Alias /phpmyadmin "/opt/ponta/apps/phpmyadmin/"'));
+      expect(
+        config,
+        contains('Alias /phpmyadmin "/opt/ponta/apps/phpmyadmin/"'),
+      );
       expect(config, contains('<Directory "/opt/ponta/apps/phpmyadmin/">'));
       expect(config, contains('Options Indexes FollowSymLinks MultiViews'));
       expect(config, contains('AllowOverride All'));
@@ -183,7 +191,10 @@ DocumentRoot "c:/Apache24/htdocs"
       expect(config, contains('ServerName mysite.local'));
       expect(config, contains('DocumentRoot "C:/Sites/mysite"'));
       expect(config, contains('<Directory "C:/Sites/mysite">'));
-      expect(config, contains('CustomLog "C:/Sites/logs/apache_access.log" combined'));
+      expect(
+        config,
+        contains('CustomLog "C:/Sites/logs/apache_access.log" combined'),
+      );
       expect(config, contains('ErrorLog "C:/Sites/logs/apache_error.log"'));
       expect(config, isNot(contains('SetHandler')));
       expect(config, isNot(contains('ProxyPass')));
@@ -207,8 +218,14 @@ DocumentRoot "c:/Apache24/htdocs"
       expect(config, contains('<IfModule mod_ssl.c>'));
       expect(config, contains('<VirtualHost 127.0.0.1:443>'));
       expect(config, contains('SSLEngine on'));
-      expect(config, contains('SSLCertificateFile "C:/Ponta/certs/phpsite.crt"'));
-      expect(config, contains('SSLCertificateKeyFile "C:/Ponta/certs/phpsite.key"'));
+      expect(
+        config,
+        contains('SSLCertificateFile "C:/Ponta/certs/phpsite.crt"'),
+      );
+      expect(
+        config,
+        contains('SSLCertificateKeyFile "C:/Ponta/certs/phpsite.key"'),
+      );
       expect(config, contains('SetHandler "proxy:fcgi://127.0.0.1:9083"'));
     });
 
@@ -264,41 +281,62 @@ DocumentRoot "\${SRVROOT}/htdocs"
       expect(out, contains('LoadModule unixd_module modules/mod_unixd.so'));
       expect(out, contains('PidFile "/opt/logs/httpd.pid"'));
       expect(out, contains('ErrorLog "/opt/logs/apache_error.log"'));
-      expect(out, contains('IncludeOptional "/opt/vhosts/apache/[a-zA-Z0-9]*.conf"'));
-      expect(out, isNot(contains('IncludeOptional "/opt/vhosts/apache/[!h]*.conf"')));
-      expect(out, isNot(contains('IncludeOptional "/opt/vhosts/apache/*.conf"')));
+      expect(
+        out,
+        contains('IncludeOptional "/opt/vhosts/apache/[a-zA-Z0-9]*.conf"'),
+      );
+      expect(
+        out,
+        isNot(contains('IncludeOptional "/opt/vhosts/apache/[!h]*.conf"')),
+      );
+      expect(
+        out,
+        isNot(contains('IncludeOptional "/opt/vhosts/apache/*.conf"')),
+      );
       expect(RegExp(r'^Listen ', multiLine: true).allMatches(out).length, 1);
       expect(out, contains('Listen 127.0.0.1:80'));
     });
 
-    test('IncludeOptional glob matches hello.test.conf and excludes _httpd.conf', () {
-      final out = ApacheConfigBuilder.buildBundleConfig(
-        initialContent: producerConf,
-        serverRoot: '/opt/apps/apache/2.4.70',
-        documentRoot: '/opt/www',
-        vhostsDir: '/opt/vhosts/apache',
-        logsDir: '/opt/logs',
-        allowLanAccess: false,
-        isSslInstalled: false,
-      );
-      final match = RegExp(r'IncludeOptional\s+"([^"]+)"').firstMatch(out);
-      expect(match, isNotNull);
-      final glob = p.posix.basename(match!.group(1)!);
-      final regex = _apacheGlobToRegExp(glob);
+    test(
+      'IncludeOptional glob matches hello.test.conf and excludes _httpd.conf',
+      () {
+        final out = ApacheConfigBuilder.buildBundleConfig(
+          initialContent: producerConf,
+          serverRoot: '/opt/apps/apache/2.4.70',
+          documentRoot: '/opt/www',
+          vhostsDir: '/opt/vhosts/apache',
+          logsDir: '/opt/logs',
+          allowLanAccess: false,
+          isSslInstalled: false,
+        );
+        final match = RegExp(r'IncludeOptional\s+"([^"]+)"').firstMatch(out);
+        expect(match, isNotNull);
+        final glob = p.posix.basename(match!.group(1)!);
+        final regex = _apacheGlobToRegExp(glob);
 
-      // Must match domains starting with 'h' (e.g. hello.test, hotel.local)
-      expect(regex.hasMatch('hello.test.conf'), isTrue,
-          reason: 'Sites starting with "h" must not be excluded');
-      expect(regex.hasMatch('hotel.local.conf'), isTrue,
-          reason: 'Sites starting with "h" must not be excluded');
-      // Must match domains starting with digits or other letters
-      expect(regex.hasMatch('123site.test.conf'), isTrue);
-      expect(regex.hasMatch('mysite.local.conf'), isTrue);
+        // Must match domains starting with 'h' (e.g. hello.test, hotel.local)
+        expect(
+          regex.hasMatch('hello.test.conf'),
+          isTrue,
+          reason: 'Sites starting with "h" must not be excluded',
+        );
+        expect(
+          regex.hasMatch('hotel.local.conf'),
+          isTrue,
+          reason: 'Sites starting with "h" must not be excluded',
+        );
+        // Must match domains starting with digits or other letters
+        expect(regex.hasMatch('123site.test.conf'), isTrue);
+        expect(regex.hasMatch('mysite.local.conf'), isTrue);
 
-      // Must NOT match the main config file (_httpd.conf)
-      expect(regex.hasMatch(ApacheConfigBuilder.mainConfigFileName), isFalse,
-          reason: 'The main config file must not match its own include glob');
-    });
+        // Must NOT match the main config file (_httpd.conf)
+        expect(
+          regex.hasMatch(ApacheConfigBuilder.mainConfigFileName),
+          isFalse,
+          reason: 'The main config file must not match its own include glob',
+        );
+      },
+    );
 
     test('replaces existing ErrorLog', () {
       const confWithErrorLog = '''
@@ -348,57 +386,59 @@ ServerRoot "\${SRVROOT}"
 # LoadModule unixd_module modules/mod_unixd.so
 Listen 80
 ''';
-      final directives = [
-        'LoadModule unixd_module modules/mod_unixd.so',
-      ];
+      final directives = ['LoadModule unixd_module modules/mod_unixd.so'];
       final out = ApacheConfigBuilder.prependDirectives(conf, directives);
       expect(out, contains('LoadModule unixd_module modules/mod_unixd.so'));
       expect(out, isNot(contains('# LoadModule unixd_module')));
       expect(
-        RegExp(r'^LoadModule\s+unixd_module', multiLine: true)
-            .allMatches(out)
-            .length,
+        RegExp(
+          r'^LoadModule\s+unixd_module',
+          multiLine: true,
+        ).allMatches(out).length,
         1,
       );
     });
 
-    test('prependDirectives avoids duplicate LoadModule with irregular spacing', () {
-      const conf = '''
+    test(
+      'prependDirectives avoids duplicate LoadModule with irregular spacing',
+      () {
+        const conf = '''
 Define SRVROOT "/opt/apps/apache/2.4.70"
 ServerRoot "\${SRVROOT}"
 LoadModule   unixd_module   modules/mod_unixd.so
 Listen 80
 ''';
-      final directives = [
-        'LoadModule unixd_module modules/mod_unixd.so',
-      ];
-      final out = ApacheConfigBuilder.prependDirectives(conf, directives);
-      expect(out, contains('LoadModule unixd_module modules/mod_unixd.so'));
-      expect(
-        RegExp(r'LoadModule\s+unixd_module', multiLine: true)
-            .allMatches(out)
-            .length,
-        1,
-      );
-    });
+        final directives = ['LoadModule unixd_module modules/mod_unixd.so'];
+        final out = ApacheConfigBuilder.prependDirectives(conf, directives);
+        expect(out, contains('LoadModule unixd_module modules/mod_unixd.so'));
+        expect(
+          RegExp(
+            r'LoadModule\s+unixd_module',
+            multiLine: true,
+          ).allMatches(out).length,
+          1,
+        );
+      },
+    );
 
-    test('prependDirectives ignores commented-out ErrorLog and inserts active line', () {
-      const conf = '''
+    test(
+      'prependDirectives ignores commented-out ErrorLog and inserts active line',
+      () {
+        const conf = '''
 Define SRVROOT "/opt/apps/apache/2.4.70"
 ServerRoot "\${SRVROOT}"
 # ErrorLog "logs/error.log"
 Listen 80
 ''';
-      final directives = [
-        'ErrorLog "/opt/logs/apache_error.log"',
-      ];
-      final out = ApacheConfigBuilder.prependDirectives(conf, directives);
-      expect(out, contains('ErrorLog "/opt/logs/apache_error.log"'));
-      expect(out, contains('# ErrorLog "logs/error.log"'));
-      expect(
-        RegExp(r'^ErrorLog ', multiLine: true).allMatches(out).length,
-        1,
-      );
-    });
+        final directives = ['ErrorLog "/opt/logs/apache_error.log"'];
+        final out = ApacheConfigBuilder.prependDirectives(conf, directives);
+        expect(out, contains('ErrorLog "/opt/logs/apache_error.log"'));
+        expect(out, contains('# ErrorLog "logs/error.log"'));
+        expect(
+          RegExp(r'^ErrorLog ', multiLine: true).allMatches(out).length,
+          1,
+        );
+      },
+    );
   });
 }

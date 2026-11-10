@@ -12,7 +12,8 @@ String? _isarLibraryPath() {
       : (Platform.isLinux ? 'libisar_plus.so' : null);
   if (libName == null) return null;
 
-  final pubCache = Platform.environment['PUB_CACHE'] ??
+  final pubCache =
+      Platform.environment['PUB_CACHE'] ??
       (Platform.isWindows
           ? '${Platform.environment['LOCALAPPDATA']}\\Pub\\Cache'
           : '${Platform.environment['HOME']}/.pub-cache');
@@ -63,71 +64,70 @@ class _FakeSpawner {
 void main() {
   final libraryPath = _isarLibraryPath();
 
-  test(
-    'a program disabled during the backoff wait is not respawned',
-    () async {
-      final tempDir = Directory.systemTemp.createTempSync('sup_cfg_');
-      addTearDown(() {
-        if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
-      });
+  test('a program disabled during the backoff wait is not respawned', () async {
+    final tempDir = Directory.systemTemp.createTempSync('sup_cfg_');
+    addTearDown(() {
+      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    });
 
-      Isar.initialize(libraryPath);
-      final isar = Isar.open(
-        schemas: [SupervisorProgramSchema],
-        directory: tempDir.path,
-        name: 'sup_cfg_test_${DateTime.now().microsecondsSinceEpoch}',
-      );
-      addTearDown(isar.close);
+    Isar.initialize(libraryPath);
+    final isar = Isar.open(
+      schemas: [SupervisorProgramSchema],
+      directory: tempDir.path,
+      name: 'sup_cfg_test_${DateTime.now().microsecondsSinceEpoch}',
+    );
+    addTearDown(isar.close);
 
-      final spawner = _FakeSpawner();
-      final backoff = Completer<void>();
-      final manager = SupervisorManager(
-        logsDirectory: tempDir.path,
-        isar: isar,
-        spawner: spawner.spawn,
-        treeKiller: (_) async {},
-        // Hold the watchdog in its backoff until the test says so.
-        delay: (_) => backoff.future,
-      );
-      addTearDown(() async {
-        if (!backoff.isCompleted) backoff.complete();
-        await manager.stopAll();
-      });
+    final spawner = _FakeSpawner();
+    final backoff = Completer<void>();
+    final manager = SupervisorManager(
+      logsDirectory: tempDir.path,
+      isar: isar,
+      spawner: spawner.spawn,
+      treeKiller: (_) async {},
+      // Hold the watchdog in its backoff until the test says so.
+      delay: (_) => backoff.future,
+    );
+    addTearDown(() async {
+      if (!backoff.isCompleted) backoff.complete();
+      await manager.stopAll();
+    });
 
-      final program = SupervisorProgram(
-        id: 1,
-        name: 'Queue',
-        command: 'php artisan queue:work',
-        workingDir: tempDir.path,
-        autoRestart: true,
-        maxRestarts: 5,
-        restartWindowSeconds: 60,
-        restartDelaySeconds: 30,
-        enabled: true,
-      );
-      isar.write((isar) => isar.supervisorPrograms.put(program));
+    final program = SupervisorProgram(
+      id: 1,
+      name: 'Queue',
+      command: 'php artisan queue:work',
+      workingDir: tempDir.path,
+      autoRestart: true,
+      maxRestarts: 5,
+      restartWindowSeconds: 60,
+      restartDelaySeconds: 30,
+      enabled: true,
+    );
+    isar.write((isar) => isar.supervisorPrograms.put(program));
 
-      await manager.start(program);
-      expect(spawner.spawned.length, 1);
+    await manager.start(program);
+    expect(spawner.spawned.length, 1);
 
-      // The process crashes: the watchdog reads the config (enabled) and enters
-      // the backoff wait.
-      spawner.spawned.first.exit(1);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+    // The process crashes: the watchdog reads the config (enabled) and enters
+    // the backoff wait.
+    spawner.spawned.first.exit(1);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      // The user disables the program while the watchdog waits.
-      final stored = isar.supervisorPrograms.get(program.id)!;
-      stored.enabled = false;
-      isar.write((isar) => isar.supervisorPrograms.put(stored));
+    // The user disables the program while the watchdog waits.
+    final stored = isar.supervisorPrograms.get(program.id)!;
+    stored.enabled = false;
+    isar.write((isar) => isar.supervisorPrograms.put(stored));
 
-      backoff.complete();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+    backoff.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
 
-      // The watchdog must re-read the config: a program the user just disabled
-      // must not be respawned with the stale snapshot.
-      expect(spawner.spawned.length, 1,
-          reason: 'the disabled program must not be respawned');
-    },
-    skip: libraryPath == null ? 'Isar native library not available' : false,
-  );
+    // The watchdog must re-read the config: a program the user just disabled
+    // must not be respawned with the stale snapshot.
+    expect(
+      spawner.spawned.length,
+      1,
+      reason: 'the disabled program must not be respawned',
+    );
+  }, skip: libraryPath == null ? 'Isar native library not available' : false);
 }

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('TerminalLogView uses AppColors.surface when isModal is true', (tester) async {
+  testWidgets('TerminalLogView uses AppColors.surface when isModal is true', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -19,7 +21,10 @@ void main() {
     await tester.pumpAndSettle();
 
     final modalContainerFinder = find.byWidgetPredicate(
-      (w) => w is Container && (w.decoration is BoxDecoration) && (w.decoration as BoxDecoration).color == AppColors.surface,
+      (w) =>
+          w is Container &&
+          (w.decoration is BoxDecoration) &&
+          (w.decoration as BoxDecoration).color == AppColors.surface,
     );
     expect(modalContainerFinder, findsWidgets);
 

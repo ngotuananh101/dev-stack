@@ -53,17 +53,17 @@ void main() {
     test('rejects malformed expressions', () {
       for (final bad in [
         '',
-        '* * * *',        // 4 fields
-        '* * * * * *',    // 6 fields
-        '60 * * * *',     // minute out of range
-        '* 24 * * *',     // hour out of range
-        '* * 0 * *',      // dom must start at 1
+        '* * * *', // 4 fields
+        '* * * * * *', // 6 fields
+        '60 * * * *', // minute out of range
+        '* 24 * * *', // hour out of range
+        '* * 0 * *', // dom must start at 1
         '* * 32 * *',
         '* * * 13 *',
         '* * * * 8',
         'a * * * *',
-        '*/0 * * * *',    // zero step
-        '5-1 * * * *',    // inverted range
+        '*/0 * * * *', // zero step
+        '5-1 * * * *', // inverted range
         '@nope',
       ]) {
         expect(CronExpression.isValid(bad), isFalse, reason: bad);

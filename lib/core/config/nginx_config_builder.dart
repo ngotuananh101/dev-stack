@@ -80,7 +80,8 @@ fastcgi_param  REDIRECT_STATUS    200;
       // PHP handler block so HTTPS localhost serves .php files
       String phpLocation = '';
       if (phpPort != null) {
-        phpLocation = '''
+        phpLocation =
+            '''
         location ~ \\.php\$ {
             fastcgi_pass 127.0.0.1:$phpPort;
             fastcgi_index index.php;
@@ -92,7 +93,8 @@ fastcgi_param  REDIRECT_STATUS    200;
 ''';
       }
 
-      sslBlock = '''
+      sslBlock =
+          '''
     # HTTPS server
     server {
         listen       $httpsListen;
@@ -153,7 +155,8 @@ $sslBlock
   }
 
   /// Builds a standard PHP location directive block
-  static String buildPhpLocation({required int phpPort}) => '''
+  static String buildPhpLocation({required int phpPort}) =>
+      '''
     location ~ \\.php\$ {
         fastcgi_pass 127.0.0.1:$phpPort;
         fastcgi_index index.php;

@@ -33,7 +33,11 @@ class Redis extends _$Redis {
     return [];
   }
 
-  Future<void> fetchKeys(AppModel app, int dbIndex, {String query = '*'}) async {
+  Future<void> fetchKeys(
+    AppModel app,
+    int dbIndex, {
+    String query = '*',
+  }) async {
     if (_isDisposed) return;
     final generation = ++_fetchGeneration;
 
@@ -110,7 +114,11 @@ class Redis extends _$Redis {
     return keys;
   }
 
-  Future<RedisKey?> _describeKey(String cliPath, int dbIndex, String key) async {
+  Future<RedisKey?> _describeKey(
+    String cliPath,
+    int dbIndex,
+    String key,
+  ) async {
     final typeResult = await Process.run(cliPath, [
       '-n',
       dbIndex.toString(),
@@ -216,19 +224,33 @@ class Redis extends _$Redis {
   Future<bool> checkKeyExists(AppModel app, int dbIndex, String key) async {
     final cliPath = app.cliFilePath;
     if (cliPath == null) return false;
-    final result = await Process.run(
-        cliPath, ['-n', dbIndex.toString(), 'EXISTS', key]);
+    final result = await Process.run(cliPath, [
+      '-n',
+      dbIndex.toString(),
+      'EXISTS',
+      key,
+    ]);
     return result.stdout.toString().trim() == '1';
   }
 
-  Future<void> setKey(AppModel app, int dbIndex, String key, String value,
-      {int? ttl}) async {
+  Future<void> setKey(
+    AppModel app,
+    int dbIndex,
+    String key,
+    String value, {
+    int? ttl,
+  }) async {
     final cliPath = app.cliFilePath;
     if (cliPath == null) return;
     await Process.run(cliPath, ['-n', dbIndex.toString(), 'SET', key, value]);
     if (ttl != null && ttl > 0) {
-      await Process.run(
-          cliPath, ['-n', dbIndex.toString(), 'EXPIRE', key, ttl.toString()]);
+      await Process.run(cliPath, [
+        '-n',
+        dbIndex.toString(),
+        'EXPIRE',
+        key,
+        ttl.toString(),
+      ]);
     }
     await _persistInBackground(cliPath, dbIndex);
     await fetchKeys(app, dbIndex);

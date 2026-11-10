@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('AppIconButton renders icon, tooltip, and fires onPressed', (tester) async {
+  testWidgets('AppIconButton renders icon, tooltip, and fires onPressed', (
+    tester,
+  ) async {
     bool tapped = false;
     await tester.pumpWidget(
       MaterialApp(

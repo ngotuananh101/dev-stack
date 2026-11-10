@@ -8,6 +8,7 @@ import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
+import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../shared/utils/modal_sizing.dart';
 import '../../../system/data/system_info_provider.dart';
 import '../../../system/domain/system_info.dart';
@@ -123,13 +124,12 @@ class SystemInfoModal extends ConsumerWidget {
             onPressed: () {
               final info = ref.read(systemInfoStateProvider).value;
               if (info != null) {
-                Clipboard.setData(ClipboardData(text: info.toFormattedString()));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('System info copied to clipboard'),
-                    behavior: SnackBarBehavior.floating,
-                    width: 300,
-                  ),
+                Clipboard.setData(
+                  ClipboardData(text: info.toFormattedString()),
+                );
+                AppDialogs.showToast(
+                  context,
+                  'System info copied to clipboard',
                 );
               }
             },

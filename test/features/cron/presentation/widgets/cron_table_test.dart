@@ -20,15 +20,19 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1400, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-    await tester.pumpWidget(wrap(CronTable(
-      jobs: const [],
-      runningIds: const {},
-      onRunNow: (_) {},
-      onToggleEnabled: (_) {},
-      onViewHistory: (_) {},
-      onEdit: (_) {},
-      onDelete: (_) {},
-    )));
+    await tester.pumpWidget(
+      wrap(
+        CronTable(
+          jobs: const [],
+          runningIds: const {},
+          onRunNow: (_) {},
+          onToggleEnabled: (_) {},
+          onViewHistory: (_) {},
+          onEdit: (_) {},
+          onDelete: (_) {},
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('JOB NAME'), findsOneWidget);
@@ -40,23 +44,28 @@ void main() {
     expect(find.text('No cron jobs yet'), findsOneWidget);
   });
 
-  testWidgets('renders a row with its schedule description and status',
-      (tester) async {
+  testWidgets('renders a row with its schedule description and status', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
     CronJob? ran;
     CronJob? toggled;
 
-    await tester.pumpWidget(wrap(CronTable(
-      jobs: [job],
-      runningIds: const {},
-      onRunNow: (j) => ran = j,
-      onToggleEnabled: (j) => toggled = j,
-      onViewHistory: (_) {},
-      onEdit: (_) {},
-      onDelete: (_) {},
-    )));
+    await tester.pumpWidget(
+      wrap(
+        CronTable(
+          jobs: [job],
+          runningIds: const {},
+          onRunNow: (j) => ran = j,
+          onToggleEnabled: (j) => toggled = j,
+          onViewHistory: (_) {},
+          onEdit: (_) {},
+          onDelete: (_) {},
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Backup'), findsOneWidget);
@@ -72,20 +81,25 @@ void main() {
     expect(toggled?.id, 1);
   });
 
-  testWidgets('swaps the Run button for a spinner while the job is running',
-      (tester) async {
+  testWidgets('swaps the Run button for a spinner while the job is running', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-    await tester.pumpWidget(wrap(CronTable(
-      jobs: [job],
-      runningIds: const {1},
-      onRunNow: (_) {},
-      onToggleEnabled: (_) {},
-      onViewHistory: (_) {},
-      onEdit: (_) {},
-      onDelete: (_) {},
-    )));
+    await tester.pumpWidget(
+      wrap(
+        CronTable(
+          jobs: [job],
+          runningIds: const {1},
+          onRunNow: (_) {},
+          onToggleEnabled: (_) {},
+          onViewHistory: (_) {},
+          onEdit: (_) {},
+          onDelete: (_) {},
+        ),
+      ),
+    );
     // AppButton renders an indeterminate CircularProgressIndicator while
     // loading, so pumpAndSettle() would never settle — advance one frame
     // instead.
@@ -101,21 +115,26 @@ void main() {
     // A 700px window leaves ~412px for the table (700 - 240 sidebar - 48
     // padding), which is narrower than the old 1000px minWidth floor, so the
     // row used to push its actions out of reach with an invisible scroll.
-    testWidgets('collapses actions into one menu at a ~412px row',
-        (tester) async {
+    testWidgets('collapses actions into one menu at a ~412px row', (
+      tester,
+    ) async {
       await tester.binding.setSurfaceSize(const Size(700, 720));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
       CronJob? ran;
-      await tester.pumpWidget(wrap(CronTable(
-        jobs: [job],
-        runningIds: const {},
-        onRunNow: (j) => ran = j,
-        onToggleEnabled: (_) {},
-        onViewHistory: (_) {},
-        onEdit: (_) {},
-        onDelete: (_) {},
-      )));
+      await tester.pumpWidget(
+        wrap(
+          CronTable(
+            jobs: [job],
+            runningIds: const {},
+            onRunNow: (j) => ran = j,
+            onToggleEnabled: (_) {},
+            onViewHistory: (_) {},
+            onEdit: (_) {},
+            onDelete: (_) {},
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       // A RenderFlex overflow is a Flutter error, so the header and
@@ -142,15 +161,19 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1400, 720));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(wrap(CronTable(
-        jobs: [job],
-        runningIds: const {},
-        onRunNow: (_) {},
-        onToggleEnabled: (_) {},
-        onViewHistory: (_) {},
-        onEdit: (_) {},
-        onDelete: (_) {},
-      )));
+      await tester.pumpWidget(
+        wrap(
+          CronTable(
+            jobs: [job],
+            runningIds: const {},
+            onRunNow: (_) {},
+            onToggleEnabled: (_) {},
+            onViewHistory: (_) {},
+            onEdit: (_) {},
+            onDelete: (_) {},
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Run'), findsOneWidget);

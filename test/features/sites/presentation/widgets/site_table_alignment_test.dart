@@ -6,36 +6,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
   SiteModel site(String domain) => SiteModel(
-        id: 1,
-        domain: domain,
-        rootDir: '/srv',
-        siteType: 'php',
-        phpVersion: '8.3',
-      );
+    id: 1,
+    domain: domain,
+    rootDir: '/srv',
+    siteType: 'php',
+    phpVersion: '8.3',
+  );
 
   Widget host(List<SiteModel> sites) => ProviderScope(
-        child: MaterialApp(
-          home: Scaffold(
-            body: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(children: [
-                Expanded(
-                  child: SiteTable(
-                    sites: sites,
-                    selectedIds: const {},
-                    onEdit: (_) {},
-                    onToggleSelection: (_) {},
-                    onToggleAll: (_) {},
-                  ),
+    child: MaterialApp(
+      home: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              Expanded(
+                child: SiteTable(
+                  sites: sites,
+                  selectedIds: const {},
+                  onEdit: (_) {},
+                  onToggleSelection: (_) {},
+                  onToggleAll: (_) {},
                 ),
-              ]),
-            ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 
-  testWidgets('header and rows line up on the same columns at a wide window',
-      (tester) async {
+  testWidgets('header and rows line up on the same columns at a wide window', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1163, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -44,8 +47,11 @@ void main() {
 
     final typeHeaderX = tester.getTopLeft(find.text('TYPE')).dx;
     final typeRowX = tester.getTopLeft(find.text('PHP 8.3').last).dx;
-    expect(typeRowX, closeTo(typeHeaderX, 1),
-        reason: 'the type cell starts where the TYPE header starts');
+    expect(
+      typeRowX,
+      closeTo(typeHeaderX, 1),
+      reason: 'the type cell starts where the TYPE header starts',
+    );
   });
 
   testWidgets('survives a ~412px row without overflow', (tester) async {

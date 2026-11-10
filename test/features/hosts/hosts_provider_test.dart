@@ -30,24 +30,27 @@ class _SlowSaveRepository extends HostsRepository {
 }
 
 void main() {
-  test('save reports success when the provider is disposed while elevation is pending', () async {
-    final repository = _SlowSaveRepository();
-    final container = ProviderContainer(
-      overrides: [hostsRepositoryProvider.overrideWithValue(repository)],
-    );
-    addTearDown(container.dispose);
+  test(
+    'save reports success when the provider is disposed while elevation is pending',
+    () async {
+      final repository = _SlowSaveRepository();
+      final container = ProviderContainer(
+        overrides: [hostsRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
 
-    // The Hosts page reads the notifier without watching the provider, so
-    // nothing keeps the auto-dispose provider alive during the save.
-    final notifier = container.read(hostsProvider.notifier);
-    notifier.updateText('127.0.0.1 app.test');
-    final saving = notifier.save();
+      // The Hosts page reads the notifier without watching the provider, so
+      // nothing keeps the auto-dispose provider alive during the save.
+      final notifier = container.read(hostsProvider.notifier);
+      notifier.updateText('127.0.0.1 app.test');
+      final saving = notifier.save();
 
-    await container.pump();
-    expect(container.read(hostsProvider.exists), isFalse);
+      await container.pump();
+      expect(container.read(hostsProvider.exists), isFalse);
 
-    repository.finishSave();
-    expect(await saving, isTrue);
-    expect(repository.saved, equals(['127.0.0.1 app.test']));
-  });
+      repository.finishSave();
+      expect(await saving, isTrue);
+      expect(repository.saved, equals(['127.0.0.1 app.test']));
+    },
+  );
 }

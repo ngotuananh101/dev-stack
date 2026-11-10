@@ -12,7 +12,8 @@ import 'package:dev_stack/features/tunnels/domain/tunnel_session.dart';
 /// A fake downloader that reports the binary as already downloaded, so
 /// [TunnelManagerService.startTunnel] skips the download step in tests.
 class _FakeDownloader extends TunnelDownloaderService {
-  _FakeDownloader() : super(baseDirResolver: () => '', isWindowsResolver: () => true);
+  _FakeDownloader()
+    : super(baseDirResolver: () => '', isWindowsResolver: () => true);
 
   @override
   Future<bool> isBinaryDownloaded(String provider) async => true;
@@ -52,34 +53,37 @@ Future<void> _openDialog(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('SiteTunnelDialog shows quick tunnel options when no tunnel configured', (tester) async {
-    final site = SiteModel(
-      domain: 'myproject.test',
-      rootDir: '/var/www/myproject',
-      phpPort: 9000,
-    );
+  testWidgets(
+    'SiteTunnelDialog shows quick tunnel options when no tunnel configured',
+    (tester) async {
+      final site = SiteModel(
+        domain: 'myproject.test',
+        rootDir: '/var/www/myproject',
+        phpPort: 9000,
+      );
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          tunnelsStreamProvider.overrideWith((ref) => Stream.value([])),
-          tunnelSessionsProvider.overrideWith(
-            () => TunnelSessionsNotifierMock({}),
-          ),
-        ],
-        child: MaterialApp(
-          home: _HostScreen(site: site),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            tunnelsStreamProvider.overrideWith((ref) => Stream.value([])),
+            tunnelSessionsProvider.overrideWith(
+              () => TunnelSessionsNotifierMock({}),
+            ),
+          ],
+          child: MaterialApp(home: _HostScreen(site: site)),
         ),
-      ),
-    );
+      );
 
-    await _openDialog(tester);
-    expect(find.text('Share myproject.test'), findsOneWidget);
-    expect(find.text('Start Quick Tunnel (Cloudflare)'), findsOneWidget);
-    expect(find.text('Configure Tunnel'), findsOneWidget);
-  });
+      await _openDialog(tester);
+      expect(find.text('Share myproject.test'), findsOneWidget);
+      expect(find.text('Start Quick Tunnel (Cloudflare)'), findsOneWidget);
+      expect(find.text('Configure Tunnel'), findsOneWidget);
+    },
+  );
 
-  testWidgets('SiteTunnelDialog shows running tunnel status and public URL', (tester) async {
+  testWidgets('SiteTunnelDialog shows running tunnel status and public URL', (
+    tester,
+  ) async {
     final site = SiteModel(
       domain: 'myproject.test',
       rootDir: '/var/www/myproject',
@@ -108,9 +112,7 @@ void main() {
             }),
           ),
         ],
-        child: MaterialApp(
-          home: _HostScreen(site: site),
-        ),
+        child: MaterialApp(home: _HostScreen(site: site)),
       ),
     );
 
@@ -120,48 +122,54 @@ void main() {
     expect(find.text('https://myproject.trycloudflare.com'), findsOneWidget);
   });
 
-  testWidgets('SiteTunnelDialog shows a running token tunnel without a known URL as connected', (tester) async {
-    final site = SiteModel(
-      domain: 'myproject.test',
-      rootDir: '/var/www/myproject',
-    );
+  testWidgets(
+    'SiteTunnelDialog shows a running token tunnel without a known URL as connected',
+    (tester) async {
+      final site = SiteModel(
+        domain: 'myproject.test',
+        rootDir: '/var/www/myproject',
+      );
 
-    final tunnel = TunnelModel(
-      id: 10,
-      name: 'myproject.test',
-      provider: 'cloudflare',
-      targetType: 'site',
-      targetSiteDomain: 'myproject.test',
-      authToken: 'cf_token_12345',
-    );
+      final tunnel = TunnelModel(
+        id: 10,
+        name: 'myproject.test',
+        provider: 'cloudflare',
+        targetType: 'site',
+        targetSiteDomain: 'myproject.test',
+        authToken: 'cf_token_12345',
+      );
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          tunnelsStreamProvider.overrideWith((ref) => Stream.value([tunnel])),
-          tunnelSessionsProvider.overrideWith(
-            () => TunnelSessionsNotifierMock({
-              10: const TunnelSession(
-                tunnelId: 10,
-                status: TunnelStatus.running,
-              ),
-            }),
-          ),
-        ],
-        child: MaterialApp(
-          home: _HostScreen(site: site),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            tunnelsStreamProvider.overrideWith((ref) => Stream.value([tunnel])),
+            tunnelSessionsProvider.overrideWith(
+              () => TunnelSessionsNotifierMock({
+                10: const TunnelSession(
+                  tunnelId: 10,
+                  status: TunnelStatus.running,
+                ),
+              }),
+            ),
+          ],
+          child: MaterialApp(home: _HostScreen(site: site)),
         ),
-      ),
-    );
+      );
 
-    await _openDialog(tester);
-    expect(find.text('RUNNING'), findsOneWidget);
-    expect(find.text('Not running'), findsNothing);
-    expect(find.text('Connected (route set in provider dashboard)'), findsOneWidget);
-    expect(find.text('Stop'), findsOneWidget);
-  });
+      await _openDialog(tester);
+      expect(find.text('RUNNING'), findsOneWidget);
+      expect(find.text('Not running'), findsNothing);
+      expect(
+        find.text('Connected (route set in provider dashboard)'),
+        findsOneWidget,
+      );
+      expect(find.text('Stop'), findsOneWidget);
+    },
+  );
 
-  testWidgets('SiteTunnelDialog shows stopped tunnel with start button', (tester) async {
+  testWidgets('SiteTunnelDialog shows stopped tunnel with start button', (
+    tester,
+  ) async {
     final site = SiteModel(
       domain: 'myproject.test',
       rootDir: '/var/www/myproject',
@@ -189,9 +197,7 @@ void main() {
             }),
           ),
         ],
-        child: MaterialApp(
-          home: _HostScreen(site: site),
-        ),
+        child: MaterialApp(home: _HostScreen(site: site)),
       ),
     );
 
@@ -200,7 +206,9 @@ void main() {
     expect(find.text('Start Tunnel'), findsOneWidget);
   });
 
-  testWidgets('SiteTunnelDialog shows not-running state when session is null', (tester) async {
+  testWidgets('SiteTunnelDialog shows not-running state when session is null', (
+    tester,
+  ) async {
     final site = SiteModel(
       domain: 'myproject.test',
       rootDir: '/var/www/myproject',
@@ -223,9 +231,7 @@ void main() {
             () => TunnelSessionsNotifierMock({}),
           ),
         ],
-        child: MaterialApp(
-          home: _HostScreen(site: site),
-        ),
+        child: MaterialApp(home: _HostScreen(site: site)),
       ),
     );
 
@@ -234,84 +240,86 @@ void main() {
     expect(find.text('Start Tunnel'), findsOneWidget);
   });
 
-  testWidgets('SiteTunnelDialog shows a Cancel button while the tunnel is starting', (tester) async {
-    final site = SiteModel(
-      domain: 'myproject.test',
-      rootDir: '/var/www/myproject',
-    );
+  testWidgets(
+    'SiteTunnelDialog shows a Cancel button while the tunnel is starting',
+    (tester) async {
+      final site = SiteModel(
+        domain: 'myproject.test',
+        rootDir: '/var/www/myproject',
+      );
 
-    final tunnel = TunnelModel(
-      id: 10,
-      name: 'myproject.test',
-      provider: 'cloudflare',
-      targetType: 'site',
-      targetSiteDomain: 'myproject.test',
-      targetPort: 9000,
-    );
+      final tunnel = TunnelModel(
+        id: 10,
+        name: 'myproject.test',
+        provider: 'cloudflare',
+        targetType: 'site',
+        targetSiteDomain: 'myproject.test',
+        targetPort: 9000,
+      );
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          tunnelsStreamProvider.overrideWith((ref) => Stream.value([tunnel])),
-          tunnelSessionsProvider.overrideWith(
-            () => TunnelSessionsNotifierMock({
-              10: const TunnelSession(
-                tunnelId: 10,
-                status: TunnelStatus.downloadingBinary,
-              ),
-            }),
-          ),
-        ],
-        child: MaterialApp(
-          home: _HostScreen(site: site),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            tunnelsStreamProvider.overrideWith((ref) => Stream.value([tunnel])),
+            tunnelSessionsProvider.overrideWith(
+              () => TunnelSessionsNotifierMock({
+                10: const TunnelSession(
+                  tunnelId: 10,
+                  status: TunnelStatus.downloadingBinary,
+                ),
+              }),
+            ),
+          ],
+          child: MaterialApp(home: _HostScreen(site: site)),
         ),
-      ),
-    );
+      );
 
-    await _openDialog(tester);
-    expect(find.text('Cancel'), findsOneWidget);
-    expect(find.text('Stop'), findsNothing);
-    expect(find.text('Start Tunnel'), findsNothing);
-  });
+      await _openDialog(tester);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Stop'), findsNothing);
+      expect(find.text('Start Tunnel'), findsNothing);
+    },
+  );
 
-  testWidgets('SiteTunnelDialog quick tunnel button creates and starts tunnel', (tester) async {
-    final site = SiteModel(
-      domain: 'myproject.test',
-      rootDir: '/var/www/myproject',
-      phpPort: 9000,
-    );
+  testWidgets(
+    'SiteTunnelDialog quick tunnel button creates and starts tunnel',
+    (tester) async {
+      final site = SiteModel(
+        domain: 'myproject.test',
+        rootDir: '/var/www/myproject',
+        phpPort: 9000,
+      );
 
-    final mockManager = TunnelManagerService(
-      downloader: _FakeDownloader(),
-      startProcessFn: (exec, args) async => FakeManagedProcess(0),
-      stopProcessFn: (pid) async {},
-    );
+      final mockManager = TunnelManagerService(
+        downloader: _FakeDownloader(),
+        startProcessFn: (exec, args) async => FakeManagedProcess(0),
+        stopProcessFn: (pid) async {},
+      );
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          tunnelsStreamProvider.overrideWith((ref) => Stream.value([])),
-          tunnelManagerServiceProvider.overrideWithValue(mockManager),
-          tunnelSessionsProvider.overrideWith(
-            () => TunnelSessionsNotifierMock({}, manager: mockManager),
-          ),
-        ],
-        child: MaterialApp(
-          home: _HostScreen(site: site),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            tunnelsStreamProvider.overrideWith((ref) => Stream.value([])),
+            tunnelManagerServiceProvider.overrideWithValue(mockManager),
+            tunnelSessionsProvider.overrideWith(
+              () => TunnelSessionsNotifierMock({}, manager: mockManager),
+            ),
+          ],
+          child: MaterialApp(home: _HostScreen(site: site)),
         ),
-      ),
-    );
+      );
 
-    await _openDialog(tester);
-    await tester.tap(find.text('Start Quick Tunnel (Cloudflare)'));
-    await tester.pumpAndSettle();
+      await _openDialog(tester);
+      await tester.tap(find.text('Start Quick Tunnel (Cloudflare)'));
+      await tester.pumpAndSettle();
 
-    // Dialog should close after quick tunnel is created and started
-    expect(find.text('Start Quick Tunnel (Cloudflare)'), findsNothing);
+      // Dialog should close after quick tunnel is created and started
+      expect(find.text('Start Quick Tunnel (Cloudflare)'), findsNothing);
 
-    // Verify the tunnel was created in the mock manager
-    expect(mockManager.currentSessions, isNotEmpty);
-  });
+      // Verify the tunnel was created in the mock manager
+      expect(mockManager.currentSessions, isNotEmpty);
+    },
+  );
 }
 
 /// Minimal TunnelSessionsNotifier subclass for tests.
@@ -322,7 +330,7 @@ void main() {
 /// own state after driving the dialog.
 class TunnelSessionsNotifierMock extends TunnelSessionsNotifier {
   TunnelSessionsNotifierMock(this._initial, {TunnelManagerService? manager})
-      : _manager = manager;
+    : _manager = manager;
 
   final Map<int, TunnelSession> _initial;
   final TunnelManagerService? _manager;
