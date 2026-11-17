@@ -47,7 +47,7 @@ class AppTextField extends StatelessWidget {
       maxLines: maxLines,
       style: TextStyle(
         color: enabled ? AppColors.textPrimary : AppColors.textMuted,
-        fontSize: AppTextSize.sm, // 14
+        fontSize: AppTextSize.xs, // 12
       ),
       decoration: InputDecoration(
         hintText: hint,
@@ -85,7 +85,7 @@ class AppTextField extends StatelessWidget {
         ),
         errorStyle: const TextStyle(
           color: AppColors.error,
-          fontSize: AppTextSize.xxs,
+          fontSize: AppTextSize.xs,
         ),
       ),
     );

@@ -30,7 +30,7 @@ class CompactPagination extends StatelessWidget {
         Text(
           'Showing $startItem-$endItem of $totalItems items',
           style: const TextStyle(
-            fontSize: AppTextSize.xxs,
+            fontSize: AppTextSize.xs,
             color: AppColors.textMuted,
           ),
         ),
@@ -116,7 +116,7 @@ class CompactPagination extends StatelessWidget {
         child: Text(
           '$page',
           style: TextStyle(
-            fontSize: AppTextSize.xxs,
+            fontSize: AppTextSize.xs,
             color: isSelected ? AppColors.textOnColor : AppColors.textSecondary,
           ),
         ),

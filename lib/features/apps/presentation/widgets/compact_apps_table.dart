@@ -110,9 +110,15 @@ class CompactAppsTable extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(flex: 5, child: _buildHeaderCell('DESCRIPTION')),
                     const SizedBox(width: 12),
-                    SizedBox(width: 120, child: _buildHeaderCell('STATUS')),
+                    SizedBox(
+                      width: _statusColumnWidth,
+                      child: _buildHeaderCell('STATUS'),
+                    ),
                     const SizedBox(width: 12),
-                    SizedBox(width: 50, child: _buildHeaderCell('PATH')),
+                    SizedBox(
+                      width: _pathColumnWidth,
+                      child: _buildHeaderCell('PATH'),
+                    ),
                     const SizedBox(width: 12),
                     SizedBox(
                       width: actionColumnWidth(plan),
@@ -153,7 +159,7 @@ class CompactAppsTable extends StatelessWidget {
       label,
       textAlign: alignment,
       style: const TextStyle(
-        fontSize: AppTextSize.xxs,
+        fontSize: AppTextSize.xs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -237,7 +243,7 @@ class CompactAppsTable extends StatelessWidget {
                                     ? 'latest'
                                     : 'v${app.installedVersion}',
                                 style: const TextStyle(
-                                  fontSize: AppTextSize.xxs,
+                                  fontSize: AppTextSize.xs,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.primary,
                                 ),
@@ -276,7 +282,7 @@ class CompactAppsTable extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: AppTextSize.xxs,
+                    fontSize: AppTextSize.xs,
                     color: AppColors.textPrimary,
                   ),
                 ),
@@ -285,10 +291,13 @@ class CompactAppsTable extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           // Status
-          SizedBox(width: 120, child: _buildStatusIndicator(app)),
+          SizedBox(
+            width: _statusColumnWidth,
+            child: _buildStatusIndicator(app),
+          ),
           const SizedBox(width: 12),
           // PATH toggle
-          SizedBox(width: 50, child: _buildPathToggle(app)),
+          SizedBox(width: _pathColumnWidth, child: _buildPathToggle(app)),
           const SizedBox(width: 12),
           // Operate buttons. The column takes a fixed width (the plan's shared
           // width) so the header and every row align; without a width each row
@@ -351,7 +360,7 @@ class CompactAppsTable extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: AppTextSize.xxs,
+                    fontSize: AppTextSize.xs,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
                   ),
@@ -373,10 +382,14 @@ class CompactAppsTable extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
+          // The status column is narrower than the longest label at the body
+          // size, so the label ellipsizes rather than overflowing the row.
           const Text(
             'Installed',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: AppTextSize.xxs,
+              fontSize: AppTextSize.xs,
               color: AppColors.primary,
               fontWeight: FontWeight.w500,
             ),
@@ -406,7 +419,7 @@ class CompactAppsTable extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   style: const TextStyle(
-                    fontSize: AppTextSize.xxs,
+                    fontSize: AppTextSize.xs,
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,
                   ),
@@ -429,7 +442,7 @@ class CompactAppsTable extends StatelessWidget {
     } else {
       return const Text(
         'Not Installed',
-        style: TextStyle(fontSize: AppTextSize.xxs, color: AppColors.textMuted),
+        style: TextStyle(fontSize: AppTextSize.xs, color: AppColors.textMuted),
       );
     }
   }
@@ -458,11 +471,23 @@ class CompactAppsTable extends StatelessWidget {
     );
   }
 
+  /// Width of the STATUS column. Sized for the longest label the body type size
+  /// produces — the dot, its gap and `Installed` at 12px — with a few pixels to
+  /// spare, so the row never overflows at the narrowest supported window.
+  static const double _statusColumnWidth = 128;
+
+  /// Width of the PATH column, which holds a switch and nothing else.
+  static const double _pathColumnWidth = 50;
+
   /// Width the OPERATE menu cannot grow into: the row padding, the gaps before
   /// it, the two fixed data columns, and the floor for the two flexible
   /// name/description columns.
   static const double _operateReservedWidth =
-      16 * 2 + 12 * 4 + 120 + 50 + _flexColumnMinWidth * 2;
+      16 * 2 +
+      12 * 4 +
+      _statusColumnWidth +
+      _pathColumnWidth +
+      _flexColumnMinWidth * 2;
 
   /// Floor for one flexible data column, below which its text is ellipsized to
   /// uselessness.

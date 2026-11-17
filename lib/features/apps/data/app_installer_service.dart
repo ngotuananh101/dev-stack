@@ -1068,19 +1068,22 @@ class AppInstallerService {
 
     Directory(targetPath).createSync(recursive: true);
 
+    // `extractFileToDisk` no longer calls `callback` for an entry it refuses
+    // (archive 4.7), so the refused names cannot be counted from the write
+    // pass anymore. A zip's index lists every entry cheaply, so the names
+    // that resolution would put outside the target are collected from it
+    // first; tar keeps whatever the writer reports, which is nothing.
+    final refused = _zipEntriesOutsideTarget(
+      archivePath,
+      targetPath,
+      canonicalTarget,
+      targetPrefix,
+    );
+
     await extractFileToDisk(
       archivePath,
       targetPath,
       callback: (file) {
-        final name = file.name;
-        // `extractFileToDisk` already refuses entries outside the target; this
-        // keeps the same accounting the in-memory extractor reports.
-        final destination = p.canonicalize(p.join(targetPath, name));
-        if (destination != canonicalTarget &&
-            !destination.startsWith(targetPrefix)) {
-          skipped.add(name);
-          return;
-        }
         if (file.isFile) {
           fileCount++;
         } else {
@@ -1089,11 +1092,71 @@ class AppInstallerService {
       },
     );
 
+    skipped.addAll(refused);
+
     return (
       fileCount: fileCount,
       directoryCount: directoryCount,
       skippedEntries: skipped,
     );
+  }
+
+  /// Zip entries whose paths resolve outside the target directory.
+  ///
+  /// Reads only the archive's index, so a multi-gigabyte payload costs a file
+  /// handle rather than an inflation. Returns nothing for a non-zip archive or
+  /// an index that cannot be read: extraction itself still refuses those
+  /// entries, only the report would lose them.
+  static Set<String> _zipEntriesOutsideTarget(
+    String archivePath,
+    String targetPath,
+    String canonicalTarget,
+    String targetPrefix,
+  ) {
+    RandomAccessFile? raf;
+    try {
+      raf = File(archivePath).openSync();
+      final header = raf.readSync(CodecsRecognizer.headerBytes);
+      if (CodecsRecognizer.recognize(header) != ArchiveFormat.zip) {
+        return const {};
+      }
+    } catch (_) {
+      return const {};
+    } finally {
+      raf?.closeSync();
+    }
+
+    final input = InputFileStream(archivePath);
+    try {
+      final archive = ZipDecoder().decodeStream(input);
+      return {
+        for (final file in archive)
+          if (!_isWithinTarget(
+            file.name,
+            targetPath,
+            canonicalTarget,
+            targetPrefix,
+          ))
+            file.name,
+      };
+    } catch (_) {
+      return const {};
+    } finally {
+      input.closeSync();
+    }
+  }
+
+  static bool _isWithinTarget(
+    String name,
+    String targetPath,
+    String canonicalTarget,
+    String targetPrefix,
+  ) {
+    final parts = p.split(name);
+    if (p.isAbsolute(name) || parts.contains('..')) return false;
+    final destination = p.canonicalize(p.join(targetPath, name));
+    return destination == canonicalTarget ||
+        destination.startsWith(targetPrefix);
   }
 
   Future<void> _flattenDirectory(

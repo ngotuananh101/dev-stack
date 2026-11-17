@@ -169,7 +169,7 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
               : 'Connecting...',
           style: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: AppTextSize.xxs,
+            fontSize: AppTextSize.xs,
           ),
         ),
       ];

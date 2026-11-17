@@ -136,7 +136,7 @@ class RowActionMenu extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       color: AppColors.textPrimary,
                     ),
                   ),

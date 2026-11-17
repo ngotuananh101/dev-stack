@@ -367,7 +367,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                       controller: controller.findInputController,
                       focusNode: controller.findInputFocusNode,
                       style: const TextStyle(
-                        fontSize: AppTextSize.sm,
+                        fontSize: AppTextSize.xs,
                         color: AppColors.textPrimary,
                       ),
                       decoration: InputDecoration(
@@ -443,7 +443,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                         controller: controller.replaceInputController,
                         focusNode: controller.replaceInputFocusNode,
                         style: const TextStyle(
-                          fontSize: AppTextSize.sm,
+                          fontSize: AppTextSize.xs,
                           color: AppColors.textPrimary,
                         ),
                         decoration: InputDecoration(
@@ -570,7 +570,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                   child: Text(
                     widget.filePath,
                     style: const TextStyle(
-                      fontSize: AppTextSize.xxs,
+                      fontSize: AppTextSize.xs,
                       fontFamily: 'monospace',
                       color: AppColors.textMuted,
                     ),
@@ -639,7 +639,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
               focusNode: _focusNode,
               readOnly: widget.readOnly,
               style: CodeEditorStyle(
-                fontSize: AppTextSize.sm,
+                fontSize: AppTextSize.xs,
                 fontFamily: 'monospace',
                 backgroundColor: AppColors.background,
                 codeTheme: buildHighlightTheme(widget.filePath),

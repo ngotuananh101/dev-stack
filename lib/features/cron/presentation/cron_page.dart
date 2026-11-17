@@ -92,7 +92,7 @@ class CronPage extends ConsumerWidget {
                 'Cron',
                 style: TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: AppTextSize.xxl,
+                  fontSize: AppTextSize.sm,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -101,7 +101,7 @@ class CronPage extends ConsumerWidget {
                 'Run commands on a schedule while DevStack is open',
                 style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                 ),
               ),
             ],

@@ -52,7 +52,7 @@ const double kRowActionButtonIconGap = 8;
 /// Width of the icon an `AppButton` renders before its label.
 const double kRowActionButtonIconWidth = 12;
 
-/// Estimated advance width per character at the table's `AppTextSize.sm` (12).
+/// Estimated advance width per character at the table's `AppTextSize.xs` (12).
 ///
 /// Labels cannot be measured exactly without rendering (`TextPainter` needs a
 /// `TextDirection` and the theme's resolved text style). The consequence of an
@@ -166,11 +166,11 @@ ActionColumnPlan planActionColumn(
 
 /// Minimum width of the action column's header cell.
 ///
-/// The header labels are set in `AppTextSize.xxs` (10px) semibold with 0.5px
-/// letter spacing, which renders "OPERATE" at 73.5px. The column must be at
+/// The header labels are set in `AppTextSize.xs` (12px) semibold with 0.5px
+/// letter spacing, which renders "OPERATE" at 87.5px. The column must be at
 /// least wide enough for that label, or a table with no rows — whose plan is
 /// zero-wide — would squeeze its own header away.
-const double kActionHeaderMinWidth = 74;
+const double kActionHeaderMinWidth = 88;
 
 /// The width the action column occupies in the header and in every row.
 ///

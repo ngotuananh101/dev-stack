@@ -139,7 +139,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
               Text(
                 progressText,
                 style: const TextStyle(
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primary,
                 ),
@@ -147,7 +147,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
               Text(
                 '${(progress * 100).toStringAsFixed(0)}%',
                 style: const TextStyle(
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
                 ),
@@ -168,7 +168,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           const Text(
             'Installation Logs',
             style: TextStyle(
-              fontSize: AppTextSize.xxs,
+              fontSize: AppTextSize.xs,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
@@ -194,7 +194,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                     log,
                     style: const TextStyle(
                       fontFamily: 'monospace',
-                      fontSize: AppTextSize.xxs,
+                      fontSize: AppTextSize.xs,
                       color: AppColors.textPrimary,
                     ),
                   ),
@@ -250,7 +250,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           const Text(
             'Select Version:',
             style: TextStyle(
-              fontSize: AppTextSize.sm,
+              fontSize: AppTextSize.xs,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
@@ -299,7 +299,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                     child: Text(
                       'Cannot install ${widget.app.name} because ${conflictingApp.name} is already installed. Please uninstall it first.',
                       style: const TextStyle(
-                        fontSize: AppTextSize.xxs,
+                        fontSize: AppTextSize.xs,
                         color: AppColors.error,
                         fontWeight: FontWeight.w500,
                       ),
@@ -331,7 +331,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           Text(
             'Loading available versions...',
             style: TextStyle(
-              fontSize: AppTextSize.sm,
+              fontSize: AppTextSize.xs,
               color: AppColors.textMuted,
             ),
           ),
@@ -354,7 +354,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           Text(
             'Failed to load versions',
             style: TextStyle(
-              fontSize: AppTextSize.sm,
+              fontSize: AppTextSize.xs,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
@@ -364,7 +364,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
             error,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: AppTextSize.xxs,
+              fontSize: AppTextSize.xs,
               color: AppColors.textMuted,
             ),
           ),
@@ -441,7 +441,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                       version,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: AppTextSize.sm,
+                        fontSize: AppTextSize.xs,
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.normal,
@@ -468,7 +468,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
                       child: Text(
                         ltsLabel == 'LTS' ? 'LTS' : 'LTS · $ltsLabel',
                         style: const TextStyle(
-                          fontSize: AppTextSize.xxs,
+                          fontSize: AppTextSize.xs,
                           fontWeight: FontWeight.w700,
                           color: AppColors.success,
                           letterSpacing: 0.3,

@@ -165,7 +165,7 @@ class Sidebar extends ConsumerWidget {
                         fontWeight: isActive
                             ? FontWeight.w600
                             : FontWeight.normal,
-                        fontSize: AppTextSize.sm,
+                        fontSize: AppTextSize.xs,
                       ),
                     ),
                   ),

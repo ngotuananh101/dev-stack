@@ -267,7 +267,7 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
                           error,
                           style: const TextStyle(
                             color: AppColors.error,
-                            fontSize: AppTextSize.xxs,
+                            fontSize: AppTextSize.xs,
                           ),
                         )
                       else
@@ -279,7 +279,7 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
                               : 'Next run: ${_formatNext(preview)}',
                           style: const TextStyle(
                             color: AppColors.textMuted,
-                            fontSize: AppTextSize.xxs,
+                            fontSize: AppTextSize.xs,
                           ),
                         ),
                       const SizedBox(height: 18),
@@ -332,7 +332,7 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
                                     'Enabled',
                                     style: TextStyle(
                                       color: AppColors.textPrimary,
-                                      fontSize: AppTextSize.sm,
+                                      fontSize: AppTextSize.xs,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -341,7 +341,7 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
                                     'A disabled job is never scheduled',
                                     style: TextStyle(
                                       color: AppColors.textMuted,
-                                      fontSize: AppTextSize.xxs,
+                                      fontSize: AppTextSize.xs,
                                     ),
                                   ),
                                 ],
@@ -414,7 +414,7 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
           dropdownColor: AppColors.surface,
           borderRadius: BorderRadius.circular(8),
           style: const TextStyle(
-            fontSize: AppTextSize.sm,
+            fontSize: AppTextSize.xs,
             color: AppColors.textPrimary,
           ),
           icon: const Icon(
@@ -429,7 +429,7 @@ class _CronFormModalState extends ConsumerState<CronFormModal> {
                   child: Text(
                     e.value,
                     style: const TextStyle(
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       color: AppColors.textPrimary,
                     ),
                   ),

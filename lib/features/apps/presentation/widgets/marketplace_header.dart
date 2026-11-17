@@ -30,7 +30,7 @@ class MarketplaceHeader extends StatelessWidget {
             Text(
               'Marketplace',
               style: TextStyle(
-                fontSize: AppTextSize.xxl,
+                fontSize: AppTextSize.sm,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),

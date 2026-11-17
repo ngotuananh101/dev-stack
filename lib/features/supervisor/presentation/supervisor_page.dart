@@ -70,7 +70,7 @@ class SupervisorPage extends ConsumerWidget {
                 'Supervisor',
                 style: TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: AppTextSize.xxl,
+                  fontSize: AppTextSize.sm,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -79,7 +79,7 @@ class SupervisorPage extends ConsumerWidget {
                 'Keep long-running processes alive with automatic restarts',
                 style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                 ),
               ),
             ],

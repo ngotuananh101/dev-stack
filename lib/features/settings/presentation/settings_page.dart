@@ -264,7 +264,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               'Change Base Directory',
               style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: AppTextSize.sm,
+                fontSize: AppTextSize.xs,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -309,7 +309,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               'This will:',
               style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: AppTextSize.sm,
+                fontSize: AppTextSize.xs,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -416,7 +416,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 'Restart Required',
                 style: TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -427,7 +427,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             'Please restart the application for changes to take effect.',
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: AppTextSize.sm,
+              fontSize: AppTextSize.xs,
             ),
           ),
           actions: [
@@ -472,7 +472,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         const Text(
           'Settings',
           style: TextStyle(
-            fontSize: AppTextSize.xxl,
+            fontSize: AppTextSize.sm,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
           ),
@@ -481,7 +481,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         Text(
           'Manage your local development preferences and system behavior',
           style: TextStyle(
-            fontSize: AppTextSize.sm,
+            fontSize: AppTextSize.xs,
             color: AppColors.textSecondary,
           ),
         ),
@@ -512,7 +512,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: AppTextSize.md,
+                    fontSize: AppTextSize.xs,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
@@ -545,7 +545,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
                 ),
@@ -590,7 +590,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
                 ),
@@ -629,7 +629,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         item,
                         style: const TextStyle(
                           color: AppColors.textPrimary,
-                          fontSize: AppTextSize.sm,
+                          fontSize: AppTextSize.xs,
                         ),
                       ),
                     ),
@@ -667,7 +667,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
                 ),
@@ -711,7 +711,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       fontWeight: FontWeight.w500,
                       color: AppColors.textPrimary,
                     ),
@@ -784,7 +784,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           : const Text(
                               'Browse',
                               style: TextStyle(
-                                fontSize: AppTextSize.xxs,
+                                fontSize: AppTextSize.xs,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.accent,
                               ),
@@ -863,7 +863,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     title,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -903,7 +903,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       fontWeight: FontWeight.w500,
                       color: AppColors.textPrimary,
                     ),
@@ -942,7 +942,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
                 ),
@@ -1147,7 +1147,7 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
       onChanged: _handleChange,
       style: const TextStyle(
         color: AppColors.textPrimary,
-        fontSize: AppTextSize.sm,
+        fontSize: AppTextSize.xs,
       ),
       decoration: InputDecoration(
         prefixIcon: const Icon(

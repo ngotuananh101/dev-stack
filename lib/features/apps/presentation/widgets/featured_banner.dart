@@ -29,7 +29,7 @@ class FeaturedBanner extends StatelessWidget {
                       const Text(
                         'aaCloud Premium',
                         style: TextStyle(
-                          fontSize: AppTextSize.lg,
+                          fontSize: AppTextSize.xs,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
@@ -38,7 +38,7 @@ class FeaturedBanner extends StatelessWidget {
                       Text(
                         'Advanced cloud synchronization and high-performance caching for global development environments.',
                         style: const TextStyle(
-                          fontSize: AppTextSize.xxs,
+                          fontSize: AppTextSize.xs,
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -112,7 +112,7 @@ class FeaturedBanner extends StatelessWidget {
                       child: const Text(
                         '+',
                         style: TextStyle(
-                          fontSize: AppTextSize.xxs,
+                          fontSize: AppTextSize.xs,
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -137,7 +137,7 @@ class FeaturedBanner extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontSize: AppTextSize.xxxs,
+          fontSize: AppTextSize.xs,
           fontWeight: FontWeight.bold,
           color: AppColors.textOnColor,
         ),

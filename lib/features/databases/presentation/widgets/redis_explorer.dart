@@ -222,7 +222,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
       label,
       textAlign: alignment,
       style: TextStyle(
-        fontSize: AppTextSize.xxs,
+        fontSize: AppTextSize.xs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,

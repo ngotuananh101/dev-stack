@@ -52,13 +52,13 @@ class AppModalHeader extends StatelessWidget {
     }
 
     final effectiveTitleStyle = const TextStyle(
-      fontSize: AppTextSize.sm,
+      fontSize: AppTextSize.xs,
       fontWeight: FontWeight.bold,
       color: AppColors.textPrimary,
     ).merge(titleStyle);
 
     final effectiveSubtitleStyle = const TextStyle(
-      fontSize: AppTextSize.xxs,
+      fontSize: AppTextSize.xs,
       color: AppColors.textMuted,
     ).merge(subtitleStyle);
 

@@ -147,7 +147,7 @@ class SiteTable extends ConsumerWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        fontSize: AppTextSize.xxs,
+        fontSize: AppTextSize.xs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -264,7 +264,7 @@ class SiteTable extends ConsumerWidget {
                     site.domain,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       fontWeight: FontWeight.w500,
                     ),
                     overflow: TextOverflow.ellipsis,

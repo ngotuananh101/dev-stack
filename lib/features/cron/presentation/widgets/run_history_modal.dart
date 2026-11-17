@@ -74,7 +74,7 @@ class _RunHistoryModalState extends State<RunHistoryModal> {
                         'No runs recorded yet.',
                         style: TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: AppTextSize.sm,
+                          fontSize: AppTextSize.xs,
                         ),
                       ),
                     )
@@ -167,7 +167,7 @@ class _RunHistoryModalState extends State<RunHistoryModal> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: AppTextSize.xxs,
+                  fontSize: AppTextSize.xs,
                   fontFamily: 'monospace',
                 ),
               ),

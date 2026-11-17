@@ -118,7 +118,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
           child: Text(
             'INSTALLED VERSIONS',
             style: TextStyle(
-              fontSize: AppTextSize.xxs,
+              fontSize: AppTextSize.xs,
               fontWeight: FontWeight.bold,
               color: AppColors.textMuted,
               letterSpacing: 1,
@@ -134,7 +134,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                     'No versions installed',
                     style: TextStyle(
                       color: AppColors.textMuted,
-                      fontSize: AppTextSize.xxs,
+                      fontSize: AppTextSize.xs,
                     ),
                   ),
                 );
@@ -170,13 +170,20 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'AVAILABLE TO INSTALL',
-                style: TextStyle(
-                  fontSize: AppTextSize.xxs,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textMuted,
-                  letterSpacing: 1,
+              // Expanded rather than a bare Text: at the narrowest window the
+              // label and the refresh button together are a few pixels wider
+              // than the column, and a bare Text cannot give any back.
+              const Expanded(
+                child: Text(
+                  'AVAILABLE TO INSTALL',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: AppTextSize.xs,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textMuted,
+                    letterSpacing: 1,
+                  ),
                 ),
               ),
               if (_isLoadingVersions)

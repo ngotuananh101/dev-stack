@@ -80,7 +80,7 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
                 'Tunnels',
                 style: TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: AppTextSize.xxl,
+                  fontSize: AppTextSize.sm,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -89,7 +89,7 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
                 'Expose local sites and ports to the public internet',
                 style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                 ),
               ),
             ],

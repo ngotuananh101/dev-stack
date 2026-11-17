@@ -37,7 +37,7 @@ void main() {
         final titleFinder = find.text('Add New Site');
         expect(titleFinder, findsOneWidget);
         final titleWidget = tester.widget<Text>(titleFinder);
-        expect(titleWidget.style?.fontSize, AppTextSize.sm);
+        expect(titleWidget.style?.fontSize, AppTextSize.xs);
         expect(titleWidget.style?.fontWeight, FontWeight.bold);
         expect(titleWidget.style?.color, AppColors.textPrimary);
 
@@ -47,7 +47,7 @@ void main() {
         );
         expect(subtitleFinder, findsOneWidget);
         final subtitleWidget = tester.widget<Text>(subtitleFinder);
-        expect(subtitleWidget.style?.fontSize, AppTextSize.xxs);
+        expect(subtitleWidget.style?.fontSize, AppTextSize.xs);
         expect(subtitleWidget.style?.color, AppColors.textMuted);
 
         // Verify Padding

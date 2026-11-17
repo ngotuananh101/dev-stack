@@ -121,7 +121,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
       controller: _searchController,
       style: const TextStyle(
         color: AppColors.textPrimary,
-        fontSize: AppTextSize.sm,
+        fontSize: AppTextSize.xs,
       ),
       decoration: InputDecoration(
         hintText: 'Search sites...',

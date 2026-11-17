@@ -427,7 +427,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
                                             child: Text(
                                               a.name,
                                               style: const TextStyle(
-                                                fontSize: AppTextSize.sm,
+                                                fontSize: AppTextSize.xs,
                                                 color: AppColors.textPrimary,
                                               ),
                                             ),
@@ -510,7 +510,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
             Text(
               label,
               style: TextStyle(
-                fontSize: AppTextSize.sm,
+                fontSize: AppTextSize.xs,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? AppColors.primary : AppColors.textSecondary,
               ),
@@ -535,7 +535,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
           value: _selectedPreset,
           isExpanded: true,
           style: const TextStyle(
-            fontSize: AppTextSize.sm,
+            fontSize: AppTextSize.xs,
             color: AppColors.textPrimary,
           ),
           dropdownColor: AppColors.surface,
@@ -551,7 +551,7 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
               child: Text(
                 entry.value.name,
                 style: const TextStyle(
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                   color: AppColors.textPrimary,
                 ),
               ),
@@ -664,7 +664,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: AppTextSize.sm,
+              fontSize: AppTextSize.xs,
               color: isSelected ? AppColors.accent : AppColors.textSecondary,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
@@ -823,7 +823,7 @@ class _SslTabState extends ConsumerState<_SslTab> {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: AppTextSize.sm,
+              fontSize: AppTextSize.xs,
               color: isSelected ? AppColors.accent : AppColors.textSecondary,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
@@ -969,7 +969,7 @@ class _LogTabState extends ConsumerState<_LogTab> {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: AppTextSize.sm,
+              fontSize: AppTextSize.xs,
               color: isSelected ? AppColors.accent : AppColors.textSecondary,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),

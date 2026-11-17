@@ -42,16 +42,10 @@ class AppButton extends StatelessWidget {
     }
   }
 
-  double get _fontSize {
-    switch (size) {
-      case AppButtonSize.sm:
-        return AppTextSize.xs; // 12
-      case AppButtonSize.md:
-        return AppTextSize.sm; // 14
-      case AppButtonSize.lg:
-        return AppTextSize.sm; // 14
-    }
-  }
+  /// Every size reads at the body size; the size only changes the box around
+  /// it. A taller button with a larger label is how one form ended up with two
+  /// type sizes in the same row of controls.
+  double get _fontSize => AppTextSize.xs;
 
   EdgeInsets get _padding {
     switch (size) {

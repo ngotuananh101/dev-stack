@@ -274,7 +274,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: AppTextSize.lg,
+                    fontSize: AppTextSize.xs,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -286,7 +286,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: AppTextSize.sm,
+                    fontSize: AppTextSize.xs,
                     height: 1.5,
                   ),
                 ),
@@ -331,7 +331,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
             'No database engines installed',
             style: TextStyle(
               color: AppColors.textPrimary,
-              fontSize: AppTextSize.lg,
+              fontSize: AppTextSize.xs,
             ),
           ),
           const SizedBox(height: 8),
@@ -640,7 +640,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       controller: _searchController,
       style: const TextStyle(
         color: AppColors.textPrimary,
-        fontSize: AppTextSize.sm,
+        fontSize: AppTextSize.xs,
       ),
       decoration: InputDecoration(
         hintText: isRedis ? 'Search key' : 'Database search',

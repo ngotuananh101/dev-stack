@@ -5,6 +5,7 @@ import 'package:quickalert/quickalert.dart';
 import 'package:toastification/toastification.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_size.dart';
 import 'modal_sizing.dart';
 
@@ -139,10 +140,10 @@ class AppDialogs {
       text: message,
       widget: Container(
         width: kModalWidthSm,
-        margin: const EdgeInsets.only(top: 12),
+        margin: const EdgeInsets.only(top: AppSpacing.md),
         padding: const EdgeInsets.symmetric(
-          horizontal: AppTextSize.sm,
-          vertical: AppTextSize.xs,
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
         ),
         decoration: BoxDecoration(
           color: AppColors.background,
@@ -218,7 +219,7 @@ class AppDialogs {
         message,
         style: const TextStyle(
           color: AppColors.textPrimary,
-          fontSize: AppTextSize.sm,
+          fontSize: AppTextSize.xs,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -233,8 +234,8 @@ class AppDialogs {
       borderSide: const BorderSide(color: AppColors.border),
       borderRadius: BorderRadius.circular(AppRadius.md),
       padding: const EdgeInsets.symmetric(
-        horizontal: AppTextSize.base,
-        vertical: AppTextSize.xs,
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
       ),
       autoCloseDuration: const Duration(seconds: 3),
       closeButton: const ToastCloseButton(showType: CloseButtonShowType.none),

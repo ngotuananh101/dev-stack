@@ -120,7 +120,7 @@ class SupervisorTable extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        fontSize: AppTextSize.xxs,
+        fontSize: AppTextSize.xs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -141,7 +141,7 @@ class SupervisorTable extends StatelessWidget {
               'No supervised programs yet',
               style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: AppTextSize.md,
+                fontSize: AppTextSize.xs,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -201,7 +201,7 @@ class SupervisorTable extends StatelessWidget {
                     program.name,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,

@@ -194,7 +194,7 @@ class _TerminalLogViewState extends State<TerminalLogView> {
           widget.emptyMessage,
           style: const TextStyle(
             color: AppColors.textMuted,
-            fontSize: AppTextSize.sm,
+            fontSize: AppTextSize.xs,
           ),
         ),
       );

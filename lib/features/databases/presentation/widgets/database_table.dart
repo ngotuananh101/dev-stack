@@ -98,7 +98,7 @@ class DatabaseTable extends StatelessWidget {
               'No Data',
               style: TextStyle(
                 color: AppColors.textMuted,
-                fontSize: AppTextSize.sm,
+                fontSize: AppTextSize.xs,
               ),
             ),
           ],
@@ -163,7 +163,7 @@ class DatabaseTable extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        fontSize: AppTextSize.xxs,
+        fontSize: AppTextSize.xs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -257,7 +257,7 @@ class DatabaseTable extends StatelessWidget {
                       'Active',
                       style: TextStyle(
                         color: AppColors.success,
-                        fontSize: AppTextSize.xxs,
+                        fontSize: AppTextSize.xs,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

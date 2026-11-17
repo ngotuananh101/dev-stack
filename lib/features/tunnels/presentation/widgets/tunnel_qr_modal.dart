@@ -62,7 +62,7 @@ class TunnelQrModal extends StatelessWidget {
                     publicUrl,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       color: AppColors.primary,
                       fontWeight: FontWeight.w500,
                     ),

@@ -13,8 +13,7 @@ class StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),      decoration: BoxDecoration(
         color: _getColor().withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: _getColor().withValues(alpha: 0.2)),
@@ -23,7 +22,7 @@ class StatusChip extends StatelessWidget {
         (label ?? _getDefaultLabel()).toUpperCase(),
         style: TextStyle(
           color: _getColor(),
-          fontSize: AppTextSize.xxs,
+          fontSize: AppTextSize.xs,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
         ),

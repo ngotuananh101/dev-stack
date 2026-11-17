@@ -460,7 +460,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                                               child: Text(
                                                 app.name,
                                                 style: const TextStyle(
-                                                  fontSize: AppTextSize.sm,
+                                                  fontSize: AppTextSize.xs,
                                                   color: AppColors.textPrimary,
                                                 ),
                                               ),
@@ -520,7 +520,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
                                         Text(
                                           'Apply SSL',
                                           style: TextStyle(
-                                            fontSize: AppTextSize.sm,
+                                            fontSize: AppTextSize.xs,
                                             color: _useSsl
                                                 ? AppColors.success
                                                 : AppColors.textSecondary,
@@ -622,7 +622,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
             Text(
               label,
               style: TextStyle(
-                fontSize: AppTextSize.sm,
+                fontSize: AppTextSize.xs,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? AppColors.primary : AppColors.textSecondary,
               ),
@@ -661,7 +661,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
           value: _selectedPreset,
           isExpanded: true,
           style: const TextStyle(
-            fontSize: AppTextSize.sm,
+            fontSize: AppTextSize.xs,
             color: AppColors.textPrimary,
           ),
           dropdownColor: AppColors.surface,
@@ -677,7 +677,7 @@ class _AddSiteModalState extends ConsumerState<AddSiteModal> {
               child: Text(
                 entry.value.name,
                 style: const TextStyle(
-                  fontSize: AppTextSize.sm,
+                  fontSize: AppTextSize.xs,
                   color: AppColors.textPrimary,
                 ),
               ),

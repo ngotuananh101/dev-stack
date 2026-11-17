@@ -33,7 +33,7 @@ class ServiceLogsModal extends ConsumerWidget {
     return Text(
       isRunning ? 'Running (PID: ${app.servicePid})' : 'Service Stopped',
       style: TextStyle(
-        fontSize: AppTextSize.xxs,
+        fontSize: AppTextSize.xs,
         color: isRunning ? AppColors.success : AppColors.textMuted,
         fontWeight: FontWeight.w500,
       ),

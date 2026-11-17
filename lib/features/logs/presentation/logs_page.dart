@@ -188,7 +188,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                     const Text(
                       'LOGS',
                       style: TextStyle(
-                        fontSize: AppTextSize.xxs,
+                        fontSize: AppTextSize.xs,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.5,
                         color: AppColors.primary,
@@ -297,7 +297,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                                 child: Text(
                                   'SYSTEM LOG FILES',
                                   style: TextStyle(
-                                    fontSize: AppTextSize.xxs,
+                                    fontSize: AppTextSize.xs,
                                     fontWeight: FontWeight.w900,
                                     color: AppColors.textMuted,
                                   ),
@@ -404,7 +404,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                       ? const Text(
                           'showing the tail of the file',
                           style: TextStyle(
-                            fontSize: AppTextSize.xxs,
+                            fontSize: AppTextSize.xs,
                             color: AppColors.textMuted,
                           ),
                         )

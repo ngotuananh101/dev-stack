@@ -556,7 +556,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                 child: Text(
                   'Note: Changing the port may require reconfiguration of Nginx/Apache.',
                   style: TextStyle(
-                    fontSize: AppTextSize.xxs,
+                    fontSize: AppTextSize.xs,
                     color: AppColors.warning,
                   ),
                 ),
@@ -617,7 +617,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
         Text(
           label,
           style: const TextStyle(
-            fontSize: AppTextSize.xxs,
+            fontSize: AppTextSize.xs,
             color: AppColors.textSecondary,
           ),
         ),
@@ -625,7 +625,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
         Text(
           value,
           style: TextStyle(
-            fontSize: AppTextSize.xxs,
+            fontSize: AppTextSize.xs,
             fontWeight: FontWeight.w500,
             color: valueColor ?? AppColors.textPrimary,
           ),
@@ -706,7 +706,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                     key: const ValueKey('extensions-search'),
                     onChanged: (v) => setState(() => _searchQuery = v),
                     style: const TextStyle(
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       color: AppColors.textPrimary,
                     ),
                     decoration: InputDecoration(
@@ -806,7 +806,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          fontSize: 8,
+          fontSize: AppTextSize.xs,
           fontWeight: FontWeight.bold,
           color: color,
           letterSpacing: 0.5,
@@ -877,7 +877,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                     child: Text(
                       ext.packageName!,
                       style: const TextStyle(
-                        fontSize: 8,
+                        fontSize: AppTextSize.xs,
                         color: AppColors.textMuted,
                       ),
                       maxLines: 1,
@@ -980,7 +980,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
         Text(
           label,
           style: const TextStyle(
-            fontSize: AppTextSize.xxs,
+            fontSize: AppTextSize.xs,
             color: AppColors.textSecondary,
           ),
         ),
@@ -1070,7 +1070,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
               onChanged: onChanged,
               obscureText: obscureText,
               style: const TextStyle(
-                fontSize: AppTextSize.sm,
+                fontSize: AppTextSize.xs,
                 color: AppColors.textPrimary,
               ),
               decoration: InputDecoration(

@@ -255,7 +255,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                                     'Auto start on app launch',
                                     style: TextStyle(
                                       color: AppColors.textPrimary,
-                                      fontSize: AppTextSize.sm,
+                                      fontSize: AppTextSize.xs,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -264,7 +264,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                                     'Automatically connect when DevStack opens',
                                     style: TextStyle(
                                       color: AppColors.textMuted,
-                                      fontSize: AppTextSize.xxs,
+                                      fontSize: AppTextSize.xs,
                                     ),
                                   ),
                                 ],
@@ -351,7 +351,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                         ? AppColors.primary
                         : AppColors.textSecondary,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                    fontSize: AppTextSize.sm,
+                    fontSize: AppTextSize.xs,
                   ),
                 ),
               ],
@@ -384,7 +384,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
           value: _provider,
           isExpanded: true,
           style: const TextStyle(
-            fontSize: AppTextSize.sm,
+            fontSize: AppTextSize.xs,
             color: AppColors.textPrimary,
           ),
           dropdownColor: AppColors.surface,
@@ -408,7 +408,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                   Text(
                     'Cloudflare',
                     style: TextStyle(
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       color: AppColors.textPrimary,
                     ),
                   ),
@@ -428,7 +428,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                   Text(
                     'Ngrok',
                     style: TextStyle(
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       color: AppColors.textPrimary,
                     ),
                   ),
@@ -513,12 +513,12 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
             'Select a local site',
             style: TextStyle(
               color: AppColors.textMuted,
-              fontSize: AppTextSize.sm,
+              fontSize: AppTextSize.xs,
             ),
           ),
           isExpanded: true,
           style: const TextStyle(
-            fontSize: AppTextSize.sm,
+            fontSize: AppTextSize.xs,
             color: AppColors.textPrimary,
           ),
           dropdownColor: AppColors.surface,
@@ -545,7 +545,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                         d,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: AppTextSize.sm,
+                          fontSize: AppTextSize.xs,
                           color: AppColors.textPrimary,
                         ),
                       ),
@@ -563,7 +563,7 @@ class _CreateTunnelModalState extends ConsumerState<CreateTunnelModal> {
                   Text(
                     '+ Custom domain...',
                     style: TextStyle(
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       color: AppColors.primary,
                       fontWeight: FontWeight.w500,
                     ),

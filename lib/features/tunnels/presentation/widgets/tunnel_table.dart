@@ -137,7 +137,7 @@ class TunnelTable extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        fontSize: AppTextSize.xxs,
+        fontSize: AppTextSize.xs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -158,7 +158,7 @@ class TunnelTable extends StatelessWidget {
               'No tunnels configured yet',
               style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: AppTextSize.md,
+                fontSize: AppTextSize.xs,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -209,7 +209,7 @@ class TunnelTable extends StatelessWidget {
                     tunnel.name,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: AppTextSize.sm,
+                      fontSize: AppTextSize.xs,
                       fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -496,7 +496,7 @@ class TunnelTable extends StatelessWidget {
                 : 'Connecting...',
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: AppTextSize.xxs,
+              fontSize: AppTextSize.xs,
             ),
           ),
         ],

@@ -32,20 +32,60 @@ class AppTheme {
       ),
       // google_fonts 9 speaks `material_ui`'s `TextTheme`; the bridge hands the
       // styles back in the type `package:flutter/material.dart` builds with.
+      //
+      // Every body and label role is pinned to [AppTextSize.xs]. A `Text` that
+      // names no size of its own inherits one of these, so leaving them at
+      // Material's 14/16 made half the app a step larger than the 12px cells
+      // and buttons beside it. The display and headline roles keep their
+      // Material sizes: no page or modal title is built from them.
       textTheme: toFlutterTextTheme(
         GoogleFonts.interTextTheme(
           toMaterialUiTextTheme(
-            const TextTheme(
-              headlineLarge: TextStyle(
+            TextTheme(
+              headlineLarge: const TextStyle(
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.bold,
               ),
-              headlineMedium: TextStyle(
+              headlineMedium: const TextStyle(
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.bold,
               ),
-              bodyLarge: TextStyle(color: AppColors.textPrimary),
-              bodyMedium: TextStyle(color: AppColors.textSecondary),
+              bodyLarge: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
+              ),
+              bodyMedium: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppTextSize.xs,
+              ),
+              bodySmall: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppTextSize.xs,
+              ),
+              titleLarge: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
+              ),
+              titleMedium: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
+              ),
+              titleSmall: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
+              ),
+              labelLarge: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
+              ),
+              labelMedium: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppTextSize.xs,
+              ),
+              labelSmall: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppTextSize.xs,
+              ),
             ),
           ),
         ),
