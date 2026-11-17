@@ -18,10 +18,9 @@ class Sidebar extends ConsumerWidget {
     // items' fixed 18px icon and 12px insets wider than the sidebar part-way
     // through, which throws a RenderFlex overflow.
     return Container(
-      width: collapsed ? 64 : 240,
+      width: collapsed ? 64 : 200,
       decoration: const BoxDecoration(
-        color: AppColors.background,
-        border: Border(right: BorderSide(color: AppColors.border)),
+        color: AppColors.shellBackground,
       ),
       child: ListView(
         padding: EdgeInsets.symmetric(
@@ -29,10 +28,6 @@ class Sidebar extends ConsumerWidget {
           vertical: 12,
         ),
         children: [
-          _buildCollapseToggle(collapsed, () {
-            ref.read(sidebarCollapsedProvider.notifier).toggle();
-          }),
-          const SizedBox(height: 12),
           _buildNavItem(
             LucideIcons.layoutGrid,
             'Apps',
@@ -119,12 +114,6 @@ class Sidebar extends ConsumerWidget {
     );
   }
 
-  /// The collapse control sits above the nav so the user can always fold the
-  /// sidebar away, whatever tab they are on.
-  Widget _buildCollapseToggle(bool collapsed, VoidCallback onPressed) {
-    return _SidebarToggleButton(collapsed: collapsed, onPressed: onPressed);
-  }
-
   Widget _buildNavItem(
     IconData icon,
     String label, {
@@ -180,39 +169,5 @@ class Sidebar extends ConsumerWidget {
     // Collapsed, the label is gone, so the icon alone carries the entry: the
     // tooltip is what makes it usable.
     return collapsed ? Tooltip(message: label, child: item) : item;
-  }
-}
-
-class _SidebarToggleButton extends StatelessWidget {
-  final bool collapsed;
-  final VoidCallback onPressed;
-
-  const _SidebarToggleButton({
-    required this.collapsed,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: collapsed ? 'Expand sidebar' : 'Collapse sidebar',
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          height: 38,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Icon(
-            collapsed ? LucideIcons.panelLeftOpen : LucideIcons.panelLeftClose,
-            size: 18,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
   }
 }

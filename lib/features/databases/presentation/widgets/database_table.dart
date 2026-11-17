@@ -163,7 +163,7 @@ class DatabaseTable extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        fontSize: AppTextSize.xs,
+        fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -257,7 +257,7 @@ class DatabaseTable extends StatelessWidget {
                       'Active',
                       style: TextStyle(
                         color: AppColors.success,
-                        fontSize: AppTextSize.xs,
+                        fontSize: AppTextSize.xxs,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -269,7 +269,7 @@ class DatabaseTable extends StatelessWidget {
                     db.note ?? '-',
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: AppTextSize.xs,
+                      fontSize: AppTextSize.xxs,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -305,7 +305,7 @@ class DatabaseTable extends StatelessWidget {
                     db.username,
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: AppTextSize.xs,
+                      fontSize: AppTextSize.xxs,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -319,7 +319,7 @@ class DatabaseTable extends StatelessWidget {
                           db.password.isEmpty ? '-' : '********',
                           style: const TextStyle(
                             color: AppColors.textSecondary,
-                            fontSize: AppTextSize.xs,
+                            fontSize: AppTextSize.xxs,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -354,7 +354,7 @@ class DatabaseTable extends StatelessWidget {
                     db.note ?? '-',
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: AppTextSize.xs,
+                      fontSize: AppTextSize.xxs,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),

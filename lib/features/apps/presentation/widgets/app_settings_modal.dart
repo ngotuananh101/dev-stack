@@ -643,27 +643,6 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header
-          Row(
-            children: [
-              const Icon(
-                Icons.description_outlined,
-                size: 16,
-                color: AppColors.textSecondary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _configTabLabel,
-                style: const TextStyle(
-                  fontSize: AppTextSize.xs,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
           if (configPath != null)
             Expanded(
               child: ConfigCodeEditor(

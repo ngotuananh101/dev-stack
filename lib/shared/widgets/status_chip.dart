@@ -7,8 +7,9 @@ enum StatusType { stable, restarting, stopped, warning }
 class StatusChip extends StatelessWidget {
   final StatusType type;
   final String? label;
+  final double fontSize;
 
-  const StatusChip({super.key, required this.type, this.label});
+  const StatusChip({super.key, required this.type, this.label, this.fontSize = AppTextSize.xs});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +23,7 @@ class StatusChip extends StatelessWidget {
         (label ?? _getDefaultLabel()).toUpperCase(),
         style: TextStyle(
           color: _getColor(),
-          fontSize: AppTextSize.xs,
+          fontSize: fontSize,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
         ),

@@ -116,7 +116,6 @@ class _SiteTunnelDialogState extends ConsumerState<SiteTunnelDialog> {
           icon: const Icon(
             LucideIcons.cloud,
             size: 16,
-            color: AppColors.textOnColor,
           ),
         ),
         const SizedBox(height: 12),

@@ -881,8 +881,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               label: actionLabel,
               onPressed: onTap,
               style: AppButtonStyle.primary,
-              backgroundColor: AppColors.accentStrong,
-              textColor: AppColors.textOnColor,
             ),
           ],
         ),
@@ -986,20 +984,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ...actions.map(
             (action) => Padding(
               padding: const EdgeInsets.only(left: 8.0),
-              child: action.color == AppColors.errorStrong
-                  ? AppButton(
-                      label: action.label,
-                      onPressed: action.onTap,
-                      style: AppButtonStyle.danger,
-                      textColor: AppColors.textOnColor,
-                    )
-                  : AppButton(
-                      label: action.label,
-                      onPressed: action.onTap,
-                      style: AppButtonStyle.primary,
-                      backgroundColor: action.color,
-                      textColor: AppColors.textOnColor,
-                    ),
+              child: AppButton(
+                label: action.label,
+                onPressed: action.onTap,
+                style: action.color == AppColors.errorStrong
+                    ? AppButtonStyle.danger
+                    : action.color == AppColors.successStrong
+                        ? AppButtonStyle.success
+                        : AppButtonStyle.primary,
+              ),
             ),
           ),
         ],

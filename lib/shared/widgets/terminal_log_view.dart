@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text_size.dart';
 import '../utils/app_dialogs.dart';
+import 'app_icon_button.dart';
 import 'app_modal_header.dart';
 
 /// A bottom-anchored, lazily built log viewer.
@@ -141,44 +142,31 @@ class _TerminalLogViewState extends State<TerminalLogView> {
       title: widget.title,
       subtitleWidget: widget.statusWidget,
       actions: [
-        IconButton(
-          icon: Icon(
-            _autoScroll ? LucideIcons.arrowDownCircle : LucideIcons.pauseCircle,
-            size: 16,
-            color: _autoScroll ? AppColors.success : AppColors.textMuted,
-          ),
+        AppIconButton(
+          icon: _autoScroll
+              ? LucideIcons.arrowDownCircle
+              : LucideIcons.pauseCircle,
           tooltip: _autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF',
           onPressed: () {
             setState(() => _autoScroll = !_autoScroll);
             if (_autoScroll) _scrollToTail();
           },
+          color: _autoScroll ? AppColors.success : AppColors.textMuted,
         ),
         if (widget.onClear != null)
-          IconButton(
-            icon: const Icon(
-              Icons.clear_all,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
+          AppIconButton(
+            icon: Icons.clear_all,
             tooltip: 'Clear',
             onPressed: widget.onClear,
           ),
-        IconButton(
-          icon: const Icon(
-            Icons.copy,
-            size: 16,
-            color: AppColors.textSecondary,
-          ),
+        AppIconButton(
+          icon: Icons.copy,
           tooltip: 'Copy all',
           onPressed: widget.onCopy ?? _defaultCopy,
         ),
         if (widget.onOpenFile != null)
-          IconButton(
-            icon: const Icon(
-              LucideIcons.fileText,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
+          AppIconButton(
+            icon: LucideIcons.fileText,
             tooltip: 'Open log file',
             onPressed: widget.onOpenFile,
           ),
@@ -235,9 +223,6 @@ class _TerminalLogViewState extends State<TerminalLogView> {
     }
     if (line.contains('[WARN]') || line.contains('Warning:')) {
       return AppColors.warning;
-    }
-    if (line.contains('[INFO]') || line.contains('Service started')) {
-      return AppColors.primary;
     }
     return AppColors.textPrimary;
   }

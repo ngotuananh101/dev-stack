@@ -360,7 +360,6 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                           onPressed: _refresh,
                           style: AppButtonStyle.secondary,
                         ),
-                        const SizedBox(width: 8),
                         if (_isService) ...[
                           AppButton(
                             label: 'CLEAR',

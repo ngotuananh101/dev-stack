@@ -92,13 +92,18 @@ class _AppHeaderState extends State<AppHeader> {
     return Container(
       height: kAppHeaderHeight,
       decoration: const BoxDecoration(
-        color: AppColors.background,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1.0)),
+        color: AppColors.shellBackground,
       ),
       child: Row(
         children: [
           _buildBrand(),
-          const Expanded(
+          // No `const` here on purpose: the hot-restart incremental compiler
+          // mis-evaluates the const `DragToMoveArea` from nativeapi_flutter
+          // and reports a bogus "const constructor can't have a body" error.
+          // The constructor is const in the package source (0.6.1), and
+          // `flutter analyze` is clean — the header rebuilds on
+          // maximize/restore anyway, so const buys nothing here.
+          Expanded(
             child: DragToMoveArea(
               child: SizedBox(height: kAppHeaderHeight, width: double.infinity),
             ),

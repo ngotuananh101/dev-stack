@@ -101,6 +101,7 @@ class RowActionMenu extends StatelessWidget {
         onPressed: action.onPressed,
         isLoading: action.isLoading,
         icon: action.icon != null ? Icon(action.icon!, size: 12) : null,
+        style: action.style,
       ),
     };
   }

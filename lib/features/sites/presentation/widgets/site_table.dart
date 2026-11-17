@@ -147,7 +147,7 @@ class SiteTable extends ConsumerWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        fontSize: AppTextSize.xs,
+        fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -298,7 +298,7 @@ class SiteTable extends ConsumerWidget {
                     : site.rootDir,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: AppTextSize.xs,
+                  fontSize: AppTextSize.xxs,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -321,7 +321,7 @@ class SiteTable extends ConsumerWidget {
                           'CLI :${site.port ?? 3000}',
                           style: const TextStyle(
                             color: AppColors.accent,
-                            fontSize: AppTextSize.xs,
+                            fontSize: AppTextSize.xxs,
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -335,7 +335,7 @@ class SiteTable extends ConsumerWidget {
                         : site.siteType.toUpperCase(),
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: AppTextSize.xs,
+                      fontSize: AppTextSize.xxs,
                     ),
                   ),
           ),

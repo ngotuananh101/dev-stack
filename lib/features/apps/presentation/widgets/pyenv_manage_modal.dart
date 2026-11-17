@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../../../shared/widgets/app_icon_button.dart';
 import '../../../../shared/widgets/app_modal_header.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../shared/utils/modal_sizing.dart';
@@ -193,12 +194,10 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               else
-                IconButton(
-                  icon: const Icon(Icons.refresh, size: 14),
+                AppIconButton(
+                  icon: Icons.refresh,
                   onPressed: _loadInstallableVersions,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Reload versions',
                   color: AppColors.textMuted,
                 ),
             ],
@@ -271,33 +270,24 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                         ),
                       )
                     else
-                      IconButton(
-                        icon: const Icon(
-                          Icons.check_circle_outline,
-                          size: 16,
-                          color: AppColors.textMuted,
-                        ),
+                      AppIconButton(
+                        icon: Icons.check_circle_outline,
                         onPressed: () => _setGlobal(version),
                         tooltip: 'Set as Global',
+                        color: AppColors.textMuted,
                       ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: 16,
-                        color: AppColors.error,
-                      ),
+                    AppIconButton(
+                      icon: Icons.delete_outline,
                       onPressed: () => _uninstall(version),
                       tooltip: 'Uninstall',
+                      color: AppColors.error,
                     ),
                   ] else if (!isAlreadyInstalled)
-                    IconButton(
-                      icon: const Icon(
-                        Icons.download,
-                        size: 16,
-                        color: AppColors.primary,
-                      ),
+                    AppIconButton(
+                      icon: Icons.download,
                       onPressed: () => _install(version),
                       tooltip: 'Install',
+                      color: AppColors.primary,
                     )
                   else
                     const Padding(

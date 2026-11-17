@@ -77,7 +77,7 @@ class FeaturedBanner extends StatelessWidget {
                 Text(
                   '142+',
                   style: TextStyle(
-                    fontSize: AppTextSize.xxl,
+                    fontSize: AppTextSize.xs,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
                   ),

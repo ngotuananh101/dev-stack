@@ -519,8 +519,7 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
           ] else if (appState.status == 'installed')
             AppButton(
               onPressed: widget.onClose,
-              backgroundColor: AppColors.successStrong,
-              textColor: AppColors.textOnColor,
+              style: AppButtonStyle.success,
               label: 'Finish',
             )
           else

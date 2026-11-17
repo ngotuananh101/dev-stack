@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
+import '../../../../shared/widgets/app_icon_button.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class MarketplaceHeader extends StatelessWidget {
@@ -53,15 +54,11 @@ class MarketplaceHeader extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         // Update Button
-        IconButton(
+        AppIconButton(
+          icon: LucideIcons.refreshCw,
           onPressed: onUpdate,
-          icon: const Icon(
-            LucideIcons.refreshCw,
-            size: 18,
-            color: AppColors.textSecondary,
-          ),
           tooltip: 'Update App List',
-          splashRadius: 20,
+          size: AppIconButtonSize.md,
         ),
       ],
     );

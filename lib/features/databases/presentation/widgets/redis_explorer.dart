@@ -222,7 +222,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
       label,
       textAlign: alignment,
       style: TextStyle(
-        fontSize: AppTextSize.xs,
+        fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -258,7 +258,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
               item.value,
               style: TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
+                fontSize: AppTextSize.xxs,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -270,7 +270,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
               item.type,
               style: TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
+                fontSize: AppTextSize.xxs,
               ),
             ),
           ),
@@ -281,7 +281,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
               item.length.toString(),
               style: TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
+                fontSize: AppTextSize.xxs,
               ),
             ),
           ),
@@ -292,7 +292,7 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
               item.ttl,
               style: TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
+                fontSize: AppTextSize.xxs,
               ),
             ),
           ),

@@ -3,7 +3,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_text_size.dart';
 
-enum AppButtonStyle { primary, secondary, success, ghost, outline, danger }
+enum AppButtonStyle { primary, secondary, success, ghost, outline, danger, warning }
 
 enum AppButtonSize { sm, md, lg }
 
@@ -110,7 +110,15 @@ class AppButton extends StatelessWidget {
                         ),
                       )
                     else ...[
-                      if (icon != null) ...[icon!, const SizedBox(width: 8)],
+                      if (icon != null) ...[
+                        IconTheme(
+                          data: IconThemeData(
+                            color: _getTextColor(isEnabled),
+                          ),
+                          child: icon!,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       // A flex child is only legal when this button has a
                       // tight/explicit width constraint. In loose contexts
                       // (Row, Wrap) it must size to its text instead.
@@ -128,30 +136,16 @@ class AppButton extends StatelessWidget {
     );
   }
 
+  // All buttons are outline (2026-11-17): transparent fill, a border in
+  // the style's colour, and text to match. An explicit [backgroundColor]
+  // still wins for callers that pass one.
   Color _getBackgroundColor(bool isEnabled) {
     if (backgroundColor != null) {
       return isEnabled
           ? backgroundColor!
           : backgroundColor!.withValues(alpha: 0.5);
     }
-    if (!isEnabled) {
-      return AppColors.surfaceLight.withValues(alpha: 0.5);
-    }
-    switch (style) {
-      case AppButtonStyle.primary:
-        // The 500 step only reaches ~3.7:1 under white text at best (cyan is
-        // 2.4:1); the 700 step clears WCAG AA for every hue.
-        return AppColors.primaryStrong;
-      case AppButtonStyle.success:
-        return AppColors.successStrong;
-      case AppButtonStyle.secondary:
-        return AppColors.surfaceLight;
-      case AppButtonStyle.outline:
-      case AppButtonStyle.ghost:
-        return Colors.transparent;
-      case AppButtonStyle.danger:
-        return AppColors.error.withValues(alpha: 0.15);
-    }
+    return Colors.transparent;
   }
 
   Color _getTextColor(bool isEnabled) {
@@ -163,8 +157,11 @@ class AppButton extends StatelessWidget {
     }
     switch (style) {
       case AppButtonStyle.primary:
+        return AppColors.primary;
       case AppButtonStyle.success:
-        return AppColors.textOnColor;
+        return AppColors.success;
+      case AppButtonStyle.warning:
+        return AppColors.warning;
       case AppButtonStyle.secondary:
       case AppButtonStyle.outline:
       case AppButtonStyle.ghost:
@@ -174,23 +171,30 @@ class AppButton extends StatelessWidget {
     }
   }
 
-  Border? _getBorder(bool isEnabled) {
-    if (style == AppButtonStyle.outline || style == AppButtonStyle.secondary) {
-      return Border.all(
-        color: isEnabled
-            ? AppColors.border
-            : AppColors.border.withValues(alpha: 0.5),
-        width: 0.5,
-      );
+  Border _getBorder(bool isEnabled) {
+    final Color color;
+    switch (style) {
+      case AppButtonStyle.primary:
+        color = AppColors.primary;
+        break;
+      case AppButtonStyle.success:
+        color = AppColors.success;
+        break;
+      case AppButtonStyle.warning:
+        color = AppColors.warning;
+        break;
+      case AppButtonStyle.danger:
+        color = AppColors.error;
+        break;
+      case AppButtonStyle.secondary:
+      case AppButtonStyle.outline:
+      case AppButtonStyle.ghost:
+        color = AppColors.border;
+        break;
     }
-    if (style == AppButtonStyle.danger) {
-      return Border.all(
-        color: isEnabled
-            ? AppColors.error.withValues(alpha: 0.4)
-            : AppColors.border,
-        width: 0.5,
-      );
-    }
-    return null;
+    return Border.all(
+      color: isEnabled ? color : color.withValues(alpha: 0.5),
+      width: 0.5,
+    );
   }
 }

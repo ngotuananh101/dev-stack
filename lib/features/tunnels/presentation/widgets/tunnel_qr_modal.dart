@@ -76,7 +76,6 @@ class TunnelQrModal extends StatelessWidget {
                         icon: const Icon(
                           LucideIcons.copy,
                           size: 16,
-                          color: AppColors.textOnColor,
                         ),
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: publicUrl));

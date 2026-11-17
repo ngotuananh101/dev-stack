@@ -14,6 +14,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
 import '../../../shared/utils/app_dialogs.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_icon_button.dart';
 import 'language_for_config.dart';
 
 /// Threshold above which the editor shows a "large file" banner. The editor
@@ -524,16 +525,10 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
     required String tooltip,
     required VoidCallback onTap,
   }) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(4),
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Icon(icon, size: 18, color: AppColors.textSecondary),
-        ),
-      ),
+    return AppIconButton(
+      icon: icon,
+      tooltip: tooltip,
+      onPressed: onTap,
     );
   }
 

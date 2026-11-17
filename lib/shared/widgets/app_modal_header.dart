@@ -95,7 +95,10 @@ class AppModalHeader extends StatelessWidget {
                 ),
               ),
               if (actions != null && actions!.isNotEmpty) ...[
-                ...actions!,
+                for (var i = 0; i < actions!.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  actions![i],
+                ],
                 if (onClose != null) const SizedBox(width: 8),
               ],
               if (onClose != null)

@@ -137,7 +137,7 @@ class TunnelTable extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        fontSize: AppTextSize.xs,
+        fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -247,7 +247,7 @@ class TunnelTable extends StatelessWidget {
                     isNgrok ? 'Ngrok' : 'Cloudflare',
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: AppTextSize.xs,
+                      fontSize: AppTextSize.xxs,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -278,7 +278,7 @@ class TunnelTable extends StatelessWidget {
                         : 'Port ${tunnel.targetPort}',
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: AppTextSize.xs,
+                      fontSize: AppTextSize.xxs,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -432,7 +432,7 @@ class TunnelTable extends StatelessWidget {
         label = 'Error';
         break;
     }
-    return StatusChip(type: type, label: label);
+    return StatusChip(type: type, label: label, fontSize: AppTextSize.xxxs);
   }
 
   Widget _buildPublicUrlCell(
@@ -453,7 +453,7 @@ class TunnelTable extends StatelessWidget {
           publicUrl,
           style: const TextStyle(
             color: AppColors.primary,
-            fontSize: AppTextSize.xs,
+            fontSize: AppTextSize.xxs,
             fontWeight: FontWeight.w500,
           ),
           maxLines: 1,
@@ -468,7 +468,7 @@ class TunnelTable extends StatelessWidget {
         'Connected (route set in provider dashboard)',
         style: TextStyle(
           color: AppColors.textSecondary,
-          fontSize: AppTextSize.xs,
+          fontSize: AppTextSize.xxs,
         ),
         overflow: TextOverflow.ellipsis,
       );
@@ -496,7 +496,7 @@ class TunnelTable extends StatelessWidget {
                 : 'Connecting...',
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: AppTextSize.xs,
+              fontSize: AppTextSize.xxs,
             ),
           ),
         ],
@@ -508,7 +508,7 @@ class TunnelTable extends StatelessWidget {
         session?.errorMessage ?? 'Connection error',
         style: const TextStyle(
           color: AppColors.error,
-          fontSize: AppTextSize.xs,
+          fontSize: AppTextSize.xxs,
         ),
         overflow: TextOverflow.ellipsis,
       );
@@ -516,7 +516,7 @@ class TunnelTable extends StatelessWidget {
 
     return const Text(
       'Not running',
-      style: TextStyle(color: AppColors.textMuted, fontSize: AppTextSize.xs),
+      style: TextStyle(color: AppColors.textMuted, fontSize: AppTextSize.xxs),
     );
   }
 }

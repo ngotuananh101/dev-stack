@@ -122,7 +122,7 @@ class CronTable extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        fontSize: AppTextSize.xs,
+        fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -223,7 +223,7 @@ class CronTable extends StatelessWidget {
                   job.schedule,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: AppTextSize.xs,
+                    fontSize: AppTextSize.xxs,
                     fontFamily: 'monospace',
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -232,7 +232,7 @@ class CronTable extends StatelessWidget {
                   description,
                   style: TextStyle(
                     color: valid ? AppColors.textMuted : AppColors.error,
-                    fontSize: AppTextSize.xs,
+                    fontSize: AppTextSize.xxs,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -250,7 +250,7 @@ class CronTable extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
+                fontSize: AppTextSize.xxs,
               ),
             ),
           ),
@@ -326,13 +326,13 @@ class CronTable extends StatelessWidget {
   Widget _buildStatusChip(CronJob job) {
     switch (job.lastStatus) {
       case 'running':
-        return const StatusChip(type: StatusType.restarting, label: 'Running');
+        return const StatusChip(type: StatusType.restarting, label: 'Running', fontSize: AppTextSize.xxxs);
       case 'success':
-        return const StatusChip(type: StatusType.stable, label: 'Success');
+        return const StatusChip(type: StatusType.stable, label: 'Success', fontSize: AppTextSize.xxxs);
       case 'failed':
-        return const StatusChip(type: StatusType.stopped, label: 'Failed');
+        return const StatusChip(type: StatusType.stopped, label: 'Failed', fontSize: AppTextSize.xxxs);
       default:
-        return const StatusChip(type: StatusType.warning, label: 'Never');
+        return const StatusChip(type: StatusType.warning, label: 'Never', fontSize: AppTextSize.xxxs);
     }
   }
 }

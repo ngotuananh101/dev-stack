@@ -297,9 +297,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                     onPressed: () =>
                         ref.read(appsProvider.notifier).openApp(mongoCompass),
                     icon: const Icon(LucideIcons.externalLink, size: 18),
-                    style: AppButtonStyle.primary,
-                    backgroundColor: AppColors.successStrong,
-                    textColor: AppColors.textOnColor,
+                    style: AppButtonStyle.success,
                   )
                 else
                   AppButton(
@@ -611,12 +609,13 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
     );
   }
 
-  /// An action button: solid in [color] with white text when a colour is
-  /// given, plain secondary otherwise.
+  /// An action button: outlined in the style matching [color] when a colour
+  /// is given, plain secondary otherwise.
   ///
-  /// The `*Strong` (700-step) tokens are the ones that clear WCAG AA under
-  /// white — the 500 steps sit near 2:1 — and `sm` keeps the row shorter than
-  /// the 36px search field beside it.
+  /// The `*Strong` (700-step) tokens map to the matching outline style, so
+  /// the button keeps its meaning — green for Add Key/Compass, amber for
+  /// HeidiSQL, pink for Sync DB — and `sm` keeps the row shorter than the
+  /// 36px search field beside it.
   Widget _buildActionButton(
     String label,
     IconData icon, {
@@ -627,9 +626,13 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       label: label,
       onPressed: onTap,
       icon: Icon(icon, size: 14),
-      style: color != null ? AppButtonStyle.primary : AppButtonStyle.secondary,
-      backgroundColor: color,
-      textColor: color != null ? AppColors.textOnColor : null,
+      style: color == AppColors.successStrong
+          ? AppButtonStyle.success
+          : color == AppColors.warningStrong
+              ? AppButtonStyle.warning
+              : color == AppColors.accentStrong
+                  ? AppButtonStyle.primary
+                  : AppButtonStyle.secondary,
     );
   }
 

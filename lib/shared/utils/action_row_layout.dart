@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import '../widgets/app_button.dart';
+
 /// Whether a row action shows a text label or only an icon.
 enum RowActionKind { button, icon }
 
@@ -25,11 +27,15 @@ class RowAction {
   /// spinner, and disables its menu item.
   final bool isLoading;
 
+  /// Outline style for a labelled button action; icon actions ignore it.
+  final AppButtonStyle style;
+
   const RowAction.button(
     this.label,
     this.onPressed, {
     this.icon,
     this.isLoading = false,
+    this.style = AppButtonStyle.primary,
   }) : kind = RowActionKind.button;
 
   const RowAction.icon(
@@ -37,6 +43,7 @@ class RowAction {
     this.onPressed, {
     this.icon,
     this.isLoading = false,
+    this.style = AppButtonStyle.primary,
   }) : kind = RowActionKind.icon;
 }
 

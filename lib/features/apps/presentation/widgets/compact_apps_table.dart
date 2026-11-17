@@ -159,7 +159,7 @@ class CompactAppsTable extends StatelessWidget {
       label,
       textAlign: alignment,
       style: const TextStyle(
-        fontSize: AppTextSize.xs,
+        fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -282,7 +282,7 @@ class CompactAppsTable extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: AppTextSize.xs,
+                    fontSize: AppTextSize.xxs,
                     color: AppColors.textPrimary,
                   ),
                 ),
@@ -360,7 +360,7 @@ class CompactAppsTable extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: AppTextSize.xs,
+                    fontSize: AppTextSize.xxs,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
                   ),
@@ -389,7 +389,7 @@ class CompactAppsTable extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: AppTextSize.xs,
+              fontSize: AppTextSize.xxs,
               color: AppColors.primary,
               fontWeight: FontWeight.w500,
             ),
@@ -419,7 +419,7 @@ class CompactAppsTable extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   style: const TextStyle(
-                    fontSize: AppTextSize.xs,
+                    fontSize: AppTextSize.xxs,
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,
                   ),
@@ -442,7 +442,7 @@ class CompactAppsTable extends StatelessWidget {
     } else {
       return const Text(
         'Not Installed',
-        style: TextStyle(fontSize: AppTextSize.xs, color: AppColors.textMuted),
+        style: TextStyle(fontSize: AppTextSize.xxs, color: AppColors.textMuted),
       );
     }
   }

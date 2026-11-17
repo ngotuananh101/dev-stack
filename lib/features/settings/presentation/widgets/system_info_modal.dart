@@ -141,8 +141,6 @@ class SystemInfoModal extends ConsumerWidget {
             label: 'Close',
             onPressed: () => Navigator.pop(context),
             style: AppButtonStyle.primary,
-            backgroundColor: AppColors.accentStrong,
-            textColor: AppColors.textOnColor,
           ),
         ],
       ),

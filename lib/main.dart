@@ -11,6 +11,7 @@ import 'core/config/app_config.dart';
 import 'core/database/isar_provider.dart';
 import 'core/services/window_api.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_radius.dart';
 
 import 'shared/providers/navigation_provider.dart';
 import 'shared/providers/sidebar_provider.dart';
@@ -89,7 +90,7 @@ void main(List<String> args) async {
       window.isWindowControlButtonsVisible = false;
     }
     window.title = title;
-    window.setSize(const Size(1080, 720).toNative(), false);
+    window.setSize(const Size(1024, 640).toNative(), false);
     window.minimumSize = const Size(720, 520).toNative();
     window.backgroundColor = Colors.transparent.toNative();
     window.center();
@@ -165,7 +166,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     // Initialize SSL Root CA if not already installed
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Startup never installs anything privileged on its own: the service
-      // asks through this callback, and a "no" is remembered so the question
+      // asks through this callback, and a \"no\" is remembered so the question
       // does not come back on every launch.
       //
       // Deliberately not awaited: this can wait on a dialog, and the tunnels,
@@ -273,7 +274,15 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 return Row(
                   children: [
                     const Sidebar(),
-                    Expanded(child: _buildPage(currentTab)),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(AppRadius.md),
+                          bottomLeft: Radius.circular(AppRadius.md),
+                        ),
+                        child: _buildPage(currentTab),
+                      ),
+                    ),
                   ],
                 );
               },

@@ -10,22 +10,20 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: AppColors.background,
+      scaffoldBackgroundColor: AppColors.shellBackground,
       colorScheme: const ColorScheme.dark(
-        // The 500 steps read as accents; solid fills that carry white text use
-        // the `*Strong` (600) tokens below instead.
         primary: AppColors.primary,
         secondary: AppColors.secondary,
         surface: AppColors.surface,
         error: AppColors.error,
         // Material derives `ThemeData.dividerColor` from `outline` when it is
-        // not given one, and falls back from there to `onBackground` — which
-        // `ColorScheme.dark` defaults to pure white. window_manager's
-        // VirtualWindowFrame paints the window's own border with
-        // `dividerColor`, so leaving it unset drew a 1px white outline around
-        // the window.
-        outline: AppColors.border,
-        outlineVariant: AppColors.border,
+        // not given one, and window_manager's VirtualWindowFrame paints the
+        // window's own border with `dividerColor`. The border token is
+        // visible again (dialogs, tables, inputs), so `outline` stays
+        // transparent here to keep the window frame borderless; dividers
+        // and inputs read the token directly instead.
+        outline: Colors.transparent,
+        outlineVariant: Colors.transparent,
         onPrimary: AppColors.textOnColor,
         onSecondary: AppColors.textOnColor,
         onSurface: AppColors.textPrimary,
@@ -33,21 +31,40 @@ class AppTheme {
       // google_fonts 9 speaks `material_ui`'s `TextTheme`; the bridge hands the
       // styles back in the type `package:flutter/material.dart` builds with.
       //
-      // Every body and label role is pinned to [AppTextSize.xs]. A `Text` that
-      // names no size of its own inherits one of these, so leaving them at
-      // Material's 14/16 made half the app a step larger than the 12px cells
-      // and buttons beside it. The display and headline roles keep their
-      // Material sizes: no page or modal title is built from them.
+      // UI reset (2026-11-17): every text role reads at [AppTextSize.xs] (12).
+      // Page headers are the one exception at [AppTextSize.sm] (14) and are
+      // set where the page is built, not here. Roles left null would be
+      // filled in by GoogleFonts/Material at their own large sizes, so the
+      // display and headline roles are pinned to 12 here too.
       textTheme: toFlutterTextTheme(
         GoogleFonts.interTextTheme(
           toMaterialUiTextTheme(
             TextTheme(
+              displayLarge: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
+              ),
+              displayMedium: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
+              ),
+              displaySmall: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
+              ),
               headlineLarge: const TextStyle(
                 color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
                 fontWeight: FontWeight.bold,
               ),
               headlineMedium: const TextStyle(
                 color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
+                fontWeight: FontWeight.bold,
+              ),
+              headlineSmall: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTextSize.xs,
                 fontWeight: FontWeight.bold,
               ),
               bodyLarge: const TextStyle(
@@ -91,12 +108,12 @@ class AppTheme {
         ),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.shellBackground,
         elevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: AppColors.textPrimary,
-          fontSize: AppTextSize.lg,
+          fontSize: AppTextSize.sm,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -106,6 +123,22 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
           side: const BorderSide(color: AppColors.border),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: BorderSide(color: AppColors.border),
+        ),
+        titleTextStyle: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: AppTextSize.xs,
+          fontWeight: FontWeight.bold,
+        ),
+        contentTextStyle: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: AppTextSize.xs,
         ),
       ),
       dividerTheme: const DividerThemeData(
@@ -144,14 +177,15 @@ class AppTheme {
         ),
         errorStyle: const TextStyle(
           color: AppColors.error,
-          fontSize: AppTextSize.xxs,
+          fontSize: AppTextSize.xs,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
-          backgroundColor: AppColors.primaryStrong,
-          foregroundColor: AppColors.textOnColor,
+          backgroundColor: Colors.transparent,
+          foregroundColor: AppColors.primary,
+          side: const BorderSide(color: AppColors.primary),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.sm),
           ),
@@ -183,8 +217,9 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primaryStrong,
-          foregroundColor: AppColors.textOnColor,
+          backgroundColor: Colors.transparent,
+          foregroundColor: AppColors.primary,
+          side: const BorderSide(color: AppColors.primary),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.sm),
           ),

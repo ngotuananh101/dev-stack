@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/utils/action_row_layout.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/row_action_menu.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/supervisor_program.dart';
@@ -120,7 +121,7 @@ class SupervisorTable extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        fontSize: AppTextSize.xs,
+        fontSize: AppTextSize.xxs,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
         letterSpacing: 0.5,
@@ -249,7 +250,7 @@ class SupervisorTable extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
+                fontSize: AppTextSize.xxs,
               ),
             ),
           ),
@@ -260,7 +261,7 @@ class SupervisorTable extends StatelessWidget {
               program.command,
               style: const TextStyle(
                 color: AppColors.textMuted,
-                fontSize: AppTextSize.xs,
+                fontSize: AppTextSize.xxs,
                 fontFamily: 'monospace',
               ),
               overflow: TextOverflow.ellipsis,
@@ -303,12 +304,16 @@ class SupervisorTable extends StatelessWidget {
             ? () => onStop(program.id)
             : _maybeOnPressed(isTransitioning, () => onStart(program)),
         icon: isRunning ? LucideIcons.square : LucideIcons.play,
+        style: isRunning ? AppButtonStyle.danger : AppButtonStyle.primary,
       ),
-      RowAction.icon(
-        'Restart',
-        isRunning ? () => onRestart(program) : null,
-        icon: LucideIcons.rotateCw,
-      ),
+      // Restart only exists while running: a disabled placeholder would sit
+      // in every stopped row.
+      if (isRunning)
+        RowAction.icon(
+          'Restart',
+          () => onRestart(program),
+          icon: LucideIcons.rotateCw,
+        ),
       RowAction.icon(
         'View Logs',
         () => onViewLogs(program),
@@ -352,6 +357,6 @@ class SupervisorTable extends StatelessWidget {
         label = 'Fatal';
         break;
     }
-    return StatusChip(type: type, label: label);
+    return StatusChip(type: type, label: label, fontSize: AppTextSize.xxxs);
   }
 }

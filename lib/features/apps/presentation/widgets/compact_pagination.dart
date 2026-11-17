@@ -100,7 +100,7 @@ class CompactPagination extends StatelessWidget {
       width: 28,
       height: 28,
       decoration: BoxDecoration(
-        color: isSelected ? AppColors.primary : Colors.transparent,
+        color: Colors.transparent,
         border: Border.all(
           color: isSelected ? AppColors.primary : AppColors.border,
         ),
@@ -117,7 +117,7 @@ class CompactPagination extends StatelessWidget {
           '$page',
           style: TextStyle(
             fontSize: AppTextSize.xs,
-            color: isSelected ? AppColors.textOnColor : AppColors.textSecondary,
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
           ),
         ),
       ),
