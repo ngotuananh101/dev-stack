@@ -43,6 +43,16 @@ class TerminalLogView extends StatefulWidget {
   final bool isModal;
   final String emptyMessage;
 
+  /// When false, the header row (title + actions) is not rendered. The
+  /// Logs page uses this: auto-scroll and copy live in the page header
+  /// instead, so the viewer is just the log list.
+  final bool showHeader;
+
+  /// Controlled auto-scroll state. When [onAutoScrollChanged] is given,
+  /// the page owns the flag; otherwise the viewer keeps its own state.
+  final bool autoScroll;
+  final ValueChanged<bool>? onAutoScrollChanged;
+
   /// Maximum characters rendered per row. Longer lines are truncated; the
   /// copy action still uses the complete text.
   static const int maxRenderedLineLength = 4000;
@@ -60,6 +70,9 @@ class TerminalLogView extends StatefulWidget {
     this.statusWidget,
     this.isModal = true,
     this.emptyMessage = 'No logs available yet.',
+    this.showHeader = true,
+    this.autoScroll = true,
+    this.onAutoScrollChanged,
   });
 
   @override
@@ -68,7 +81,23 @@ class TerminalLogView extends StatefulWidget {
 
 class _TerminalLogViewState extends State<TerminalLogView> {
   final ScrollController _scrollController = ScrollController();
-  bool _autoScroll = true;
+  bool _autoScrollInternal = true;
+
+  /// Controlled when the caller passes [TerminalLogView.onAutoScrollChanged];
+  /// otherwise the viewer owns the flag.
+  bool get _autoScroll => widget.onAutoScrollChanged != null
+      ? widget.autoScroll
+      : _autoScrollInternal;
+
+  void _toggleAutoScroll() {
+    final next = !_autoScroll;
+    if (widget.onAutoScrollChanged != null) {
+      widget.onAutoScrollChanged!(next);
+    } else {
+      setState(() => _autoScrollInternal = next);
+    }
+    if (next) _scrollToTail();
+  }
 
   double get _tailOffset => 0; // `reverse: true` puts the tail at offset 0.
 
@@ -82,6 +111,11 @@ class _TerminalLogViewState extends State<TerminalLogView> {
     if (_autoScroll && changed) {
       // Cheap and idempotent in a reversed list: no maxScrollExtent lookup,
       // so this never forces a full layout of the list.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToTail());
+    }
+    // Controlled auto-scroll turned back on (e.g. from the Logs page
+    // header): jump to the tail even if no new line arrived.
+    if (widget.autoScroll && !oldWidget.autoScroll) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToTail());
     }
   }
@@ -109,7 +143,7 @@ class _TerminalLogViewState extends State<TerminalLogView> {
   Widget build(BuildContext context) {
     final body = Column(
       children: [
-        _buildHeader(),
+        if (widget.showHeader) _buildHeader(),
         Expanded(child: _buildLogContent()),
       ],
     );
@@ -147,10 +181,7 @@ class _TerminalLogViewState extends State<TerminalLogView> {
               ? LucideIcons.arrowDownCircle
               : LucideIcons.pauseCircle,
           tooltip: _autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF',
-          onPressed: () {
-            setState(() => _autoScroll = !_autoScroll);
-            if (_autoScroll) _scrollToTail();
-          },
+          onPressed: _toggleAutoScroll,
           color: _autoScroll ? AppColors.success : AppColors.textMuted,
         ),
         if (widget.onClear != null)

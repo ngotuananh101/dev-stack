@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:path/path.dart' as p;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_size.dart';
@@ -9,6 +10,7 @@ import '../../../core/config/app_config.dart';
 import '../../../shared/utils/app_dialogs.dart';
 import '../../../shared/utils/log_tail_reader.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_icon_button.dart';
 import '../../../shared/widgets/terminal_log_view.dart';
 import '../../apps/data/apps_provider.dart';
 import '../../apps/domain/app_model.dart';
@@ -47,6 +49,7 @@ class LogsPage extends ConsumerStatefulWidget {
 class _LogsPageState extends ConsumerState<LogsPage> {
   String? _selectedId; // Can be appId (service) or filePath (file)
   bool _isService = true;
+  bool _autoScroll = true;
 
   /// Re-reads both the directory listing and the open file. Invalidating only
   /// the listing (the old behaviour) left the visible file frozen on its first
@@ -388,6 +391,26 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                             style: AppButtonStyle.danger,
                           ),
                         ],
+                        AppIconButton(
+                          icon: _autoScroll
+                              ? LucideIcons.arrowDownCircle
+                              : LucideIcons.pauseCircle,
+                          tooltip: _autoScroll
+                              ? 'Auto-scroll ON'
+                              : 'Auto-scroll OFF',
+                          onPressed: () =>
+                              setState(() => _autoScroll = !_autoScroll),
+                          color: _autoScroll
+                              ? AppColors.success
+                              : AppColors.textMuted,
+                          size: AppIconButtonSize.md,
+                        ),
+                        AppIconButton(
+                          icon: Icons.copy,
+                          tooltip: 'Copy all',
+                          onPressed: () => _copyToClipboard(currentLogs),
+                          size: AppIconButtonSize.md,
+                        ),
                       ],
                     ),
                   ],
@@ -399,6 +422,10 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                   title: currentTitle,
                   lines: currentLogs,
                   isModal: false,
+                  showHeader: false,
+                  autoScroll: _autoScroll,
+                  onAutoScrollChanged: (value) =>
+                      setState(() => _autoScroll = value),
                   statusWidget: truncated
                       ? const Text(
                           'showing the tail of the file',
