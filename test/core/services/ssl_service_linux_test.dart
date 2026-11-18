@@ -223,7 +223,7 @@ void main() {
       for (final manager in ['dnf', 'apt-get', 'pacman', 'apk', 'zypper']) {
         final args = SslService.packageInstallArgs(
           manager,
-          'nss-tools',
+          ['nss-tools'],
           assumeYes: true,
         );
         expect(args, contains('nss-tools'), reason: manager);
@@ -242,6 +242,18 @@ void main() {
               '$manager must not wait for a confirmation prompt (got $args)',
         );
       }
+    });
+
+    test('the install command lists every package after the flag', () {
+      final args = SslService.packageInstallArgs(
+        'dnf',
+        ['openssl-devel', 'readline-devel'],
+        assumeYes: true,
+      );
+      expect(
+        args,
+        equals(['install', '-y', 'openssl-devel', 'readline-devel']),
+      );
     });
   });
 

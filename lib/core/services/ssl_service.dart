@@ -308,30 +308,30 @@ class SslService extends _$SslService {
     }
   }
 
-  /// The argv that installs [packageName] with [packageManager]. `--assume-yes`
-  /// / `-y` is what keeps the install from stopping on a prompt that nothing
-  /// can answer.
+  /// The argv that installs [packageNames] with [packageManager].
+  /// `--assume-yes` / `-y` is what keeps the install from stopping on a
+  /// prompt that nothing can answer.
   @visibleForTesting
   static List<String> packageInstallArgs(
     String packageManager,
-    String packageName, {
+    List<String> packageNames, {
     bool assumeYes = true,
   }) {
     switch (packageManager) {
       case 'dnf':
-        return ['install', if (assumeYes) '-y', packageName];
+        return ['install', if (assumeYes) '-y', ...packageNames];
       case 'apt-get':
-        return ['install', if (assumeYes) '-y', packageName];
+        return ['install', if (assumeYes) '-y', ...packageNames];
       case 'pacman':
-        return ['-S', if (assumeYes) '--noconfirm', packageName];
+        return ['-S', if (assumeYes) '--noconfirm', ...packageNames];
       case 'apk':
-        return ['add', packageName];
+        return ['add', ...packageNames];
       case 'zypper':
         return [
           '--non-interactive',
           'install',
           if (assumeYes) '-y',
-          packageName,
+          ...packageNames,
         ];
       default:
         return const [];
@@ -374,7 +374,7 @@ class SslService extends _$SslService {
   ///
   /// [command] is the real command line, not a description: the prompt exists
   /// so they can see what is about to run with administrator rights.
-  static String _describeCommand(String executable, List<String> arguments) {
+  static String describeCommand(String executable, List<String> arguments) {
     String quote(String value) => RegExp(r'[\s"$`\\]').hasMatch(value)
         ? '"${value.replaceAll(r'\', r'\\').replaceAll('"', r'\"').replaceAll(r'$', r'\$').replaceAll('`', r'\`')}"'
         : value;
@@ -686,7 +686,7 @@ class SslService extends _$SslService {
 
   SslInstallPrompt _rootCaPrompt(String executable, List<String> arguments) {
     return SslInstallPrompt(
-      command: _describeCommand(executable, arguments),
+      command: describeCommand(executable, arguments),
       title: 'Trust Ponta\'s certificate?',
       message:
           'Ponta uses a local certificate authority so your .test sites load '
@@ -761,7 +761,7 @@ class SslService extends _$SslService {
     final refreshArgs = packageRefreshArgs(package.packageManager);
     final installArgs = packageInstallArgs(
       package.packageManager,
-      package.packageName,
+      [package.packageName],
     );
     final prompt = SslInstallPrompt(
       title: 'Install certificate support?',
@@ -769,7 +769,7 @@ class SslService extends _$SslService {
           'Firefox and Chrome need the "${package.packageName}" package to '
           'trust Ponta\'s certificate. Without it those browsers will warn '
           'about every local site. This installs the package system-wide.',
-      command: _describeCommand(package.packageManager, installArgs),
+      command: describeCommand(package.packageManager, installArgs),
     );
 
     final allowed = await askPermission(prompt);
