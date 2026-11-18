@@ -100,8 +100,8 @@ class CronPage extends ConsumerWidget {
               Text(
                 'Run commands on a schedule while DevStack is open',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: AppTextSize.xs,
+                  color: AppColors.textDimmed,
+                  fontSize: AppTextSize.xxs,
                 ),
               ),
             ],

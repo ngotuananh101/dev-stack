@@ -78,8 +78,8 @@ class SupervisorPage extends ConsumerWidget {
               Text(
                 'Keep long-running processes alive with automatic restarts',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: AppTextSize.xs,
+                  color: AppColors.textDimmed,
+                  fontSize: AppTextSize.xxs,
                 ),
               ),
             ],

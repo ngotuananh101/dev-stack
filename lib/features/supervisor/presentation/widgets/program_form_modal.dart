@@ -160,8 +160,8 @@ class _ProgramFormModalState extends ConsumerState<ProgramFormModal> {
     child: Text(
       text,
       style: const TextStyle(
-        color: AppColors.textMuted,
-        fontSize: AppTextSize.xs,
+        color: AppColors.textDimmed,
+        fontSize: AppTextSize.xxs,
       ),
     ),
   );
@@ -197,8 +197,8 @@ class _ProgramFormModalState extends ConsumerState<ProgramFormModal> {
                 Text(
                   subtitle,
                   style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: AppTextSize.xs,
+                    color: AppColors.textDimmed,
+                    fontSize: AppTextSize.xxs,
                   ),
                 ),
               ],

@@ -28,6 +28,10 @@ class AppColors {
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xFFFFFFFF);
   static const Color textMuted = Color(0xFFFFFFFF);
+  // Subtitles and descriptions under a title (2026-11-18): white at 60%,
+  // so they read as secondary to the title above them. Used with
+  // AppTextSize.xxs (10).
+  static const Color textDimmed = Color(0x99FFFFFF); // white, 60%
   // Text drawn on a saturated fill (primary, accent, success, error).
   static const Color textOnColor = Color(0xFFFFFFFF);
 

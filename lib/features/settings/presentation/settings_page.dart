@@ -481,8 +481,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         Text(
           'Manage your local development preferences and system behavior',
           style: TextStyle(
-            fontSize: AppTextSize.xs,
-            color: AppColors.textSecondary,
+            fontSize: AppTextSize.xxs,
+            color: AppColors.textDimmed,
           ),
         ),
       ],
@@ -554,8 +554,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Text(
                 subtitle,
                 style: const TextStyle(
-                  fontSize: AppTextSize.xs,
-                  color: AppColors.textSecondary,
+                  fontSize: AppTextSize.xxs,
+                  color: AppColors.textDimmed,
                 ),
               ),
             ],
@@ -599,8 +599,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Text(
                 subtitle,
                 style: const TextStyle(
-                  fontSize: AppTextSize.xs,
-                  color: AppColors.textSecondary,
+                  fontSize: AppTextSize.xxs,
+                  color: AppColors.textDimmed,
                 ),
               ),
             ],
@@ -676,8 +676,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Text(
                 subtitle,
                 style: const TextStyle(
-                  fontSize: AppTextSize.xs,
-                  color: AppColors.textSecondary,
+                  fontSize: AppTextSize.xxs,
+                  color: AppColors.textDimmed,
                 ),
               ),
             ],
@@ -720,8 +720,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      fontSize: AppTextSize.xs,
-                      color: AppColors.textSecondary,
+                      fontSize: AppTextSize.xxs,
+                      color: AppColors.textDimmed,
                     ),
                   ),
                 ],
@@ -870,8 +870,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: AppTextSize.xs,
+                      color: AppColors.textDimmed,
+                      fontSize: AppTextSize.xxs,
                     ),
                   ),
                 ],
@@ -910,8 +910,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      fontSize: AppTextSize.xs,
-                      color: AppColors.textSecondary,
+                      fontSize: AppTextSize.xxs,
+                      color: AppColors.textDimmed,
                     ),
                   ),
                 ],
@@ -949,8 +949,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Text(
                 subtitle,
                 style: const TextStyle(
-                  fontSize: AppTextSize.xs,
-                  color: AppColors.textSecondary,
+                  fontSize: AppTextSize.xxs,
+                  color: AppColors.textDimmed,
                 ),
               ),
             ],

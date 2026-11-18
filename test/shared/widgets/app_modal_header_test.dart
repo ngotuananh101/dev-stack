@@ -47,8 +47,8 @@ void main() {
         );
         expect(subtitleFinder, findsOneWidget);
         final subtitleWidget = tester.widget<Text>(subtitleFinder);
-        expect(subtitleWidget.style?.fontSize, AppTextSize.xs);
-        expect(subtitleWidget.style?.color, AppColors.textMuted);
+        expect(subtitleWidget.style?.fontSize, AppTextSize.xxs);
+        expect(subtitleWidget.style?.color, AppColors.textDimmed);
 
         // Verify Padding
         final paddingFinder = find.byWidgetPredicate(

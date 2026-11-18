@@ -58,8 +58,8 @@ class AppModalHeader extends StatelessWidget {
     ).merge(titleStyle);
 
     final effectiveSubtitleStyle = const TextStyle(
-      fontSize: AppTextSize.xs,
-      color: AppColors.textMuted,
+      fontSize: AppTextSize.xxs,
+      color: AppColors.textDimmed,
     ).merge(subtitleStyle);
 
     return Column(
