@@ -27,6 +27,7 @@ part 'window_service.g.dart';
 @Riverpod(keepAlive: true)
 class WindowService extends _$WindowService {
   Timer? _updateTimer;
+  Timer? _deferredFrameTimer;
   TrayIcon? _trayIcon;
   Image? _trayIconImage;
   ListenerId? _trayListenerId;
@@ -52,6 +53,8 @@ class WindowService extends _$WindowService {
 
     ref.onDispose(() {
       _updateTimer?.cancel();
+      _deferredFrameTimer?.cancel();
+      _deferredFrameTimer = null;
 
       final windowListenerId = _windowListenerId;
       if (windowListenerId != null) {
@@ -245,6 +248,19 @@ class WindowService extends _$WindowService {
     // Dart-initiated show (tray click, tray menu, restore after a
     // --minimized launch).
     SchedulerBinding.instance.scheduleFrame();
+    AppLogger.info('Tray restore: window shown, immediate frame requested');
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      AppLogger.info('Tray restore: frame ran after show');
+    });
+    // The immediate request alone proved not enough (26c3ed0): the frame
+    // can fire before the Wayland surface is configured and get dropped,
+    // with nothing scheduling another. One deferred request, 250ms later,
+    // lands after the surface exists.
+    _deferredFrameTimer?.cancel();
+    _deferredFrameTimer = Timer(const Duration(milliseconds: 250), () {
+      SchedulerBinding.instance.scheduleFrame();
+      AppLogger.info('Tray restore: deferred frame requested after 250ms');
+    });
   }
 
   /// Closes the window for good, past the tray preference.
