@@ -9,6 +9,7 @@ import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:dev_stack/shared/widgets/app_button.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_model.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_session.dart';
+import 'package:dev_stack/features/tunnels/data/tunnel_downloader_service.dart';
 import 'package:dev_stack/features/tunnels/data/tunnels_provider.dart';
 import 'package:dev_stack/features/tunnels/presentation/widgets/create_tunnel_modal.dart';
 import 'package:dev_stack/features/tunnels/presentation/widgets/tunnel_logs_modal.dart';
@@ -23,10 +24,22 @@ class TunnelsPage extends ConsumerStatefulWidget {
 }
 
 class _TunnelsPageState extends ConsumerState<TunnelsPage> {
+  final Set<String> _updating = {};
   @override
   Widget build(BuildContext context) {
     final tunnelsAsync = ref.watch(tunnelsStreamProvider);
     final sessions = ref.watch(tunnelSessionsProvider);
+
+    bool isProviderBusy(String provider) =>
+        (tunnelsAsync.value ?? const <TunnelModel>[]).any(
+          (tunnel) =>
+              tunnel.provider.toLowerCase() == provider &&
+              const {
+                TunnelStatus.downloadingBinary,
+                TunnelStatus.connecting,
+                TunnelStatus.running,
+              }.contains(sessions[tunnel.id]?.status),
+        );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -35,7 +48,10 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
+            _buildHeader(
+              isCloudflaredBusy: isProviderBusy('cloudflare'),
+              isNgrokBusy: isProviderBusy('ngrok'),
+            ),
             const SizedBox(height: 24),
             Expanded(
               child: tunnelsAsync.when(
@@ -68,7 +84,10 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader({
+    required bool isCloudflaredBusy,
+    required bool isNgrokBusy,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -97,6 +116,22 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
         ),
         const SizedBox(width: 16),
         AppButton(
+          label: 'Update cloudflared',
+          icon: const Icon(LucideIcons.download, size: 16),
+          style: AppButtonStyle.success,
+          isLoading: _updating.contains('cloudflare'),
+          onPressed: () => _updateBinary('cloudflare', isCloudflaredBusy),
+        ),
+        const SizedBox(width: 8),
+        AppButton(
+          label: 'Update ngrok',
+          icon: const Icon(LucideIcons.download, size: 16),
+          style: AppButtonStyle.success,
+          isLoading: _updating.contains('ngrok'),
+          onPressed: () => _updateBinary('ngrok', isNgrokBusy),
+        ),
+        const SizedBox(width: 8),
+        AppButton(
           label: 'New Tunnel',
           icon: const Icon(LucideIcons.plus, size: 16),
           style: AppButtonStyle.success,
@@ -112,6 +147,39 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
       barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => const Center(child: CreateTunnelModal()),
     );
+  }
+
+  Future<void> _updateBinary(String provider, bool isBusy) async {
+    final displayName = provider == 'cloudflare' ? 'Cloudflare' : 'ngrok';
+    final binaryName = provider == 'cloudflare' ? 'cloudflared' : 'ngrok';
+    if (isBusy) {
+      AppDialogs.showInfoToast(
+        context,
+        'Stop the running $displayName tunnel first, then update.',
+      );
+      return;
+    }
+    if (_updating.contains(provider)) return;
+    setState(() => _updating.add(provider));
+    try {
+      await ref
+          .read(tunnelDownloaderServiceProvider)
+          .downloadBinary(provider);
+      if (!mounted) return;
+      AppDialogs.showToast(
+        context,
+        '$binaryName updated to the latest version',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      await AppDialogs.showErrorFrom(
+        context,
+        e,
+        title: 'Could not update $binaryName',
+      );
+    } finally {
+      if (mounted) setState(() => _updating.remove(provider));
+    }
   }
 
   void _start(TunnelModel tunnel) {
