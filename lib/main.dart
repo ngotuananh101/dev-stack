@@ -56,7 +56,7 @@ import 'features/apps/data/app_installer_service.dart';
 import 'features/settings/domain/app_settings.dart';
 import 'package:dev_stack/core/services/log_service.dart';
 
-void main(List<String> args) async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (Platform.isLinux) {
