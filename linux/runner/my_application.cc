@@ -148,7 +148,16 @@ static void my_application_activate(GApplication* application) {
     }
   }
 
-  gtk_window_set_default_size(window, 1200, 800);
+  // The window opens at its final size, centered, and never smaller than the
+  // minimum: Dart no longer resizes, centers, or shows it (see the comment in
+  // `lib/main.dart`), so the runner has to create it right, or the first frame
+  // is drawn for the wrong size and the window opens blank until a resize.
+  gtk_window_set_default_size(window, 1024, 640);
+  gtk_window_set_position(window, GTK_WIN_POS_CENTER);
+  GdkGeometry geometry = {};
+  geometry.min_width = 720;
+  geometry.min_height = 520;
+  gtk_window_set_geometry_hints(window, nullptr, &geometry, GDK_HINT_MIN_SIZE);
 
   // Rounded corners need the window to be translucent. A GTK window without the
   // screen's RGBA visual composites over an opaque black, so the pixels Flutter
