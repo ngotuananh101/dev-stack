@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../../core/services/pyenv_build_deps.dart';
+import '../../../../core/services/ssl_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
@@ -307,6 +309,30 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
   Future<void> _install(String version) async {
     setState(() => _installingVersion = version);
     try {
+      final depsOk = await PyenvBuildDeps().ensureBeforeInstall(
+        askPermission: (prompt) => AppDialogs.showPermissionRequest(
+          context,
+          title: prompt.title,
+          message: prompt.message,
+          command: prompt.command,
+        ),
+        onProgress: (progress) {
+          if (!mounted) return;
+          switch (progress.status) {
+            case InstallStatus.succeeded:
+              AppDialogs.showToast(context, progress.message);
+            case InstallStatus.failed:
+              AppDialogs.showError(
+                context,
+                title: 'Could not install build libraries',
+                message: progress.message,
+              );
+            case InstallStatus.starting:
+              break;
+          }
+        },
+      );
+      if (!depsOk) return;
       await ref.read(pyenvProvider.notifier).installVersion(version);
       if (mounted) {
         AppDialogs.showToast(context, 'Python $version installed successfully');
