@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter/scheduler.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 // window_manager 0.6 re-exports nativeapi's windowing API; the tray and window
 // types here all come from nativeapi, so this file names its source directly
@@ -237,6 +238,13 @@ class WindowService extends _$WindowService {
     if (window.isMinimized) window.restore();
     window.show();
     window.focus();
+    // A hidden window's surface is gone on Wayland: showing it without
+    // asking for a new frame leaves the runner's #020617 background
+    // showing through the transparent view until something else (e.g.
+    // a resize) forces a frame. Requesting one here covers every
+    // Dart-initiated show (tray click, tray menu, restore after a
+    // --minimized launch).
+    SchedulerBinding.instance.scheduleFrame();
   }
 
   /// Closes the window for good, past the tray preference.
