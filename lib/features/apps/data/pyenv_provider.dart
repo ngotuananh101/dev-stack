@@ -253,6 +253,22 @@ class Pyenv extends _$Pyenv {
     return [];
   }
 
+  /// Last [maxLines] non-empty trailing lines of [text], for error
+  /// reports. pyenv failures are long (a full build log), so only the tail
+  /// -- where the "BUILD FAILED" banner, the log path and the check error
+  /// live -- is kept.
+  static String _tailLines(String text, int maxLines) {
+    final lines = text
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    final tail = lines.length > maxLines
+        ? lines.sublist(lines.length - maxLines)
+        : lines;
+    return tail.join('\n');
+  }
+
   Future<void> installVersion(String version, {Function(String)? onLog}) async {
     final pyenvPath = await _getPyenvPath();
     final env = await _getEnvironment();
@@ -265,8 +281,31 @@ class Pyenv extends _$Pyenv {
       version,
     ], environment: env);
     if (result.exitCode != 0) {
-      onLog?.call('Error: ${result.stderr}');
-      throw Exception('Failed to install Python $version');
+      // pyenv splits the failure across both streams: the "BUILD FAILED"
+      // banner and the python-build log path go to stdout, while the
+      // post-install check error (e.g. a missing ssl extension) goes to
+      // stderr. Keep the tail of both so the real reason is visible.
+      final stdoutSummary = _tailLines(result.stdout.toString(), 4);
+      final stderrSummary = _tailLines(result.stderr.toString(), 4);
+      final summary = [
+        if (stderrSummary.isNotEmpty) stderrSummary,
+        if (stdoutSummary.isNotEmpty) stdoutSummary,
+      ].join('\n');
+      final stdoutTail = _tailLines(result.stdout.toString(), 20);
+      final stderrTail = _tailLines(result.stderr.toString(), 20);
+      final detail = [
+        if (stdoutTail.isNotEmpty) '--- pyenv output ---\n$stdoutTail',
+        if (stderrTail.isNotEmpty) '--- pyenv error ---\n$stderrTail',
+      ].join('\n');
+      final message = summary.isEmpty
+          ? 'Failed to install Python $version (exit code ${result.exitCode})'
+          : 'Failed to install Python $version (exit code ${result.exitCode}):\n$summary';
+      onLog?.call('Error: ${detail.isEmpty ? message : detail}');
+      AppLogger.error(
+        'pyenv install $version failed: $message'
+        '${detail.isEmpty ? '' : '\n$detail'}',
+      );
+      throw Exception(message);
     }
 
     onLog?.call('Successfully installed Python $version');

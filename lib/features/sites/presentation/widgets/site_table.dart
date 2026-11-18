@@ -17,6 +17,7 @@ import 'site_logs_modal.dart';
 import 'site_tunnel_dialog.dart';
 import '../../../../shared/utils/action_row_layout.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/row_action_menu.dart';
 
 class SiteTable extends ConsumerWidget {
@@ -182,32 +183,34 @@ class SiteTable extends ConsumerWidget {
           } else {
             await cliManager.startSite(site);
           }
-        }, icon: isRunning ? LucideIcons.square : LucideIcons.play),
+        }, icon: isRunning ? LucideIcons.square : LucideIcons.play, style: isRunning ? AppButtonStyle.danger : AppButtonStyle.primary),
         RowAction.icon(
           isRunning ? 'Restart' : 'Not running',
           isRunning ? () => cliManager.restartSite(site) : null,
           icon: LucideIcons.rotateCw,
+          style: AppButtonStyle.warning,
         ),
         RowAction.icon('Logs', () {
           showDialog(
             context: ref.context,
             builder: (context) => SiteLogsModal(site: site),
           );
-        }, icon: LucideIcons.scrollText),
+        }, icon: LucideIcons.scrollText, style: AppButtonStyle.secondary),
       ],
       if (site.siteType == 'php')
         RowAction.icon(
           'Open Terminal',
           () => _openTerminal(site, ref),
           icon: LucideIcons.terminal,
+          style: AppButtonStyle.success,
         ),
       RowAction.icon('Share / Tunnel', () {
         showDialog(
           context: ref.context,
           builder: (context) => SiteTunnelDialog(site: site),
         );
-      }, icon: LucideIcons.radio),
-      RowAction.icon('Config', () => onEdit(site), icon: LucideIcons.settings),
+      }, icon: LucideIcons.radio, style: AppButtonStyle.success),
+      RowAction.icon('Config', () => onEdit(site), icon: LucideIcons.settings, style: AppButtonStyle.secondary),
       RowAction.icon('Delete', () {
         AppDialogs.showConfirm(
           context: ref.context,
@@ -219,7 +222,7 @@ class SiteTable extends ConsumerWidget {
             ref.read(sitesProvider.notifier).deleteSite(site.id);
           },
         );
-      }, icon: Icons.delete_outline_rounded),
+      }, icon: Icons.delete_outline_rounded, style: AppButtonStyle.danger),
     ];
   }
 

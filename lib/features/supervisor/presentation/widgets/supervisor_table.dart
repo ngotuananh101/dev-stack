@@ -313,17 +313,20 @@ class SupervisorTable extends StatelessWidget {
           'Restart',
           () => onRestart(program),
           icon: LucideIcons.rotateCw,
+          style: AppButtonStyle.warning,
         ),
       RowAction.icon(
         'View Logs',
         () => onViewLogs(program),
         icon: LucideIcons.list,
+        style: AppButtonStyle.secondary,
       ),
-      RowAction.icon('Edit', () => onEdit(program), icon: LucideIcons.edit),
+      RowAction.icon('Edit', () => onEdit(program), icon: LucideIcons.edit, style: AppButtonStyle.secondary),
       RowAction.icon(
         'Delete',
         () => onDelete(program),
         icon: LucideIcons.trash2,
+        style: AppButtonStyle.danger,
       ),
     ];
   }

@@ -287,7 +287,7 @@ class _PyenvManageModalState extends ConsumerState<PyenvManageModal> {
                       icon: Icons.download,
                       onPressed: () => _install(version),
                       tooltip: 'Install',
-                      color: AppColors.primary,
+                      color: AppColors.success,
                     )
                   else
                     const Padding(

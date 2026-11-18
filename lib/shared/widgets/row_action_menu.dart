@@ -95,6 +95,7 @@ class RowActionMenu extends StatelessWidget {
         icon: action.icon ?? LucideIcons.circle,
         onPressed: action.isLoading ? null : action.onPressed,
         tooltip: action.label,
+        color: _styleColor(action.style),
       ),
       RowActionKind.button => AppButton(
         label: action.label,
@@ -104,6 +105,28 @@ class RowActionMenu extends StatelessWidget {
         style: action.style,
       ),
     };
+  }
+
+  /// Icon colour for an action's style. `null` keeps AppIconButton's
+  /// default (white); the overflow menu falls back to textSecondary.
+  static Color? _styleColor(AppButtonStyle style) {
+    return switch (style) {
+      AppButtonStyle.primary => AppColors.primary,
+      AppButtonStyle.success => AppColors.success,
+      AppButtonStyle.danger => AppColors.error,
+      AppButtonStyle.warning => AppColors.warning,
+      AppButtonStyle.secondary ||
+      AppButtonStyle.outline ||
+      AppButtonStyle.ghost => null,
+    };
+  }
+
+  /// Overflow-menu icon colour: the style colour when enabled, muted
+  /// when the action is disabled.
+  static Color _menuIconColor(RowAction action) {
+    final enabled = action.onPressed != null && !action.isLoading;
+    if (!enabled) return AppColors.textMuted;
+    return _styleColor(action.style) ?? AppColors.textSecondary;
   }
 
   Widget _buildOverflowMenu(BuildContext context) {
@@ -125,7 +148,7 @@ class RowActionMenu extends StatelessWidget {
                 Icon(
                   actions[i].icon ?? LucideIcons.circle,
                   size: 14,
-                  color: AppColors.textSecondary,
+                  color: _menuIconColor(actions[i]),
                 ),
                 const SizedBox(width: 8),
                 // The framework caps the menu at 280px wide, so a long label

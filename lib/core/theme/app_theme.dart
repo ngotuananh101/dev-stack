@@ -231,18 +231,18 @@ class AppTheme {
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) return AppColors.textMuted;
-          if (states.contains(WidgetState.selected)) return AppColors.accent;
+          if (states.contains(WidgetState.selected)) return AppColors.success;
           return AppColors.textSecondary;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppColors.accent.withValues(alpha: 0.35);
+            return AppColors.success.withValues(alpha: 0.2);
           }
           return AppColors.surfaceLight;
         }),
         trackOutlineColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppColors.accent.withValues(alpha: 0.6);
+            return AppColors.success.withValues(alpha: 0.6);
           }
           return AppColors.border;
         }),

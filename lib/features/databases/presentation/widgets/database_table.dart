@@ -4,6 +4,7 @@ import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/core/theme/app_text_size.dart';
 import 'package:dev_stack/shared/utils/action_row_layout.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
+import 'package:dev_stack/shared/widgets/app_button.dart';
 import 'package:dev_stack/shared/widgets/row_action_menu.dart';
 import '../../domain/database_record.dart';
 
@@ -182,11 +183,12 @@ class DatabaseTable extends StatelessWidget {
   List<RowAction> _rowActions(DatabaseRecord db) {
     if (isRedis) {
       return [
-        RowAction.icon('Flush DB', () {}, icon: Icons.refresh_rounded),
+        RowAction.icon('Flush DB', () {}, icon: Icons.refresh_rounded, style: AppButtonStyle.danger),
         RowAction.icon(
           'Clear Record',
           () => onDelete(db),
           icon: Icons.delete_outline_rounded,
+          style: AppButtonStyle.danger,
         ),
       ];
     }
@@ -195,11 +197,13 @@ class DatabaseTable extends StatelessWidget {
         'Edit Database',
         () => onEdit(db),
         icon: Icons.edit_outlined,
+        style: AppButtonStyle.secondary,
       ),
       RowAction.icon(
         'Delete',
         () => onDelete(db),
         icon: Icons.delete_outline_rounded,
+        style: AppButtonStyle.danger,
       ),
     ];
   }

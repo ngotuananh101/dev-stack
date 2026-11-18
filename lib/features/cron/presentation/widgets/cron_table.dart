@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/utils/action_row_layout.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/row_action_menu.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/cron_expression.dart';
@@ -300,9 +301,10 @@ class CronTable extends StatelessWidget {
         'Run History',
         () => onViewHistory(job),
         icon: LucideIcons.history,
+        style: AppButtonStyle.secondary,
       ),
-      RowAction.icon('Edit', () => onEdit(job), icon: LucideIcons.edit),
-      RowAction.icon('Delete', () => onDelete(job), icon: LucideIcons.trash2),
+      RowAction.icon('Edit', () => onEdit(job), icon: LucideIcons.edit, style: AppButtonStyle.secondary),
+      RowAction.icon('Delete', () => onDelete(job), icon: LucideIcons.trash2, style: AppButtonStyle.danger),
     ];
   }
 

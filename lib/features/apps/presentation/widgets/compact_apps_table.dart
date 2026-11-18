@@ -3,6 +3,7 @@ import '../../../../shared/utils/action_row_layout.dart';
 import '../../../../shared/utils/app_dialogs.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/app_icon_button.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/row_action_menu.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../domain/app_brand_resolver.dart';
@@ -229,8 +230,8 @@ class CompactAppsTable extends StatelessWidget {
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
+                                horizontal: 4,
+                                vertical: 1,
                               ),
                               decoration: BoxDecoration(
                                 color: AppColors.primary.withValues(
@@ -243,7 +244,7 @@ class CompactAppsTable extends StatelessWidget {
                                     ? 'latest'
                                     : 'v${app.installedVersion}',
                                 style: const TextStyle(
-                                  fontSize: AppTextSize.xs,
+                                  fontSize: AppTextSize.xxxs,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.primary,
                                 ),
@@ -504,6 +505,7 @@ class CompactAppsTable extends StatelessWidget {
           'Manage Python Versions',
           () => _showPyenvModal(context, app),
           icon: Icons.list_alt_rounded,
+          style: AppButtonStyle.secondary,
         ),
       if (app.isInstalled) ...[
         if (app.hasUpdateAvailable)
@@ -517,23 +519,26 @@ class CompactAppsTable extends StatelessWidget {
 
             app.selectedVersion = latestPatch;
             _showVersionModal(context, app, isUpdate: true);
-          }, icon: Icons.refresh_rounded),
+          }, icon: Icons.refresh_rounded, style: AppButtonStyle.warning),
         if (app.isService)
           RowAction.icon(
             'View Logs',
             () => _showLogsModal(context, app),
             icon: Icons.terminal_rounded,
+            style: AppButtonStyle.secondary,
           ),
         if (app.groupName == 'php' && !app.isDefault)
           RowAction.icon(
             'Set as Default PHP',
             () => onChangeDefault(app.appId),
             icon: Icons.star_border_rounded,
+            style: AppButtonStyle.warning,
           ),
         RowAction.icon(
           'Settings',
           () => _showSettingsModal(context, app),
           icon: Icons.settings_outlined,
+          style: AppButtonStyle.secondary,
         ),
         RowAction.icon('Uninstall', () {
           AppDialogs.showConfirm(
@@ -543,14 +548,15 @@ class CompactAppsTable extends StatelessWidget {
                 'Are you sure you want to uninstall ${app.name}?\nThis will delete all files.',
             onConfirm: () => onToggleInstall(app),
           );
-        }, icon: Icons.delete_outline_rounded),
+        }, icon: Icons.delete_outline_rounded, style: AppButtonStyle.danger),
       ] else if (app.status == 'installing')
-        RowAction.button('INSTALLING...', null)
+        RowAction.button('INSTALLING...', null, style: AppButtonStyle.success)
       else
         RowAction.icon(
           'Install',
           () => _showVersionModal(context, app),
           icon: Icons.file_download_outlined,
+          style: AppButtonStyle.success,
         ),
       if (app.isInstalled &&
           (app.appId == 'mongodb-compass' ||
@@ -560,6 +566,7 @@ class CompactAppsTable extends StatelessWidget {
           'Open Application',
           () => onOpen(app),
           icon: Icons.open_in_new_rounded,
+          style: AppButtonStyle.success,
         ),
     ];
   }

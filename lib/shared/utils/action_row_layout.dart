@@ -27,7 +27,9 @@ class RowAction {
   /// spinner, and disables its menu item.
   final bool isLoading;
 
-  /// Outline style for a labelled button action; icon actions ignore it.
+  /// Style for the action: the labelled button's outline style, and the
+  /// icon action's colour (RowActionMenu maps it to an icon colour).
+  /// White actions use [AppButtonStyle.secondary].
   final AppButtonStyle style;
 
   const RowAction.button(

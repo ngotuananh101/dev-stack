@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
 import '../../../../shared/utils/action_row_layout.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/row_action_menu.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/tunnel_model.dart';
@@ -347,22 +348,26 @@ class TunnelTable extends StatelessWidget {
           'Copy Link',
           () => onCopyUrl(publicUrl),
           icon: LucideIcons.copy,
+          style: AppButtonStyle.success,
         ),
         RowAction.icon(
           'Open in Browser',
           () => onOpenUrl(publicUrl),
           icon: LucideIcons.externalLink,
+          style: AppButtonStyle.success,
         ),
         RowAction.icon(
           'QR Code',
           () => onOpenQr(tunnel, publicUrl),
           icon: LucideIcons.qrCode,
+          style: AppButtonStyle.success,
         ),
         if (isNgrok && webInspectorUrl != null)
           RowAction.icon(
             'Web Inspector',
             () => onOpenUrl(webInspectorUrl),
             icon: LucideIcons.monitor,
+            style: AppButtonStyle.success,
           ),
       ],
       if (isStopped || hasError)
@@ -376,23 +381,27 @@ class TunnelTable extends StatelessWidget {
           'Stop',
           () => onStop(tunnel.id),
           icon: LucideIcons.square,
+          style: AppButtonStyle.danger,
         ),
       if (isConnecting)
         RowAction.button(
           'Cancel',
           () => onCancel(tunnel.id),
           icon: LucideIcons.x,
+          style: AppButtonStyle.danger,
         ),
       RowAction.icon(
         'View Logs',
         () => onViewLogs(tunnel),
         icon: LucideIcons.list,
+        style: AppButtonStyle.secondary,
       ),
-      RowAction.icon('Edit', () => onEdit(tunnel), icon: LucideIcons.edit),
+      RowAction.icon('Edit', () => onEdit(tunnel), icon: LucideIcons.edit, style: AppButtonStyle.secondary),
       RowAction.icon(
         'Delete',
         () => onDelete(tunnel),
         icon: LucideIcons.trash2,
+        style: AppButtonStyle.danger,
       ),
     ];
   }

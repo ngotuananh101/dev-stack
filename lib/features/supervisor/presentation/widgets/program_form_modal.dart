@@ -153,6 +153,19 @@ class _ProgramFormModalState extends ConsumerState<ProgramFormModal> {
     ),
   );
 
+  /// Caption under one Restart Policy field, muted so it reads as help
+  /// text rather than a second label.
+  Widget _fieldCaption(String text) => Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.textMuted,
+        fontSize: AppTextSize.xs,
+      ),
+    ),
+  );
+
   Widget _toggle(
     String title,
     String subtitle,
@@ -312,53 +325,89 @@ class _ProgramFormModalState extends ConsumerState<ProgramFormModal> {
                       ),
                       const SizedBox(height: 18),
                       _label('Restart Policy'),
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          "When the process crashes, it restarts after a delay that doubles each time (up to 60s). If it crashes more than Max restarts times within the Window, it stops and is marked fatal. Only applies when 'Auto restart on crash' is on.",
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: AppTextSize.xs,
+                          ),
+                        ),
+                      ),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: AppTextField(
-                              controller: _maxRestarts,
-                              hint: 'Max restarts',
-                              prefixIcon: LucideIcons.repeat,
-                              keyboardType: TextInputType.number,
-                              validator: (v) {
-                                final n = int.tryParse((v ?? '').trim());
-                                if (n == null || n < 0) {
-                                  return 'Enter a number ≥ 0';
-                                }
-                                return null;
-                              },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AppTextField(
+                                  controller: _maxRestarts,
+                                  hint: 'Max restarts',
+                                  prefixIcon: LucideIcons.repeat,
+                                  keyboardType: TextInputType.number,
+                                  validator: (v) {
+                                    final n = int.tryParse((v ?? '').trim());
+                                    if (n == null || n < 0) {
+                                      return 'Enter a number ≥ 0';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                _fieldCaption(
+                                  'Crashes allowed within the window',
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: AppTextField(
-                              controller: _windowSeconds,
-                              hint: 'Window (seconds)',
-                              prefixIcon: LucideIcons.timer,
-                              keyboardType: TextInputType.number,
-                              validator: (v) {
-                                final n = int.tryParse((v ?? '').trim());
-                                if (n == null || n < 1) {
-                                  return 'Enter a number ≥ 1';
-                                }
-                                return null;
-                              },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AppTextField(
+                                  controller: _windowSeconds,
+                                  hint: 'Window (seconds)',
+                                  prefixIcon: LucideIcons.timer,
+                                  keyboardType: TextInputType.number,
+                                  validator: (v) {
+                                    final n = int.tryParse((v ?? '').trim());
+                                    if (n == null || n < 1) {
+                                      return 'Enter a number ≥ 1';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                _fieldCaption(
+                                  'Rolling window, in seconds',
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: AppTextField(
-                              controller: _delaySeconds,
-                              hint: 'Base delay (s)',
-                              prefixIcon: LucideIcons.clock,
-                              keyboardType: TextInputType.number,
-                              validator: (v) {
-                                final n = int.tryParse((v ?? '').trim());
-                                if (n == null || n < 0) {
-                                  return 'Enter a number ≥ 0';
-                                }
-                                return null;
-                              },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AppTextField(
+                                  controller: _delaySeconds,
+                                  hint: 'Base delay (s)',
+                                  prefixIcon: LucideIcons.clock,
+                                  keyboardType: TextInputType.number,
+                                  validator: (v) {
+                                    final n = int.tryParse((v ?? '').trim());
+                                    if (n == null || n < 0) {
+                                      return 'Enter a number ≥ 0';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                _fieldCaption(
+                                  'Wait before the first restart; doubles '
+                                  'after each crash, up to 60s',
+                                ),
+                              ],
                             ),
                           ),
                         ],

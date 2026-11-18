@@ -34,7 +34,9 @@ class AppVersionModal extends ConsumerStatefulWidget {
 }
 
 class _AppVersionModalState extends ConsumerState<AppVersionModal> {
-  String _selectedVersion = 'latest';
+  // Null until the user taps a version: nothing is pre-selected, so the
+  // footer shows no Install button until a choice is made.
+  String? _selectedVersion;
 
   @override
   Widget build(BuildContext context) {
@@ -491,6 +493,8 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
     AppModel? conflictingApp,
     bool canInstall,
   ) {
+    // Local copy so the null check below promotes the type.
+    final selectedVersion = _selectedVersion;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: Row(
@@ -502,20 +506,23 @@ class _AppVersionModalState extends ConsumerState<AppVersionModal> {
               style: AppButtonStyle.ghost,
               label: 'Close',
             ),
-            const SizedBox(width: 12),
-            AppButton(
-              onPressed: conflictingApp != null || !canInstall
-                  ? null
-                  : () {
-                      widget.app.selectedVersion = _selectedVersion;
-                      widget.onInstall();
-                    },
-              style: AppButtonStyle.success,
-              label: widget.isUpdate
-                  ? 'Update to ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}'
-                  : 'Install ${_selectedVersion == 'latest' ? 'Latest' : _selectedVersion}',
-              icon: const Icon(Icons.download, size: 16),
-            ),
+            // No version picked yet: no Install button at all, only Close.
+            if (selectedVersion != null) ...[
+              const SizedBox(width: 12),
+              AppButton(
+                onPressed: conflictingApp != null || !canInstall
+                    ? null
+                    : () {
+                        widget.app.selectedVersion = selectedVersion;
+                        widget.onInstall();
+                      },
+                style: AppButtonStyle.success,
+                label: widget.isUpdate
+                    ? 'Update to ${selectedVersion == 'latest' ? 'Latest' : selectedVersion}'
+                    : 'Install ${selectedVersion == 'latest' ? 'Latest' : selectedVersion}',
+                icon: const Icon(Icons.download, size: 16),
+              ),
+            ],
           ] else if (appState.status == 'installed')
             AppButton(
               onPressed: widget.onClose,

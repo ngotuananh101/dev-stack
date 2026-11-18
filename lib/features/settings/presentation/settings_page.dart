@@ -186,7 +186,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           ? [
                               _StatusAction(
                                 label: 'Reinstall',
-                                color: AppColors.accentStrong,
+                                color: AppColors.successStrong,
                                 onTap: () => _handleSslAction(
                                   'Reinstall',
                                   // The user pressed Reinstall, so the
@@ -564,8 +564,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         Switch(
           value: value,
           onChanged: onChanged,
-          activeThumbColor: AppColors.accent,
-          activeTrackColor: AppColors.accent.withValues(alpha: 0.2),
+          activeThumbColor: AppColors.success,
+          activeTrackColor: AppColors.success.withValues(alpha: 0.2),
           inactiveThumbColor: AppColors.textSecondary,
           inactiveTrackColor: AppColors.surfaceLight,
         ),

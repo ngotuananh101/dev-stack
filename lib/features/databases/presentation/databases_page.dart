@@ -308,7 +308,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
                           .setTab(NavigationTab.apps);
                     },
                     icon: const Icon(LucideIcons.download, size: 18),
-                    style: AppButtonStyle.outline,
+                    style: AppButtonStyle.success,
                   ),
               ],
             ),
