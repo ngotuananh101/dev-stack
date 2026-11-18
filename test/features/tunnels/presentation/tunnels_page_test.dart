@@ -153,6 +153,20 @@ void main() {
     );
 
     await drainToastTimers(tester);
+
+    // A running Cloudflare tunnel does not block the ngrok update.
+    await tester.tap(
+      find.widgetWithText(AppButton, 'Update ngrok'),
+    );
+    await settleToast(tester);
+
+    expect(downloader.downloadedProviders, ['ngrok']);
+    expect(
+      find.text('ngrok updated to the latest version'),
+      findsOneWidget,
+    );
+
+    await drainToastTimers(tester);
   });
 
   testWidgets(
@@ -172,6 +186,43 @@ void main() {
           10: const TunnelSession(
             tunnelId: 10,
             status: TunnelStatus.downloadingBinary,
+          ),
+        },
+        downloader: downloader,
+      );
+
+      await tester.tap(
+        find.widgetWithText(AppButton, 'Update cloudflared'),
+      );
+      await settleToast(tester);
+
+      expect(downloader.downloadedProviders, isEmpty);
+      expect(
+        find.text('Stop the running Cloudflare tunnel first, then update.'),
+        findsOneWidget,
+      );
+
+      await drainToastTimers(tester);
+    },
+  );
+
+  testWidgets(
+    'Update does not download while a Cloudflare tunnel is connecting',
+    (tester) async {
+      final downloader = FakeTunnelDownloader();
+      final tunnel = TunnelModel(
+        id: 10,
+        name: 'Shop',
+        provider: 'cloudflare',
+        targetPort: 80,
+      );
+      await pumpTunnelsPage(
+        tester,
+        tunnels: [tunnel],
+        sessions: {
+          10: const TunnelSession(
+            tunnelId: 10,
+            status: TunnelStatus.connecting,
           ),
         },
         downloader: downloader,
@@ -331,6 +382,53 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 700));
     expect(find.widgetWithText(AppButton, 'Update ngrok'), findsOneWidget);
+  });
+
+  testWidgets('Update buttons sit below the title on a narrow window', (
+    tester,
+  ) async {
+    // 720px surface: pumpTunnelsPage pumps without a sidebar, so the
+    // content is 672px wide (720 minus 24px page padding on each side),
+    // below the 768px stacking threshold.
+    tester.view.physicalSize = const Size(720, 520);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpTunnelsPage(tester);
+
+    final buttonTop = tester
+        .getTopLeft(find.widgetWithText(AppButton, 'Update cloudflared'))
+        .dy;
+    final descriptionBottom = tester
+        .getBottomLeft(
+          find.text('Expose local sites and ports to the public internet'),
+        )
+        .dy;
+    expect(buttonTop, greaterThan(descriptionBottom));
+  });
+
+  testWidgets('Update buttons sit on the same row as the title at 1024px', (
+    tester,
+  ) async {
+    // 1024px surface: content is 976px wide, above the 768px stacking
+    // threshold, so the buttons share the title's row.
+    tester.view.physicalSize = const Size(1024, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpTunnelsPage(tester);
+
+    final buttonTop = tester
+        .getTopLeft(find.widgetWithText(AppButton, 'Update cloudflared'))
+        .dy;
+    final descriptionBottom = tester
+        .getBottomLeft(
+          find.text('Expose local sites and ports to the public internet'),
+        )
+        .dy;
+    expect(buttonTop, lessThan(descriptionBottom));
   });
 }
 
