@@ -636,6 +636,14 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
               style: CodeEditorStyle(
                 fontSize: AppTextSize.xs,
                 fontFamily: 'monospace',
+                // re_editor reads these from Flutter's Theme.of when left
+                // unset, and the app runs on material_ui's MaterialApp, so
+                // they would fall back to the light defaults: near-black
+                // text on the dark background, purple selection/cursor.
+                textColor: AppColors.textPrimary,
+                selectionColor: AppColors.primary.withValues(alpha: 0.4),
+                highlightColor: AppColors.primary.withValues(alpha: 0.4),
+                cursorColor: AppColors.primary,
                 backgroundColor: AppColors.background,
                 codeTheme: buildHighlightTheme(widget.filePath),
               ),
