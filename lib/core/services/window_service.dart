@@ -28,6 +28,8 @@ part 'window_service.g.dart';
 class WindowService extends _$WindowService {
   Timer? _updateTimer;
   Timer? _deferredFrameTimer;
+  Timer? _nudgeRestoreTimer;
+  Size? _nudgeOriginalSize;
   TrayIcon? _trayIcon;
   Image? _trayIconImage;
   ListenerId? _trayListenerId;
@@ -55,6 +57,8 @@ class WindowService extends _$WindowService {
       _updateTimer?.cancel();
       _deferredFrameTimer?.cancel();
       _deferredFrameTimer = null;
+      _nudgeRestoreTimer?.cancel();
+      _nudgeRestoreTimer = null;
 
       final windowListenerId = _windowListenerId;
       if (windowListenerId != null) {
@@ -263,6 +267,58 @@ class WindowService extends _$WindowService {
       });
       SchedulerBinding.instance.scheduleForcedFrame();
       AppLogger.info('Tray restore: deferred forced frame requested after 250ms');
+      // Root cause is the Wayland subsurface, not frame scheduling
+      // (flutter#196862): the surface is gone after a hide, and the
+      // map handler can run before GTK creates the replacement, so the
+      // subsurface is never recreated - and with the size unchanged no
+      // later size-allocate retries it. A real 1px size change forces
+      // the size-allocate that recreates the subsurface; the restore
+      // 50ms later puts the window back at its exact size. Height,
+      // not width: the sidebar auto-collapses below 960px width.
+      if (_nudgeRestoreTimer != null) {
+        // A previous nudge has not been restored yet (two restores
+        // overlapping): undo it first so the size cannot drift.
+        _nudgeRestoreTimer?.cancel();
+        _nudgeRestoreTimer = null;
+        final previousSize = _nudgeOriginalSize;
+        _nudgeOriginalSize = null;
+        if (previousSize != null) window.setSize(previousSize, false);
+      }
+      if (window.isMaximized) {
+        AppLogger.info('Tray restore: size nudge skipped (maximized)');
+        return;
+      }
+      if (window.isFullScreen) {
+        AppLogger.info('Tray restore: size nudge skipped (fullscreen)');
+        return;
+      }
+      final currentSize = window.size;
+      if (currentSize.width <= 0 || currentSize.height <= 0) {
+        AppLogger.info('Tray restore: size nudge skipped (size 0x0)');
+        return;
+      }
+      _nudgeOriginalSize = currentSize;
+      window.setSize(
+        Size(width: currentSize.width, height: currentSize.height + 1),
+        false,
+      );
+      AppLogger.info(
+        'Tray restore: size nudge requested ('
+        '${currentSize.width.toInt()}x${currentSize.height.toInt()} -> '
+        '${currentSize.width.toInt()}x${currentSize.height.toInt() + 1})',
+      );
+      _nudgeRestoreTimer = Timer(const Duration(milliseconds: 50), () {
+        _nudgeRestoreTimer = null;
+        final originalSize = _nudgeOriginalSize;
+        _nudgeOriginalSize = null;
+        if (originalSize != null) {
+          window.setSize(originalSize, false);
+          AppLogger.info(
+            'Tray restore: size nudge restored ('
+            '${originalSize.width.toInt()}x${originalSize.height.toInt()})',
+          );
+        }
+      });
     });
   }
 
