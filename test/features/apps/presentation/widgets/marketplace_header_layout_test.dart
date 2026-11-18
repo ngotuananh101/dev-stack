@@ -40,9 +40,10 @@ void main() {
 
       final categoryBar = find.byType(CategoryBar);
       final barRect = tester.getRect(categoryBar);
-      // The IconButton's own 48px tap target wraps the 40px glyph, so measure
-      // the tap target: it is what sits against the header's right edge.
-      final refreshRect = tester.getRect(find.byType(IconButton));
+      // The refresh control is a 32px `AppIconButton` (size md), not the
+      // 48px `IconButton` tap target, so measure it by its tooltip: it is
+      // what sits against the header's right edge.
+      final refreshRect = tester.getRect(find.byTooltip('Update App List'));
 
       // The bar must reach the refresh button, minus the 16px gap the header
       // reserves before it. A `Spacer` next to a `Flexible` splits the free

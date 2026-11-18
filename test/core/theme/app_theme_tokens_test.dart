@@ -31,14 +31,15 @@ void main() {
     },
   );
 
-  test('AppTheme darkTheme keeps window-frame colours on the palette', () {
+  test('AppTheme darkTheme keeps the window frame borderless', () {
     final theme = AppTheme.darkTheme;
-    // window_manager's VirtualWindowFrame borders the whole window with
-    // `ThemeData.dividerColor`, which Material derives from
-    // `ColorScheme.outline`. Leaving `outline` unset makes both fall back to
-    // `onBackground`, and `ColorScheme.dark` defaults that to pure white.
-    expect(theme.dividerColor, AppColors.border);
-    expect(theme.colorScheme.outline, AppColors.border);
-    expect(theme.colorScheme.outlineVariant, AppColors.border);
+    // The frame is borderless by design: `outline` and `outlineVariant`
+    // are transparent rather than the palette border, and Material derives
+    // `ThemeData.dividerColor` from `outline`, so it is transparent too.
+    // Dividers and inputs read `AppColors.border` directly instead
+    // (see `dividerTheme` and `inputDecorationTheme` in the theme).
+    expect(theme.dividerColor, Colors.transparent);
+    expect(theme.colorScheme.outline, Colors.transparent);
+    expect(theme.colorScheme.outlineVariant, Colors.transparent);
   });
 }

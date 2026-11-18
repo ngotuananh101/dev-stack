@@ -65,7 +65,7 @@ void main() {
           (w) => w is AppButton && w.label.startsWith('Install '),
         );
         if (missing) {
-          expect(tester.widget<AppButton>(installButton).onPressed, isNull);
+          expect(installButton, findsNothing);
           expect(
             find.text('No downloadable versions available.'),
             findsOneWidget,
@@ -81,4 +81,59 @@ void main() {
       },
     );
   }
+
+  // Review Focus 5: the catalog has downloadable versions, but the one
+  // picked has no download URL, so the Install button renders disabled
+  // instead of disappearing.
+  testWidgets(
+    'selecting a version without a download URL keeps Install disabled',
+    (tester) async {
+      final app = AppModel(
+        appId: 'php84',
+        name: 'PHP 8.4',
+        categories: ['runtime'],
+      );
+      var installed = false;
+      final info = AppVersionInfo(
+        name: app.name,
+        versions: ['8.4.27', '8.4.26'],
+        downloadUrls: {'8.4.26': 'https://example.test/php.tar.gz'},
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appsProvider.overrideWith(() => _Apps(app)),
+            appVersionsProvider.overrideWith2((_) => _Versions(info)),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: AppVersionModal(
+                  app: app,
+                  onInstall: () => installed = true,
+                  onClose: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('No downloadable versions available.'),
+        findsNothing,
+      );
+
+      await tester.tap(find.text('8.4.27'));
+      await tester.pump();
+      final installButton = find.byWidgetPredicate(
+        (w) => w is AppButton && w.label.startsWith('Install '),
+      );
+      expect(installButton, findsOneWidget);
+      expect(tester.widget<AppButton>(installButton).onPressed, isNull);
+
+      await tester.tap(installButton);
+      expect(installed, isFalse);
+    },
+  );
 }

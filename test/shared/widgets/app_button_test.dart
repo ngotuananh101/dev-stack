@@ -110,7 +110,7 @@ void main() {
   );
 
   testWidgets(
-    'AppButton style success uses successStrong background and textOnColor',
+    'AppButton style success uses an outline with success text',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -134,10 +134,10 @@ void main() {
             )
             .first,
       );
-      expect(material.color, AppColors.successStrong);
+      expect(material.color, Colors.transparent);
 
       final text = tester.widget<Text>(find.text('Add DB'));
-      expect(text.style!.color, AppColors.textOnColor);
+      expect(text.style!.color, AppColors.success);
     },
   );
 }
