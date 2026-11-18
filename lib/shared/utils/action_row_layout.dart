@@ -92,6 +92,10 @@ double _measure(RowAction action) {
   return switch (action.kind) {
     RowActionKind.icon => kRowActionIconWidth,
     RowActionKind.button =>
+      // A loading button renders only a 14px spinner, so this
+      // deliberately over-measures it: the column keeps the label's
+      // width and never shrinks (and moves actions into the menu)
+      // while a button is in flight.
       kRowActionButtonPadding +
           labelWidth +
           kRowActionButtonIconWidth +

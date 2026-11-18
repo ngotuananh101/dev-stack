@@ -175,6 +175,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
       int? stoppedId;
+      SupervisorProgram? restarted;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -189,7 +190,7 @@ void main() {
                       pids: const {1: 4242},
                       onStart: (_) {},
                       onStop: (id) => stoppedId = id,
-                      onRestart: (_) {},
+                      onRestart: (p) => restarted = p,
                       onViewLogs: (_) {},
                       onEdit: (_) {},
                       onDelete: (_) {},
@@ -218,7 +219,24 @@ void main() {
       expect(find.text('Edit'), findsOneWidget);
       expect(find.text('Delete'), findsOneWidget);
 
-      await tester.tap(find.text('Stop').last);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(PopupMenuItem<String>),
+          matching: find.text('Restart'),
+        ),
+      );
+      expect(restarted?.id, 1);
+      await tester.pumpAndSettle();
+
+      // Tapping a menu item closes the menu, so reopen it for Stop.
+      await tester.tap(find.byIcon(LucideIcons.moreHorizontal));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(PopupMenuItem<String>),
+          matching: find.text('Stop'),
+        ),
+      );
       expect(stoppedId, 1);
     });
 

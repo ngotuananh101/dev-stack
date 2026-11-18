@@ -16,7 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// A table reads on a documented size palette: headers 10, row cells 10,
 /// name columns 12, status chips 8 and the version tag 8. The header is told
-/// apart by colour, weight and its smaller size. These tests read the real
+/// apart by weight and its smaller size; colour is the same white for both. These tests read the real
 /// rendered styles, so a call site that reaches for another token fails here
 /// rather than on screen.
 void main() {

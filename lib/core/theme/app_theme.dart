@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_radius.dart';
 import 'app_text_size.dart';
-import 'text_theme_bridge.dart';
 
 class AppTheme {
   static ThemeData get darkTheme {
@@ -28,82 +27,75 @@ class AppTheme {
         onSecondary: AppColors.textOnColor,
         onSurface: AppColors.textPrimary,
       ),
-      // google_fonts 9 speaks `material_ui`'s `TextTheme`; the bridge hands the
-      // styles back in the type `package:flutter/material.dart` builds with.
-      //
       // UI reset (2026-11-17): every text role reads at [AppTextSize.xs] (12).
       // Page headers are the one exception at [AppTextSize.sm] (14) and are
       // set where the page is built, not here. Roles left null would be
       // filled in by GoogleFonts/Material at their own large sizes, so the
       // display and headline roles are pinned to 12 here too.
-      textTheme: toFlutterTextTheme(
-        GoogleFonts.interTextTheme(
-          toMaterialUiTextTheme(
-            TextTheme(
-              displayLarge: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-              ),
-              displayMedium: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-              ),
-              displaySmall: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-              ),
-              headlineLarge: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-                fontWeight: FontWeight.bold,
-              ),
-              headlineMedium: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-                fontWeight: FontWeight.bold,
-              ),
-              headlineSmall: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-                fontWeight: FontWeight.bold,
-              ),
-              bodyLarge: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-              ),
-              bodyMedium: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
-              ),
-              bodySmall: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
-              ),
-              titleLarge: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-              ),
-              titleMedium: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-              ),
-              titleSmall: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-              ),
-              labelLarge: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTextSize.xs,
-              ),
-              labelMedium: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
-              ),
-              labelSmall: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: AppTextSize.xs,
-              ),
-            ),
+      textTheme: GoogleFonts.interTextTheme(
+        TextTheme(
+          displayLarge: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+          ),
+          displayMedium: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+          ),
+          displaySmall: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+          ),
+          headlineLarge: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+            fontWeight: FontWeight.bold,
+          ),
+          headlineMedium: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+            fontWeight: FontWeight.bold,
+          ),
+          headlineSmall: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+            fontWeight: FontWeight.bold,
+          ),
+          bodyLarge: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+          ),
+          bodyMedium: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: AppTextSize.xs,
+          ),
+          bodySmall: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: AppTextSize.xs,
+          ),
+          titleLarge: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+          ),
+          titleMedium: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+          ),
+          titleSmall: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+          ),
+          labelLarge: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.xs,
+          ),
+          labelMedium: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: AppTextSize.xs,
+          ),
+          labelSmall: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: AppTextSize.xs,
           ),
         ),
       ),
