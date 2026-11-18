@@ -1,4 +1,5 @@
 import 'package:dev_stack/shared/utils/action_row_layout.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -22,8 +23,9 @@ void main() {
 
     test('a button plus icons adds the button label and icon gap', () {
       // 'Run' (3 chars) at 12.25px = 36.75, plus 20 of horizontal padding,
-      // the 12px icon, the 8px icon gap, then three 28px icon boxes and their
-      // 4px gaps: 20 + 36.75 + 12 + 8 + 84 + 12 = 172.75.
+      // the 12px icon, the 8px icon gap, the 2px extra button width, then
+      // three 28px icon boxes and their 4px gaps:
+      // 20 + 36.75 + 12 + 8 + 2 + 84 + 12 = 174.75.
       final size = measureRowActions(const [
         RowAction.button('Run', null),
         RowAction.icon('Run History', null),
@@ -31,7 +33,31 @@ void main() {
         RowAction.icon('Delete', null),
       ]);
 
-      expect(size, 172.75);
+      expect(size, 174.75);
+    });
+
+    test('a labelled button is measured at least its real rendered width', () {
+      // A labelled AppButton renders wider than padding + text + icon: the
+      // 0.5 outline border adds 1px, and the rendered label is 1px wider
+      // than the char-width estimate's baseline for short labels (probed
+      // 2026-11-18: AppButton('Stop') renders 90px, measureRowActions said
+      // 89). The shortest label in use ('Run', 3 chars) is the worst case:
+      // the 0.25px per-char overestimate barely covers the 2px.
+      double realWidth(String label) {
+        final painter = TextPainter(
+          text: TextSpan(
+            text: label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        return 20 + 20 + painter.width + 2;
+      }
+
+      for (final label in ['Run', 'INSTALLING...']) {
+        final measured = measureRowActions([RowAction.button(label, null)]);
+        expect(measured, greaterThanOrEqualTo(realWidth(label)), reason: label);
+      }
     });
 
     test('the first icon of a cluster gets an extra 6px inset', () {
@@ -54,10 +80,10 @@ void main() {
         RowAction.icon('Delete', null),
       ];
 
-      // 172.75 of cluster; it must also leave room for the 28px overflow-menu
-      // width, so it overflows once the available width drops to 200.75.
-      expect(rowActionsOverflow(actions, 201), isFalse);
-      expect(rowActionsOverflow(actions, 200), isTrue);
+      // 174.75 of cluster; it must also leave room for the 28px overflow-menu
+      // width, so it overflows once the available width drops to 202.75.
+      expect(rowActionsOverflow(actions, 203), isFalse);
+      expect(rowActionsOverflow(actions, 202), isTrue);
     });
 
     test('is true when one px is missing', () {
@@ -68,7 +94,7 @@ void main() {
         RowAction.icon('Delete', null),
       ];
 
-      expect(rowActionsOverflow(actions, 200.74), isTrue);
+      expect(rowActionsOverflow(actions, 202.74), isTrue);
     });
 
     test('an empty cluster never overflows', () {

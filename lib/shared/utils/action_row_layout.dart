@@ -61,6 +61,15 @@ const double kRowActionButtonIconGap = 8;
 /// Width of the icon an `AppButton` renders before its label.
 const double kRowActionButtonIconWidth = 12;
 
+/// Extra width a labelled `AppButton` renders beyond padding, label and icon.
+///
+/// Probed 2026-11-18: an `AppButton(label: 'Stop')` renders 90px while
+/// padding + label + icon add up to 89px. The 0.5 outline border adds 1px
+/// to the button's outer width, and the rendered label is 1px wider than
+/// the char-width estimate's baseline for short labels. Without this the
+/// widest row's column plans 1px short and the inline row overflows.
+const double kRowActionButtonExtraWidth = 2;
+
 /// Estimated advance width per character at the table's `AppTextSize.xs` (12).
 ///
 /// Labels cannot be measured exactly without rendering (`TextPainter` needs a
@@ -86,7 +95,8 @@ double _measure(RowAction action) {
       kRowActionButtonPadding +
           labelWidth +
           kRowActionButtonIconWidth +
-          kRowActionButtonIconGap,
+          kRowActionButtonIconGap +
+          kRowActionButtonExtraWidth,
   };
 }
 
