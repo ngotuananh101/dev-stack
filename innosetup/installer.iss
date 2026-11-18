@@ -1,5 +1,12 @@
 #define MyAppName "Dev Stack"
-#define MyAppVersion "1.0.0"
+; Fallback only: CI passes /DMyAppVersion=<version from pubspec.yaml>.
+; A plain #define here would silently discard that command-line value
+; (ISPP: a script-level #define wins over /D), so Programs always
+; showed 1.0.0. The guard keeps the fallback for local ISCC runs
+; without /D.
+#ifndef MyAppVersion
+  #define MyAppVersion "1.0.0"
+#endif
 #define MyAppPublisher "Ponta Dev"
 #define MyAppURL "https://github.com/ngotuananh101/dev-stack"
 #define MyAppExeName "dev_stack.exe"
