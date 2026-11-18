@@ -258,8 +258,11 @@ class WindowService extends _$WindowService {
     // lands after the surface exists.
     _deferredFrameTimer?.cancel();
     _deferredFrameTimer = Timer(const Duration(milliseconds: 250), () {
-      SchedulerBinding.instance.scheduleFrame();
-      AppLogger.info('Tray restore: deferred frame requested after 250ms');
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        AppLogger.info('Tray restore: deferred frame ran after show');
+      });
+      SchedulerBinding.instance.scheduleForcedFrame();
+      AppLogger.info('Tray restore: deferred forced frame requested after 250ms');
     });
   }
 
