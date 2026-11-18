@@ -290,7 +290,6 @@ class SslService extends _$SslService {
   /// The argv that refreshes [packageManager]'s index. Non-interactive in every
   /// case: the elevated runner gives the process no terminal to answer a
   /// prompt on, so a confirmation question would hang until pkexec is killed.
-  @visibleForTesting
   static List<String> packageRefreshArgs(String packageManager) {
     switch (packageManager) {
       case 'dnf':
@@ -311,7 +310,6 @@ class SslService extends _$SslService {
   /// The argv that installs [packageNames] with [packageManager].
   /// `--assume-yes` / `-y` is what keeps the install from stopping on a
   /// prompt that nothing can answer.
-  @visibleForTesting
   static List<String> packageInstallArgs(
     String packageManager,
     List<String> packageNames, {
@@ -356,7 +354,6 @@ class SslService extends _$SslService {
   /// real cause (a lock, a mirror, no network). An exit code on its own tells
   /// the user nothing actionable, and pkexec's 126 has a meaning worth
   /// spelling out — they dismissed the authentication dialog themselves.
-  @visibleForTesting
   static String describeInstallFailure(
     String what,
     int exitCode, {

@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 /// based on `/etc/os-release`.
 class LinuxDistroResolver {
   /// Parses `/etc/os-release` key-value pairs.
-  @visibleForTesting
   static Map<String, String> parseOsRelease(String content) {
     final map = <String, String>{};
     for (final line in content.split('\n')) {

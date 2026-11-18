@@ -1,7 +1,13 @@
 import 'dart:io';
 
+import 'package:dev_stack/core/config/app_config.dart';
 import 'package:dev_stack/core/services/background_process.dart';
+import 'package:dev_stack/core/services/linux_distro_resolver.dart';
+import 'package:dev_stack/core/services/log_service.dart';
+import 'package:dev_stack/core/services/pyenv_build_deps_declines.dart';
+import 'package:dev_stack/core/services/ssl_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 /// The system libraries a Python built by pyenv needs, per Linux distro
 /// family, and how to tell whether each one is already installed.
@@ -16,7 +22,10 @@ import 'package:flutter/foundation.dart';
 /// The wiki has no Alpine section, so Alpine resolves to null here, and the
 /// caller offers the manual command instead of guessing.
 class PyenvBuildDeps {
-  PyenvBuildDeps._();
+  PyenvBuildDeps();
+
+  static const _pyenvWikiUrl =
+      'https://github.com/pyenv/pyenv/wiki#suggested-build-environment';
 
   /// The package manager and the installable build dependencies for the
   /// distro family, or null for a family the app does not know how to
@@ -181,5 +190,187 @@ class PyenvBuildDeps {
       }
     }
     return File(probe).existsSync();
+  }
+
+  /// The decision and the install behind [ensureBeforeInstall], with every
+  /// outside dependency passed in so the flow can be tested without touching
+  /// the real package manager or the user's decline file.
+  ///
+  /// Returns `true` when the Python install may proceed: nothing is missing,
+  /// the user declined (they accept the build may fail), the install
+  /// succeeded and the re-check is clean, or the distro family is unknown
+  /// (the manual hint is logged instead). Returns `false` when the library
+  /// install failed or the headers are still missing afterwards — the
+  /// Python build must not run blind.
+  @visibleForTesting
+  static Future<bool> ensureBuildDeps({
+    required Future<bool> Function(SslInstallPrompt prompt) askPermission,
+    required PyenvBuildDepsDeclines declines,
+    required List<String> missingPackages,
+    required ({String packageManager, List<String> packageNames})? package,
+    required Future<ProcessResult> Function(
+      String executable,
+      List<String> arguments,
+    )
+    runElevated,
+    void Function(SslInstallProgress progress)? onProgress,
+    required Future<List<String>> Function() missingAfterwards,
+  }) async {
+    if (missingPackages.isEmpty) return true;
+
+    final names = missingPackages.join(', ');
+    final declineKey = (missingPackages.toList()..sort()).join(',');
+    if (await declines.isDeclined(declineKey)) {
+      AppLogger.info(
+        'pyenv build libraries install was declined earlier; not asking again',
+      );
+      return true;
+    }
+
+    if (package == null) {
+      // The app cannot install on this family, so tell the user what to run
+      // instead of running a command that would fail.
+      AppLogger.warning(
+        'Python build libraries are missing ($names). Install them by hand: '
+        '$_pyenvWikiUrl',
+      );
+      return true;
+    }
+
+    final refreshArgs = SslService.packageRefreshArgs(package.packageManager);
+    final installArgs = SslService.packageInstallArgs(
+      package.packageManager,
+      package.packageNames,
+    );
+    final prompt = SslInstallPrompt(
+      title: 'Install Python build libraries?',
+      message:
+          'Python needs the "$names" packages to build. Without them the build fails or the new Python is missing features. This installs the packages system-wide.',
+      command: SslService.describeCommand(package.packageManager, installArgs),
+    );
+
+    final allowed = await askPermission(prompt);
+    if (!allowed) {
+      await declines.decline(declineKey);
+      AppLogger.info('User declined installing $names');
+      return true;
+    }
+
+    // pkexec can take a while — it may be waiting on the desktop's
+    // authentication dialog — so the caller is told the work started rather
+    // than being left looking at a silent screen until the process exits.
+    onProgress?.call(
+      SslInstallProgress(
+        status: InstallStatus.starting,
+        message: 'Installing $names...',
+      ),
+    );
+
+    if (refreshArgs.isNotEmpty) {
+      final refresh = await runElevated(package.packageManager, refreshArgs);
+      AppLogger.info(
+        '${package.packageManager} refresh exit code: ${refresh.exitCode}',
+      );
+    }
+    final install = await runElevated(package.packageManager, installArgs);
+    AppLogger.info(
+      '${package.packageManager} install $names exit code: '
+      '${install.exitCode}',
+    );
+
+    if (install.exitCode != 0) {
+      AppLogger.warning('Could not install $names: ${install.stderr}');
+      onProgress?.call(
+        SslInstallProgress(
+          status: InstallStatus.failed,
+          message: SslService.describeInstallFailure(
+            names,
+            install.exitCode,
+            detail: install.stderr.toString().trim(),
+          ),
+        ),
+      );
+      return false;
+    }
+
+    // A package manager can exit 0 and still leave the headers missing, so
+    // success is what the re-check says, not what the exit code says.
+    final stillMissing = await missingAfterwards();
+    if (stillMissing.isNotEmpty) {
+      AppLogger.warning(
+        '${package.packageManager} reported success installing $names but '
+        'the headers are still missing: ${stillMissing.join(', ')}',
+      );
+      onProgress?.call(
+        SslInstallProgress(
+          status: InstallStatus.failed,
+          message: '$names were installed, but the headers are still missing.',
+        ),
+      );
+      return false;
+    }
+
+    onProgress?.call(
+      SslInstallProgress(
+        status: InstallStatus.succeeded,
+        message: '$names installed.',
+      ),
+    );
+    return true;
+  }
+
+  /// Makes sure the system libraries a pyenv Python build needs are
+  /// installed before the build runs. Returns `true` when the Python install
+  /// may proceed (see [ensureBuildDeps]); `false` aborts it.
+  ///
+  /// Linux only: pyenv-win does not build from source, so anywhere else this
+  /// is a no-op that returns `true`.
+  Future<bool> ensureBeforeInstall({
+    required Future<bool> Function(SslInstallPrompt prompt) askPermission,
+    void Function(SslInstallProgress progress)? onProgress,
+  }) async {
+    if (!Platform.isLinux) return true;
+
+    final osRelease = await _readOsRelease();
+    final id = osRelease['ID'];
+    final idLike = osRelease['ID_LIKE'];
+    final resolved = buildDepsFor(osReleaseId: id, osReleaseIdLike: idLike);
+    if (resolved == null) {
+      // No auto-install table for this family: offer the manual command.
+      final manual =
+          wikiInstallCommandFor(osReleaseId: id, osReleaseIdLike: idLike);
+      AppLogger.warning(
+        'Python build libraries may be missing. Install them by hand: '
+        '${manual ?? _pyenvWikiUrl}',
+      );
+      return true;
+    }
+
+    final missing = await missingPackages(resolved.deps);
+    return ensureBuildDeps(
+      askPermission: askPermission,
+      declines: PyenvBuildDepsDeclines(
+        p.join(AppConfig.dataDir, 'pyenv', 'declines.json'),
+      ),
+      missingPackages: missing,
+      package: (
+        packageManager: resolved.packageManager,
+        packageNames: missing,
+      ),
+      runElevated: BackgroundProcess.runElevated,
+      onProgress: onProgress,
+      missingAfterwards: () => missingPackages(resolved.deps),
+    );
+  }
+
+  static Future<Map<String, String>> _readOsRelease() async {
+    try {
+      final file = File('/etc/os-release');
+      if (!await file.exists()) return <String, String>{};
+      return LinuxDistroResolver.parseOsRelease(await file.readAsString());
+    } catch (e) {
+      AppLogger.warning('Could not read /etc/os-release: $e');
+      return <String, String>{};
+    }
   }
 }
