@@ -16,6 +16,14 @@ import 'package:dev_stack/features/tunnels/presentation/widgets/tunnel_logs_moda
 import 'package:dev_stack/features/tunnels/presentation/widgets/tunnel_qr_modal.dart';
 import 'package:dev_stack/features/tunnels/presentation/widgets/tunnel_table.dart';
 
+/// Content width below which the Tunnels header stacks instead of putting
+/// the title and the three buttons on one row. The buttons plus their gaps
+/// need 657px side by side (265.5 + 192 + 167.5 + 16 + 8 + 8 in the test
+/// font), and the title word needs 98px, so a single row only works once
+/// the content is about 768px wide; below that the title takes its own row
+/// and the buttons wrap underneath it.
+const double _kHeaderStackWidth = 768;
+
 class TunnelsPage extends ConsumerStatefulWidget {
   const TunnelsPage({super.key});
 
@@ -88,56 +96,79 @@ class _TunnelsPageState extends ConsumerState<TunnelsPage> {
     required bool isCloudflaredBusy,
     required bool isNgrokBusy,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    // The title and the three actions, shared by both layouts below.
+    const title = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'Tunnels',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: AppTextSize.sm,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Expose local sites and ports to the public internet',
-                style: TextStyle(
-                  color: AppColors.textDimmed,
-                  fontSize: AppTextSize.xxs,
-                ),
-              ),
-            ],
+        Text(
+          'Tunnels',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: AppTextSize.sm,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(width: 16),
-        AppButton(
-          label: 'Update cloudflared',
-          icon: const Icon(LucideIcons.download, size: 16),
-          style: AppButtonStyle.success,
-          isLoading: _updating.contains('cloudflare'),
-          onPressed: () => _updateBinary('cloudflare', isCloudflaredBusy),
-        ),
-        const SizedBox(width: 8),
-        AppButton(
-          label: 'Update ngrok',
-          icon: const Icon(LucideIcons.download, size: 16),
-          style: AppButtonStyle.success,
-          isLoading: _updating.contains('ngrok'),
-          onPressed: () => _updateBinary('ngrok', isNgrokBusy),
-        ),
-        const SizedBox(width: 8),
-        AppButton(
-          label: 'New Tunnel',
-          icon: const Icon(LucideIcons.plus, size: 16),
-          style: AppButtonStyle.success,
-          onPressed: _showCreateModal,
+        SizedBox(height: 4),
+        Text(
+          'Expose local sites and ports to the public internet',
+          style: TextStyle(
+            color: AppColors.textDimmed,
+            fontSize: AppTextSize.xxs,
+          ),
         ),
       ],
+    );
+    final actions = <Widget>[
+      AppButton(
+        label: 'Update cloudflared',
+        icon: const Icon(LucideIcons.download, size: 16),
+        style: AppButtonStyle.success,
+        isLoading: _updating.contains('cloudflare'),
+        onPressed: () => _updateBinary('cloudflare', isCloudflaredBusy),
+      ),
+      AppButton(
+        label: 'Update ngrok',
+        icon: const Icon(LucideIcons.download, size: 16),
+        style: AppButtonStyle.success,
+        isLoading: _updating.contains('ngrok'),
+        onPressed: () => _updateBinary('ngrok', isNgrokBusy),
+      ),
+      AppButton(
+        label: 'New Tunnel',
+        icon: const Icon(LucideIcons.plus, size: 16),
+        style: AppButtonStyle.success,
+        onPressed: _showCreateModal,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Narrow windows cannot fit the title and all three buttons on one
+        // row, so the title takes its own row and the buttons wrap
+        // underneath it instead of overflowing.
+        if (constraints.maxWidth < _kHeaderStackWidth) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: actions),
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Expanded(child: title),
+            const SizedBox(width: 16),
+            actions[0],
+            const SizedBox(width: 8),
+            actions[1],
+            const SizedBox(width: 8),
+            actions[2],
+          ],
+        );
+      },
     );
   }
 
