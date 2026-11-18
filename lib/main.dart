@@ -60,52 +60,29 @@ void main(List<String> args) async {
     AppConfig.initialize(baseDir: settings.baseDir);
   }
 
-  // window_manager 0.6 has no `ensureInitialized`/`waitUntilReadyToShow`: the
-  // window already exists by the time Dart runs (the runner creates it), so the
-  // properties are simply set on it and `show()` decides when it becomes
-  // visible. `whenCurrentWindow` waits for the window on the platforms where it
-  // is not discoverable before it is shown (Windows looks the active window up);
-  // with no window at all — a unit test — nothing here runs.
   final packageInfo = await PackageInfo.fromPlatform();
   final appVersion = packageInfo.version;
   final title = 'Ponta DevStack v$appVersion';
 
-  final isMinimized = args.contains('--minimized');
-
+  // The runners own the window's geometry, style, and visibility: both
+  // create it at its final size, centered and frameless, and show it only
+  // once the first frame is rendered (Linux: `linux/runner/my_application.cc`,
+  // Windows: `windows/runner/main.cpp` + `win32_window.cpp`). Dart used to
+  // resize, center, and show the window here, before the first frame, and
+  // that dropped the first frame often enough to open a blank window until
+  // the next resize — so this callback sets only what is neither geometry
+  // nor visibility: the versioned title, the transparent background, and
+  // the taskbar icon. `whenCurrentWindow` waits for the window on the
+  // platforms where it is not discoverable before it is shown; with no
+  // window at all — a unit test — nothing here runs.
   whenCurrentWindow((window) {
-    // The header bar is drawn by AppHeader, so the native one goes away and the
-    // window keeps no caption buttons of its own.
-    //
-    // On Linux that is the runner's job: it creates the window undecorated (see
-    // `linux/runner/my_application.cc`). Setting the title bar style through
-    // nativeapi there instead switches on its custom-shadow mode, and 0.5.10
-    // gets the geometry of that mode wrong — the shadow gutter expands the
-    // surface, but the input region it registers is offset by the gutter without
-    // accounting for GDK's surface margin. The result is a dead band along the
-    // right and bottom of the window: the caption buttons, refresh, pagination
-    // and other page actions stop taking clicks. It also shrinks the window's
-    // minimum size and paints an opaque band around the content.
-    if (!Platform.isLinux) {
-      window.titleBarStyle = TitleBarStyle.hidden;
-      window.isWindowControlButtonsVisible = false;
-    }
     window.title = title;
-    window.setSize(const Size(1024, 640).toNative(), false);
-    window.minimumSize = const Size(720, 520).toNative();
     window.backgroundColor = Colors.transparent.toNative();
-    window.center();
 
     // The taskbar icon is an application property, not a window one. A relative
     // path is an asset path, which is only readable from the bundle the runner
     // copied next to the executable.
     Application.instance.setIcon(_resolveIconPath());
-
-    // `--minimized` (auto-start) leaves the window hidden in the tray; the
-    // runner's own first-frame show is what normally makes it visible.
-    if (!isMinimized) {
-      window.show();
-      window.focus();
-    }
   });
 
   runApp(ProviderScope(child: MyApp(appVersion: appVersion)));
