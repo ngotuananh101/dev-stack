@@ -14,10 +14,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// A table reads as one block of text. Its header, its cells and its actions
-/// all sit on the body size; the header is told apart by colour and weight, not
-/// by a smaller typeface. These tests read the real rendered styles, so a call
-/// site that reaches for another token fails here rather than on screen.
+/// A table reads on a documented size palette: headers 10, row cells 10,
+/// name columns 12, status chips 8 and the version tag 8. The header is told
+/// apart by colour, weight and its smaller size. These tests read the real
+/// rendered styles, so a call site that reaches for another token fails here
+/// rather than on screen.
 void main() {
   Color? colorOf(Text text) => text.style?.color;
   FontWeight? weightOf(Text text) => text.style?.fontWeight;
@@ -144,25 +145,41 @@ void main() {
     ),
   };
 
+  // The documented size palette per table: headers 10, row cells 10, name
+  // columns 12, status chips 8, version tag 8.
+  final expectedSizes = <String, Set<double>>{
+    'apps': {10.0, 12.0, 8.0},
+    'sites': {10.0, 12.0},
+    'tunnels': {10.0, 12.0, 8.0},
+    'supervisor': {10.0, 12.0, 8.0},
+    'cron': {10.0, 12.0, 8.0},
+    'databases': {10.0, 12.0},
+  };
+
   for (final entry in tables.entries) {
-    testWidgets('the ${entry.key} table renders at one size', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1280, 720));
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+    testWidgets(
+      'the ${entry.key} table renders at the documented sizes',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(1280, 720));
+        addTearDown(
+          () => tester.binding.setSurfaceSize(const Size(800, 600)),
+        );
 
-      await tester.pumpWidget(host(entry.value()));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(host(entry.value()));
+        await tester.pumpAndSettle();
 
-      expect(
-        renderedSizes(tester),
-        {12.0},
-        reason: 'header, cells and actions share the body size',
-      );
-    });
+        expect(
+          renderedSizes(tester),
+          expectedSizes[entry.key],
+          reason: 'headers 10, cells 10, names 12, chips and tag 8',
+        );
+      },
+    );
   }
 
-  testWidgets('a table header is distinguished by colour and weight only', (
-    tester,
-  ) async {
+  testWidgets(
+    'a table header is smaller than its cells, and distinguished by weight',
+    (tester) async {
     await tester.binding.setSurfaceSize(const Size(1280, 720));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -186,19 +203,29 @@ void main() {
     final header = tester.widget<Text>(find.text('PROGRAM'));
     final cell = tester.widget<Text>(find.text('Queue Worker'));
 
-    expect(sizeOf(header), sizeOf(cell), reason: 'same size, no smaller label');
+    expect(sizeOf(header), 10.0, reason: 'header sits one step below the body');
+    expect(sizeOf(cell), 12.0, reason: 'the name column reads at the body size');
     expect(weightOf(header), FontWeight.w600);
     expect(
       colorOf(header),
-      isNot(colorOf(cell)),
-      reason: 'the muted header colour carries the hierarchy',
+      colorOf(cell),
+      reason: 'one flat text colour: the reset made every text token white',
     );
   });
 
+  final expectedEmptySizes = <String, Set<double>>{
+    'apps': {10.0},
+    'sites': {10.0},
+    'tunnels': {10.0, 12.0},
+    'supervisor': {10.0, 12.0},
+    'cron': {10.0, 12.0},
+    'databases': {10.0, 12.0},
+  };
+
   for (final entry in tables.entries) {
-    testWidgets('the ${entry.key} table empty state sits on the body size', (
-      tester,
-    ) async {
+    testWidgets(
+      'the ${entry.key} table empty state sits on the documented sizes',
+      (tester) async {
       await tester.binding.setSurfaceSize(const Size(1280, 720));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -268,7 +295,7 @@ void main() {
       // `FilledButton`/`TextButton` inside tables bring the theme's own label
       // size, which is pinned by the theme test; here only the table's own text
       // matters, so chips and buttons are read too and must not drift either.
-      expect(renderedSizes(tester), {12.0});
+      expect(renderedSizes(tester), expectedEmptySizes[entry.key]);
     });
   }
 }
