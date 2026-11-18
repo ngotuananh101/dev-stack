@@ -159,13 +159,67 @@ void main() {
       await tester.tap(find.byIcon(LucideIcons.moreHorizontal));
       await tester.pumpAndSettle();
       expect(find.text('Start'), findsOneWidget);
-      expect(find.text('Restart'), findsOneWidget);
+      expect(find.text('Restart'), findsNothing);
       expect(find.text('View Logs'), findsOneWidget);
       expect(find.text('Edit'), findsOneWidget);
       expect(find.text('Delete'), findsOneWidget);
 
       await tester.tap(find.text('Start').last);
       expect(started?.id, 1);
+    });
+
+    testWidgets('collapses actions into one menu at a ~412px row while running', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(700, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      int? stoppedId;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SupervisorTable(
+                      programs: [program],
+                      statuses: const {1: SupervisorStatus.running},
+                      pids: const {1: 4242},
+                      onStart: (_) {},
+                      onStop: (id) => stoppedId = id,
+                      onRestart: (_) {},
+                      onViewLogs: (_) {},
+                      onEdit: (_) {},
+                      onDelete: (_) {},
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // A RenderFlex overflow is a Flutter error, so the header and
+      // every data row fitting the narrow window is proved by there
+      // being no exception here.
+      expect(tester.takeException(), isNull);
+
+      expect(find.text('Start'), findsNothing);
+
+      await tester.tap(find.byIcon(LucideIcons.moreHorizontal));
+      await tester.pumpAndSettle();
+      expect(find.text('Stop'), findsOneWidget);
+      expect(find.text('Restart'), findsOneWidget);
+      expect(find.text('View Logs'), findsOneWidget);
+      expect(find.text('Edit'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+
+      await tester.tap(find.text('Stop').last);
+      expect(stoppedId, 1);
     });
 
     testWidgets('shows every action inline at a wide row', (tester) async {
