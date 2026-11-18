@@ -3,7 +3,7 @@ import 'package:dev_stack/features/apps/data/apps_provider.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:dev_stack/features/apps/presentation/widgets/app_version_modal.dart';
 import 'package:dev_stack/shared/widgets/app_button.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 

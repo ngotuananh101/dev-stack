@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../../../shared/widgets/terminal_log_view.dart';
 import '../../../../shared/utils/modal_sizing.dart';
 import '../../domain/tunnel_session.dart';

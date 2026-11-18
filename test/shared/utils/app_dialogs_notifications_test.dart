@@ -1,5 +1,7 @@
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/src/material/material_localizations.dart'
+    as flutter_material_localizations;
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:toastification/toastification.dart';
 
@@ -9,6 +11,11 @@ Widget host(WidgetTester tester, void Function(BuildContext) onTap) {
   return ToastificationWrapper(
     child: MaterialApp(
       theme: ThemeData(brightness: Brightness.dark),
+      // Mirrors main.dart: QuickAlert builds Flutter's AlertDialog, which
+      // needs Flutter's MaterialLocalizations.
+      localizationsDelegates: const [
+        flutter_material_localizations.DefaultMaterialLocalizations.delegate,
+      ],
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(

@@ -11,7 +11,7 @@ import 'package:dev_stack/features/supervisor/presentation/supervisor_page.dart'
 import 'package:dev_stack/features/tunnels/presentation/tunnels_page.dart';
 import 'package:dev_stack/shared/layouts/sidebar.dart';
 import 'package:dev_stack/shared/providers/sidebar_provider.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -31,25 +31,6 @@ class _StaticSidebar extends SidebarCollapsed {
 }
 
 void main() {
-  Widget host(Widget page, {required bool sidebarCollapsed}) => ProviderScope(
-    overrides: [
-      appsProvider.overrideWith(_StaticAppsNotifier.new),
-      sidebarCollapsedProvider.overrideWith(
-        () => _StaticSidebar(collapsed: sidebarCollapsed),
-      ),
-    ],
-    child: MaterialApp(
-      home: Scaffold(
-        body: Row(
-          children: [
-            const Sidebar(),
-            Expanded(child: page),
-          ],
-        ),
-      ),
-    ),
-  );
-
   final pages = <String, Widget>{
     'apps': const AppsPage(),
     'sites': const SitesPage(),
@@ -75,8 +56,28 @@ void main() {
       for (var width = 720; width <= 1600; width += 20) {
         for (final collapsed in [true, false]) {
           await tester.binding.setSurfaceSize(Size(width.toDouble(), 700));
+          // The scope sits directly under pumpWidget on purpose: a scope
+          // returned from a helper counts as nested, and the lint then
+          // demands the overridden providers declare dependencies.
           await tester.pumpWidget(
-            host(entry.value, sidebarCollapsed: collapsed),
+            ProviderScope(
+              overrides: [
+                appsProvider.overrideWith(_StaticAppsNotifier.new),
+                sidebarCollapsedProvider.overrideWith(
+                  () => _StaticSidebar(collapsed: collapsed),
+                ),
+              ],
+              child: MaterialApp(
+                home: Scaffold(
+                  body: Row(
+                    children: [
+                      const Sidebar(),
+                      Expanded(child: entry.value),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           );
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 50));

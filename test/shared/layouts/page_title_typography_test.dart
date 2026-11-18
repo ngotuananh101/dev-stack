@@ -5,7 +5,7 @@ import 'package:dev_stack/features/apps/presentation/apps_page.dart';
 import 'package:dev_stack/features/cron/presentation/cron_page.dart';
 import 'package:dev_stack/features/supervisor/presentation/supervisor_page.dart';
 import 'package:dev_stack/features/tunnels/presentation/tunnels_page.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,11 +21,6 @@ class _StaticAppsNotifier extends Apps {
 }
 
 void main() {
-  Widget host(Widget page) => ProviderScope(
-    overrides: [appsProvider.overrideWith(_StaticAppsNotifier.new)],
-    child: MaterialApp(home: Scaffold(body: page)),
-  );
-
   final pages = <String, (Widget, String)>{
     'apps': (const AppsPage(), 'Marketplace'),
     'tunnels': (const TunnelsPage(), 'Tunnels'),
@@ -42,7 +37,15 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1400, 900));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(host(page));
+      // The scope sits directly under pumpWidget on purpose: a scope
+      // returned from a helper counts as nested, and the lint then demands
+      // the overridden providers declare dependencies.
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appsProvider.overrideWith(_StaticAppsNotifier.new)],
+          child: MaterialApp(home: Scaffold(body: page)),
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 

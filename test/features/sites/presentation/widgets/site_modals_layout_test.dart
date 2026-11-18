@@ -6,7 +6,7 @@ import 'package:dev_stack/features/sites/presentation/widgets/add_site_modal.dar
 import 'package:dev_stack/features/sites/presentation/widgets/edit_site_modal.dart';
 import 'package:dev_stack/shared/utils/modal_sizing.dart';
 import 'package:dev_stack/shared/widgets/code_editor/config_code_editor.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 

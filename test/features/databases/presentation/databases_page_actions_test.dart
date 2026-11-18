@@ -5,7 +5,7 @@ import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:dev_stack/features/databases/data/databases_provider.dart';
 import 'package:dev_stack/features/databases/domain/database_record.dart';
 import 'package:dev_stack/features/databases/presentation/databases_page.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -4,7 +4,7 @@ import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:dev_stack/features/settings/data/settings_provider.dart';
 import 'package:dev_stack/features/settings/domain/app_settings.dart';
 import 'package:dev_stack/features/settings/presentation/settings_page.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';

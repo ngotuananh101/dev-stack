@@ -1,7 +1,7 @@
 import 'package:dev_stack/core/theme/app_text_size.dart';
 import 'package:dev_stack/core/theme/app_theme.dart';
 import 'package:dev_stack/shared/widgets/status_chip.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Text that names no size falls back to the theme's typography, which is what

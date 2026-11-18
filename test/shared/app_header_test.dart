@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:dev_stack/core/services/window_api.dart';
 import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/shared/layouts/app_header.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:window_manager/window_manager.dart';

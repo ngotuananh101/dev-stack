@@ -1,6 +1,6 @@
 import 'package:dev_stack/features/databases/domain/database_record.dart';
 import 'package:dev_stack/features/databases/presentation/widgets/database_table.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,7 +1,7 @@
 import 'package:dev_stack/shared/layouts/sidebar.dart';
 import 'package:dev_stack/shared/providers/navigation_provider.dart';
 import 'package:dev_stack/shared/providers/sidebar_provider.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';

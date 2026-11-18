@@ -11,7 +11,7 @@ import 'package:dev_stack/features/supervisor/presentation/supervisor_page.dart'
 import 'package:dev_stack/features/tunnels/presentation/tunnels_page.dart';
 import 'package:dev_stack/shared/layouts/sidebar.dart';
 import 'package:dev_stack/shared/providers/sidebar_provider.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -24,28 +24,6 @@ class _StaticAppsNotifier extends Apps {
 }
 
 void main() {
-  // The real layout is a sidebar next to the page, so the page only gets the
-  // window width minus the sidebar's. Reproducing both here makes the test
-  // measure the width the page really has.
-  Widget host(Widget page, {required bool sidebarCollapsed}) => ProviderScope(
-    overrides: [
-      appsProvider.overrideWith(_StaticAppsNotifier.new),
-      sidebarCollapsedProvider.overrideWith(
-        () => _StaticSidebar(collapsed: sidebarCollapsed),
-      ),
-    ],
-    child: MaterialApp(
-      home: Scaffold(
-        body: Row(
-          children: [
-            const Sidebar(),
-            Expanded(child: page),
-          ],
-        ),
-      ),
-    ),
-  );
-
   final pages = <String, Widget>{
     'apps': const AppsPage(),
     'sites': const SitesPage(),
@@ -74,8 +52,31 @@ void main() {
         await tester.binding.setSurfaceSize(scenario.size);
         addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
+        // The real layout is a sidebar next to the page, so the page only
+        // gets the window width minus the sidebar's. Reproducing both here
+        // makes the test measure the width the page really has. The scope
+        // sits directly under pumpWidget on purpose: a scope returned from
+        // a helper counts as nested, and the lint then demands the
+        // overridden providers declare dependencies.
         await tester.pumpWidget(
-          host(entry.value, sidebarCollapsed: scenario.collapsed),
+          ProviderScope(
+            overrides: [
+              appsProvider.overrideWith(_StaticAppsNotifier.new),
+              sidebarCollapsedProvider.overrideWith(
+                () => _StaticSidebar(collapsed: scenario.collapsed),
+              ),
+            ],
+            child: MaterialApp(
+              home: Scaffold(
+                body: Row(
+                  children: [
+                    const Sidebar(),
+                    Expanded(child: entry.value),
+                  ],
+                ),
+              ),
+            ),
+          ),
         );
         // A fixed number of frames rather than pumpAndSettle: some pages run a
         // perpetual animation, which would never let the tree settle.

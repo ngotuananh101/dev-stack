@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dev_stack/features/apps/domain/app_brand_resolver.dart';
 import 'package:dev_stack/core/theme/app_colors.dart';

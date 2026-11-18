@@ -19,7 +19,7 @@ import 'package:dev_stack/features/supervisor/presentation/widgets/program_form_
 import 'package:dev_stack/features/tunnels/presentation/widgets/create_tunnel_modal.dart';
 import 'package:dev_stack/features/tunnels/presentation/widgets/tunnel_qr_modal.dart';
 import 'package:dev_stack/features/tunnels/presentation/widgets/tunnel_logs_modal.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
