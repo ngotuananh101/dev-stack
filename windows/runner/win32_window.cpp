@@ -136,8 +136,14 @@ bool Win32Window::Create(const std::wstring& title,
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
   double scale_factor = dpi / 96.0;
 
+  // The window is frameless from creation: the app draws its own header bar
+  // in Flutter (AppHeader), and removing the caption afterwards — as Dart
+  // used to — resizes the client area, which is one of the ways the first
+  // frame got dropped. Only the caption goes: the sizing border and the
+  // minimize/maximize boxes stay, so the window still resizes by its edges
+  // and still minimizes and maximizes from the header buttons.
   HWND window = CreateWindow(
-      window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
+      window_class, title.c_str(), WS_OVERLAPPEDWINDOW & ~WS_CAPTION,
       Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
       Scale(size.width, scale_factor), Scale(size.height, scale_factor),
       nullptr, nullptr, GetModuleHandle(nullptr), this);
@@ -201,6 +207,38 @@ Win32Window::MessageHandler(HWND hwnd,
 
       return 0;
     }
+    case WM_NCCALCSIZE:
+      // The client area covers the whole window: with no caption there is no
+      // non-client area left to reserve. The sizing border stays available
+      // for hit-testing through WS_THICKFRAME.
+      return 0;
+
+    case WM_GETMINMAXINFO: {
+      MINMAXINFO* info = reinterpret_cast<MINMAXINFO*>(lparam);
+      // Minimum size, scaled by the window's DPI so it stays 720x520 in
+      // logical pixels on any display.
+      const UINT dpi = GetDpiForWindow(hwnd);
+      const double scale_factor = dpi / 96.0;
+      info->ptMinTrackSize.x = static_cast<LONG>(720 * scale_factor);
+      info->ptMinTrackSize.y = static_cast<LONG>(520 * scale_factor);
+      // A maximized window fills the monitor's work area, never the whole
+      // screen: without this, the frameless client area (see WM_NCCALCSIZE)
+      // would cover the taskbar.
+      HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+      MONITORINFO monitor_info = {};
+      monitor_info.cbSize = sizeof(monitor_info);
+      GetMonitorInfo(monitor, &monitor_info);
+      info->ptMaxPosition.x =
+          monitor_info.rcWork.left - monitor_info.rcMonitor.left;
+      info->ptMaxPosition.y =
+          monitor_info.rcWork.top - monitor_info.rcMonitor.top;
+      info->ptMaxSize.x =
+          monitor_info.rcWork.right - monitor_info.rcWork.left;
+      info->ptMaxSize.y =
+          monitor_info.rcWork.bottom - monitor_info.rcWork.top;
+      return 0;
+    }
+
     case WM_SIZE: {
       RECT rect = GetClientArea();
       if (child_content_ != nullptr) {
