@@ -198,16 +198,18 @@ class PyenvBuildDeps {
   ///
   /// Returns `true` when the Python install may proceed: nothing is missing,
   /// the user declined (they accept the build may fail), the install
-  /// succeeded and the re-check is clean, or the distro family is unknown
-  /// (the manual hint is logged instead). Returns `false` when the library
-  /// install failed or the headers are still missing afterwards — the
-  /// Python build must not run blind.
+  /// succeeded and the re-check is clean, the distro family is unknown, or
+  /// pkexec is not available (in the last two cases the manual hint is
+  /// logged instead). Returns `false` when the library install failed or
+  /// the headers are still missing afterwards — the Python build must not
+  /// run blind.
   @visibleForTesting
   static Future<bool> ensureBuildDeps({
     required Future<bool> Function(SslInstallPrompt prompt) askPermission,
     required PyenvBuildDepsDeclines declines,
     required List<String> missingPackages,
     required ({String packageManager, List<String> packageNames})? package,
+    required Future<bool> Function() pkexecAvailable,
     required Future<ProcessResult> Function(
       String executable,
       List<String> arguments,
@@ -233,6 +235,22 @@ class PyenvBuildDeps {
       AppLogger.warning(
         'Python build libraries are missing ($names). Install them by hand: '
         '$_pyenvWikiUrl',
+      );
+      return true;
+    }
+
+    if (!await pkexecAvailable()) {
+      // Without pkexec nothing can be installed elevated, so there is no
+      // point showing a prompt for a command that cannot run: log the exact
+      // command instead and let the Python install proceed.
+      final manualArgs = SslService.packageInstallArgs(
+        package.packageManager,
+        package.packageNames,
+      );
+      AppLogger.warning(
+        'pkexec is not available, so the build libraries cannot be '
+        'installed automatically. Install them by hand: '
+        '${SslService.describeCommand(package.packageManager, manualArgs)}',
       );
       return true;
     }
@@ -357,6 +375,7 @@ class PyenvBuildDeps {
         packageManager: resolved.packageManager,
         packageNames: missing,
       ),
+      pkexecAvailable: () => _defaultProbeExists('which:pkexec'),
       runElevated: BackgroundProcess.runElevated,
       onProgress: onProgress,
       missingAfterwards: () => missingPackages(resolved.deps),

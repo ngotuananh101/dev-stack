@@ -117,6 +117,7 @@ void main() {
       int refreshExitCode = 0,
       String stderr = '',
       List<String> missingAfterwards = const [],
+      Future<bool> Function()? pkexecAvailable,
     }) async {
       for (final key in alreadyDeclined) {
         await declines.decline(key);
@@ -145,6 +146,7 @@ void main() {
         },
         onProgress: progress.add,
         missingAfterwards: () async => missingAfterwards,
+        pkexecAvailable: pkexecAvailable ?? () async => true,
       );
 
       return (
@@ -200,6 +202,16 @@ void main() {
 
     test('unknown distro runs nothing and proceeds', () async {
       final result = await run(answers: [true], package: null);
+      expect(result.prompts, isEmpty);
+      expect(result.commands, isEmpty);
+      expect(result.proceed, isTrue);
+    });
+
+    test('no pkexec runs nothing and proceeds', () async {
+      final result = await run(
+        answers: [true],
+        pkexecAvailable: () async => false,
+      );
       expect(result.prompts, isEmpty);
       expect(result.commands, isEmpty);
       expect(result.proceed, isTrue);
