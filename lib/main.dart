@@ -1,22 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-// Flutter's MaterialLocalizations, minus the deprecated paths to it:
-// `package:flutter/material.dart` is the deprecated barrel this swap moves
-// away from, and `flutter_localizations`' GlobalMaterialLocalizations class
-// is itself deprecated in favour of material_ui's copy — but that copy
-// provides material_ui's MaterialLocalizations, which QuickAlert's Flutter
-// AlertDialog does not accept. So the delegate comes from Flutter's own
-// English-only default, imported from its source file directly. It is enough
-// because the app only ever resolves to en_US (MaterialApp's default
-// supportedLocales), the dialog's visible strings are all passed explicitly
-// by AppDialogs, and the localizations object itself is only needed to
-// exist. The import names an SDK-internal path; it is pinned to the Flutter
-// 3.50.0 the project builds with, and must be revisited if the SDK's
-// material sources move. It also trips `implementation_imports`, the one
-// remaining info in `flutter analyze`: there is no public, non-deprecated
-// path to Flutter's delegate, so the info stays rather than a suppression.
-import 'package:flutter/src/material/material_localizations.dart'
-    as flutter_material_localizations;
 import 'package:material_ui/material_ui.dart';
 import 'package:nativeapi/nativeapi.dart' show Application;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -139,17 +122,6 @@ class MyApp extends StatelessWidget {
         title: 'Ponta DevStack v$appVersion',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
-        // `material_ui` is a vendored copy of Flutter's Material library, so
-        // this MaterialApp only provides `material_ui`'s localizations.
-        // QuickAlert still builds Flutter's AlertDialog, which needs
-        // Flutter's MaterialLocalizations: without this delegate every error
-        // dialog and permission prompt crashes with "No MaterialLocalizations
-        // found". The delegate is additive — material_ui's own defaults stay.
-        localizationsDelegates: const [
-          flutter_material_localizations
-              .DefaultMaterialLocalizations
-              .delegate,
-        ],
         builder: VirtualWindowFrameInit(),
         home: const MainScreen(),
       ),

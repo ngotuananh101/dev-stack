@@ -1,7 +1,6 @@
-import 'dart:async';
-
 import 'package:material_ui/material_ui.dart';
-import 'package:quickalert/quickalert.dart';
+import 'package:quickalert/models/quickalert_type.dart';
+import 'app_alert.dart';
 import 'package:toastification/toastification.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
@@ -14,7 +13,8 @@ import 'modal_sizing.dart';
 /// Anything the user does not have to stop for — a finished operation, a value
 /// copied, a step that merely started — is a toast from `toastification`. An
 /// error is something they have to read and acknowledge, so it is a
-/// `quickalert` modal. Neither uses `ScaffoldMessenger`: a `SnackBar` is
+/// material_ui modal with QuickAlert's illustration assets. Neither uses
+/// `ScaffoldMessenger`: a `SnackBar` is
 /// anchored to the `Scaffold` that owns it, so it disappears when a dialog
 /// closes over it, which is exactly when these messages are emitted.
 class AppDialogs {
@@ -26,37 +26,19 @@ class AppDialogs {
     String confirmBtnText = 'CONFIRM',
     String cancelBtnText = 'CLOSE',
     QuickAlertType type = QuickAlertType.warning,
-  }) {
-    return QuickAlert.show(
+  }) async {
+    final confirmed = await showAppAlert(
       context: context,
       type: type,
       title: title,
-      text: text,
-      confirmBtnText: confirmBtnText,
-      cancelBtnText: cancelBtnText,
-      showCancelBtn: true,
-      onConfirmBtnTap: () {
-        Navigator.of(context).pop();
-        onConfirm();
-      },
-      backgroundColor: AppColors.surface,
-      titleColor: AppColors.textPrimary,
-      textColor: AppColors.textSecondary,
-      confirmBtnColor: type == QuickAlertType.warning
+      message: text,
+      confirmText: confirmBtnText,
+      cancelText: cancelBtnText,
+      confirmColor: type == QuickAlertType.warning
           ? AppColors.errorStrong
           : AppColors.successStrong,
-      width: kModalWidthSm,
-      confirmBtnTextStyle: const TextStyle(
-        color: AppColors.textOnColor,
-        fontSize: AppTextSize.xs,
-        fontWeight: FontWeight.w700,
-      ),
-      cancelBtnTextStyle: const TextStyle(
-        color: AppColors.textSecondary,
-        fontSize: AppTextSize.xs,
-        fontWeight: FontWeight.w600,
-      ),
     );
+    if (confirmed == true) onConfirm();
   }
 
   /// A short success confirmation: a file saved, a value copied, an operation
@@ -82,23 +64,14 @@ class AppDialogs {
     BuildContext context, {
     required String title,
     required String message,
-  }) {
-    return QuickAlert.show(
+  }) async {
+    await showAppAlert(
       context: context,
       type: QuickAlertType.error,
       title: title,
-      text: message,
-      confirmBtnText: 'CLOSE',
-      confirmBtnColor: AppColors.error,
-      backgroundColor: AppColors.surface,
-      titleColor: AppColors.textPrimary,
-      textColor: AppColors.textSecondary,
-      width: kModalWidthSm,
-      confirmBtnTextStyle: const TextStyle(
-        color: AppColors.textOnColor,
-        fontSize: AppTextSize.xs,
-        fontWeight: FontWeight.w700,
-      ),
+      message: message,
+      confirmText: 'CLOSE',
+      confirmColor: AppColors.error,
     );
   }
 
@@ -123,22 +96,13 @@ class AppDialogs {
     required String title,
     required String message,
     required String command,
-  }) {
-    final confirmed = Completer<bool>();
-    var settled = false;
-
-    void finish(bool value) {
-      if (settled) return;
-      settled = true;
-      confirmed.complete(value);
-    }
-
-    QuickAlert.show(
+  }) async {
+    final confirmed = await showAppAlert(
       context: context,
       type: QuickAlertType.confirm,
       title: title,
-      text: message,
-      widget: Container(
+      message: message,
+      detail: Container(
         width: kModalWidthSm,
         margin: const EdgeInsets.only(top: AppSpacing.md),
         padding: const EdgeInsets.symmetric(
@@ -159,40 +123,13 @@ class AppDialogs {
           ),
         ),
       ),
-      confirmBtnText: 'ALLOW',
-      cancelBtnText: 'CANCEL',
-      confirmBtnColor: AppColors.successStrong,
-      backgroundColor: AppColors.surface,
-      titleColor: AppColors.textPrimary,
-      textColor: AppColors.textSecondary,
-      width: kModalWidthSm,
-      confirmBtnTextStyle: const TextStyle(
-        color: AppColors.textOnColor,
-        fontSize: AppTextSize.xs,
-        fontWeight: FontWeight.w700,
-      ),
-      cancelBtnTextStyle: const TextStyle(
-        color: AppColors.textSecondary,
-        fontSize: AppTextSize.xs,
-        fontWeight: FontWeight.w600,
-      ),
-      // The whole point is the answer, so a tap outside must not dismiss the
-      // dialog without one: it counts as "no".
-      barrierDismissible: true,
-      onConfirmBtnTap: () {
-        Navigator.of(context).pop();
-        finish(true);
-      },
-      onCancelBtnTap: () {
-        Navigator.of(context).pop();
-        finish(false);
-      },
-    ).then((_) {
-      // Dismissed by the barrier or a back gesture rather than a button.
-      finish(false);
-    });
-
-    return confirmed.future;
+      confirmText: 'ALLOW',
+      cancelText: 'CANCEL',
+      confirmColor: AppColors.successStrong,
+    );
+    // Barrier, back, and cancellation all deny permission; only ALLOW (or the
+    // focused dialog's Enter shortcut) answers true.
+    return confirmed == true;
   }
 
   /// One toast shape for every non-blocking message: the app's palette on the

@@ -8,8 +8,6 @@ import 'package:dev_stack/features/tunnels/data/tunnels_provider.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_model.dart';
 import 'package:dev_stack/features/tunnels/domain/tunnel_session.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/src/material/material_localizations.dart'
-    as flutter_material_localizations;
 import 'package:toastification/toastification.dart';
 import 'package:dev_stack/features/tunnels/data/tunnel_downloader_service.dart';
 import 'package:dev_stack/shared/widgets/app_button.dart';
@@ -105,9 +103,7 @@ void main() {
     expect(cloudflaredPos.dx, lessThan(ngrokPos.dx));
     expect(ngrokPos.dx, lessThan(newTunnelPos.dx));
 
-    await tester.tap(
-      find.widgetWithText(AppButton, 'Update cloudflared'),
-    );
+    await tester.tap(find.widgetWithText(AppButton, 'Update cloudflared'));
     await settleToast(tester);
 
     expect(downloader.downloadedProviders, ['cloudflare']);
@@ -133,17 +129,12 @@ void main() {
       tester,
       tunnels: [tunnel],
       sessions: {
-        10: const TunnelSession(
-          tunnelId: 10,
-          status: TunnelStatus.running,
-        ),
+        10: const TunnelSession(tunnelId: 10, status: TunnelStatus.running),
       },
       downloader: downloader,
     );
 
-    await tester.tap(
-      find.widgetWithText(AppButton, 'Update cloudflared'),
-    );
+    await tester.tap(find.widgetWithText(AppButton, 'Update cloudflared'));
     await settleToast(tester);
 
     expect(downloader.downloadedProviders, isEmpty);
@@ -155,16 +146,11 @@ void main() {
     await drainToastTimers(tester);
 
     // A running Cloudflare tunnel does not block the ngrok update.
-    await tester.tap(
-      find.widgetWithText(AppButton, 'Update ngrok'),
-    );
+    await tester.tap(find.widgetWithText(AppButton, 'Update ngrok'));
     await settleToast(tester);
 
     expect(downloader.downloadedProviders, ['ngrok']);
-    expect(
-      find.text('ngrok updated to the latest version'),
-      findsOneWidget,
-    );
+    expect(find.text('ngrok updated to the latest version'), findsOneWidget);
 
     await drainToastTimers(tester);
   });
@@ -191,9 +177,7 @@ void main() {
         downloader: downloader,
       );
 
-      await tester.tap(
-        find.widgetWithText(AppButton, 'Update cloudflared'),
-      );
+      await tester.tap(find.widgetWithText(AppButton, 'Update cloudflared'));
       await settleToast(tester);
 
       expect(downloader.downloadedProviders, isEmpty);
@@ -228,9 +212,7 @@ void main() {
         downloader: downloader,
       );
 
-      await tester.tap(
-        find.widgetWithText(AppButton, 'Update cloudflared'),
-      );
+      await tester.tap(find.widgetWithText(AppButton, 'Update cloudflared'));
       await settleToast(tester);
 
       expect(downloader.downloadedProviders, isEmpty);
@@ -249,9 +231,7 @@ void main() {
     final downloader = FakeTunnelDownloader(shouldThrow: true);
     await pumpTunnelsPage(tester, downloader: downloader);
 
-    await tester.tap(
-      find.widgetWithText(AppButton, 'Update cloudflared'),
-    );
+    await tester.tap(find.widgetWithText(AppButton, 'Update cloudflared'));
     await settleDialog(tester);
 
     expect(find.text('Could not update cloudflared'), findsOneWidget);
@@ -286,9 +266,7 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(
-      find.widgetWithText(AppButton, 'Update cloudflared'),
-    );
+    await tester.tap(find.widgetWithText(AppButton, 'Update cloudflared'));
     await settleToast(tester);
 
     expect(downloader.downloadedProviders, ['cloudflare']);
@@ -310,61 +288,54 @@ void main() {
     await settleToast(tester);
 
     expect(downloader.downloadedProviders, ['ngrok']);
-    expect(
-      find.text('ngrok updated to the latest version'),
-      findsOneWidget,
-    );
+    expect(find.text('ngrok updated to the latest version'), findsOneWidget);
 
     await drainToastTimers(tester);
   });
 
-  testWidgets('Update ngrok does not download while an ngrok tunnel is running', (
-    tester,
-  ) async {
-    final downloader = FakeTunnelDownloader();
-    final tunnel = TunnelModel(
-      id: 11,
-      name: 'API',
-      provider: 'ngrok',
-      targetPort: 3000,
-    );
-    await pumpTunnelsPage(
-      tester,
-      tunnels: [tunnel],
-      sessions: {
-        11: const TunnelSession(
-          tunnelId: 11,
-          status: TunnelStatus.running,
-        ),
-      },
-      downloader: downloader,
-    );
+  testWidgets(
+    'Update ngrok does not download while an ngrok tunnel is running',
+    (tester) async {
+      final downloader = FakeTunnelDownloader();
+      final tunnel = TunnelModel(
+        id: 11,
+        name: 'API',
+        provider: 'ngrok',
+        targetPort: 3000,
+      );
+      await pumpTunnelsPage(
+        tester,
+        tunnels: [tunnel],
+        sessions: {
+          11: const TunnelSession(tunnelId: 11, status: TunnelStatus.running),
+        },
+        downloader: downloader,
+      );
 
-    await tester.tap(find.widgetWithText(AppButton, 'Update ngrok'));
-    await settleToast(tester);
+      await tester.tap(find.widgetWithText(AppButton, 'Update ngrok'));
+      await settleToast(tester);
 
-    expect(downloader.downloadedProviders, isEmpty);
-    expect(
-      find.text('Stop the running ngrok tunnel first, then update.'),
-      findsOneWidget,
-    );
+      expect(downloader.downloadedProviders, isEmpty);
+      expect(
+        find.text('Stop the running ngrok tunnel first, then update.'),
+        findsOneWidget,
+      );
 
-    await drainToastTimers(tester);
+      await drainToastTimers(tester);
 
-    // A running ngrok tunnel does not block the cloudflared update.
-    await tester.tap(
-      find.widgetWithText(AppButton, 'Update cloudflared'),
-    );
-    await settleToast(tester);
+      // A running ngrok tunnel does not block the cloudflared update.
+      await tester.tap(find.widgetWithText(AppButton, 'Update cloudflared'));
+      await settleToast(tester);
 
-    expect(downloader.downloadedProviders, ['cloudflare']);
-    expect(
-      find.text('cloudflared updated to the latest version'),
-      findsOneWidget,
-    );
+      expect(downloader.downloadedProviders, ['cloudflare']);
+      expect(
+        find.text('cloudflared updated to the latest version'),
+        findsOneWidget,
+      );
 
-    await drainToastTimers(tester);
-  });
+      await drainToastTimers(tester);
+    },
+  );
 
   testWidgets('Update ngrok shows an error dialog when the download fails', (
     tester,
@@ -479,8 +450,7 @@ class FakeTunnelDownloader extends TunnelDownloaderService {
 }
 
 /// Pumps [TunnelsPage] wrapped the way the real app wraps it: toasts need
-/// the [ToastificationWrapper], and QuickAlert's error dialog needs
-/// Flutter's MaterialLocalizations (mirrors main.dart).
+/// the [ToastificationWrapper]; dialogs use material_ui's default localization.
 Future<void> pumpTunnelsPage(
   WidgetTester tester, {
   List<TunnelModel> tunnels = const [],
@@ -502,14 +472,7 @@ Future<void> pumpTunnelsPage(
           tunnelDownloaderServiceProvider.overrideWithValue(downloader),
       ],
       child: ToastificationWrapper(
-        child: MaterialApp(
-          localizationsDelegates: const [
-            flutter_material_localizations
-                .DefaultMaterialLocalizations
-                .delegate,
-          ],
-          home: const Scaffold(body: TunnelsPage()),
-        ),
+        child: MaterialApp(home: const Scaffold(body: TunnelsPage())),
       ),
     ),
   );
@@ -533,7 +496,7 @@ Future<void> settleToast(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 700));
 }
 
-/// Lets a QuickAlert dialog finish its entry animation after a tap.
+/// Lets an app alert finish its entry animation after a tap.
 ///
 /// Do not use pumpAndSettle here: while the dialog is open the Update
 /// button is still spinning (the handler awaits the dialog's dismissal),
@@ -550,4 +513,3 @@ Future<void> drainToastTimers(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 4));
   await tester.pump(const Duration(milliseconds: 700));
 }
-

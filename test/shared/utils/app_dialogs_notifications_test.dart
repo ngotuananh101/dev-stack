@@ -1,6 +1,5 @@
+import 'package:flutter/services.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
-import 'package:flutter/src/material/material_localizations.dart'
-    as flutter_material_localizations;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:toastification/toastification.dart';
@@ -11,11 +10,6 @@ Widget host(WidgetTester tester, void Function(BuildContext) onTap) {
   return ToastificationWrapper(
     child: MaterialApp(
       theme: ThemeData(brightness: Brightness.dark),
-      // Mirrors main.dart: QuickAlert builds Flutter's AlertDialog, which
-      // needs Flutter's MaterialLocalizations.
-      localizationsDelegates: const [
-        flutter_material_localizations.DefaultMaterialLocalizations.delegate,
-      ],
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(
@@ -135,6 +129,99 @@ void main() {
     expect(find.byType(SnackBar), findsNothing);
   });
 
+  testWidgets('confirm only runs its action after explicit confirmation', (
+    tester,
+  ) async {
+    var confirmations = 0;
+    await tester.pumpWidget(
+      host(
+        tester,
+        (c) => AppDialogs.showConfirm(
+          context: c,
+          title: 'Delete entry?',
+          text: 'This cannot be undone.',
+          onConfirm: () => confirmations++,
+        ),
+      ),
+    );
+    await tester.tap(find.text('act'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete entry?'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    await tester.tap(find.text('CLOSE'));
+    await tester.pumpAndSettle();
+    expect(confirmations, 0);
+    await tester.tap(find.text('act'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CONFIRM'));
+    await tester.pumpAndSettle();
+    expect(confirmations, 1);
+    expect(find.text('Delete entry?'), findsNothing);
+  });
+
+  testWidgets(
+    'repeated confirmation does not dismiss the page below the dialog',
+    (tester) async {
+      var confirmations = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => Scaffold(
+                    body: Builder(
+                      builder: (pageContext) => TextButton(
+                        onPressed: () => AppDialogs.showConfirm(
+                          context: pageContext,
+                          title: 'Confirm action',
+                          text: 'Proceed?',
+                          onConfirm: () => confirmations++,
+                        ),
+                        child: const Text('show confirm'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              child: const Text('open page'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open page'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('show confirm'));
+      await tester.pumpAndSettle();
+      final button = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, 'CONFIRM'),
+      );
+      button.onPressed!();
+      button.onPressed!();
+      await tester.pumpAndSettle();
+      expect(confirmations, 1);
+      expect(find.text('show confirm'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Enter acknowledges an error and Escape dismisses it', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      host(
+        tester,
+        (c) => AppDialogs.showError(c, title: 'Failure', message: 'Try again'),
+      ),
+    );
+    for (final key in [LogicalKeyboardKey.enter, LogicalKeyboardKey.escape]) {
+      await tester.tap(find.text('act'));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(key);
+      await tester.pumpAndSettle();
+      expect(find.text('Failure'), findsNothing);
+    }
+  });
+
   group('showPermissionRequest', () {
     Future<bool?> askAndTap(
       WidgetTester tester,
@@ -186,6 +273,25 @@ void main() {
       expect(find.text('ALLOW'), findsOneWidget);
       expect(find.text('CANCEL'), findsOneWidget);
       expect(answer, isNull);
+    });
+
+    testWidgets('Escape denies permission', (tester) async {
+      bool? answer;
+      await tester.pumpWidget(
+        host(tester, (c) async {
+          answer = await AppDialogs.showPermissionRequest(
+            c,
+            title: 'Allow installation?',
+            message: 'A package is required.',
+            command: 'sudo install-package',
+          );
+        }),
+      );
+      await tester.tap(find.text('act'));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(answer, isFalse);
     });
 
     testWidgets('ALLOW answers true', (tester) async {
