@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/features/apps/data/apps_provider.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:dev_stack/features/databases/data/databases_provider.dart';
@@ -129,6 +130,21 @@ void main() {
       expect(find.text('phpMyAdmin'), findsNothing);
     });
   });
+
+  for (final engine in [_engine('mysql', 'MySQL'), _engine('redis', 'Redis')]) {
+    testWidgets('${engine.name} search has a dim placeholder', (tester) async {
+      await _pumpPage(tester, engine: engine, phpMyAdminInstalled: false);
+
+      final hint = engine.appId == 'redis' ? 'Search key' : 'Database search';
+      final searchFinder = find.byWidgetPredicate(
+        (widget) => widget is TextField && widget.decoration?.hintText == hint,
+      );
+      final field = tester.widget<TextField>(searchFinder);
+      expect(field.decoration?.hintStyle?.color, const Color(0x59FFFFFF));
+      expect(field.style?.color, AppColors.textPrimary);
+      expect((field.decoration?.prefixIcon as Icon).color, AppColors.textMuted);
+    });
+  }
 
   group('DatabasesPage narrow toolbar', () {
     testWidgets('fits a narrow window without an overflow', (tester) async {

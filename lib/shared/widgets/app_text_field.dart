@@ -52,7 +52,7 @@ class AppTextField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(
-          color: AppColors.textMuted,
+          color: AppColors.textPlaceholder,
           fontSize: AppTextSize.xs,
         ),
         prefixIcon: prefixIcon != null

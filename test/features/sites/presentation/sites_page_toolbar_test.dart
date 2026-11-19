@@ -1,3 +1,4 @@
+import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/features/sites/data/sites_provider.dart';
 import 'package:dev_stack/features/sites/domain/site_model.dart';
 import 'package:dev_stack/features/sites/presentation/sites_page.dart';
@@ -28,6 +29,14 @@ void main() {
     // No RenderFlex overflow reaching this point is the proof the toolbar fits
     // a narrow window instead of pushing its search field out of reach.
     expect(tester.takeException(), isNull);
+
+    final searchField = tester.widget<TextField>(find.byType(TextField).first);
+    expect(searchField.decoration?.hintStyle?.color, const Color(0x59FFFFFF));
+    expect(searchField.style?.color, AppColors.textPrimary);
+    expect(
+      (searchField.decoration?.prefixIcon as Icon).color,
+      AppColors.textMuted,
+    );
 
     final searchWidth = tester.getSize(find.byType(TextField).first).width;
     expect(searchWidth, lessThan(280));

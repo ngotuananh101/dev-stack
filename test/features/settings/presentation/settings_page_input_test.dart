@@ -1,3 +1,4 @@
+import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/core/services/ssl_service.dart';
 import 'package:dev_stack/features/apps/data/apps_provider.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
@@ -64,6 +65,18 @@ void main() {
           widget is TextFormField && widget.controller?.text == '{name}.test',
     );
     expect(templateFieldFinder, findsOneWidget);
+    final templateInput = tester.widget<TextField>(
+      find.descendant(
+        of: templateFieldFinder,
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(templateInput.decoration?.hintStyle?.color, const Color(0x59FFFFFF));
+    expect(templateInput.style?.color, AppColors.textPrimary);
+    expect(
+      (templateInput.decoration?.prefixIcon as Icon).color,
+      AppColors.textMuted,
+    );
     expect(
       find.descendant(
         of: templateFieldFinder,

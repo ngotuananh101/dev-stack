@@ -629,10 +629,10 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       style: color == AppColors.successStrong
           ? AppButtonStyle.success
           : color == AppColors.warningStrong
-              ? AppButtonStyle.warning
-              : color == AppColors.accentStrong
-                  ? AppButtonStyle.primary
-                  : AppButtonStyle.secondary,
+          ? AppButtonStyle.warning
+          : color == AppColors.accentStrong
+          ? AppButtonStyle.primary
+          : AppButtonStyle.secondary,
     );
   }
 
@@ -648,7 +648,7 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
       decoration: InputDecoration(
         hintText: isRedis ? 'Search key' : 'Database search',
         hintStyle: const TextStyle(
-          color: AppColors.textMuted,
+          color: AppColors.textPlaceholder,
           fontSize: AppTextSize.xs,
         ),
         prefixIcon: const Icon(

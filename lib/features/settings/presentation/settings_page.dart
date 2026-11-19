@@ -990,8 +990,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 style: action.color == AppColors.errorStrong
                     ? AppButtonStyle.danger
                     : action.color == AppColors.successStrong
-                        ? AppButtonStyle.success
-                        : AppButtonStyle.primary,
+                    ? AppButtonStyle.success
+                    : AppButtonStyle.primary,
               ),
             ),
           ),
@@ -1150,7 +1150,7 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
         ),
         hintText: '{name}.test',
         hintStyle: const TextStyle(
-          color: AppColors.textMuted,
+          color: AppColors.textPlaceholder,
           fontSize: AppTextSize.xs,
         ),
         filled: true,

@@ -99,6 +99,45 @@ void main() {
       expect(find.byType(CodeEditor), findsOneWidget);
     });
 
+    for (final replaceMode in [false, true]) {
+      testWidgets('editor search hints are dim (replace: $replaceMode)', (
+        tester,
+      ) async {
+        await tester.binding.setSurfaceSize(const Size(1000, 700));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: ConfigCodeEditor(filePath: 'hosts', content: 'localhost'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Find'));
+        await tester.pumpAndSettle();
+        if (replaceMode) {
+          tester
+              .widget<CodeEditor>(find.byType(CodeEditor))
+              .findController!
+              .replaceMode();
+          await tester.pumpAndSettle();
+        }
+
+        final hints = replaceMode ? ['Replace', 'Find'] : ['Find'];
+        for (final hint in hints) {
+          final field = tester.widget<TextField>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is TextField && widget.decoration?.hintText == hint,
+            ),
+          );
+          expect(field.decoration?.hintStyle?.color, const Color(0x59FFFFFF));
+          expect(field.style?.color, AppColors.textPrimary);
+          expect(field.decoration?.hintStyle?.fontSize, 12);
+        }
+      });
+    }
+
     testWidgets(
       'renders plaintext code in the app text color, not the ambient theme',
       (tester) async {

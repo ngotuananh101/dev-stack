@@ -379,7 +379,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                         ),
                         hintText: 'Find',
                         hintStyle: const TextStyle(
-                          color: AppColors.textMuted,
+                          color: AppColors.textPlaceholder,
                           fontSize: AppTextSize.xs,
                         ),
                         filled: true,
@@ -455,7 +455,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
                           ),
                           hintText: 'Replace',
                           hintStyle: const TextStyle(
-                            color: AppColors.textMuted,
+                            color: AppColors.textPlaceholder,
                             fontSize: AppTextSize.xs,
                           ),
                           filled: true,
@@ -525,11 +525,7 @@ class _ConfigCodeEditorState extends State<ConfigCodeEditor> {
     required String tooltip,
     required VoidCallback onTap,
   }) {
-    return AppIconButton(
-      icon: icon,
-      tooltip: tooltip,
-      onPressed: onTap,
-    );
+    return AppIconButton(icon: icon, tooltip: tooltip, onPressed: onTap);
   }
 
   @override

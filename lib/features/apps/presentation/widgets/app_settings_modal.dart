@@ -692,7 +692,7 @@ class _AppSettingsModalState extends ConsumerState<AppSettingsModal>
                       hintText:
                           'Search by extension or package (e.g. mbstring, php8.5-curl)...',
                       hintStyle: const TextStyle(
-                        color: AppColors.textMuted,
+                        color: AppColors.textPlaceholder,
                         fontSize: AppTextSize.xs,
                       ),
                       prefixIcon: const Icon(

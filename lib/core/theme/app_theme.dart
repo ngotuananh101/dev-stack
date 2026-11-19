@@ -144,7 +144,7 @@ class AppTheme {
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         hintStyle: const TextStyle(
-          color: AppColors.textMuted,
+          color: AppColors.textPlaceholder,
           fontSize: AppTextSize.xs,
         ),
         border: OutlineInputBorder(

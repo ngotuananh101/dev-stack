@@ -126,7 +126,7 @@ class _SitesPageState extends ConsumerState<SitesPage> {
       decoration: InputDecoration(
         hintText: 'Search sites...',
         hintStyle: const TextStyle(
-          color: AppColors.textMuted,
+          color: AppColors.textPlaceholder,
           fontSize: AppTextSize.xs,
         ),
         prefixIcon: const Icon(

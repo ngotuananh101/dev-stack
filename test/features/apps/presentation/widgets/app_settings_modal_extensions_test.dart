@@ -1,3 +1,4 @@
+import 'package:dev_stack/core/theme/app_colors.dart';
 import 'package:dev_stack/features/apps/data/apps_provider.dart';
 import 'package:dev_stack/features/apps/data/php_settings_provider.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
@@ -96,6 +97,13 @@ void main() {
     expect(extensionsTab, findsOneWidget);
     await tester.tap(extensionsTab);
     await tester.pumpAndSettle();
+
+    final search = tester.widget<TextField>(
+      find.byKey(const ValueKey('extensions-search')),
+    );
+    expect(search.decoration?.hintStyle?.color, const Color(0x59FFFFFF));
+    expect(search.style?.color, AppColors.textPrimary);
+    expect((search.decoration?.prefixIcon as Icon).color, AppColors.textMuted);
 
     // Verify extension names are present
     expect(find.text('curl'), findsOneWidget);

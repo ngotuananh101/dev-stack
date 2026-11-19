@@ -28,6 +28,8 @@ class AppColors {
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xFFFFFFFF);
   static const Color textMuted = Color(0xFFFFFFFF);
+  // Input hints only: white at 35%, clearly secondary to entered text.
+  static const Color textPlaceholder = Color(0x59FFFFFF);
   // Subtitles and descriptions under a title (2026-11-18): white at 60%,
   // so they read as secondary to the title above them. Used with
   // AppTextSize.xxs (10).
