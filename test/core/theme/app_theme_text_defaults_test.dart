@@ -1,5 +1,5 @@
 import 'package:dev_stack/core/theme/app_text_size.dart';
-import 'package:dev_stack/core/theme/app_theme.dart';
+import 'test_font_harness.dart';
 import 'package:dev_stack/shared/widgets/status_chip.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,9 +9,11 @@ import 'package:flutter_test/flutter_test.dart';
 /// theme's text roles are pinned to the base size here, so an undeclared size
 /// lands on the same number as an explicit one.
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  late ThemeData theme;
 
-  final theme = AppTheme.darkTheme;
+  setUpAll(() async {
+    theme = await loadThemeWithTestFonts();
+  });
 
   test('the theme text roles resolve to the base size', () {
     for (final entry in <String, TextStyle?>{
