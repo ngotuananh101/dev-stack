@@ -239,6 +239,73 @@ async function fetchGithubReleases({ repoPath, platform, options = {} }) {
   return versions;
 }
 
+function compassLinuxUrl(version) {
+  return `https://github.com/mongodb-js/compass/releases/download/v${version}/mongodb-compass-${version}-linux-x64.tar.gz`;
+}
+
+async function fetchCompassReleaseAssets(release) {
+  if (!Number.isSafeInteger(release.id) || release.id <= 0) {
+    throw new Error('Malformed Compass release identity');
+  }
+  const assets = [];
+  let page = 1;
+  while (true) {
+    const res = await fetch(
+      `https://api.github.com/repos/mongodb-js/compass/releases/${release.id}/assets?per_page=100&page=${page}`,
+      {
+        headers: {
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'Ponta-Update',
+        },
+      },
+    );
+    if (!res.ok) {
+      throw new Error(`Compass release assets request failed: ${res.status}`);
+    }
+    const pageAssets = await res.json();
+    if (!Array.isArray(pageAssets)) {
+      throw new Error('Malformed Compass release assets');
+    }
+    assets.push(...pageAssets);
+    if (!res.headers.get('link')?.includes('rel="next"')) break;
+    page++;
+  }
+  return assets;
+}
+
+async function fetchCompassLinuxReleases() {
+  const versions = {};
+  const sha256 = {};
+  let page = 1;
+  while (true) {
+    const res = await fetch(`https://api.github.com/repos/mongodb-js/compass/releases?per_page=100&page=${page}`, {
+      headers: { Accept: "application/vnd.github+json", "User-Agent": "Ponta-Update" },
+    });
+    if (!res.ok) throw new Error(`Compass releases request failed: ${res.status}`);
+    const releases = await res.json();
+    if (!Array.isArray(releases)) throw new Error("Malformed Compass release index");
+    for (const release of releases) {
+      if (release.draft || release.prerelease) continue;
+      const match = /^v(\d+\.\d+\.\d+)$/.exec(release.tag_name ?? "");
+      if (!match) continue;
+      const version = match[1];
+      const name = `mongodb-compass-${version}-linux-x64.tar.gz`;
+      const assets = await fetchCompassReleaseAssets(release);
+      const asset = assets.find(
+        (a) => a.name === name &&
+          a.browser_download_url === compassLinuxUrl(version)
+      );
+      const digest = /^sha256:([a-f0-9]{64})$/i.exec(asset?.digest ?? "");
+      if (!digest) continue;
+      versions[version] = asset.browser_download_url;
+      sha256[version] = digest[1].toLowerCase();
+    }
+    if (!res.headers.get("link")?.includes('rel="next"')) break;
+    page++;
+  }
+  return { versions, sha256 };
+}
+
 // === CÁC HÀM FETCH DỮ LIỆU WINDOWS ===
 
 /**
@@ -676,6 +743,7 @@ const fetchersLinux = {
   async redis() {
     return selectBuilderRuntime(await builderRuntimeIndex("redis"), () => true);
   },
+  "mongodb-compass": fetchCompassLinuxReleases,
   nodejs() {
     return fetchNodejsReleases({
       minMajor: 18,
@@ -1160,6 +1228,15 @@ const baseWindowsApps = [
 
 const baseLinuxApps = [
   {
+    id: "mongodb-compass",
+    name: "MongoDB Compass",
+    description: "The GUI for MongoDB.",
+    category: "tool",
+    group_name: "database",
+    exec_file: "MongoDB Compass",
+    repo: "mongodb-js/compass",
+  },
+  {
     ...COMMON_APP_DEFINITIONS.pyenv,
     cli_file: "pyenv",
     versions: {
@@ -1319,6 +1396,21 @@ function applyFetchedVersions(app, fetchedResult) {
 
 function applyFallbackVersions(app, oldData, fetchedResult = null) {
   const oldApp = oldData?.apps?.find((a) => a.id === app.id);
+  if (app.id === "mongodb-compass" && app.exec_file === "MongoDB Compass") {
+    const source = Object.keys(app.versions ?? {}).length ? app : oldApp;
+    const versions = {};
+    const sha256 = {};
+    for (const version of sortVersions(Object.keys(source?.versions ?? {}))) {
+      const url = source.versions[version];
+      const hash = source.sha256?.[version];
+      if (!/^\d+\.\d+\.\d+$/.test(version) || url !== compassLinuxUrl(version) || !/^[a-f0-9]{64}$/i.test(hash ?? "")) continue;
+      versions[version] = url;
+      sha256[version] = hash.toLowerCase();
+    }
+    app.versions = versions;
+    app.sha256 = sha256;
+    return;
+  }
   const runtime = portableBundleRuntime(app);
   if (runtime) {
     const assetPattern = PORTABLE_BUNDLE_ASSETS[runtime];

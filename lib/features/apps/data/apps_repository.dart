@@ -171,6 +171,16 @@ class AppsRepository {
     return File(p.join(supportDir.path, catalogFileName));
   }
 
+  Future<List<AppModel>> _loadBundledCatalog(
+    String catalogFileName,
+    Map<String, InstalledApp> installedMap,
+  ) async {
+    final response = await rootBundle.loadString(
+      'assets/data/$catalogFileName',
+    );
+    return _parseCatalog(response, installedMap);
+  }
+
   Future<List<AppModel>> getAll() async {
     try {
       final catalogFileName = catalogFileNameFor(isLinux: Platform.isLinux);
@@ -181,7 +191,24 @@ class AppsRepository {
       if (await localFile.exists()) {
         AppLogger.info('Loading apps from local storage: ${localFile.path}');
         try {
-          return _parseCatalog(await localFile.readAsString(), installedMap);
+          final cached = _parseCatalog(
+            await localFile.readAsString(),
+            installedMap,
+          );
+          if (!Platform.isLinux ||
+              cached.any((app) => app.appId == 'mongodb-compass')) {
+            return cached;
+          }
+          // A valid cache from the legacy Linux feed can predate Compass.
+          // Keep all other cached entries and merge Compass with its saved state.
+          final bundled = await _loadBundledCatalog(
+            catalogFileName,
+            installedMap,
+          );
+          return [
+            ...cached,
+            ...bundled.where((app) => app.appId == 'mongodb-compass'),
+          ];
         } on FormatException catch (e) {
           // Preserve the invalid file for diagnosis until a valid update
           // replaces it; keep both screens usable with the bundled catalog.
@@ -192,10 +219,7 @@ class AppsRepository {
       }
 
       AppLogger.info('Loading apps from assets bundle: $catalogFileName');
-      final response = await rootBundle.loadString(
-        'assets/data/$catalogFileName',
-      );
-      return _parseCatalog(response, installedMap);
+      return await _loadBundledCatalog(catalogFileName, installedMap);
     } catch (e, stack) {
       AppLogger.error('Error loading apps: $e\n$stack');
 

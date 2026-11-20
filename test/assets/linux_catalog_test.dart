@@ -47,6 +47,23 @@ void main() {
     },
   );
 
+  test('Compass is an installable Linux GUI with an official checksum', () async {
+    final app = (await loadApps()).singleWhere(
+      (a) => a['id'] == 'mongodb-compass',
+    );
+    expect(app['category'], 'tool');
+    expect(app['exec_file'], 'MongoDB Compass');
+    expect(app['cli_file'], isNull);
+    expect(app['versions'], isNotEmpty);
+    for (final entry in (app['versions'] as Map).entries) {
+      expect(
+        entry.value,
+        'https://github.com/mongodb-js/compass/releases/download/v${entry.key}/mongodb-compass-${entry.key}-linux-x64.tar.gz',
+      );
+      expect((app['sha256'] as Map)[entry.key], matches(r'^[a-f0-9]{64}$'));
+    }
+  });
+
   test('PHP archive definitions use unversioned bundle launchers', () async {
     final apps = await loadApps();
     final php = apps.where((a) => a['group_name'] == 'php');

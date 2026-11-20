@@ -146,7 +146,7 @@ void main() {
   }
 
   final libraryPath = _isarLibraryPath();
-  test('invalid cached catalog falls back to the bundled catalog', () async {
+  Isar openTestDatabase() {
     final dbDir = Directory(p.join(supportDir.path, 'db'))..createSync();
     Isar.initialize(libraryPath);
     final isar = Isar.open(
@@ -155,6 +155,92 @@ void main() {
       name: 'catalog_cache_${DateTime.now().microsecondsSinceEpoch}',
     );
     addTearDown(isar.close);
+    return isar;
+  }
+
+  final skipLinuxIntegration = !Platform.isLinux
+      ? 'Requires the Linux catalog'
+      : libraryPath == null
+      ? 'Isar native library not available'
+      : false;
+
+  test(
+    'legacy Linux cache adds only bundled Compass and retains its installed state',
+    () async {
+      final isar = openTestDatabase();
+      final location = p.join(supportDir.path, 'installed', 'compass');
+      final executable = p.join(location, 'MongoDB Compass');
+      isar.write((_) {
+        isar.installedApps.put(
+          InstalledApp(
+            appId: 'mongodb-compass',
+            appName: 'MongoDB Compass',
+            location: location,
+            status: 'stopped',
+            version: '1.53.2',
+            execFilePath: executable,
+          )..id = isar.installedApps.autoIncrement(),
+        );
+      });
+      final legacy = _catalog([
+        {
+          'id': 'redis',
+          'name': 'Cached Redis',
+          'versions': {'9.0.0': 'https://example.test/redis.tar.gz'},
+        },
+      ]);
+      cache.writeAsStringSync(legacy);
+
+      final apps = await repository('{}', isar).getAll();
+      expect(
+        apps.map((app) => app.appId),
+        unorderedEquals(['redis', 'mongodb-compass']),
+      );
+      final redis = apps.singleWhere((app) => app.appId == 'redis');
+      expect(redis.name, 'Cached Redis');
+      expect(redis.versionLinks, {
+        '9.0.0': 'https://example.test/redis.tar.gz',
+      });
+      final compass = apps.singleWhere((app) => app.appId == 'mongodb-compass');
+      expect(compass.isInstalled, isTrue);
+      expect(compass.installedVersion, '1.53.2');
+      expect(compass.location, location);
+      expect(compass.execFilePath, executable);
+      expect(compass.versions, isNotEmpty);
+      expect(cache.readAsStringSync(), legacy);
+    },
+    skip: skipLinuxIntegration,
+  );
+
+  test(
+    'Linux cache with Compass keeps its own version without duplicates',
+    () async {
+      final isar = openTestDatabase();
+      cache.writeAsStringSync(
+        _catalog([
+          {
+            'id': 'mongodb-compass',
+            'name': 'Cached Compass',
+            'versions': {
+              '1.88.0':
+                  'https://github.com/mongodb-js/compass/releases/download/v1.88.0/mongodb-compass-1.88.0-linux-x64.tar.gz',
+            },
+            'sha256': {'1.88.0': 'a' * 64},
+          },
+        ]),
+      );
+
+      final compass = (await repository('{}', isar).getAll()).single;
+      expect(compass.appId, 'mongodb-compass');
+      expect(compass.name, 'Cached Compass');
+      expect(compass.versions, ['1.88.0']);
+      expect(compass.versionSha256, {'1.88.0': 'a' * 64});
+    },
+    skip: skipLinuxIntegration,
+  );
+
+  test('invalid cached catalog falls back to the bundled catalog', () async {
+    final isar = openTestDatabase();
     final invalid = _catalog([
       {'id': 'redis', 'category': 'database', 'versions': {}},
     ]);

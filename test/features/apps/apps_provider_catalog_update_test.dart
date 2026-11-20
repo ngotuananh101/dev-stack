@@ -1,10 +1,15 @@
+import 'dart:io';
+
 import 'package:dev_stack/core/services/log_service.dart';
+import 'package:dev_stack/features/apps/data/app_launcher.dart';
 import 'package:dev_stack/features/apps/data/app_service_manager.dart';
 import 'package:dev_stack/features/apps/data/apps_provider.dart';
 import 'package:dev_stack/features/apps/data/apps_repository.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
+import 'package:dev_stack/shared/providers/error_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 const _catalogUrl = 'https://example.test/catalog.json';
 
@@ -124,6 +129,51 @@ void main() {
 
       expect(container.read(appsProvider), isA<AsyncError<List<AppModel>>>());
       expect(container.read(appsProvider).error, same(failure));
+    },
+  );
+
+  test(
+    'opening Compass routes process failures to the app error state',
+    () async {
+      final root = Directory.systemTemp.createTempSync('compass_open_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final executable = File(p.join(root.path, 'MongoDB Compass'))
+        ..createSync();
+      final app = AppModel(
+        appId: 'mongodb-compass',
+        name: 'MongoDB Compass',
+        categories: const ['tool'],
+        isInstalled: true,
+        execFilePath: executable.path,
+      );
+      repository.apps = [app];
+      final attempts = <String>[];
+      final openContainer = ProviderContainer.test(
+        overrides: [
+          appsRepositoryProvider.overrideWith((ref) async => repository),
+          appServiceManagerProvider.overrideWithValue(_Services()),
+          appLauncherProvider.overrideWithValue(
+            AppLauncher(
+              isLinux: true,
+              startDetached: (path, _, _) async {
+                attempts.add(path);
+                throw ProcessException(path, [], 'permission denied');
+              },
+            ),
+          ),
+        ],
+      );
+      final installed = (await openContainer.read(appsProvider.future)).single;
+      await openContainer.read(appsProvider.notifier).openApp(installed);
+
+      expect(attempts, [executable.absolute.path]);
+      expect(
+        openContainer.read(appErrorProvider),
+        allOf(
+          startsWith('Failed to open MongoDB Compass:'),
+          contains('permission denied'),
+        ),
+      );
     },
   );
 

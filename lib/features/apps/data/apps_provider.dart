@@ -7,6 +7,7 @@ import '../domain/app_model.dart';
 import 'apps_repository.dart';
 import 'app_installer_service.dart';
 import 'app_service_manager.dart';
+import 'app_launcher.dart';
 import '../../../core/services/path_service.dart';
 
 import '../../../shared/providers/error_provider.dart';
@@ -27,16 +28,16 @@ Future<AppsRepository> appsRepository(Ref ref) async {
 
 @Riverpod(keepAlive: true)
 class Apps extends _$Apps {
-  /// Remote catalog source, refreshed via [updateCatalog] / the manual
-  /// "Update list" button and on app startup when online. The filename
-  /// segment always matches the OS-specific catalog file, so a Linux
-  /// auto-update can never overwrite apps-linux.json with Windows data.
+  /// The versioned Linux feed is for clients that can safely manage Compass.
+  /// The local catalog filenames are independent of these remote endpoints.
   static const String _catalogBaseUrl =
       'https://gist.githubusercontent.com/ngotuananh101/'
       'd2e69956bc2030b0bcf27707aef9e9cd/raw';
 
-  static String get catalogUrl =>
-      '$_catalogBaseUrl/${AppsRepository.catalogFileNameFor(isLinux: Platform.isLinux)}';
+  static String get catalogUrl => catalogUrlFor(isLinux: Platform.isLinux);
+
+  static String catalogUrlFor({required bool isLinux}) =>
+      '$_catalogBaseUrl/${isLinux ? 'apps-linux-v2.json' : 'apps.json'}';
 
   @override
   Future<List<AppModel>> build() async {
@@ -886,7 +887,7 @@ class Apps extends _$Apps {
     try {
       final file = File(app.execFilePath!);
       if (await file.exists()) {
-        await Process.run('cmd', ['/c', 'start', '', app.execFilePath!]);
+        await ref.read(appLauncherProvider).open(app.execFilePath!);
       } else {
         throw Exception('Executable not found at ${app.execFilePath}');
       }

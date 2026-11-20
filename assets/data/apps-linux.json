@@ -3,6 +3,21 @@
   "lastUpdated": "2026-11-08T18:37:30.579Z",
   "apps": [
     {
+      "id": "mongodb-compass",
+      "name": "MongoDB Compass",
+      "description": "The GUI for MongoDB.",
+      "category": "tool",
+      "group_name": "database",
+      "exec_file": "MongoDB Compass",
+      "repo": "mongodb-js/compass",
+      "versions": {
+        "1.53.2": "https://github.com/mongodb-js/compass/releases/download/v1.53.2/mongodb-compass-1.53.2-linux-x64.tar.gz"
+      },
+      "sha256": {
+        "1.53.2": "00ed5c69d0c7427fd8e716c236657eb99425260540f1474b3887530e90a6dd81"
+      }
+    },
+    {
       "id": "pyenv",
       "name": "pyenv",
       "description": "Python version management tool.",

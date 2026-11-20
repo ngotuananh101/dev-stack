@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'dart:io';
+
 import 'package:dev_stack/core/theme/app_colors.dart';
+import 'package:dev_stack/features/apps/data/app_launcher.dart';
 import 'package:dev_stack/features/apps/data/apps_provider.dart';
 import 'package:dev_stack/features/apps/domain/app_model.dart';
 import 'package:dev_stack/features/databases/data/databases_provider.dart';
@@ -49,18 +52,30 @@ Future<void> _pumpPage(
   WidgetTester tester, {
   required AppModel engine,
   required bool phpMyAdminInstalled,
+  List<AppModel> extraApps = const [],
+  AppLauncher? launcher,
+  ProviderContainer? container,
 }) async {
   await tester.binding.setSurfaceSize(const Size(1400, 900));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
-  final apps = <AppModel>[engine, if (phpMyAdminInstalled) _phpMyAdmin()];
-
+  final apps = <AppModel>[
+    engine,
+    ...extraApps,
+    if (phpMyAdminInstalled) _phpMyAdmin(),
+  ];
   await tester.pumpWidget(
-    ProviderScope(
-      overrides: [
-        appsProvider.overrideWith(() => _StaticAppsNotifier(apps)),
-        databasesProvider.overrideWith(_StaticDatabasesNotifier.new),
-      ],
+    UncontrolledProviderScope(
+      container:
+          container ??
+          ProviderContainer.test(
+            overrides: [
+              appsProvider.overrideWith(() => _StaticAppsNotifier(apps)),
+              databasesProvider.overrideWith(_StaticDatabasesNotifier.new),
+              if (launcher != null)
+                appLauncherProvider.overrideWithValue(launcher),
+            ],
+          ),
       child: const MaterialApp(home: Scaffold(body: DatabasesPage())),
     ),
   );
@@ -69,6 +84,62 @@ Future<void> _pumpPage(
 
 void main() {
   setUp(() => TestWidgetsFlutterBinding.ensureInitialized());
+
+  group('DatabasesPage Compass launch error', () {
+    testWidgets('shows launch failure when opening installed Compass', (
+      tester,
+    ) async {
+      final root = Directory.systemTemp.createTempSync('compass_db_error_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final executable = File('${root.path}/MongoDB Compass')
+        ..createSync(recursive: true);
+      final compass = AppModel(
+        appId: 'mongodb-compass',
+        name: 'MongoDB Compass',
+        categories: const ['tool'],
+        isInstalled: true,
+        status: 'installed',
+        execFilePath: executable.path,
+      );
+      final launcher = AppLauncher(
+        isLinux: true,
+        startDetached: (path, _, _) async =>
+            throw ProcessException(path, const [], 'permission denied'),
+      );
+      final container = ProviderContainer.test(
+        overrides: [
+          appsProvider.overrideWith(
+            () => _StaticAppsNotifier([_engine('mongodb', 'MongoDB'), compass]),
+          ),
+          databasesProvider.overrideWith(_StaticDatabasesNotifier.new),
+          appLauncherProvider.overrideWithValue(launcher),
+        ],
+      );
+      await _pumpPage(
+        tester,
+        engine: _engine('mongodb', 'MongoDB'),
+        phpMyAdminInstalled: false,
+        extraApps: [compass],
+        launcher: launcher,
+        container: container,
+      );
+
+      // The button callback intentionally does not await the notifier Future;
+      // give the real file check and launcher failure time to complete outside
+      // the widget test's fake-async zone.
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Open MongoDB Compass'));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Failed to open MongoDB Compass:'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('permission denied'), findsOneWidget);
+    });
+  });
 
   group('DatabasesPage phpMyAdmin action button', () {
     testWidgets('hidden for PostgreSQL even when phpMyAdmin is installed', (

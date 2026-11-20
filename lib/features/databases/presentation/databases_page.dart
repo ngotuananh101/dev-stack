@@ -16,6 +16,7 @@ import '../../../shared/providers/navigation_provider.dart';
 import 'widgets/add_database_modal.dart';
 import 'widgets/add_redis_key_modal.dart';
 import 'package:dev_stack/shared/utils/app_dialogs.dart';
+import 'package:dev_stack/shared/providers/error_provider.dart';
 import 'package:dev_stack/shared/widgets/app_button.dart';
 import 'package:dev_stack/shared/widgets/page_toolbar.dart';
 
@@ -76,6 +77,14 @@ class _DatabasesPageState extends ConsumerState<DatabasesPage> {
 
   @override
   Widget build(BuildContext context) {
+    // The Apps page is not mounted while Databases is showing, so its error
+    // listener cannot surface launch failures triggered from this page.
+    ref.listen(appErrorProvider, (previous, next) {
+      if (next != null) {
+        AppDialogs.showError(context, title: 'Error', message: next);
+        ref.read(appErrorProvider.notifier).clearError();
+      }
+    });
     final enginesAsync = ref.watch(installedDatabaseEnginesProvider);
     final databasesAsync = ref.watch(databasesProvider);
     final appsState = ref.watch(appsProvider);

@@ -1,24 +1,22 @@
 // test/features/apps/catalog_url_test.dart
 import 'dart:io';
-import 'package:flutter_test/flutter_test.dart';
+
 import 'package:dev_stack/features/apps/data/apps_provider.dart';
-import 'package:dev_stack/features/apps/data/apps_repository.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('OS-aware catalog URL', () {
-    test('filename segment matches catalogFileNameFor', () {
-      final expected = AppsRepository.catalogFileNameFor(
-        isLinux: Platform.isLinux,
-      );
+    test('the current OS uses its remote catalog', () {
+      final expected = Platform.isLinux ? 'apps-linux-v2.json' : 'apps.json';
       expect(Apps.catalogUrl, endsWith('/$expected'));
     });
 
-    test('filename segment matches catalogFileNameFor with isLinux toggle', () {
-      // Direct verification that catalogUrl respects Platform.isLinux
-      final linuxExpected = AppsRepository.catalogFileNameFor(isLinux: true);
-      expect(linuxExpected, equals('apps-linux.json'));
-      final windowsExpected = AppsRepository.catalogFileNameFor(isLinux: false);
-      expect(windowsExpected, equals('apps.json'));
+    test('Linux uses the versioned feed while Windows keeps its filename', () {
+      expect(
+        Apps.catalogUrlFor(isLinux: true),
+        endsWith('/apps-linux-v2.json'),
+      );
+      expect(Apps.catalogUrlFor(isLinux: false), endsWith('/apps.json'));
     });
 
     test('points at the shared gist raw base', () {

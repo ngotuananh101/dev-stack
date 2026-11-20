@@ -94,7 +94,7 @@
 | :---: | :---: | :---: | :---: |
 | <img src="assets/images/nginx.png" width="40"/><br/>**Nginx** | <img src="assets/images/php.png" width="40"/><br/>**PHP 8.2 – 8.5** | <img src="assets/images/mysql.png" width="40"/><br/>**MySQL** | <img src="assets/images/phpmyadmin.png" width="40"/><br/>**phpMyAdmin** |
 | <img src="assets/images/caddy.png" width="40"/><br/>**Caddy** | <img src="assets/images/nodejs.png" width="40"/><br/>**Node.js** | <img src="assets/images/mariadb.png" width="40"/><br/>**MariaDB** | <img src="assets/images/heidisql.png" width="40"/><br/>**HeidiSQL** ¹ |
-| <img src="assets/images/apache.png" width="40"/><br/>**Apache** | <img src="assets/images/bun.png" width="40"/><br/>**Bun (bunx)** | <img src="assets/images/postgre.png" width="40"/><br/>**PostgreSQL** | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB Compass** ¹ |
+| <img src="assets/images/apache.png" width="40"/><br/>**Apache** | <img src="assets/images/bun.png" width="40"/><br/>**Bun (bunx)** | <img src="assets/images/postgre.png" width="40"/><br/>**PostgreSQL** | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB Compass** ² |
 | | <img src="assets/images/deno.png" width="40"/><br/>**Deno** | <img src="assets/images/redis.png" width="40"/><br/>**Redis** | 🌐<br/>**Cloudflare Tunnel** |
 | | <img src="assets/images/go.png" width="40"/><br/>**Go** | <img src="assets/images/mongodb.png" width="40"/><br/>**MongoDB** | 🚇<br/>**ngrok** |
 | | <img src="assets/images/flutter.png" width="40"/><br/>**Flutter** | <img src="assets/images/elasticsearch.png" width="40"/><br/>**Elasticsearch** | |
@@ -103,7 +103,9 @@
 
 </div>
 
-<sub>¹ Windows only. The Linux catalog ships the server-side apps and phpMyAdmin; HeidiSQL and MongoDB Compass are Windows desktop tools.</sub>
+<sub>¹ HeidiSQL is Windows only in DevStack.</sub>
+
+<sub>² On Linux x64, DevStack installs the [official Compass tarball](https://github.com/mongodb-js/compass/releases) and verifies its SHA-256 before extraction. Launch requires a compatible desktop and Electron sandbox support; the portable tarball has not been runtime-validated across all DevStack-supported distributions.</sub>
 
 ---
 

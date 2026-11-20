@@ -381,6 +381,12 @@ class AppInstallerService {
         app.cliFilePath = detected['cli'];
       }
 
+      if (Platform.isLinux &&
+          app.appId == 'mongodb-compass' &&
+          app.execFilePath == null) {
+        throw FileSystemException('Compass executable not found', installPath);
+      }
+
       // Step 6: Post-installation configurations
       await _configureDatabases(app, version, installPath, onProgress, logInfo);
       await _configureRuntimes(app, installPath, onProgress, logInfo);
@@ -2257,7 +2263,7 @@ security:
     }
 
     // Delete MongoDB data directory
-    if (appId == 'mongodb' || appId.contains('mongodb')) {
+    if (appId == 'mongodb') {
       final dataDir = Directory(p.join(AppConfig.dataDir, 'mongodb'));
       if (dataDir.existsSync()) {
         _logger.info('Deleting MongoDB data directory: ${dataDir.path}');
