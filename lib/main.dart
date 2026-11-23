@@ -24,6 +24,8 @@ import 'features/databases/presentation/databases_page.dart';
 import 'features/hosts/presentation/hosts_page.dart';
 import 'features/settings/presentation/settings_page.dart';
 import 'features/sites/presentation/sites_page.dart';
+import 'features/sites/data/cli_process_manager.dart';
+import 'features/sites/data/cli_site_autostart.dart';
 import 'features/tunnels/presentation/tunnels_page.dart';
 import 'features/tunnels/data/tunnels_provider.dart';
 import 'features/supervisor/presentation/supervisor_page.dart';
@@ -192,7 +194,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       // Resolve the Isar provider first: the manager/scheduler resolve Isar
       // lazily, and a read before this future completes would see null and
       // silently start nothing.
-      await ref.read(isarProvider.future);
+      final isarDb = await ref.read(isarProvider.future);
+
+      // Start auto-start CLI sites from the boot path. Their vhost reverse
+      // proxies to `127.0.0.1:<port>` as soon as the webserver starts, so
+      // leaving this to the (autoDispose) Sites provider meant 502s until the
+      // Sites tab was opened — a Vite dev server showed it most clearly.
+      await startAutoStartCliSites(
+        isar: isarDb,
+        manager: ref.read(cliProcessManagerProvider),
+        logger: ref.read(logServiceProvider),
+      );
+
       await ref.read(supervisorManagerProvider).startAutoStart();
       ref.read(cronSchedulerProvider).start();
     });

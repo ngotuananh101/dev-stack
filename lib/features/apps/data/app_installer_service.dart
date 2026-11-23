@@ -604,7 +604,9 @@ class AppInstallerService {
       }
       // No system tar: `archive` decodes .tar.gz/.tar.xz/.tar.bz2 itself and
       // writes entries through the same path-traversal checks.
-      logInfo('System tar unavailable ($e); extracting with the built-in decoder');
+      logInfo(
+        'System tar unavailable ($e); extracting with the built-in decoder',
+      );
       final summary = await _extractArchiveInBackground(
         tempFile.path,
         installPath,
@@ -731,12 +733,9 @@ class AppInstallerService {
     required void Function(String) logInfo,
     required Future<void> Function(String, String) setEnvVar,
     required Future<void> Function(String) addPathDir,
-    Future<ProcessResult> Function(
-      String,
-      List<String>, {
-      bool runInShell,
-    })
-    run = _runProcess,
+    Future<ProcessResult> Function(String, List<String>, {bool runInShell})
+        run =
+        _runProcess,
   }) async {
     final config = RuntimeSdkConfig.forApp(appId, installPath);
     if (config == null) return;
@@ -994,9 +993,7 @@ class AppInstallerService {
   ///
   /// Only the small summary crosses back; emitting one log line per entry
   /// would send tens of thousands of strings out and trigger as many rebuilds.
-  Future<
-    ({int fileCount, int directoryCount, List<String> skippedEntries})
-  >
+  Future<({int fileCount, int directoryCount, List<String> skippedEntries})>
   _extractArchiveInBackground(String archivePath, String targetPath) {
     return Isolate.run(
       () => extractArchiveToDirectory(archivePath, targetPath),
@@ -1062,7 +1059,9 @@ class AppInstallerService {
   /// Entries that would escape [targetPath] are skipped and reported rather
   /// than aborting the install, matching [extractZipToDirectory].
   @visibleForTesting
-  static Future<({int fileCount, int directoryCount, List<String> skippedEntries})>
+  static Future<
+    ({int fileCount, int directoryCount, List<String> skippedEntries})
+  >
   extractArchiveToDirectory(String archivePath, String targetPath) async {
     final canonicalTarget = p.canonicalize(targetPath);
     final targetPrefix = canonicalTarget.endsWith(p.separator)
@@ -1277,9 +1276,7 @@ class AppInstallerService {
           !handledByBundle.contains('cli');
 
       if (needExec || needCli) {
-        final entities = await dir.list(recursive: true).toList();
-
-        for (final entity in entities) {
+        await for (final entity in dir.list(recursive: true)) {
           if (entity is File || entity is Link) {
             if (bundle != null &&
                 p
@@ -2304,8 +2301,9 @@ security:
     }
   }
 
-  /// Syncs configurations between different apps (e.g., phpMyAdmin with Web Servers)
-  Future<void> syncInterAppConfigs(
+  /// Syncs inter-app configurations and reports whether a webserver config changed.
+  /// Callers with an already running webserver can use the result to reload it.
+  Future<bool> syncInterAppConfigs(
     AppModel currentApp,
     List<AppModel> allApps, {
     Function(String)? onLog,
@@ -2318,7 +2316,7 @@ security:
     final isPMA = currentApp.appId == 'phpMyAdmin';
     final isWebServer = isWebserverApp(currentApp);
 
-    if (!isPMA && !isWebServer) return;
+    if (!isPMA && !isWebServer) return false;
 
     log('Syncing inter-app configurations for ${currentApp.name}...');
 
@@ -2334,7 +2332,7 @@ security:
 
     if (phpMyAdmin == null) {
       log('phpMyAdmin not installed, skipping web server integration.');
-      return;
+      return false;
     }
 
     // 2. Identify Web Servers to update
@@ -2349,7 +2347,7 @@ security:
 
     if (webServers.isEmpty) {
       log('No installed web servers found to configure.');
-      return;
+      return false;
     }
 
     // 3. Find the best PHP version for FastCGI/Nginx (prefer isDefault)
@@ -2366,33 +2364,65 @@ security:
 
     final bestPhp = phpApps.firstOrNull;
 
-    // Ensure extensions for PMA are enabled in the default PHP
+    // Ensure extensions for PMA are enabled in the default PHP. This is an
+    // optional convenience step: malformed php.ini or I/O errors must not block
+    // mandatory webserver integration config generation or service startup.
     if (bestPhp != null && bestPhp.location != null) {
       final phpIni = File(p.join(bestPhp.location!, 'php.ini'));
       if (phpIni.existsSync()) {
-        log(
-          'Ensuring mysqli, mbstring, openssl are enabled in ${bestPhp.name}...',
-        );
-        await _enableDefaultExtensions(phpIni, bestPhp.location!, log);
+        try {
+          log(
+            'Ensuring mysqli, mbstring, openssl are enabled in ${bestPhp.name}...',
+          );
+          await _enableDefaultExtensions(phpIni, bestPhp.location!, log);
+        } catch (e) {
+          log(
+            'Warning: optional PHP extension preparation failed for '
+            '${bestPhp.name}: $e',
+          );
+        }
       }
     }
 
+    var configsChanged = false;
     for (final ws in webServers) {
       try {
+        bool changed = false;
         if (ws.appId.contains('nginx')) {
-          await _configurePhpMyAdminInNginx(ws, phpMyAdmin, bestPhp, log);
+          changed = await _configurePhpMyAdminInNginx(
+            ws,
+            phpMyAdmin,
+            bestPhp,
+            log,
+          );
         } else if (ws.appId.contains('caddy')) {
-          await _configurePhpMyAdminInCaddy(ws, phpMyAdmin, bestPhp, log);
+          changed = await _configurePhpMyAdminInCaddy(
+            ws,
+            phpMyAdmin,
+            bestPhp,
+            log,
+          );
         } else if (ws.appId.contains('apache')) {
-          await _configurePhpMyAdminInApache(ws, phpMyAdmin, log);
+          changed = await _configurePhpMyAdminInApache(ws, phpMyAdmin, log);
         }
+        configsChanged = configsChanged || changed;
       } catch (e) {
         log('Error configuring ${ws.name}: $e');
       }
     }
+    return configsChanged;
   }
 
-  Future<void> _configurePhpMyAdminInNginx(
+  /// Avoid rewriting identical configs, which would cause needless restarts.
+  Future<bool> _writeIntegrationConfig(File file, String config) async {
+    if (await file.exists() && await file.readAsString() == config) {
+      return false;
+    }
+    await file.writeAsString(config);
+    return true;
+  }
+
+  Future<bool> _configurePhpMyAdminInNginx(
     AppModel nginx,
     AppModel pma,
     AppModel? php,
@@ -2400,22 +2430,13 @@ security:
   ) async {
     final wsPath = nginx.location;
     final pmaPath = pma.location;
-    if (wsPath == null || pmaPath == null) return;
+    if (wsPath == null || pmaPath == null) return false;
 
     final nginxVhostsDir = Directory(
       p.join(AppConfig.vhostsDir, 'nginx', 'integrations'),
     );
     if (!nginxVhostsDir.existsSync()) {
       await nginxVhostsDir.create(recursive: true);
-    }
-
-    // Cleanup legacy config if exists
-    final legacyConf = File(
-      p.join(AppConfig.vhostsDir, 'nginx', 'phpmyadmin.conf'),
-    );
-    if (legacyConf.existsSync()) {
-      await legacyConf.delete();
-      log('Removed legacy phpmyadmin.conf from vhosts root');
     }
 
     final pmaConfFile = File(p.join(nginxVhostsDir.path, 'phpmyadmin.conf'));
@@ -2439,19 +2460,36 @@ security:
       phpPort: phpPort,
     );
 
-    await pmaConfFile.writeAsString(pmaConfig);
-    log(
-      'Created Nginx config for phpMyAdmin at ${pmaConfFile.path} (PHP Port: $phpPort)',
+    // Write the new integration before deleting the legacy file. If the target
+    // is unreadable/unwritable (invalid UTF-8, directory, permission), keep the
+    // legacy config intact so nginx still has a usable phpMyAdmin location.
+    final changed = await _writeIntegrationConfig(pmaConfFile, pmaConfig);
+
+    var removedLegacyConfig = false;
+    final legacyConf = File(
+      p.join(AppConfig.vhostsDir, 'nginx', 'phpmyadmin.conf'),
     );
+    if (legacyConf.existsSync()) {
+      await legacyConf.delete();
+      removedLegacyConfig = true;
+      log('Removed legacy phpmyadmin.conf from vhosts root');
+    }
+
+    if (changed) {
+      log(
+        'Created Nginx config for phpMyAdmin at ${pmaConfFile.path} (PHP Port: $phpPort)',
+      );
+    }
+    return removedLegacyConfig || changed;
   }
 
-  Future<void> _configurePhpMyAdminInCaddy(
+  Future<bool> _configurePhpMyAdminInCaddy(
     AppModel caddy,
     AppModel pma,
     AppModel? php,
     Function(String) log,
   ) async {
-    if (caddy.location == null || pma.location == null) return;
+    if (caddy.location == null || pma.location == null) return false;
 
     final integrationsDir = Directory(
       p.join(AppConfig.vhostsDir, 'caddy', 'integrations'),
@@ -2473,11 +2511,14 @@ security:
       phpPort: phpPort,
     );
     final configFile = File(p.join(integrationsDir.path, 'phpmyadmin.conf'));
-    await configFile.writeAsString(config);
-    log(
-      'Created Caddy config for phpMyAdmin at ${configFile.path} '
-      '(PHP Port: $phpPort)',
-    );
+    final changed = await _writeIntegrationConfig(configFile, config);
+    if (changed) {
+      log(
+        'Created Caddy config for phpMyAdmin at ${configFile.path} '
+        '(PHP Port: $phpPort)',
+      );
+    }
+    return changed;
   }
 
   @visibleForTesting
@@ -2487,14 +2528,14 @@ security:
   }) =>
       ApacheConfigBuilder.buildPhpMyAdminConfig(pmaPathUnix, phpPort: phpPort);
 
-  Future<void> _configurePhpMyAdminInApache(
+  Future<bool> _configurePhpMyAdminInApache(
     AppModel apache,
     AppModel pma,
     Function(String) log,
   ) async {
     final wsPath = apache.location;
     final pmaPath = pma.location;
-    if (wsPath == null || pmaPath == null) return;
+    if (wsPath == null || pmaPath == null) return false;
 
     final apacheVhostsDir = Directory(p.join(AppConfig.vhostsDir, 'apache'));
     if (!apacheVhostsDir.existsSync()) {
@@ -2507,8 +2548,11 @@ security:
 
     final pmaConfig = buildApachePmaConfig(pmaPathUnix);
 
-    await pmaConfFile.writeAsString(pmaConfig);
-    log('Created Apache config for phpMyAdmin at ${pmaConfFile.path}');
+    final changed = await _writeIntegrationConfig(pmaConfFile, pmaConfig);
+    if (changed) {
+      log('Created Apache config for phpMyAdmin at ${pmaConfFile.path}');
+    }
+    return changed;
   }
 
   Future<void> _configurePhpMyAdmin(

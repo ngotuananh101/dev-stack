@@ -673,23 +673,41 @@ class Apps extends _$Apps {
     // for a service that can't run — a lie that survives restarts.
     final previousAutoStart = app.autoStartService;
     try {
-      await manager.start(app, onStatusChange: () => notifyUpdate(force: true));
-
-      app.autoStartService = true;
-      await repository.save(app);
-
-      // Sync configs if it's a webserver starting
+      // A stopped webserver reads integrations at startup. Write them before
+      // spawning it; if it is already running, only reload changed configs.
+      final wasRunning = manager.isRunning(app.appId);
+      var configsChanged = false;
       if (app.categories.contains('webserver')) {
         final installer = ref.read(appInstallerServiceProvider);
         final allApps = state.value ?? [];
-        await installer.syncInterAppConfigs(app, allApps);
+        configsChanged = await installer.syncInterAppConfigs(app, allApps);
       }
+
+      if (wasRunning && configsChanged) {
+        await manager.restart(
+          app,
+          onStatusChange: () => notifyUpdate(force: true),
+        );
+      } else {
+        await manager.start(
+          app,
+          onStatusChange: () => notifyUpdate(force: true),
+        );
+      }
+
+      app.autoStartService = true;
+      await repository.save(app);
 
       notifyUpdate(force: true);
     } catch (e) {
       // Restore the flag so a failed start doesn't poison persisted state.
       app.autoStartService = previousAutoStart;
       AppLogger.error('Error starting service: $e');
+      if (app.categories.contains('webserver')) {
+        ref
+            .read(appErrorProvider.notifier)
+            .setError('Failed to start ${app.name}: $e');
+      }
     }
   }
 

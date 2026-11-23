@@ -239,6 +239,83 @@ void main() {
     skip: skipLinuxIntegration,
   );
 
+  test(
+    'reuses a legacy Linux download with the latest installed state',
+    () async {
+      final isar = openTestDatabase();
+      final location = p.join(supportDir.path, 'installed', 'compass');
+      final executable = p.join(location, 'MongoDB Compass');
+      isar.write((_) {
+        isar.installedApps.put(
+          InstalledApp(
+            appId: 'mongodb-compass',
+            appName: 'MongoDB Compass',
+            location: location,
+            status: 'stopped',
+            version: '1.53.2',
+            execFilePath: executable,
+          )..id = isar.installedApps.autoIncrement(),
+        );
+      });
+
+      final legacyDownload = _catalog([
+        {
+          'id': 'redis',
+          'name': 'Downloaded Redis',
+          'versions': {'9.0.1': 'https://example.test/redis.tar.gz'},
+        },
+      ]);
+
+      final repo = repository(legacyDownload, isar);
+      await repo.updateAppListFromUrl(_catalogUrl);
+      isar.write((_) {
+        final compass = isar.installedApps
+            .where()
+            .appIdEqualTo('mongodb-compass')
+            .findFirst()!;
+        compass.version = '1.53.3';
+        isar.installedApps.put(compass);
+        isar.installedApps.put(
+          InstalledApp(
+            appId: 'redis',
+            appName: 'Redis',
+            location: p.join(supportDir.path, 'installed', 'redis'),
+            status: 'stopped',
+            version: '9.0.1',
+          )..id = isar.installedApps.autoIncrement(),
+        );
+      });
+
+      // The working cache must remain the downloaded payload; overlaying
+      // bundled Compass is a load-time merge, not a cache rewrite.
+      expect(cache.readAsStringSync(), legacyDownload);
+
+      // The next load can reuse the catalog without rereading the cache,
+      // but must still reflect the latest installation state.
+      cache.deleteSync();
+      final apps = await repo.getAll();
+
+      expect(
+        apps.map((app) => app.appId),
+        containsAll(['redis', 'mongodb-compass']),
+      );
+      final redis = apps.singleWhere((app) => app.appId == 'redis');
+      expect(redis.name, 'Downloaded Redis');
+      expect(redis.isInstalled, isTrue);
+      expect(redis.installedVersion, '9.0.1');
+      expect(redis.versionLinks, {
+        '9.0.1': 'https://example.test/redis.tar.gz',
+      });
+      final compass = apps.singleWhere((app) => app.appId == 'mongodb-compass');
+      expect(compass.isInstalled, isTrue);
+      expect(compass.installedVersion, '1.53.3');
+      expect(compass.location, location);
+      expect(compass.execFilePath, executable);
+      expect(compass.versions, isNotEmpty);
+    },
+    skip: skipLinuxIntegration,
+  );
+
   test('invalid cached catalog falls back to the bundled catalog', () async {
     final isar = openTestDatabase();
     final invalid = _catalog([

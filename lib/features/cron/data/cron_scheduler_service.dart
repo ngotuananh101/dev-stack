@@ -157,13 +157,41 @@ class CronSchedulerService {
     return _loadJobs();
   }
 
-  Future<void> _persist(CronJob job) async {
+  /// Persists run metadata. For Isar, atomically reads the current record and
+  /// updates only run fields on an existing row, preserving edits and never
+  /// resurrecting a deleted job. For the injected updater path, the snapshot is
+  /// forwarded as-is for interface compatibility.
+  Future<bool> _persistRunState(
+    CronJob job, {
+    DateTime? lastRunAt,
+    String? lastStatus,
+    int? lastExitCode,
+    bool setExitCode = false,
+  }) async {
+    if (lastRunAt != null) job.lastRunAt = lastRunAt;
+    if (lastStatus != null) job.lastStatus = lastStatus;
+    if (setExitCode) job.lastExitCode = lastExitCode;
+
     final isar = _isar;
     if (isar != null) {
-      isar.write((_) => isar.cronJobs.put(job));
-      return;
+      return isar.write((_) {
+        final current = isar.cronJobs.get(job.id);
+        if (current == null) return false;
+        if (lastRunAt != null) current.lastRunAt = lastRunAt;
+        if (lastStatus != null) current.lastStatus = lastStatus;
+        if (setExitCode) current.lastExitCode = lastExitCode;
+        isar.cronJobs.put(current);
+        return true;
+      });
     }
     await _updateJob(job);
+    return true;
+  }
+
+  void _retireDeletedJob(int jobId) {
+    _history.remove(jobId);
+    _nextRuns.remove(jobId);
+    _nextRunSchedules.remove(jobId);
   }
 
   /// One scheduler pass: fire every due, enabled job. Called by the periodic
@@ -210,6 +238,7 @@ class CronSchedulerService {
       // Drop bookkeeping for jobs that no longer exist.
       _nextRuns.removeWhere((id, _) => !liveIds.contains(id));
       _nextRunSchedules.removeWhere((id, _) => !liveIds.contains(id));
+      _history.removeWhere((id, _) => !liveIds.contains(id));
     } finally {
       _ticking = false;
     }
@@ -232,9 +261,17 @@ class CronSchedulerService {
     // A copy so the in-flight record can be replaced on completion.
     final index = _history[job.id]?.indexOf(record) ?? -1;
 
-    job.lastRunAt = startedAt;
-    job.lastStatus = 'running';
-    await _persist(job);
+    final startedPersisted = await _persistRunState(
+      job,
+      lastRunAt: startedAt,
+      lastStatus: 'running',
+    );
+    if (!startedPersisted) {
+      _running.remove(job.id);
+      _retireDeletedJob(job.id);
+      _notify(job.id);
+      return;
+    }
 
     CronRunResult result;
     try {
@@ -250,7 +287,7 @@ class CronSchedulerService {
     // wipes the history this run writes its result into. Writing to it now
     // would throw on a null entry, so the result is dropped instead.
     final history = _history[job.id];
-    if (history != null && index < history.length) {
+    if (history != null && index >= 0 && index < history.length) {
       history[index] = RunRecord(
         startedAt: startedAt,
         finishedAt: finishedAt,
@@ -261,9 +298,15 @@ class CronSchedulerService {
 
     _running.remove(job.id);
 
-    job.lastStatus = success ? 'success' : 'failed';
-    job.lastExitCode = result.exitCode;
-    await _persist(job);
+    final finishedPersisted = await _persistRunState(
+      job,
+      lastStatus: success ? 'success' : 'failed',
+      lastExitCode: result.exitCode,
+      setExitCode: true,
+    );
+    if (!finishedPersisted) {
+      _retireDeletedJob(job.id);
+    }
 
     _notify(job.id);
   }

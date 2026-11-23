@@ -52,6 +52,47 @@ function releaseAssetPages(releases, getAssets = (entry) => entry.assets) {
   );
 }
 
+test("Compass uses the CI token only on fixed API requests and rejects redirects", async (t) => {
+  const entry = release("1.53.2");
+  const releasePage = `${API}?per_page=100&page=1`;
+  const assetPage = `${API}/${entry.id}/assets?per_page=100&page=1`;
+  const calls = [];
+  const updater = loadUpdater(async (request, init) => {
+    calls.push([request, init.headers.Authorization, init.redirect]);
+    if (request === releasePage) return response([entry]);
+    if (request === assetPage) return response(entry.assets);
+    throw new Error(`Unexpected request ${request}`);
+  }, fixtureDir(t), { env: { GITHUB_TOKEN: "fixture-token" } });
+
+  assert.equal((await updater.fetchersLinux["mongodb-compass"]()).versions["1.53.2"], url("1.53.2"));
+  assert.deepEqual(calls, [
+    [releasePage, "Bearer fixture-token", "error"],
+    [assetPage, "Bearer fixture-token", "error"],
+  ]);
+});
+
+test("Compass works without a token and never follows supplied pagination origins", async (t) => {
+  const entry = release("1.53.2");
+  const calls = [];
+  const updater = loadUpdater(async (request, init) => {
+    calls.push(request);
+    assert.equal(Object.hasOwn(init.headers, "Authorization"), false);
+    if (request === `${API}?per_page=100&page=1`) {
+      return response([entry], { next: "https://foreign.test/releases?page=2" });
+    }
+    if (request === `${API}?per_page=100&page=2`) return response([]);
+    if (request === `${API}/${entry.id}/assets?per_page=100&page=1`) {
+      return response(entry.assets, { next: "https://foreign.test/assets?page=2" });
+    }
+    if (request === `${API}/${entry.id}/assets?per_page=100&page=2`) return response([]);
+    throw new Error(`Unexpected request ${request}`);
+  }, fixtureDir(t));
+
+  assert.equal((await updater.fetchersLinux["mongodb-compass"]()).versions["1.53.2"], url("1.53.2"));
+  assert.equal(calls.length, 4);
+  assert.ok(calls.every((request) => request.startsWith(`${API}?`) || request.startsWith(`${API}/`)));
+});
+
 test("Linux chooses only the standard linux-x64 tarball and its SHA256", async (t) => {
   const version = "1.53.2";
   const alternatives = [

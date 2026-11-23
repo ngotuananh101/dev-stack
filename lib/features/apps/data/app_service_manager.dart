@@ -8,6 +8,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/app_model.dart';
 import 'app_installer_service.dart';
 import '../../../core/services/background_process.dart';
+import '../../../core/services/process_output.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/config/apache_config_builder.dart';
 import '../../../core/config/app_config.dart';
@@ -26,7 +27,7 @@ class AppServiceManager {
   final LogService _logger;
   final Map<String, ManagedBackgroundProcess> _processes = {};
   final Map<String, AppModel> _activeApps = {};
-  final Map<String, List<StreamSubscription<String>>> _logSubscriptions = {};
+  final Map<String, List<StreamSubscription<dynamic>>> _logSubscriptions = {};
 
   /// Set true by [dispose]. Once disposed, late-firing process-exit callbacks
   /// must NOT touch the shared maps or invoke caller-supplied status callbacks
@@ -638,55 +639,51 @@ class AppServiceManager {
       // Detached webservers therefore have their output discarded rather than
       // rendered: it is already teed to their own log files, and the 100-entry
       // service buffer would only churn the UI.
-      final stdoutSubscription = process.stdout
-          .transform(utf8.decoder)
-          .listen(
-            (data) {
-              if (runsDetached) return;
-              final lines = data.split('\n');
-              for (final line in lines) {
-                if (line.trim().isNotEmpty) {
-                  final cleanLine = line.trim();
-                  _activeApps[app.appId]?.addServiceLog(cleanLine);
-                  AppLogger.info('[${app.name}] $cleanLine');
-                  onStatusChange?.call();
-                }
-              }
-            },
-            onError: (Object e) =>
-                _logger.warning('stdout read failed for ${app.name}: $e'),
-            cancelOnError: false,
-          );
+      final stdoutSubscription = listenToProcessOutput(
+        process.stdout,
+        discard: runsDetached,
+        onData: (data) {
+          final lines = data.split('\n');
+          for (final line in lines) {
+            if (line.trim().isNotEmpty) {
+              final cleanLine = line.trim();
+              _activeApps[app.appId]?.addServiceLog(cleanLine);
+              AppLogger.info('[${app.name}] $cleanLine');
+              onStatusChange?.call();
+            }
+          }
+        },
+        onError: (Object e) =>
+            _logger.warning('stdout read failed for ${app.name}: $e'),
+      );
 
-      final stderrSubscription = process.stderr
-          .transform(utf8.decoder)
-          .listen(
-            (data) {
-              if (runsDetached) return;
-              final lines = data.split('\n');
-              for (final line in lines) {
-                if (line.trim().isNotEmpty) {
-                  final cleanLine = line.trim();
-                  String prefix = 'LOG';
-                  if (cleanLine.contains('[ERROR]')) {
-                    prefix = 'ERROR';
-                  } else if (cleanLine.contains('[Warning]')) {
-                    prefix = 'WARN';
-                  } else if (cleanLine.contains('[System]') ||
-                      cleanLine.contains('[Note]')) {
-                    prefix = 'INFO';
-                  }
-
-                  _activeApps[app.appId]?.addServiceLog('[$prefix] $cleanLine');
-                  AppLogger.info('[${app.name}] $prefix: $cleanLine');
-                  onStatusChange?.call();
-                }
+      final stderrSubscription = listenToProcessOutput(
+        process.stderr,
+        discard: runsDetached,
+        onData: (data) {
+          final lines = data.split('\n');
+          for (final line in lines) {
+            if (line.trim().isNotEmpty) {
+              final cleanLine = line.trim();
+              String prefix = 'LOG';
+              if (cleanLine.contains('[ERROR]')) {
+                prefix = 'ERROR';
+              } else if (cleanLine.contains('[Warning]')) {
+                prefix = 'WARN';
+              } else if (cleanLine.contains('[System]') ||
+                  cleanLine.contains('[Note]')) {
+                prefix = 'INFO';
               }
-            },
-            onError: (Object e) =>
-                _logger.warning('stderr read failed for ${app.name}: $e'),
-            cancelOnError: false,
-          );
+
+              _activeApps[app.appId]?.addServiceLog('[$prefix] $cleanLine');
+              AppLogger.info('[${app.name}] $prefix: $cleanLine');
+              onStatusChange?.call();
+            }
+          }
+        },
+        onError: (Object e) =>
+            _logger.warning('stderr read failed for ${app.name}: $e'),
+      );
       _logSubscriptions[app.appId] = [stdoutSubscription, stderrSubscription];
     } catch (e) {
       _logger.error('Failed to start service ${app.name}: $e');

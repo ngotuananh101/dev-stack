@@ -243,6 +243,13 @@ function compassLinuxUrl(version) {
   return `https://github.com/mongodb-js/compass/releases/download/v${version}/mongodb-compass-${version}-linux-x64.tar.gz`;
 }
 
+// Only call the fixed Compass API endpoint and never forward a token on redirects.
+const COMPASS_RELEASES_API = 'https://api.github.com/repos/mongodb-js/compass/releases';
+
+function compassRequestOptions() {
+  return { headers: githubReleaseHeaders(), redirect: 'error' };
+}
+
 async function fetchCompassReleaseAssets(release) {
   if (!Number.isSafeInteger(release.id) || release.id <= 0) {
     throw new Error('Malformed Compass release identity');
@@ -251,13 +258,8 @@ async function fetchCompassReleaseAssets(release) {
   let page = 1;
   while (true) {
     const res = await fetch(
-      `https://api.github.com/repos/mongodb-js/compass/releases/${release.id}/assets?per_page=100&page=${page}`,
-      {
-        headers: {
-          Accept: 'application/vnd.github+json',
-          'User-Agent': 'Ponta-Update',
-        },
-      },
+      `${COMPASS_RELEASES_API}/${release.id}/assets?per_page=100&page=${page}`,
+      compassRequestOptions(),
     );
     if (!res.ok) {
       throw new Error(`Compass release assets request failed: ${res.status}`);
@@ -278,9 +280,10 @@ async function fetchCompassLinuxReleases() {
   const sha256 = {};
   let page = 1;
   while (true) {
-    const res = await fetch(`https://api.github.com/repos/mongodb-js/compass/releases?per_page=100&page=${page}`, {
-      headers: { Accept: "application/vnd.github+json", "User-Agent": "Ponta-Update" },
-    });
+    const res = await fetch(
+      `${COMPASS_RELEASES_API}?per_page=100&page=${page}`,
+      compassRequestOptions(),
+    );
     if (!res.ok) throw new Error(`Compass releases request failed: ${res.status}`);
     const releases = await res.json();
     if (!Array.isArray(releases)) throw new Error("Malformed Compass release index");
@@ -612,7 +615,7 @@ function builderLinkIsValid(url, pathPattern) {
 // repository's release and release-asset pathnames are acceptable targets.
 const BUILDER_RELEASE_PATH = new RegExp(`^${BUILDER_RELEASES_PATH}$`);
 
-function builderHeaders() {
+function githubReleaseHeaders() {
   return {
     Accept: "application/vnd.github+json",
     "User-Agent": "Ponta-Update",
@@ -630,7 +633,7 @@ async function fetchBuilderReleasePages() {
       throw new Error("Invalid builder release pagination link");
     }
     visited.add(url);
-    const res = await fetch(url, { headers: builderHeaders() });
+    const res = await fetch(url, { headers: githubReleaseHeaders() });
     if (!res.ok) throw new Error(`Builder release index returned HTTP ${res.status}`);
     const page = await res.json();
     if (!Array.isArray(page)) throw new Error("Malformed builder release index");
@@ -663,7 +666,7 @@ async function fetchBuilderReleaseAssets(releaseId) {
       throw new Error("Invalid builder asset pagination link");
     }
     visited.add(url);
-    const res = await fetch(url, { headers: builderHeaders() });
+    const res = await fetch(url, { headers: githubReleaseHeaders() });
     if (!res.ok) throw new Error(`Builder asset index returned HTTP ${res.status}`);
     const page = await res.json();
     if (!Array.isArray(page)) throw new Error("Malformed builder asset index");

@@ -8,8 +8,8 @@ on:
 jobs:
   update-gist:
     runs-on: ubuntu-latest
-    # The builder release scan reads public repository metadata only; the Gist
-    # write uses GIST_PAT, so no broader repository scope is needed.
+    # Release scans read public repository metadata only; the Gist write
+    # uses GIST_PAT, so no broader repository scope is needed.
     permissions:
       contents: read
     steps:
@@ -23,8 +23,7 @@ jobs:
 
       - name: Run update script
         env:
-          # Raises the builder release API rate limit; the token is only ever
-          # sent to api.github.com for this repository's release endpoints.
+          # Raises the rate limit for release metadata requests to api.github.com.
           GITHUB_TOKEN: ${{ github.token }}
         run: node assets/data/update.js
 

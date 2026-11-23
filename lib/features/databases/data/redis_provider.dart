@@ -5,17 +5,21 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../shared/utils/bounded_runner.dart';
 import '../../apps/domain/app_model.dart';
+import '../../sites/domain/batch_models.dart';
 import '../domain/redis_key.dart';
 
 part 'redis_provider.g.dart';
 
+typedef RedisProcessRunner =
+    Future<ProcessResult> Function(String executable, List<String> arguments);
+
 @riverpod
 class Redis extends _$Redis {
-  bool _isDisposed = false;
+  CancelToken? _activeFetchCancel;
 
-  /// Identity of the most recent [fetchKeys] call. A response from an older
-  /// call is dropped instead of painting stale keys under a newer filter.
-  int _fetchGeneration = 0;
+  /// Injectable command runner for tests; production uses [Process.run].
+  @visibleForTesting
+  static RedisProcessRunner processRunner = Process.run;
 
   /// How many keys get their type/TTL/value probed. Each probe is a few
   /// `redis-cli` subprocesses, so this caps both latency and process churn.
@@ -29,8 +33,15 @@ class Redis extends _$Redis {
 
   @override
   FutureOr<List<RedisKey>> build() {
-    ref.onDispose(() => _isDisposed = true);
+    ref.onDispose(cancelFetch);
     return [];
+  }
+
+  /// Stops obsolete scans and probes without changing provider state.
+  /// A subprocess already started is allowed to finish.
+  void cancelFetch() {
+    _activeFetchCancel?.cancel();
+    _activeFetchCancel = null;
   }
 
   Future<void> fetchKeys(
@@ -38,28 +49,34 @@ class Redis extends _$Redis {
     int dbIndex, {
     String query = '*',
   }) async {
-    if (_isDisposed) return;
-    final generation = ++_fetchGeneration;
+    if (!ref.mounted) return;
+    cancelFetch();
+    final cancel = CancelToken();
+    _activeFetchCancel = cancel;
 
     state = const AsyncValue.loading();
+
+    bool isStale() => cancel.isCancelled;
 
     final newState = await AsyncValue.guard(() async {
       final cliPath = app.cliFilePath;
       if (cliPath == null) throw Exception('Redis CLI not found');
 
-      final keys = await _listKeys(cliPath, dbIndex, query);
-      final probed = keys.take(maxProbedKeys).toList();
+      final keys = await _listKeys(cliPath, dbIndex, query, isStale);
+      if (isStale()) return const <RedisKey>[];
 
-      final results = await runBounded<dynamic, RedisKey?>(
-        probed,
+      final results = await runBounded<String, RedisKey?>(
+        keys,
         _probeConcurrency,
-        (key, _) => _describeKey(cliPath, dbIndex, key),
+        (key, _) => _describeKey(cliPath, dbIndex, key, isStale),
+        cancel: cancel,
       );
+      if (isStale()) return const <RedisKey>[];
       return results.whereType<RedisKey>().toList();
     });
 
-    // A newer fetch started while this one was running: its result wins.
-    if (_isDisposed || generation != _fetchGeneration) return;
+    if (isStale()) return;
+    _activeFetchCancel = null;
     state = newState;
   }
 
@@ -76,13 +93,15 @@ class Redis extends _$Redis {
     String cliPath,
     int dbIndex,
     String query,
+    bool Function() isStale,
   ) async {
     final pattern = query.isEmpty ? '*' : query;
     final keys = <String>[];
     final seen = <String>{};
     var cursor = '0';
     for (var i = 0; i < _maxScanIterations; i++) {
-      final result = await Process.run(cliPath, [
+      if (isStale() || keys.length >= maxProbedKeys) break;
+      final result = await Redis.processRunner(cliPath, [
         '-n',
         dbIndex.toString(),
         'SCAN',
@@ -92,6 +111,7 @@ class Redis extends _$Redis {
         'COUNT',
         _scanPageSize.toString(),
       ]);
+      if (isStale()) break;
       if (result.exitCode != 0) {
         throw Exception(
           'Could not connect to Redis. Please ensure the service is running.\n'
@@ -107,9 +127,12 @@ class Redis extends _$Redis {
       if (lines.isEmpty) break;
       cursor = lines.first;
       for (final key in lines.skip(1)) {
-        if (seen.add(key)) keys.add(key);
+        if (seen.add(key)) {
+          keys.add(key);
+          if (keys.length >= maxProbedKeys) break;
+        }
       }
-      if (cursor == '0') break;
+      if (cursor == '0' || keys.length >= maxProbedKeys) break;
     }
     return keys;
   }
@@ -118,55 +141,65 @@ class Redis extends _$Redis {
     String cliPath,
     int dbIndex,
     String key,
+    bool Function() isStale,
   ) async {
-    final typeResult = await Process.run(cliPath, [
+    if (isStale()) return null;
+    final typeResult = await Redis.processRunner(cliPath, [
       '-n',
       dbIndex.toString(),
       'TYPE',
       key,
     ]);
+    if (isStale()) return null;
     final type = typeResult.stdout.toString().trim();
 
-    final ttlResult = await Process.run(cliPath, [
+    final ttlResult = await Redis.processRunner(cliPath, [
       '-n',
       dbIndex.toString(),
       'TTL',
       key,
     ]);
+    if (isStale()) return null;
     final ttlSeconds = int.tryParse(ttlResult.stdout.toString().trim()) ?? -1;
 
     String value = '';
     int length = 0;
     switch (type) {
       case 'string':
-        final valResult = await Process.run(cliPath, [
+        final valResult = await Redis.processRunner(cliPath, [
           '-n',
           dbIndex.toString(),
           'GET',
           key,
         ]);
+        if (isStale()) return null;
         value = valResult.stdout.toString().trim();
         length = value.length;
       case 'list':
-        length = await _scalarInt(cliPath, dbIndex, 'LLEN', key);
+        length = await _scalarInt(cliPath, dbIndex, 'LLEN', key, isStale);
+        if (isStale()) return null;
         value = '[list data]';
         break;
       case 'set':
-        length = await _scalarInt(cliPath, dbIndex, 'SCARD', key);
+        length = await _scalarInt(cliPath, dbIndex, 'SCARD', key, isStale);
+        if (isStale()) return null;
         value = '[set data]';
         break;
       case 'hash':
-        length = await _scalarInt(cliPath, dbIndex, 'HLEN', key);
+        length = await _scalarInt(cliPath, dbIndex, 'HLEN', key, isStale);
+        if (isStale()) return null;
         value = '[hash data]';
         break;
       case 'zset':
-        length = await _scalarInt(cliPath, dbIndex, 'ZCARD', key);
+        length = await _scalarInt(cliPath, dbIndex, 'ZCARD', key, isStale);
+        if (isStale()) return null;
         value = '[zset data]';
         break;
       default:
         value = '[$type data]';
     }
 
+    if (isStale()) return null;
     return RedisKey(
       key: key,
       value: value,
@@ -182,13 +215,16 @@ class Redis extends _$Redis {
     int dbIndex,
     String command,
     String key,
+    bool Function() isStale,
   ) async {
-    final result = await Process.run(cliPath, [
+    if (isStale()) return 0;
+    final result = await Redis.processRunner(cliPath, [
       '-n',
       dbIndex.toString(),
       command,
       key,
     ]);
+    if (isStale()) return 0;
     return int.tryParse(result.stdout.toString().trim()) ?? 0;
   }
 
@@ -215,7 +251,7 @@ class Redis extends _$Redis {
   /// immediately and lets the server finish the snapshot on its own.
   Future<void> _persistInBackground(String cliPath, int dbIndex) async {
     try {
-      await Process.run(cliPath, ['-n', dbIndex.toString(), 'BGSAVE']);
+      await Redis.processRunner(cliPath, ['-n', dbIndex.toString(), 'BGSAVE']);
     } catch (_) {
       // Best-effort: the server's own save policy still applies.
     }
@@ -224,7 +260,7 @@ class Redis extends _$Redis {
   Future<bool> checkKeyExists(AppModel app, int dbIndex, String key) async {
     final cliPath = app.cliFilePath;
     if (cliPath == null) return false;
-    final result = await Process.run(cliPath, [
+    final result = await Redis.processRunner(cliPath, [
       '-n',
       dbIndex.toString(),
       'EXISTS',
@@ -242,9 +278,15 @@ class Redis extends _$Redis {
   }) async {
     final cliPath = app.cliFilePath;
     if (cliPath == null) return;
-    await Process.run(cliPath, ['-n', dbIndex.toString(), 'SET', key, value]);
+    await Redis.processRunner(cliPath, [
+      '-n',
+      dbIndex.toString(),
+      'SET',
+      key,
+      value,
+    ]);
     if (ttl != null && ttl > 0) {
-      await Process.run(cliPath, [
+      await Redis.processRunner(cliPath, [
         '-n',
         dbIndex.toString(),
         'EXPIRE',
@@ -259,7 +301,7 @@ class Redis extends _$Redis {
   Future<void> deleteKey(AppModel app, int dbIndex, String key) async {
     final cliPath = app.cliFilePath;
     if (cliPath == null) return;
-    await Process.run(cliPath, ['-n', dbIndex.toString(), 'DEL', key]);
+    await Redis.processRunner(cliPath, ['-n', dbIndex.toString(), 'DEL', key]);
     await _persistInBackground(cliPath, dbIndex);
     await fetchKeys(app, dbIndex);
   }
@@ -267,7 +309,7 @@ class Redis extends _$Redis {
   Future<void> clearDb(AppModel app, int dbIndex) async {
     final cliPath = app.cliFilePath;
     if (cliPath == null) return;
-    await Process.run(cliPath, ['-n', dbIndex.toString(), 'FLUSHDB']);
+    await Redis.processRunner(cliPath, ['-n', dbIndex.toString(), 'FLUSHDB']);
     await _persistInBackground(cliPath, dbIndex);
     await fetchKeys(app, dbIndex);
   }
@@ -278,7 +320,7 @@ Future<Map<int, int>> redisDbStats(Ref ref, AppModel app) async {
   final cliPath = app.cliFilePath;
   if (cliPath == null) return {};
 
-  final result = await Process.run(cliPath, ['INFO', 'keyspace']);
+  final result = await Redis.processRunner(cliPath, ['INFO', 'keyspace']);
   if (result.exitCode != 0) return {};
 
   final stats = <int, int>{};

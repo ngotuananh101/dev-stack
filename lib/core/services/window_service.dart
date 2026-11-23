@@ -103,7 +103,6 @@ class WindowService extends _$WindowService {
     if (initialApps != null) {
       _updateTrayMenu(initialApps);
     }
-    _initAutoStart();
   }
 
   // --- Tray ---

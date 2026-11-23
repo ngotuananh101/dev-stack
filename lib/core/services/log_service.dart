@@ -27,8 +27,21 @@ class LogService {
   /// Daily log files older than this are pruned on write.
   static const int retentionDays = 30;
 
+  final String? _configuredLogDir;
+  String get _logDir => _configuredLogDir ?? AppConfig.logsDir;
+  final DateTime Function() _now;
+
+  LogService({String? logDir, DateTime Function()? now})
+    : _configuredLogDir = logDir,
+      _now = now ?? DateTime.now;
+
   // Serialize writes to prevent concurrent file corruption
   Future<void>? _pendingWrite;
+
+  /// Tracks the last calendar day a retention scan ran so writes in the same
+  /// day can skip rescanning. The first write always prunes.
+  DateTime? _lastPruneDay;
+  String? _lastPruneDirectory;
 
   /// Returns the dates (from [dates]) whose age relative to [today] is greater
   /// than [retentionDays] days. Pure and injectable so the prune decision can
@@ -63,15 +76,16 @@ class LogService {
       await previous;
     } catch (_) {}
 
-    final now = DateTime.now();
+    final now = _now();
     final fileName = '${DateFormat('yyyy-MM-dd').format(now)}.log';
-    final logDir = Directory(baseLogDir);
+    final directoryPath = _logDir;
+    final logDir = Directory(directoryPath);
 
     if (!logDir.existsSync()) {
       logDir.createSync(recursive: true);
     }
 
-    final logFile = File(p.join(baseLogDir, fileName));
+    final logFile = File(p.join(directoryPath, fileName));
     final timestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
     final logEntry = '[$timestamp] [$level] $message\n';
 
@@ -88,17 +102,22 @@ class LogService {
 
     await logFile.writeAsString(logEntry, mode: FileMode.append);
 
-    // Best-effort prune of stale daily files. Throttled implicitly by the
-    // serialized write chain so it doesn't run on every single line.
-    await _pruneOldLogs(now);
+    // Best-effort prune of stale daily files. Throttled to at most once per
+    // calendar day on the serialized writer so adjacent writes skip rescanning.
+    final pruneDay = DateTime(now.year, now.month, now.day);
+    if (_lastPruneDay != pruneDay || _lastPruneDirectory != directoryPath) {
+      await _pruneOldLogs(now, directoryPath);
+      _lastPruneDay = pruneDay;
+      _lastPruneDirectory = directoryPath;
+    }
 
     // Also print to console for dev
     debugPrint(logEntry.trim());
   }
 
-  Future<void> _pruneOldLogs(DateTime now) async {
+  Future<void> _pruneOldLogs(DateTime now, String directoryPath) async {
     try {
-      final logDir = Directory(baseLogDir);
+      final logDir = Directory(directoryPath);
       if (!logDir.existsSync()) return;
       final stale = <DateTime>[];
       for (final entry in logDir.listSync()) {
@@ -115,7 +134,7 @@ class LogService {
       final toDelete = logsOlderThan(stale, today: now);
       for (final date in toDelete) {
         final f = File(
-          p.join(baseLogDir, '${DateFormat('yyyy-MM-dd').format(date)}.log'),
+          p.join(directoryPath, '${DateFormat('yyyy-MM-dd').format(date)}.log'),
         );
         if (f.existsSync()) await f.delete();
       }
@@ -126,7 +145,7 @@ class LogService {
 
   Future<List<String>> getLogsForDate(DateTime date) async {
     final fileName = '${DateFormat('yyyy-MM-dd').format(date)}.log';
-    final logFile = File(p.join(baseLogDir, fileName));
+    final logFile = File(p.join(_logDir, fileName));
 
     if (logFile.existsSync()) {
       return await logFile.readAsLines();

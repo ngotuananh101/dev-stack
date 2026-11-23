@@ -13,6 +13,7 @@ class AppsRepository {
   final Isar? _isar;
   final Dio? _dio;
   final Future<Directory> Function() _supportDirectory;
+  List<dynamic>? _freshCatalogEntries;
 
   AppsRepository([Isar? isar]) : this.withDependencies(isar);
 
@@ -150,19 +151,42 @@ class AppsRepository {
         .cast<AppModel>();
   }
 
-  static List<AppModel> _parseCatalog(
-    dynamic rawData,
-    Map<String, InstalledApp> installedMap,
-  ) {
+  static List<dynamic> _catalogEntries(dynamic rawData) {
     final data = rawData is String ? json.decode(rawData) : rawData;
     if (data is! Map || data['apps'] is! List) {
       throw const FormatException('App catalog must contain an "apps" list');
     }
+    return data['apps'] as List<dynamic>;
+  }
+
+  static List<AppModel> _mergeCatalogEntries(
+    List<dynamic> entries,
+    Map<String, InstalledApp> installedMap,
+  ) {
     try {
-      return mergeAppsCatalog(data['apps'] as List<dynamic>, installedMap);
+      return mergeAppsCatalog(entries, installedMap);
     } on TypeError catch (e) {
       throw FormatException('Invalid app catalog field type: $e');
     }
+  }
+
+  Future<List<AppModel>> _mergedAppsFromCatalogEntries(
+    List<dynamic> entries,
+    Map<String, InstalledApp> installedMap,
+    String catalogFileName,
+  ) async {
+    final merged = _mergeCatalogEntries(entries, installedMap);
+    if (!Platform.isLinux ||
+        merged.any((app) => app.appId == 'mongodb-compass')) {
+      return merged;
+    }
+    // A valid cache from the legacy Linux feed can predate Compass.
+    // Keep all other entries and merge Compass with its saved state.
+    final bundled = await _loadBundledCatalog(catalogFileName, installedMap);
+    return [
+      ...merged,
+      ...bundled.where((app) => app.appId == 'mongodb-compass'),
+    ];
   }
 
   Future<File> _catalogCacheFile() async {
@@ -178,37 +202,34 @@ class AppsRepository {
     final response = await rootBundle.loadString(
       'assets/data/$catalogFileName',
     );
-    return _parseCatalog(response, installedMap);
+    return _mergeCatalogEntries(_catalogEntries(response), installedMap);
   }
 
   Future<List<AppModel>> getAll() async {
     try {
       final catalogFileName = catalogFileNameFor(isLinux: Platform.isLinux);
-      final localFile = await _catalogCacheFile();
+      final freshEntries = _freshCatalogEntries;
+      _freshCatalogEntries = null;
+      final localFile = freshEntries == null ? await _catalogCacheFile() : null;
       final installedApps = isar.installedApps.where().findAll();
       final installedMap = {for (var a in installedApps) a.appId: a};
 
-      if (await localFile.exists()) {
+      if (freshEntries != null) {
+        return await _mergedAppsFromCatalogEntries(
+          freshEntries,
+          installedMap,
+          catalogFileName,
+        );
+      }
+
+      if (localFile != null && await localFile.exists()) {
         AppLogger.info('Loading apps from local storage: ${localFile.path}');
         try {
-          final cached = _parseCatalog(
-            await localFile.readAsString(),
+          return await _mergedAppsFromCatalogEntries(
+            _catalogEntries(await localFile.readAsString()),
             installedMap,
-          );
-          if (!Platform.isLinux ||
-              cached.any((app) => app.appId == 'mongodb-compass')) {
-            return cached;
-          }
-          // A valid cache from the legacy Linux feed can predate Compass.
-          // Keep all other cached entries and merge Compass with its saved state.
-          final bundled = await _loadBundledCatalog(
             catalogFileName,
-            installedMap,
           );
-          return [
-            ...cached,
-            ...bundled.where((app) => app.appId == 'mongodb-compass'),
-          ];
         } on FormatException catch (e) {
           // Preserve the invalid file for diagnosis until a valid update
           // replaces it; keep both screens usable with the bundled catalog.
@@ -323,16 +344,19 @@ class AppsRepository {
 
       if (response.statusCode == 200) {
         final data = response.data;
+        final entries = _catalogEntries(data);
         // Validate the complete download before replacing the working cache.
-        _parseCatalog(data, const {});
+        _mergeCatalogEntries(entries, const {});
         final jsonString = data is String ? data : jsonEncode(data);
 
-        // Save to local support directory for runtime persistence
-        final catalogFileName = catalogFileNameFor(isLinux: Platform.isLinux);
         final localFile = await _catalogCacheFile();
         await localFile.writeAsString(jsonString);
 
-        AppLogger.info('Successfully updated apps list ($catalogFileName)');
+        // Reuse only catalog metadata. getAll still reads installed state.
+        _freshCatalogEntries = entries;
+        AppLogger.info(
+          'Successfully updated apps list (${p.basename(localFile.path)})',
+        );
       }
     } catch (e) {
       AppLogger.error('Error updating app list: $e');

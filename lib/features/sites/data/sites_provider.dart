@@ -214,22 +214,10 @@ class Sites extends _$Sites {
     final isar = await ref.watch(isarProvider.future);
     final sites = isar.siteModels.where().sortByCreatedAtDesc().findAll();
 
-    // Auto-start CLI sites that were persisted with autoStart == true. This
-    // runs after the DB load completes (via microtask) so it does not delay the
-    // initial sites read, and failures are logged but never propagated (a bad
-    // port/command or missing dir on a prior record must not crash startup).
-    Future.microtask(() {
-      final cliManager = ref.read(cliProcessManagerProvider);
-      final logger = ref.read(logServiceProvider);
-      for (final site in sites) {
-        if (site.siteType == 'cli' && site.autoStart) {
-          cliManager.startSite(site).catchError((e) {
-            logger.error('Auto-start failed for ${site.domain}: $e');
-            return false;
-          });
-        }
-      }
-    });
+    // CLI auto-start does not belong here: this provider is autoDispose and
+    // only builds when the Sites UI opens, so starting from `build()` left the
+    // dev servers down (and their vhosts answering 502) until the tab was
+    // visited. The boot path calls `startAutoStartCliSites` instead.
 
     return sites;
   }

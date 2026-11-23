@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:ui';
-import 'package:material_ui/material_ui.dart';
+
+import 'package:dev_stack/shared/utils/app_dialogs.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/redis_key.dart';
-import '../../../apps/domain/app_model.dart';
-import '../../data/redis_provider.dart';
+import 'package:material_ui/material_ui.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_size.dart';
-import 'package:dev_stack/shared/utils/app_dialogs.dart';
+import '../../../apps/domain/app_model.dart';
+import '../../data/redis_provider.dart';
+import '../../domain/redis_key.dart';
 import 'add_redis_key_modal.dart';
 
 class RedisExplorer extends ConsumerStatefulWidget {
@@ -29,9 +32,12 @@ class RedisExplorer extends ConsumerStatefulWidget {
 
 class _RedisExplorerState extends ConsumerState<RedisExplorer> {
   final ScrollController _dbScrollController = ScrollController();
+  Timer? _searchDebounce;
+  static const Duration _searchDebounceDuration = Duration(milliseconds: 300);
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _dbScrollController.dispose();
     super.dispose();
   }
@@ -39,30 +45,38 @@ class _RedisExplorerState extends ConsumerState<RedisExplorer> {
   @override
   void initState() {
     super.initState();
-    _refresh();
+    _scheduleRefresh();
   }
 
   @override
   void didUpdateWidget(RedisExplorer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.searchQuery != widget.searchQuery ||
-        oldWidget.selectedDb != widget.selectedDb) {
-      _refresh();
+    final dbChanged = oldWidget.selectedDb != widget.selectedDb;
+    if (!dbChanged && oldWidget.searchQuery == widget.searchQuery) return;
+
+    _searchDebounce?.cancel();
+    ref.read(redisProvider.notifier).cancelFetch();
+    if (dbChanged) {
+      _scheduleRefresh();
+    } else {
+      _searchDebounce = Timer(_searchDebounceDuration, _fetchKeys);
     }
   }
 
-  void _refresh() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final query = widget.searchQuery ?? '';
-      ref
-          .read(redisProvider.notifier)
-          .fetchKeys(
-            widget.app,
-            widget.selectedDb,
-            query: query.isEmpty ? '*' : '*$query*',
-          );
-    });
+  void _scheduleRefresh() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchKeys());
+  }
+
+  void _fetchKeys() {
+    if (!mounted) return;
+    final query = widget.searchQuery ?? '';
+    ref
+        .read(redisProvider.notifier)
+        .fetchKeys(
+          widget.app,
+          widget.selectedDb,
+          query: query.isEmpty ? '*' : '*$query*',
+        );
   }
 
   @override
