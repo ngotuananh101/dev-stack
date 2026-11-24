@@ -157,6 +157,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             .restartRunningWebservers();
                       },
                     ),
+                    const Divider(color: AppColors.border, height: 32),
+                    _buildSwitchSetting(
+                      title: 'Ignore SSL Certificate Errors',
+                      subtitle:
+                          'Skip TLS certificate verification for outgoing '
+                          'downloads and catalog updates.\n'
+                          'DevStack already loads system root certificates '
+                          'automatically. Only enable this as a last resort — '
+                          'turning it on weakens download security on '
+                          'untrusted networks.',
+                      value: settings.allowInsecureSsl,
+                      onChanged: (val) => ref
+                          .read(settingsProvider.notifier)
+                          .updateField(allowInsecureSsl: val),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),

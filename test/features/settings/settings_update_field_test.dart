@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dev_stack/core/database/isar_provider.dart';
+import 'package:dev_stack/core/security/app_http_overrides.dart';
 import 'package:dev_stack/features/settings/data/settings_provider.dart';
 import 'package:dev_stack/features/settings/domain/app_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -122,5 +123,34 @@ void main() {
       final row = isar.appSettings.where().findFirst();
       expect(row?.minimizeToTray, isTrue);
     }, skip: libraryPath == null ? 'Isar native library not available' : false);
+
+    test(
+      'updates allowInsecureSsl in Isar and syncs AppHttpOverrides',
+      () async {
+        addTearDown(() => AppHttpOverrides.setAllowInsecureSsl(false));
+        final container = createContainer();
+        final initial = await container.read(settingsProvider.future);
+        expect(initial.allowInsecureSsl, isFalse);
+        expect(AppHttpOverrides.allowInsecureSsl, isFalse);
+
+        final emitted = <AppSettings>[];
+        container.listen(settingsProvider, (previous, next) {
+          if (next.hasValue) emitted.add(next.value!);
+        });
+
+        await container
+            .read(settingsProvider.notifier)
+            .updateField(allowInsecureSsl: true);
+        await container.pump();
+
+        expect(emitted, hasLength(1));
+        expect(emitted.single.allowInsecureSsl, isTrue);
+        expect(AppHttpOverrides.allowInsecureSsl, isTrue);
+
+        final row = isar.appSettings.where().findFirst();
+        expect(row?.allowInsecureSsl, isTrue);
+      },
+      skip: libraryPath == null ? 'Isar native library not available' : false,
+    );
   });
 }

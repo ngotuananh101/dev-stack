@@ -26,6 +26,11 @@ class AppSettings {
   // not exposed to other machines on the network.
   bool allowLanAccess = false;
 
+  // Network: when true, outgoing HTTPS requests ignore TLS certificate
+  // verification errors (e.g. for intercepting proxies/antivirus).
+  // Default false — DevStack loads OS root CAs automatically.
+  bool allowInsecureSsl = false;
+
   // Tunnel Tokens
   String? ngrokDefaultToken;
   String? cloudflareDefaultToken;

@@ -37,6 +37,7 @@ import 'core/services/window_service.dart';
 import 'shared/utils/app_dialogs.dart';
 import 'core/services/ssl_service.dart';
 import 'core/services/linux_desktop_service.dart';
+import 'core/security/app_http_overrides.dart';
 import 'features/apps/data/app_installer_service.dart';
 import 'features/settings/domain/app_settings.dart';
 import 'package:dev_stack/core/services/log_service.dart';
@@ -61,6 +62,9 @@ void main() async {
   if (settings != null) {
     AppConfig.initialize(baseDir: settings.baseDir);
   }
+  AppHttpOverrides.install(
+    allowInsecureSsl: settings?.allowInsecureSsl ?? false,
+  );
 
   final packageInfo = await PackageInfo.fromPlatform();
   final appVersion = packageInfo.version;

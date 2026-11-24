@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import '../../../core/database/isar_provider.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/security/app_http_overrides.dart';
 import '../../apps/domain/installed_app.dart';
 import '../../sites/domain/site_model.dart';
 import '../domain/app_settings.dart';
@@ -61,9 +62,11 @@ class Settings extends _$Settings {
         isar.write((_) {
           isar.appSettings.put(defaultSettings);
         });
+        AppHttpOverrides.setAllowInsecureSsl(false);
         return defaultSettings;
       }
 
+      AppHttpOverrides.setAllowInsecureSsl(settings.allowInsecureSsl);
       return settings;
     } catch (e) {
       AppLogger.error('Error reading AppSettings, resetting to default: $e');
@@ -75,6 +78,7 @@ class Settings extends _$Settings {
         isar.appSettings.put(defaultSettings);
         return defaultSettings;
       });
+      AppHttpOverrides.setAllowInsecureSsl(false);
       return AppSettings()..baseDir = AppConfig.defaultBaseDir;
     }
   }
@@ -458,6 +462,7 @@ class Settings extends _$Settings {
     bool? autoStartWithWindows,
     bool? isSslInstalled,
     bool? allowLanAccess,
+    bool? allowInsecureSsl,
   }) async {
     final currentSettings = state.value;
     if (currentSettings == null) return;
@@ -491,6 +496,10 @@ class Settings extends _$Settings {
     if (isSslInstalled != null) currentSettings.isSslInstalled = isSslInstalled;
     if (allowLanAccess != null) {
       currentSettings.allowLanAccess = allowLanAccess;
+    }
+    if (allowInsecureSsl != null) {
+      currentSettings.allowInsecureSsl = allowInsecureSsl;
+      AppHttpOverrides.setAllowInsecureSsl(allowInsecureSsl);
     }
 
     await updateSettings(currentSettings);

@@ -27,6 +27,7 @@ final AppSettingsSchema = IsarGeneratedSchema(
       IsarPropertySchema(name: 'autoStartWithWindows', type: IsarType.bool),
       IsarPropertySchema(name: 'isSslInstalled', type: IsarType.bool),
       IsarPropertySchema(name: 'allowLanAccess', type: IsarType.bool),
+      IsarPropertySchema(name: 'allowInsecureSsl', type: IsarType.bool),
       IsarPropertySchema(name: 'ngrokDefaultToken', type: IsarType.string),
       IsarPropertySchema(name: 'cloudflareDefaultToken', type: IsarType.string),
     ],
@@ -49,20 +50,21 @@ int serializeAppSettings(IsarWriter writer, AppSettings object) {
   IsarCore.writeBool(writer, 5, value: object.autoStartWithWindows);
   IsarCore.writeBool(writer, 6, value: object.isSslInstalled);
   IsarCore.writeBool(writer, 7, value: object.allowLanAccess);
+  IsarCore.writeBool(writer, 8, value: object.allowInsecureSsl);
   {
     final value = object.ngrokDefaultToken;
     if (value == null) {
-      IsarCore.writeNull(writer, 8);
+      IsarCore.writeNull(writer, 9);
     } else {
-      IsarCore.writeString(writer, 8, value);
+      IsarCore.writeString(writer, 9, value);
     }
   }
   {
     final value = object.cloudflareDefaultToken;
     if (value == null) {
-      IsarCore.writeNull(writer, 9);
+      IsarCore.writeNull(writer, 10);
     } else {
-      IsarCore.writeString(writer, 9, value);
+      IsarCore.writeString(writer, 10, value);
     }
   }
   return object.id;
@@ -79,8 +81,9 @@ AppSettings deserializeAppSettings(IsarReader reader) {
   object.autoStartWithWindows = IsarCore.readBool(reader, 5);
   object.isSslInstalled = IsarCore.readBool(reader, 6);
   object.allowLanAccess = IsarCore.readBool(reader, 7);
-  object.ngrokDefaultToken = IsarCore.readString(reader, 8);
-  object.cloudflareDefaultToken = IsarCore.readString(reader, 9);
+  object.allowInsecureSsl = IsarCore.readBool(reader, 8);
+  object.ngrokDefaultToken = IsarCore.readString(reader, 9);
+  object.cloudflareDefaultToken = IsarCore.readString(reader, 10);
   return object;
 }
 
@@ -104,9 +107,11 @@ dynamic deserializeAppSettingsProp(IsarReader reader, int property) {
     case 7:
       return IsarCore.readBool(reader, 7);
     case 8:
-      return IsarCore.readString(reader, 8);
+      return IsarCore.readBool(reader, 8);
     case 9:
       return IsarCore.readString(reader, 9);
+    case 10:
+      return IsarCore.readString(reader, 10);
     default:
       throw ArgumentError('Unknown property: $property');
   }
@@ -122,6 +127,7 @@ sealed class _AppSettingsUpdate {
     bool? autoStartWithWindows,
     bool? isSslInstalled,
     bool? allowLanAccess,
+    bool? allowInsecureSsl,
     String? ngrokDefaultToken,
     String? cloudflareDefaultToken,
   });
@@ -142,6 +148,7 @@ class _AppSettingsUpdateImpl implements _AppSettingsUpdate {
     Object? autoStartWithWindows = ignore,
     Object? isSslInstalled = ignore,
     Object? allowLanAccess = ignore,
+    Object? allowInsecureSsl = ignore,
     Object? ngrokDefaultToken = ignore,
     Object? cloudflareDefaultToken = ignore,
   }) {
@@ -156,9 +163,10 @@ class _AppSettingsUpdateImpl implements _AppSettingsUpdate {
               5: autoStartWithWindows as bool?,
             if (isSslInstalled != ignore) 6: isSslInstalled as bool?,
             if (allowLanAccess != ignore) 7: allowLanAccess as bool?,
-            if (ngrokDefaultToken != ignore) 8: ngrokDefaultToken as String?,
+            if (allowInsecureSsl != ignore) 8: allowInsecureSsl as bool?,
+            if (ngrokDefaultToken != ignore) 9: ngrokDefaultToken as String?,
             if (cloudflareDefaultToken != ignore)
-              9: cloudflareDefaultToken as String?,
+              10: cloudflareDefaultToken as String?,
           },
         ) >
         0;
@@ -175,6 +183,7 @@ sealed class _AppSettingsUpdateAll {
     bool? autoStartWithWindows,
     bool? isSslInstalled,
     bool? allowLanAccess,
+    bool? allowInsecureSsl,
     String? ngrokDefaultToken,
     String? cloudflareDefaultToken,
   });
@@ -195,6 +204,7 @@ class _AppSettingsUpdateAllImpl implements _AppSettingsUpdateAll {
     Object? autoStartWithWindows = ignore,
     Object? isSslInstalled = ignore,
     Object? allowLanAccess = ignore,
+    Object? allowInsecureSsl = ignore,
     Object? ngrokDefaultToken = ignore,
     Object? cloudflareDefaultToken = ignore,
   }) {
@@ -206,9 +216,10 @@ class _AppSettingsUpdateAllImpl implements _AppSettingsUpdateAll {
       if (autoStartWithWindows != ignore) 5: autoStartWithWindows as bool?,
       if (isSslInstalled != ignore) 6: isSslInstalled as bool?,
       if (allowLanAccess != ignore) 7: allowLanAccess as bool?,
-      if (ngrokDefaultToken != ignore) 8: ngrokDefaultToken as String?,
+      if (allowInsecureSsl != ignore) 8: allowInsecureSsl as bool?,
+      if (ngrokDefaultToken != ignore) 9: ngrokDefaultToken as String?,
       if (cloudflareDefaultToken != ignore)
-        9: cloudflareDefaultToken as String?,
+        10: cloudflareDefaultToken as String?,
     });
   }
 }
@@ -228,6 +239,7 @@ sealed class _AppSettingsQueryUpdate {
     bool? autoStartWithWindows,
     bool? isSslInstalled,
     bool? allowLanAccess,
+    bool? allowInsecureSsl,
     String? ngrokDefaultToken,
     String? cloudflareDefaultToken,
   });
@@ -248,6 +260,7 @@ class _AppSettingsQueryUpdateImpl implements _AppSettingsQueryUpdate {
     Object? autoStartWithWindows = ignore,
     Object? isSslInstalled = ignore,
     Object? allowLanAccess = ignore,
+    Object? allowInsecureSsl = ignore,
     Object? ngrokDefaultToken = ignore,
     Object? cloudflareDefaultToken = ignore,
   }) {
@@ -259,9 +272,10 @@ class _AppSettingsQueryUpdateImpl implements _AppSettingsQueryUpdate {
       if (autoStartWithWindows != ignore) 5: autoStartWithWindows as bool?,
       if (isSslInstalled != ignore) 6: isSslInstalled as bool?,
       if (allowLanAccess != ignore) 7: allowLanAccess as bool?,
-      if (ngrokDefaultToken != ignore) 8: ngrokDefaultToken as String?,
+      if (allowInsecureSsl != ignore) 8: allowInsecureSsl as bool?,
+      if (ngrokDefaultToken != ignore) 9: ngrokDefaultToken as String?,
       if (cloudflareDefaultToken != ignore)
-        9: cloudflareDefaultToken as String?,
+        10: cloudflareDefaultToken as String?,
     });
   }
 }
@@ -288,6 +302,7 @@ class _AppSettingsQueryBuilderUpdateImpl implements _AppSettingsQueryUpdate {
     Object? autoStartWithWindows = ignore,
     Object? isSslInstalled = ignore,
     Object? allowLanAccess = ignore,
+    Object? allowInsecureSsl = ignore,
     Object? ngrokDefaultToken = ignore,
     Object? cloudflareDefaultToken = ignore,
   }) {
@@ -301,9 +316,10 @@ class _AppSettingsQueryBuilderUpdateImpl implements _AppSettingsQueryUpdate {
         if (autoStartWithWindows != ignore) 5: autoStartWithWindows as bool?,
         if (isSslInstalled != ignore) 6: isSslInstalled as bool?,
         if (allowLanAccess != ignore) 7: allowLanAccess as bool?,
-        if (ngrokDefaultToken != ignore) 8: ngrokDefaultToken as String?,
+        if (allowInsecureSsl != ignore) 8: allowInsecureSsl as bool?,
+        if (ngrokDefaultToken != ignore) 9: ngrokDefaultToken as String?,
         if (cloudflareDefaultToken != ignore)
-          9: cloudflareDefaultToken as String?,
+          10: cloudflareDefaultToken as String?,
       });
     } finally {
       q.close();
@@ -720,16 +736,25 @@ extension AppSettingsQueryFilter
   }
 
   QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+  allowInsecureSslEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        EqualCondition(property: 8, value: value),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
   ngrokDefaultTokenIsNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const IsNullCondition(property: 8));
+      return query.addFilterCondition(const IsNullCondition(property: 9));
     });
   }
 
   QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
   ngrokDefaultTokenIsNotNull() {
     return QueryBuilder.apply(not(), (query) {
-      return query.addFilterCondition(const IsNullCondition(property: 8));
+      return query.addFilterCondition(const IsNullCondition(property: 9));
     });
   }
 
@@ -737,7 +762,7 @@ extension AppSettingsQueryFilter
   ngrokDefaultTokenEqualTo(String? value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        EqualCondition(property: 8, value: value, caseSensitive: caseSensitive),
+        EqualCondition(property: 9, value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -747,7 +772,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         GreaterCondition(
-          property: 8,
+          property: 9,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -763,7 +788,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         GreaterOrEqualCondition(
-          property: 8,
+          property: 9,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -775,7 +800,7 @@ extension AppSettingsQueryFilter
   ngrokDefaultTokenLessThan(String? value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        LessCondition(property: 8, value: value, caseSensitive: caseSensitive),
+        LessCondition(property: 9, value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -788,7 +813,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         LessOrEqualCondition(
-          property: 8,
+          property: 9,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -805,7 +830,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         BetweenCondition(
-          property: 8,
+          property: 9,
           lower: lower,
           upper: upper,
           caseSensitive: caseSensitive,
@@ -819,7 +844,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         StartsWithCondition(
-          property: 8,
+          property: 9,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -832,7 +857,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         EndsWithCondition(
-          property: 8,
+          property: 9,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -845,7 +870,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         ContainsCondition(
-          property: 8,
+          property: 9,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -858,7 +883,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         MatchesCondition(
-          property: 8,
+          property: 9,
           wildcard: pattern,
           caseSensitive: caseSensitive,
         ),
@@ -870,7 +895,7 @@ extension AppSettingsQueryFilter
   ngrokDefaultTokenIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        const EqualCondition(property: 8, value: ''),
+        const EqualCondition(property: 9, value: ''),
       );
     });
   }
@@ -879,7 +904,7 @@ extension AppSettingsQueryFilter
   ngrokDefaultTokenIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        const GreaterCondition(property: 8, value: ''),
+        const GreaterCondition(property: 9, value: ''),
       );
     });
   }
@@ -887,14 +912,14 @@ extension AppSettingsQueryFilter
   QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
   cloudflareDefaultTokenIsNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const IsNullCondition(property: 9));
+      return query.addFilterCondition(const IsNullCondition(property: 10));
     });
   }
 
   QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
   cloudflareDefaultTokenIsNotNull() {
     return QueryBuilder.apply(not(), (query) {
-      return query.addFilterCondition(const IsNullCondition(property: 9));
+      return query.addFilterCondition(const IsNullCondition(property: 10));
     });
   }
 
@@ -902,7 +927,11 @@ extension AppSettingsQueryFilter
   cloudflareDefaultTokenEqualTo(String? value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        EqualCondition(property: 9, value: value, caseSensitive: caseSensitive),
+        EqualCondition(
+          property: 10,
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
@@ -915,7 +944,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         GreaterCondition(
-          property: 9,
+          property: 10,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -931,7 +960,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         GreaterOrEqualCondition(
-          property: 9,
+          property: 10,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -943,7 +972,7 @@ extension AppSettingsQueryFilter
   cloudflareDefaultTokenLessThan(String? value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        LessCondition(property: 9, value: value, caseSensitive: caseSensitive),
+        LessCondition(property: 10, value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -956,7 +985,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         LessOrEqualCondition(
-          property: 9,
+          property: 10,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -973,7 +1002,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         BetweenCondition(
-          property: 9,
+          property: 10,
           lower: lower,
           upper: upper,
           caseSensitive: caseSensitive,
@@ -987,7 +1016,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         StartsWithCondition(
-          property: 9,
+          property: 10,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -1000,7 +1029,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         EndsWithCondition(
-          property: 9,
+          property: 10,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -1013,7 +1042,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         ContainsCondition(
-          property: 9,
+          property: 10,
           value: value,
           caseSensitive: caseSensitive,
         ),
@@ -1026,7 +1055,7 @@ extension AppSettingsQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         MatchesCondition(
-          property: 9,
+          property: 10,
           wildcard: pattern,
           caseSensitive: caseSensitive,
         ),
@@ -1038,7 +1067,7 @@ extension AppSettingsQueryFilter
   cloudflareDefaultTokenIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        const EqualCondition(property: 9, value: ''),
+        const EqualCondition(property: 10, value: ''),
       );
     });
   }
@@ -1047,7 +1076,7 @@ extension AppSettingsQueryFilter
   cloudflareDefaultTokenIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        const GreaterCondition(property: 9, value: ''),
+        const GreaterCondition(property: 10, value: ''),
       );
     });
   }
@@ -1168,32 +1197,46 @@ extension AppSettingsQuerySortBy
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  sortByAllowInsecureSsl() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(8);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  sortByAllowInsecureSslDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(8, sort: Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByNgrokDefaultToken({
     bool caseSensitive = true,
   }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(8, caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
-  sortByNgrokDefaultTokenDesc({bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(8, sort: Sort.desc, caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
-  sortByCloudflareDefaultToken({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(9, caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
-  sortByCloudflareDefaultTokenDesc({bool caseSensitive = true}) {
+  sortByNgrokDefaultTokenDesc({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(9, sort: Sort.desc, caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  sortByCloudflareDefaultToken({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(10, caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  sortByCloudflareDefaultTokenDesc({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(10, sort: Sort.desc, caseSensitive: caseSensitive);
     });
   }
 }
@@ -1310,32 +1353,46 @@ extension AppSettingsQuerySortThenBy
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  thenByAllowInsecureSsl() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(8);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  thenByAllowInsecureSslDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(8, sort: Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByNgrokDefaultToken({
     bool caseSensitive = true,
   }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(8, caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
-  thenByNgrokDefaultTokenDesc({bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(8, sort: Sort.desc, caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
-  thenByCloudflareDefaultToken({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(9, caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
-  thenByCloudflareDefaultTokenDesc({bool caseSensitive = true}) {
+  thenByNgrokDefaultTokenDesc({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(9, sort: Sort.desc, caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  thenByCloudflareDefaultToken({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(10, caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy>
+  thenByCloudflareDefaultTokenDesc({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(10, sort: Sort.desc, caseSensitive: caseSensitive);
     });
   }
 }
@@ -1393,16 +1450,23 @@ extension AppSettingsQueryWhereDistinct
   }
 
   QueryBuilder<AppSettings, AppSettings, QAfterDistinct>
+  distinctByAllowInsecureSsl() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(8);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterDistinct>
   distinctByNgrokDefaultToken({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(8, caseSensitive: caseSensitive);
+      return query.addDistinctBy(9, caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<AppSettings, AppSettings, QAfterDistinct>
   distinctByCloudflareDefaultToken({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(9, caseSensitive: caseSensitive);
+      return query.addDistinctBy(10, caseSensitive: caseSensitive);
     });
   }
 }
@@ -1458,17 +1522,23 @@ extension AppSettingsQueryProperty1
     });
   }
 
-  QueryBuilder<AppSettings, String?, QAfterProperty>
-  ngrokDefaultTokenProperty() {
+  QueryBuilder<AppSettings, bool, QAfterProperty> allowInsecureSslProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addProperty(8);
     });
   }
 
   QueryBuilder<AppSettings, String?, QAfterProperty>
-  cloudflareDefaultTokenProperty() {
+  ngrokDefaultTokenProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addProperty(9);
+    });
+  }
+
+  QueryBuilder<AppSettings, String?, QAfterProperty>
+  cloudflareDefaultTokenProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addProperty(10);
     });
   }
 }
@@ -1529,17 +1599,24 @@ extension AppSettingsQueryProperty2<R>
     });
   }
 
-  QueryBuilder<AppSettings, (R, String?), QAfterProperty>
-  ngrokDefaultTokenProperty() {
+  QueryBuilder<AppSettings, (R, bool), QAfterProperty>
+  allowInsecureSslProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addProperty(8);
     });
   }
 
   QueryBuilder<AppSettings, (R, String?), QAfterProperty>
-  cloudflareDefaultTokenProperty() {
+  ngrokDefaultTokenProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addProperty(9);
+    });
+  }
+
+  QueryBuilder<AppSettings, (R, String?), QAfterProperty>
+  cloudflareDefaultTokenProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addProperty(10);
     });
   }
 }
@@ -1600,17 +1677,24 @@ extension AppSettingsQueryProperty3<R1, R2>
     });
   }
 
-  QueryBuilder<AppSettings, (R1, R2, String?), QOperations>
-  ngrokDefaultTokenProperty() {
+  QueryBuilder<AppSettings, (R1, R2, bool), QOperations>
+  allowInsecureSslProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addProperty(8);
     });
   }
 
   QueryBuilder<AppSettings, (R1, R2, String?), QOperations>
-  cloudflareDefaultTokenProperty() {
+  ngrokDefaultTokenProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addProperty(9);
+    });
+  }
+
+  QueryBuilder<AppSettings, (R1, R2, String?), QOperations>
+  cloudflareDefaultTokenProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addProperty(10);
     });
   }
 }
