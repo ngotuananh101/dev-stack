@@ -395,6 +395,51 @@ class AppServiceManager {
     }
   }
 
+  /// Restores disposable runtime directories without regenerating configuration
+  /// or recreating database storage. Called for every start, including restarts.
+  Future<void> _ensureRuntimeDirectories(
+    String fileName,
+    String workingDir,
+  ) async {
+    await Directory(AppConfig.logsDir).create(recursive: true);
+    if (!runsDetachedExecutable(fileName)) return;
+
+    final server = switch (fileName) {
+      'httpd' || 'apache' || 'apache2' => 'apache',
+      _ => fileName,
+    };
+    final vhostsDir = Directory(p.join(AppConfig.vhostsDir, server));
+    final directories = <String>{
+      AppConfig.webserverRoot,
+      p.join(AppConfig.logsDir, 'localhost'),
+      p.join(vhostsDir.path, 'integrations'),
+      if (server == 'nginx') ...[
+        p.join(workingDir, 'logs'),
+        p.join(workingDir, 'temp'),
+      ],
+    };
+    for (final path in directories) {
+      await Directory(path).create(recursive: true);
+    }
+
+    // Site configs survive log cleanup. Recover the managed logs/<domain>
+    // layout from their filenames, without rewriting user-edited configs or
+    // treating integration fragments, the Apache main config, or symlinks as
+    // sites. Never create directories beside system-installed Apache binaries.
+    final siteConfigName = RegExp(
+      r'^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?\.conf$',
+    );
+    await for (final entry in vhostsDir.list(followLinks: false)) {
+      if (entry is! File || !siteConfigName.hasMatch(p.basename(entry.path))) {
+        continue;
+      }
+      final domain = p.basenameWithoutExtension(entry.path);
+      await Directory(
+        p.join(AppConfig.logsDir, domain),
+      ).create(recursive: true);
+    }
+  }
+
   Future<void> start(AppModel app, {VoidCallback? onStatusChange}) async {
     if (isRunning(app.appId)) return;
 
@@ -414,6 +459,10 @@ class AppServiceManager {
       final fileName = normalizeExecutableName(
         exeFile.path.split(Platform.pathSeparator).last,
       );
+
+      // Repair disposable directories before checking ports or spawning. Do not
+      // rerun installer setup: it can overwrite configs or initialize databases.
+      await _ensureRuntimeDirectories(fileName, workingDir);
 
       // Pre-flight permission check/repair on Linux: ensure u+x is set before spawning.
       if (_isLinux()) {
